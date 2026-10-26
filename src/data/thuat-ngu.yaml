@@ -1,0 +1,65 @@
+- id: dao-ham
+  ten: Đạo hàm
+  tenTiengAnh: derivative
+  giaiThich: Đạo hàm cho biết một đại lượng đổi nhanh hay chậm khi nhích đầu vào một chút. Dương là đang lên dốc, âm là đang xuống dốc. Ở đây dùng để biết nên tăng hay giảm w.
+  hocKy: ai-engineer/ch06-giai-tich
+- id: dao-ham-rieng
+  ten: Đạo hàm riêng
+  tenTiengAnh: partial derivative
+  giaiThich: Khi hàm có nhiều đầu vào, ta chỉ nhích một đầu vào và giữ nguyên các đầu vào còn lại. Độ đổi của đầu ra theo riêng đầu vào đó gọi là đạo hàm riêng. Ở đây dùng để biết w và b mỗi cái nên chỉnh bao nhiêu.
+  hocKy: ai-engineer/ch06-giai-tich
+- id: gradient
+  ten: Gradient
+  tenTiengAnh: gradient
+  giaiThich: Gradient là một danh sách các đạo hàm riêng, mỗi đầu vào một số. Nó chỉ hướng dốc lên nhanh nhất, như mũi tên chỉ lên đỉnh đồi. Ở đây ta đi ngược hướng đó để xuống đáy hàm mất mát.
+  hocKy: ai-engineer/ch06-giai-tich
+- id: learning-rate
+  ten: Learning rate
+  tenTiengAnh: learning rate
+  giaiThich: Learning rate là độ dài mỗi bước khi xuống dốc. Bước quá nhỏ thì đi rất lâu, bước quá lớn thì nhảy qua đáy. Ở đây nó là số η ta tự chọn trước khi huấn luyện.
+  hocKy: ai-engineer/ch08-toi-uu-hoa
+- id: mse
+  ten: MSE
+  tenTiengAnh: mean squared error
+  giaiThich: MSE là trung bình của bình phương độ lệch giữa dự đoán và giá trị thật. Bình phương làm sai số lớn bị phạt nặng hơn sai số nhỏ. Ở đây dùng làm hàm mất mát cho hồi quy tuyến tính.
+  hocKy: ai-engineer/ch10-hoi-quy-tuyen-tinh
+- id: phan-du
+  ten: Phần dư
+  tenTiengAnh: residual
+  giaiThich: Phần dư là chênh lệch giữa giá trị thật và giá trị mô hình dự đoán cho từng điểm dữ liệu. Nó cho thấy mô hình lệch bao nhiêu ở điểm đó. Ở đây ta nhìn phần dư để biết đường thẳng khớp chưa.
+  hocKy: ai-engineer/ch10-hoi-quy-tuyen-tinh
+- id: ham-mat-mat
+  ten: Hàm mất mát
+  tenTiengAnh: loss function
+  giaiThich: Hàm mất mát là một con số đo mô hình đang sai nhiều hay ít. Con số càng nhỏ thì mô hình càng đúng. Ở đây huấn luyện nghĩa là chỉnh tham số để con số này nhỏ đi.
+  hocKy: ai-engineer/ch10-hoi-quy-tuyen-tinh
+- id: gradient-descent
+  ten: Gradient descent
+  tenTiengAnh: gradient descent
+  giaiThich: Gradient descent là cách xuống đáy bằng nhiều bước nhỏ, như xuống dốc trong sương mù, mỗi bước theo hướng dốc xuống. Sau mỗi bước ta tính lại hướng rồi đi tiếp. Ở đây dùng để tìm w và b làm mất mát nhỏ nhất.
+  hocKy: ai-engineer/ch08-toi-uu-hoa
+- id: chuan-hoa
+  ten: Chuẩn hóa
+  tenTiengAnh: standardization
+  giaiThich: Chuẩn hóa đưa các cột dữ liệu về cùng một thang đo, thường là trung bình 0 và độ lệch chuẩn 1. Nhờ vậy cột có số lớn không lấn át cột có số nhỏ. Ở đây giúp gradient descent đi thẳng xuống đáy thay vì zích zắc.
+  hocKy: ai-engineer/ch14-knn
+- id: r-binh-phuong
+  ten: R bình phương
+  tenTiengAnh: R-squared
+  giaiThich: R bình phương cho biết mô hình giải thích được bao nhiêu phần của độ biến thiên trong dữ liệu. Bằng 1 là khớp hoàn toàn, bằng 0 là không hơn gì việc đoán mức trung bình. Ở đây dùng để chấm điểm đường hồi quy.
+  hocKy: ai-engineer/ch10-hoi-quy-tuyen-tinh
+- id: outlier
+  ten: Outlier
+  tenTiengAnh: outlier
+  giaiThich: Outlier là điểm dữ liệu nằm rất xa phần còn lại, như một người cao 2,5 m giữa lớp học. Một điểm như vậy có thể kéo cả đường hồi quy lệch theo. Ở đây ta phát hiện nó rồi quyết định giữ hay bỏ.
+  hocKy: ai-engineer/ch10-hoi-quy-tuyen-tinh
+- id: vector-hoa
+  ten: Vector hóa
+  tenTiengAnh: vectorization
+  giaiThich: Vector hóa là viết phép tính cho cả mảng một lần thay vì lặp từng phần tử bằng vòng for. Như chấm cả xấp bài bằng một động tác thay vì từng tờ. Ở đây NumPy làm việc đó và nhanh hơn nhiều lần.
+  hocKy: ai-engineer/ch03-numpy
+- id: nghiem-dong
+  ten: Nghiệm đóng
+  tenTiengAnh: closed-form solution
+  giaiThich: Nghiệm đóng là công thức cho ra đáp án ngay, không cần lặp nhiều bước. Với hồi quy tuyến tính, w và b tính được bằng vài phép nhân ma trận. Ở đây dùng để đối chiếu với kết quả của gradient descent.
+  hocKy: ai-engineer/ch10-hoi-quy-tuyen-tinh

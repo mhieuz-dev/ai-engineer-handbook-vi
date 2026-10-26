@@ -1,0 +1,75 @@
+---
+import { getCollection } from 'astro:content';
+import { dungLinkNguoc, linkHocKy } from '../lib/thuat-ngu';
+
+const docs = await getCollection('docs');
+const nguoc = dungLinkNguoc(docs.map((d) => ({ id: d.id, title: d.data.title, body: d.body ?? '' })));
+const docIds = docs.map((d) => d.id);
+const muc = (await getCollection('thuatNgu')).sort((a, b) => a.data.ten.localeCompare(b.data.ten, 'vi'));
+---
+
+<dl class="thuat-ngu">
+	{
+		muc.map((m) => {
+			const hoc = m.data.hocKy ? linkHocKy(m.data.hocKy, docIds) : undefined;
+			const trang = nguoc.get(m.id) ?? [];
+			return (
+				<div class="muc" id={m.id}>
+					<dt>
+						{m.data.ten}
+						{m.data.tenTiengAnh && <span class="en">{m.data.tenTiengAnh}</span>}
+					</dt>
+					<dd>
+						<p>{m.data.giaiThich}</p>
+						{hoc && (
+							<p class="hoc-ky">
+								<a href={hoc.href}>Học kỹ ở Chương {hoc.so} →</a>
+							</p>
+						)}
+						{trang.length > 0 && (
+							<p class="xuat-hien">
+								Xuất hiện ở:{' '}
+								{trang.map((t, i) => (
+									<>
+										{i > 0 && ', '}
+										<a href={`/${t.id}/`}>{t.title}</a>
+									</>
+								))}
+							</p>
+						)}
+					</dd>
+				</div>
+			);
+		})
+	}
+</dl>
+
+<style>
+	.muc {
+		margin: 0 0 1.5rem;
+		scroll-margin-top: 5rem;
+	}
+	dt {
+		font-family: 'Be Vietnam Pro', sans-serif;
+		font-weight: 800;
+		font-size: 1.1rem;
+		color: var(--tx);
+	}
+	.en {
+		margin-left: 0.5rem;
+		font-weight: 400;
+		font-size: 0.85rem;
+		color: var(--mut);
+	}
+	dd {
+		margin: 0.25rem 0 0;
+	}
+	dd p {
+		margin: 0.25rem 0;
+	}
+	.xuat-hien,
+	.hoc-ky {
+		font-family: 'Be Vietnam Pro', sans-serif;
+		font-size: 0.9rem;
+	}
+</style>

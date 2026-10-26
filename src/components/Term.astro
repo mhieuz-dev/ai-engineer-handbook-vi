@@ -1,0 +1,105 @@
+---
+import { getCollection, getEntry } from 'astro:content';
+import { linkHocKy } from '../lib/thuat-ngu';
+
+interface Props {
+	id: string;
+}
+const { id } = Astro.props;
+const muc = await getEntry('thuatNgu', id);
+if (!muc) throw new Error(`Thuật ngữ chưa khai báo: ${id}`);
+const { ten, giaiThich, hocKy } = muc.data;
+const docIds = hocKy ? (await getCollection('docs')).map((d) => d.id) : [];
+const hoc = hocKy ? linkHocKy(hocKy, docIds) : undefined;
+---
+
+<span class="term" tabindex="0" role="button" aria-expanded="false"><slot /><span class="tip"><span class="nhan">NHẮC NHANH · {ten.toUpperCase()}</span><span class="nd">{giaiThich}</span>{hoc && <a class="hoc-ky" href={hoc.href}>Học kỹ ở Chương {hoc.so} →</a>}</span></span>
+
+<style is:global>
+	.term {
+		border-bottom: 2px dotted var(--pri);
+		cursor: help;
+		position: relative;
+	}
+	.term .tip {
+		display: none;
+		position: absolute;
+		left: 0;
+		top: 100%;
+		width: 300px;
+		max-width: min(300px, 90vw);
+		background: var(--panel);
+		border: 1px solid var(--line);
+		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+		border-radius: 10px;
+		padding: 12px 14px;
+		font-family: 'Be Vietnam Pro', sans-serif;
+		font-style: normal;
+		font-weight: 400;
+		font-size: 13px;
+		line-height: 1.55;
+		text-align: left;
+		color: var(--tx);
+		cursor: default;
+		z-index: 9;
+	}
+	.term[aria-expanded='true'] .tip {
+		display: block;
+	}
+	.term .tip .nhan {
+		display: block;
+		color: var(--pri);
+		font-weight: 600;
+		margin-bottom: 4px;
+	}
+	.term .tip .nd {
+		display: block;
+	}
+	.term .tip .hoc-ky {
+		display: block;
+		margin-top: 6px;
+		color: var(--pri);
+		font-weight: 600;
+	}
+</style>
+
+<script>
+	// Gắn một lần cho mọi .term trong trang.
+	const BIEN = 8;
+	function dat(t: HTMLElement, mo: boolean) {
+		t.setAttribute('aria-expanded', String(mo));
+		if (!mo) return;
+		const tip = t.querySelector<HTMLElement>('.tip');
+		if (!tip) return;
+		tip.style.transform = '';
+		const r = tip.getBoundingClientRect();
+		let dich = 0;
+		if (r.right > window.innerWidth - BIEN) dich = window.innerWidth - BIEN - r.right;
+		if (r.left + dich < BIEN) dich = BIEN - r.left;
+		if (dich) tip.style.transform = `translateX(${dich}px)`;
+	}
+	const moBangRe = new WeakSet<HTMLElement>(); // mở bởi hover/focus, click kế tiếp không đóng lại
+	document.querySelectorAll<HTMLElement>('.term').forEach((t) => {
+		const mo = () => {
+			if (t.getAttribute('aria-expanded') !== 'true') moBangRe.add(t);
+			dat(t, true);
+		};
+		t.addEventListener('mouseenter', mo);
+		t.addEventListener('focus', mo);
+		t.addEventListener('mouseleave', () => dat(t, false));
+		t.addEventListener('blur', () => dat(t, false));
+		t.addEventListener('keydown', (e) => {
+			if (e.key === 'Escape') dat(t, false);
+		});
+		t.addEventListener('click', (e) => {
+			if ((e.target as HTMLElement).closest('a')) return;
+			if (moBangRe.delete(t)) return;
+			dat(t, t.getAttribute('aria-expanded') !== 'true');
+		});
+	});
+	document.addEventListener('click', (e) => {
+		document.querySelectorAll<HTMLElement>('.term[aria-expanded="true"]').forEach((t) => {
+			if (!t.contains(e.target as Node)) dat(t, false);
+		});
+	});
+</script>
