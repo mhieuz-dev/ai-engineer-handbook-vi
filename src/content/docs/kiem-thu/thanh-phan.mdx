@@ -1,0 +1,46 @@
+---
+title: Thành phần mẫu
+description: Trang kiểm thử các thành phần, không công khai.
+pagefind: false
+sidebar:
+  hidden: true
+head:
+  - tag: meta
+    attrs:
+      name: robots
+      content: noindex
+---
+
+import Khung from '../../../components/Khung.astro';
+import CanBietTruoc from '../../../components/CanBietTruoc.astro';
+import HinhKetQua from '../../../components/HinhKetQua.astro';
+import ColabButton from '../../../components/ColabButton.astro';
+import BaiTap from '../../../components/BaiTap.astro';
+
+<CanBietTruoc>
+Đại số lớp 10.
+
+<Fragment slot="sau-chuong">Tự viết được hồi quy tuyến tính.</Fragment>
+</CanBietTruoc>
+
+<Khung loai="truc-giac">Như xuống dốc trong sương mù.</Khung>
+
+<Khung loai="vi-sao" tieuDe="η = 0,05">Bước vừa đủ nhỏ để không nhảy qua đáy.</Khung>
+
+<Khung loai="loi">Quên chuẩn hoá dữ liệu.</Khung>
+
+<Khung loai="phong-van">Gradient descent hội tụ khi nào?</Khung>
+
+<Khung loai="dao-sau" tieuDe="Đạo hàm riêng">Nội dung toán.</Khung>
+
+<HinhKetQua src="/hinh/kiem-thu/mau.svg" alt="Đường mẫu" so="10.1" chuThich="Đường mất mát giảm dần.">
+Trục ngang là số vòng lặp.
+</HinhKetQua>
+
+<ColabButton notebook="ch10_hoi_quy_tuyen_tinh.ipynb" />
+
+<BaiTap so="10.1">
+Tính 6 × 7.
+
+<Fragment slot="dap-an">Đáp án mẫu: 42.</Fragment>
+</BaiTap>

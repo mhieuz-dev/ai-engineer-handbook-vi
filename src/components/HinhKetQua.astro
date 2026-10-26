@@ -1,0 +1,23 @@
+---
+import Khung from './Khung.astro';
+interface Props {
+	src: string;
+	alt: string;
+	so: string;
+	chuThich: string;
+}
+const { src, alt, so, chuThich } = Astro.props;
+const coDoc = Astro.slots.has('default');
+---
+
+<figure class="hinh-ket-qua">
+	<img src={src} alt={alt} loading="lazy" />
+	<figcaption>Hình {so}. {chuThich}</figcaption>
+</figure>
+{
+	coDoc && (
+		<Khung loai="doc-bieu-do">
+			<slot />
+		</Khung>
+	)
+}

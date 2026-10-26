@@ -22,6 +22,8 @@
 	--acc: #f0a050;
 	--accbg: #2e2418;
 	--ok: #4cc38a;
+	--red: #ee7d70;
+	--purple: #b88ad0;
 }
 
 /* Ánh xạ sang biến của Starlight. */
@@ -82,4 +84,103 @@ pre {
 .katex-display {
 	overflow-x: auto;
 	overflow-y: hidden;
+}
+
+/* Các khung nội dung: vạch trái 3px, nền nhạt, nhãn sans in hoa đậm. */
+.khung {
+	--mau: var(--pri);
+	border-left: 3px solid var(--mau);
+	background: color-mix(in srgb, var(--mau) 7%, var(--bg));
+	padding: 0.7rem 1rem;
+	margin: 1.2rem 0;
+	border-radius: 0 3px 3px 0;
+}
+.khung-truc-giac { --mau: var(--pri); }
+.khung-vi-sao { --mau: var(--acc); }
+.khung-loi { --mau: var(--red); }
+.khung-doc-bieu-do { --mau: var(--ok); }
+.khung-phong-van { --mau: var(--purple); }
+.khung-dao-sau { --mau: var(--mut); }
+.khung-nhan {
+	font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+	font-weight: 800;
+	font-size: 0.72rem;
+	letter-spacing: 0.04em;
+	color: var(--mau, var(--pri));
+	margin-bottom: 0.3rem;
+}
+.khung-dao-sau > summary {
+	cursor: pointer;
+	margin-bottom: 0;
+}
+.khung-dao-sau[open] > summary {
+	margin-bottom: 0.4rem;
+}
+.khung-than > :first-child { margin-top: 0; }
+.khung-than > :last-child { margin-bottom: 0; }
+
+.can-biet-truoc {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+	gap: 0.8rem;
+	margin: 1.2rem 0;
+}
+.cbt-khoi {
+	background: var(--panel);
+	border: 1px solid var(--line);
+	border-radius: 4px;
+	padding: 0.7rem 1rem;
+}
+
+.hinh-ket-qua {
+	background: #fbf8f1; /* nền giấy cả ở chế độ tối */
+	color: #2b2b2b;
+	border: 1px solid var(--line);
+	border-radius: 4px;
+	padding: 0.8rem;
+	margin: 1.2rem 0 0;
+}
+.hinh-ket-qua img {
+	display: block;
+	max-width: 100%;
+	height: auto;
+	margin: 0 auto;
+}
+.hinh-ket-qua figcaption {
+	font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+	font-size: 0.85rem;
+	margin-top: 0.5rem;
+	text-align: center;
+}
+.hinh-ket-qua + .khung { margin-top: 0; }
+
+.colab-nut {
+	display: inline-block;
+	background: var(--acc);
+	color: #1a1208;
+	font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+	font-weight: 600;
+	padding: 0.5rem 1rem;
+	border-radius: 4px;
+	text-decoration: none;
+}
+.colab-nut:hover { filter: brightness(1.08); }
+
+.bai-tap {
+	border: 1px solid var(--line);
+	border-radius: 4px;
+	padding: 0.7rem 1rem;
+	margin: 1.2rem 0;
+}
+.bai-tap .khung-nhan { color: var(--pri); }
+.bai-tap-dap-an {
+	margin-top: 0.6rem;
+	border-top: 1px dashed var(--line);
+	padding-top: 0.5rem;
+}
+.bai-tap-dap-an > summary {
+	cursor: pointer;
+	font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+	font-weight: 600;
+	color: var(--pri);
 }

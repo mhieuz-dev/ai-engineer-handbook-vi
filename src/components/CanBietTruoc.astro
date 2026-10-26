@@ -1,0 +1,18 @@
+---
+const coSauChuong = Astro.slots.has('sau-chuong');
+---
+
+<div class="can-biet-truoc">
+	<div class="cbt-khoi">
+		<div class="khung-nhan">Cần biết trước:</div>
+		<slot />
+	</div>
+	{
+		coSauChuong && (
+			<div class="cbt-khoi">
+				<div class="khung-nhan">Sau chương này bạn sẽ:</div>
+				<slot name="sau-chuong" />
+			</div>
+		)
+	}
+</div>

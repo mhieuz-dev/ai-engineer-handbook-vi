@@ -1,0 +1,31 @@
+---
+type Loai = 'truc-giac' | 'vi-sao' | 'loi' | 'doc-bieu-do' | 'phong-van' | 'dao-sau';
+interface Props {
+	loai: Loai;
+	tieuDe?: string;
+}
+const { loai, tieuDe = '' } = Astro.props;
+const nhan: Record<Loai, string> = {
+	'truc-giac': 'TRỰC GIÁC',
+	'vi-sao': `VÌ SAO LẠI LÀ ${tieuDe}?`,
+	loi: 'LỖI HAY GẶP',
+	'doc-bieu-do': 'ĐỌC BIỂU ĐỒ NÀY NHƯ THẾ NÀO',
+	'phong-van': 'CÂU HỎI PHỎNG VẤN',
+	'dao-sau': `ĐÀO SÂU: ${tieuDe}`,
+};
+const lop = `khung khung-${loai}`;
+---
+
+{
+	loai === 'dao-sau' ? (
+		<details class={lop}>
+			<summary class="khung-nhan">{nhan[loai]}</summary>
+			<div class="khung-than"><slot /></div>
+		</details>
+	) : (
+		<aside class={lop}>
+			<div class="khung-nhan">{nhan[loai]}</div>
+			<div class="khung-than"><slot /></div>
+		</aside>
+	)
+}

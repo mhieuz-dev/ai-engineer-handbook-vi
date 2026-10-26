@@ -1,0 +1,9 @@
+---
+interface Props {
+	notebook: string;
+}
+const { notebook } = Astro.props;
+const href = `https://colab.research.google.com/github/mhieuz-dev/ai-engineer-handbook-vi/blob/main/notebooks/${notebook}`;
+---
+
+<a class="colab-nut" href={href} target="_blank" rel="noopener">▶ Mở trong Colab</a>

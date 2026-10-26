@@ -1,0 +1,19 @@
+---
+interface Props {
+	so: string;
+}
+const { so } = Astro.props;
+---
+
+<section class="bai-tap">
+	<div class="khung-nhan">Bài tập {so}</div>
+	<div class="bai-tap-de"><slot /></div>
+	{
+		Astro.slots.has('dap-an') && (
+			<details class="bai-tap-dap-an">
+				<summary>Xem đáp án</summary>
+				<div><slot name="dap-an" /></div>
+			</details>
+		)
+	}
+</section>
