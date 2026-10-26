@@ -11,7 +11,7 @@ if (!muc) throw new Error(`Thuật ngữ chưa khai báo: ${id}`);
 const { ten, giaiThich, hocKy } = muc.data;
 const tipId = `tip-${id}-${Math.random().toString(36).slice(2, 8)}`;
 const docIds = hocKy ? (await getCollection('docs')).map((d) => d.id) : [];
-const hoc = hocKy ? linkHocKy(hocKy, docIds) : undefined;
+const hoc = hocKy ? linkHocKy(hocKy, docIds, Astro.url.pathname) : undefined;
 ---
 
 <span class="term-wrap"><span class="term" tabindex="0" role="button" aria-expanded="false" aria-describedby={tipId}><slot /></span><span class="tip" role="tooltip" id={tipId} tabindex="-1"><span class="nhan">NHẮC NHANH · {ten.toUpperCase()}</span><span class="nd">{giaiThich}</span>{hoc && <a class="hoc-ky" href={hoc.href}>Học kỹ ở Chương {hoc.so} →</a>}</span></span>

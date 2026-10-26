@@ -87,3 +87,13 @@ test('bấm vào nội dung tooltip không đóng, bấm ra ngoài thì đóng',
 	await bam(page.locator('h1'));
 	await expect(tip).toBeHidden();
 });
+
+test('trang chương 10: thuật ngữ học kỹ ở chính chương 10 không mời sang chương 10', async ({ page }) => {
+	await page.goto('/ai-engineer/ch10-hoi-quy-tuyen-tinh/02-toan/');
+	const tip = (ten: RegExp) => page.locator('.term-wrap .tip', { has: page.locator('.nhan', { hasText: ten }) }).first();
+	await expect(tip(/· MSE$/)).toHaveCount(1);
+	await expect(tip(/· MSE$/).locator('.hoc-ky')).toHaveCount(0);
+	await expect(tip(/· ĐẠO HÀM$/).locator('.hoc-ky')).toHaveText('Học kỹ ở Chương 6 →');
+	await page.goto('/thuat-ngu/');
+	await expect(page.locator('#mse .hoc-ky a')).toHaveText('Học kỹ ở Chương 10 →');
+});

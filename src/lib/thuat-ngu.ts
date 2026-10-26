@@ -25,10 +25,16 @@ export function dungLinkNguoc(
 	return map;
 }
 
-/** Nhãn và đường dẫn "Học kỹ ở Chương N →". Chương chưa xuất bản thì trỏ /lo-trinh/. */
-export function linkHocKy(hocKy: string, docIds: string[]): { so: number; href: string } | undefined {
+/**
+ * Nhãn và đường dẫn "Học kỹ ở Chương N →". Chương chưa xuất bản thì trỏ /lo-trinh/.
+ * Có `duongDanTrang` (pathname trang đang đọc, kể cả trang in /in/...) mà trang đó thuộc chính chương
+ * `hocKy` thì trả undefined: không mời người đọc sang chương họ đang đọc.
+ */
+export function linkHocKy(hocKy: string, docIds: string[], duongDanTrang?: string): { so: number; href: string } | undefined {
 	const c = CHUONG.find((x) => x.slug === hocKy);
 	if (!c) return undefined;
+	const slugTrang = duongDanTrang?.replace(/^\/(in\/)?/, '').replace(/\/$/, '');
+	if (slugTrang && (slugTrang === hocKy || slugTrang.startsWith(`${hocKy}/`))) return undefined;
 	const daXuatBan = chuongDaXuatBan().some((x) => x.slug === hocKy);
 	const trangDau = daXuatBan ? docIds.filter((id) => id.startsWith(`${hocKy}/`)).sort()[0] : undefined;
 	return { so: c.so, href: trangDau ? `/${trangDau}/` : '/lo-trinh/' };

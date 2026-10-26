@@ -45,6 +45,17 @@ describe('linkHocKy', () => {
 	it('chương chưa xuất bản trỏ /lo-trinh/', () => {
 		expect(linkHocKy('ai-engineer/ch06-giai-tich', [])).toEqual({ so: 6, href: '/lo-trinh/' });
 	});
+	it('đang đọc chính chương đó thì không có link', () => {
+		const ids = [`${ch10}/01-truc-giac`];
+		expect(linkHocKy(ch10, ids, `/${ch10}/02-toan/`)).toBeUndefined();
+		expect(linkHocKy(ch10, ids, `/in/${ch10}/`)).toBeUndefined();
+	});
+	it('đang đọc chương khác hoặc trang chung thì vẫn có link', () => {
+		const ids = [`${ch10}/01-truc-giac`];
+		expect(linkHocKy(ch10, ids, '/thuat-ngu/')).toEqual({ so: 10, href: `/${ch10}/01-truc-giac/` });
+		expect(linkHocKy('ai-engineer/ch06-giai-tich', ids, `/${ch10}/02-toan/`)).toEqual({ so: 6, href: '/lo-trinh/' });
+		expect(linkHocKy('ai-engineer/ch01-python-tu-dau', ids, '/ai-engineer/ch10-hoi-quy-tuyen-tinh/')).toEqual({ so: 1, href: '/lo-trinh/' });
+	});
 	it('slug lạ trả undefined', () => {
 		expect(linkHocKy('khong-co', [])).toBeUndefined();
 	});
