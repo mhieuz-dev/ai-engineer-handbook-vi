@@ -1,10 +1,10 @@
 ---
 import Default from '@astrojs/starlight/components/TableOfContents.astro';
+import { luaChonTaiVe } from '../../lib/tai-ve';
 import { timChuongTheoSlugTrang } from '../../data/chuong';
 
 const chuong = timChuongTheoSlugTrang(Astro.locals.starlightRoute.id);
 const coKhung = chuong?.trangThai === 'xong';
-const REPO = 'https://github.com/mhieuz-dev/ai-engineer-handbook-vi';
 ---
 
 <Default><slot /></Default>
@@ -13,10 +13,9 @@ const REPO = 'https://github.com/mhieuz-dev/ai-engineer-handbook-vi';
 		<nav class="tai-ve" aria-labelledby="tai-ve-nhan">
 			<h2 id="tai-ve-nhan">TẢI VỀ</h2>
 			<ul>
-				<li><a href={`/in/${chuong!.slug}/?in=1`}>📄 PDF chương</a></li>
-				{chuong!.notebook && (
-					<li><a href={`${REPO}/blob/main/notebooks/${chuong!.notebook}`} target="_blank" rel="noopener">📓 Notebook</a></li>
-				)}
+				{luaChonTaiVe(chuong!).map((m) => (
+					<li><a href={m.href} target={m.target} rel={m.target ? 'noopener' : undefined} data-in-trang={m.loai === 'in' ? '' : undefined}>{m.nhan.replace('Trang này (PDF)', 'PDF trang này').replace('Cả chương (PDF)', 'PDF cả chương')}</a></li>
+				))}
 			</ul>
 		</nav>
 	)

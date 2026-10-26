@@ -20,7 +20,7 @@ test('cột phải có TẢI VỀ với PDF chương và notebook', async ({ pag
 	await page.goto(`${C10}/02-toan/`);
 	const khoi = page.locator('.tai-ve');
 	await expect(khoi).toContainText('TẢI VỀ');
-	await expect(khoi.locator('a', { hasText: 'PDF chương' })).toHaveAttribute('href', `${IN10}?in=1`);
+	await expect(khoi.locator('a', { hasText: 'PDF cả chương' })).toHaveAttribute('href', `${IN10}?in=1`);
 	await expect(khoi.locator('a', { hasText: 'Notebook' })).toHaveAttribute(
 		'href',
 		'https://github.com/mhieuz-dev/ai-engineer-handbook-vi/blob/main/notebooks/ch10_hoi_quy_tuyen_tinh.ipynb',

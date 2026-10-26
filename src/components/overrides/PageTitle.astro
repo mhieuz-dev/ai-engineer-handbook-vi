@@ -1,5 +1,6 @@
 ---
 import Default from '@astrojs/starlight/components/PageTitle.astro';
+import NutTaiVe from '../NutTaiVe.astro';
 import { PHAN, timChuongTheoSlugTrang } from '../../data/chuong';
 
 const { id, entry } = Astro.locals.starlightRoute;
@@ -12,15 +13,24 @@ const phut = Math.max(1, Math.ceil(soTu / 200));
 
 {
 	coKhung && (
-		<p class="crumb">
-			<span>{nhanPhan}</span> › <span>Chương {chuong!.so}</span> › <span>{entry.data.title}</span>
-			<span class="crumb-phut"> · ⏱ {phut} phút đọc</span>
-		</p>
+		<div class="crumb-hang">
+			<p class="crumb">
+				<span>{nhanPhan}</span> › <span>Chương {chuong!.so}</span> › <span>{entry.data.title}</span>
+				<span class="crumb-phut"> · ⏱ {phut} phút đọc</span>
+			</p>
+			<NutTaiVe chuong={chuong!} />
+		</div>
 	)
 }
 <Default><slot /></Default>
 
 <style>
+	.crumb-hang {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.4rem 0.75rem;
+	}
 	.crumb {
 		margin: 0;
 		font-family: 'Be Vietnam Pro', system-ui, sans-serif;
