@@ -16,9 +16,11 @@ const cay = dungCay(Astro.locals.starlightRoute.sidebar as Nut[], NHANH, PHAN, C
 
 <TienDoSidebar />
 
-<nav class="nav-sidebar md:sl-hidden" aria-label="Menu chính">
-	{MENU_CHUNG.map((m) => <a href={m.href}>{m.nhan}</a>)}
-</nav>
+<div class="md:sl-hidden">
+	<nav class="nav-sidebar" aria-label="Menu chính">
+		{MENU_CHUNG.map((m) => <a href={m.href}>{m.nhan}</a>)}
+	</nav>
+</div>
 
 <div class="md:sl-hidden">
 	<MobileMenuFooter />

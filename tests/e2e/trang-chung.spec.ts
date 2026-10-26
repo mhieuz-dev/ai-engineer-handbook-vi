@@ -69,3 +69,10 @@ test('mobile: menu ☰ trên trang bài có liên kết Lộ trình', async ({ p
 	await lk.tap();
 	await expect(page).toHaveURL(/\/lo-trinh\/$/);
 });
+
+test('desktop: menu phụ của sidebar ẩn, chỉ còn menu đầu trang', async ({ page, isMobile }) => {
+	test.skip(!!isMobile);
+	await page.goto('/ai-engineer/ch10-hoi-quy-tuyen-tinh/02-toan/');
+	await expect(page.locator('.nav-sidebar')).toBeHidden();
+	await expect(page.locator('header .nav-chung')).toBeVisible();
+});

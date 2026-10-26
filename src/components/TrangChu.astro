@@ -21,7 +21,7 @@ const tinhNang = [
 	<section class="hero">
 		<p class="gioi-thieu">Giáo trình tiếng Việt miễn phí: hiểu tận gốc AI, từ Python cơ bản đến mô hình ngôn ngữ lớn.</p>
 		<p><a class="nut-chinh" href={batDau}>Bắt đầu học</a></p>
-		<p class="trung-thuc">Trang đang được viết dần. Đã viết xong: {daCo}. Còn lại {CHUONG.length - chuongDaXuatBan().length} chương sắp có.</p>
+		<p class="trung-thuc">Trang đang được viết dần. {daCo && `Đã viết xong: ${daCo}. `}Còn lại {CHUONG.length - chuongDaXuatBan().length} chương sắp có.</p>
 		<nav class="nav-chung-mobile" aria-label="Liên kết nhanh">
 			{MENU_CHUNG.map((m) => <a href={m.href}>{m.nhan}</a>)}
 		</nav>
