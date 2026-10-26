@@ -81,6 +81,12 @@ code,
 pre {
 	font-family: 'JetBrains Mono', ui-monospace, monospace;
 }
+/* Tắt chữ ghép của font code: người mới phải thấy đúng `<=`, `==` để gõ lại, không phải ≤, ═. */
+code,
+pre,
+.expressive-code {
+	font-variant-ligatures: none;
+}
 .katex-display {
 	overflow-x: auto;
 	overflow-y: hidden;
