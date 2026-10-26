@@ -15,6 +15,11 @@ test('trang chủ: tiêu đề, hai thẻ nhánh, nút Bắt đầu học', asyn
 	await expect(page.getByText('Cách học trên trang này')).toBeVisible();
 });
 
+test('trang chủ: thẻ title không lặp tên site', async ({ page }) => {
+	await page.goto('/');
+	await expect(page).toHaveTitle('AI & Robotics | Giáo trình AI tiếng Việt miễn phí');
+});
+
 test('sitemap không chứa trang mẫu kiểm thử và trang in', async ({ request }) => {
 	const xml = await (await request.get('/sitemap-0.xml')).text();
 	expect(xml).toContain('/ai-engineer/ch10-hoi-quy-tuyen-tinh/01-truc-giac/');
