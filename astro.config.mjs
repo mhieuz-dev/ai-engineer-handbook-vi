@@ -4,6 +4,7 @@ import starlight from '@astrojs/starlight';
 import { unified } from '@astrojs/markdown-remark';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
+import { cauHinhSidebar } from './src/data/chuong.ts';
 
 // https://astro.build/config
 export default defineConfig({
@@ -17,6 +18,8 @@ export default defineConfig({
 			defaultLocale: 'root',
 			locales: { root: { label: 'Tiếng Việt', lang: 'vi' } },
 			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/mhieuz-dev/ai-engineer-handbook-vi' }],
+			sidebar: cauHinhSidebar(),
+			components: { Sidebar: './src/components/overrides/Sidebar.astro' },
 			customCss: [
 				'@fontsource/be-vietnam-pro/400.css',
 				'@fontsource/be-vietnam-pro/600.css',
