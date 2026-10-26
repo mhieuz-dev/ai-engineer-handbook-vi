@@ -70,6 +70,23 @@ test('mobile: menu ☰ trên trang bài có liên kết Lộ trình', async ({ p
 	await expect(page).toHaveURL(/\/lo-trinh\/$/);
 });
 
+for (const [rong, cao] of [[820, 1180], [900, 1200]]) {
+	test(`máy tính bảng ${rong}px: link đầu trang nằm trên một dòng, không tràn ngang`, async ({ page, isMobile }) => {
+		test.skip(!!isMobile);
+		await page.setViewportSize({ width: rong, height: cao });
+		await page.goto('/ai-engineer/ch10-hoi-quy-tuyen-tinh/02-toan/');
+		const nhan = page.locator('header .nav-chung a, header button[data-open-modal] > span');
+		await expect(nhan).toHaveCount(5);
+		for (const el of await nhan.all()) {
+			const { cao: h, dong } = await el.evaluate((e) => ({ cao: e.getBoundingClientRect().height, dong: parseFloat(getComputedStyle(e).lineHeight) }));
+			expect(h, (await el.textContent()) ?? '').toBeLessThan(1.6 * dong);
+		}
+		expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(rong);
+		const phai = await page.locator('header .right-group').evaluate((e) => e.getBoundingClientRect().right);
+		expect(phai).toBeLessThanOrEqual(rong);
+	});
+}
+
 test('desktop: menu phụ của sidebar ẩn, chỉ còn menu đầu trang', async ({ page, isMobile }) => {
 	test.skip(!!isMobile);
 	await page.goto('/ai-engineer/ch10-hoi-quy-tuyen-tinh/02-toan/');

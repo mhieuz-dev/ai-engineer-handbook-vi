@@ -10,6 +10,14 @@ import { MENU_CHUNG } from '../../data/menu-chung';
 
 <style>
 	.nav-chung { display: flex; gap: 1rem; font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: var(--sl-text-sm); margin-inline-end: 0.5rem; }
-	.nav-chung a { color: var(--sl-color-gray-2); text-decoration: none; font-weight: 600; }
+	.nav-chung a { color: var(--sl-color-gray-2); text-decoration: none; font-weight: 600; white-space: nowrap; }
 	.nav-chung a:hover { color: var(--sl-color-white); }
+	:global(header button[data-open-modal] > span) { white-space: nowrap; }
+	/* Máy tính bảng 800-960px: Starlight giữ cột tiêu đề rộng bằng sidebar (284px), phần còn lại không đủ cho
+	   ô tìm kiếm và 4 link. Cho cột tiêu đề co theo chữ và thu nhỏ menu để cả hàng vừa một dòng. */
+	@media (min-width: 50rem) and (max-width: 60rem) {
+		:global(div.header) { grid-template-columns: auto 1fr auto; }
+		.nav-chung { gap: 0.75rem; font-size: var(--sl-text-xs); margin-inline-end: 0; }
+		:global(header button[data-open-modal] > kbd) { display: none !important; }
+	}
 </style>
