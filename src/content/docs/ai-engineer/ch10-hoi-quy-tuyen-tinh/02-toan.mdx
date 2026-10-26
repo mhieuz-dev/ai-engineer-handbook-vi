@@ -99,7 +99,7 @@ Chia cho $n$ biến tổng thành trung bình. Có hai cái lợi.
 
 Thứ nhất, loss không phình ra theo số dữ liệu. Bốn bạn hay bốn nghìn bạn, MSE vẫn đo "trung bình mỗi bạn sai bao nhiêu", nên so được với nhau.
 
-Thứ hai, độ dốc (sắp học ở mục dưới) cũng không phình ra. Nhờ vậy cùng một bước chân $\eta$ dùng được cho dữ liệu nhỏ lẫn lớn.
+Thứ hai, độ dốc (sắp học ở mục dưới) cũng không phình ra. Nhờ vậy cùng một độ dài bước chân (gặp ở mục Gradient descent bên dưới) dùng được cho dữ liệu nhỏ lẫn lớn.
 
 Quên chia $n$ thì sao? Với bốn bạn, mỗi bước chân thực tế dài gấp 4 lần, thành $0{,}05 \times 4 = 0{,}2$. Cuối trang bạn sẽ thấy 0,2 là quá dài với dữ liệu này: loss phát nổ.
 </Khung>
@@ -151,7 +151,7 @@ $$
 \frac{\partial L}{\partial b} = -\frac{2}{n} \sum_{i=1}^{n} e_i \tag{10.3}
 $$
 
-Gộp hai đạo hàm riêng thành một cặp số, ta có <Term id="gradient">gradient</Term>. Gradient như một mũi tên chỉ hướng **lên dốc** nhanh nhất.
+Gộp hai đạo hàm riêng thành một cặp số, ta có gradient. Gradient như một mũi tên chỉ hướng **lên dốc** nhanh nhất.
 
 ### Hai công thức này nói gì
 
@@ -159,7 +159,7 @@ Dừng lại đọc nghĩa. Phần này quan trọng hơn bản thân phép tín
 
 **Công thức (10.3)** chỉ cộng các phần dư.
 
-Giả sử đường thẳng nằm **dưới** phần lớn các chấm. Phần dư phần lớn dương, tổng dương. Có dấu trừ phía trước, nên $\partial L / \partial b$ âm.
+Giả sử đường thẳng nằm **dưới** các chấm. Khi đó mọi phần dư đều dương, nên tổng phần dư dương. Có dấu trừ phía trước, nên $\partial L / \partial b$ âm.
 
 Lát nữa ta sẽ bước **ngược** hướng gradient. Ngược với số âm là đi lên: $b$ tăng, đường thẳng được nhấc lên, lại gần các chấm hơn. Đúng như mong muốn.
 

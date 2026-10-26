@@ -62,15 +62,14 @@ Lý do: đáy bát không phải một cái hố tròn, mà là một thung lũn
 
 ### Tự kiểm chứng bước 1
 
-Muốn chắc code làm đúng như tính tay? Đổi dòng `if buoc % 50 == 0:` thành `if buoc <= 2:` rồi chạy lại. Ba dòng đầu sẽ là:
+Muốn chắc code làm đúng như tính tay? Đổi dòng `if buoc % 50 == 0:` thành `if buoc <= 1:` rồi chạy lại. Hai dòng đầu sẽ là:
 
 ```text title="Output"
 Bước   0 | w = 0.0000 | b = 0.0000 | MSE = 23.500000
 Bước   1 | w = 1.3250 | b = 0.4500 | MSE = 0.688437
-Bước   2 | w = 1.5437 | b = 0.5237 | MSE = 0.067615
 ```
 
-Dòng bước 1 khớp đúng trang trước: $w = 1{,}325$, $b = 0{,}45$, MSE $\approx 0{,}688$. Dòng bước 2 là đáp án của Bài tập 10.2, hãy tự tính tay trước khi nhìn.
+Dòng bước 1 khớp đúng trang trước: $w = 1{,}325$, $b = 0{,}45$, MSE $\approx 0{,}688$. Bước 2 là Bài tập 10.2: hãy tự tính tay trước, rồi mới sửa thành `if buoc <= 2:` để đối chiếu.
 
 ## Mấy chỗ đáng dừng lại trong code
 

@@ -107,11 +107,13 @@ Máy không "nhìn" ra đường thẳng như mắt người. Nó dò từng bư
 1. Đang có hai núm vặn $w$, $b$ (lúc đầu chọn đại).
 2. Dùng chúng để đoán điểm cho cả bốn bạn.
 3. So với điểm thật, gom lại thành một con số loss.
-4. Tính xem nhích $w$, $b$ theo hướng nào thì loss giảm. Cái "hướng" đó là gradient, trang sau sẽ giải thích.
+4. Tính xem nhích $w$, $b$ theo hướng nào thì loss giảm. Cái "hướng" đó là <Term id="gradient" oDay="Ở đây ta đi ngược hướng đó để xuống đáy hàm mất mát.">gradient</Term>, trang sau sẽ giải thích.
 5. Nhích $w$, $b$ một chút theo hướng đó, rồi quay lại ô 1.
 
 Vòng lặp này lặp vài trăm lần cho bài toán nhỏ của ta.
 
-Bạn sẽ gặp lại **đúng vòng lặp này** ở mọi chương sau. Kể cả khi huấn luyện một mô hình ngôn ngữ hàng tỷ tham số, năm ô vẫn y như vậy. Chỉ có số tham số và cách tính ô 2 là phức tạp hơn.
+Bạn sẽ gặp lại **đúng vòng lặp này** ở mọi chương sau. Kể cả khi huấn luyện một mô hình ngôn ngữ hàng tỷ tham số, năm ô vẫn y như vậy. Chỉ có số tham số và cách tính ô 2, ô 4 là phức tạp hơn.
+
+Ở mạng lớn, cách tính gradient ở ô 4 có tên riêng là lan truyền ngược (backpropagation). Bạn sẽ tự cài nó ở Chương 24.
 
 Trang tiếp theo đi vào từng ô bằng toán, chậm và không nhảy bước.

@@ -46,6 +46,8 @@ test('trang 02: khung Đào sâu về ngưỡng 0,12 đóng sẵn, có thanh tr�
 test('trang 04: output in trong bài khớp notebook, nút Colab đúng notebook', async ({ page }) => {
 	await page.goto(`${C10}/04-code/`);
 	await expect(page.getByText('Bước 200 | w = 1.5993 | b = 0.5019 | MSE = 0.050001')).toBeVisible();
+	// Dòng bước 2 là đáp án Bài tập 10.2, chỉ được in ở trang 06.
+	await expect(page.locator('main')).not.toContainText('w = 1.5437');
 	await expect(page.getByRole('link', { name: /Mở trong Colab/ }).first()).toHaveAttribute(
 		'href',
 		/notebooks\/ch10_hoi_quy_tuyen_tinh\.ipynb$/,

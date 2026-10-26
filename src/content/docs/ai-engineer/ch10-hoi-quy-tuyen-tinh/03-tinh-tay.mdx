@@ -84,7 +84,9 @@ L &= \frac{0{,}01 + 0{,}09 + 0{,}09 + 0{,}01}{4} \\[4pt]
 \end{aligned}
 $$
 
-Đây là mức loss **thấp nhất có thể** với 4 bạn này. Không đường thẳng nào làm tốt hơn 0,05, vì bốn chấm vốn không thẳng hàng.
+Đây là mức loss **thấp nhất có thể** với 4 bạn này. Lý do: $w = 1{,}6$, $b = 0{,}5$ nằm đúng đáy bát, nơi gradient bằng 0. Công thức (10.4) được lập ra chính từ điều kiện đó.
+
+Còn vì sao đáy là 0,05 chứ không phải 0? Vì bốn chấm vốn không thẳng hàng. Không đường thẳng nào đi qua được cả bốn chấm.
 
 Thêm một chi tiết: cộng cột $e_i$ lại, $-0{,}1 + 0{,}3 - 0{,}3 + 0{,}1 = 0$. Không phải trùng hợp. Ở đáy bát, công thức (10.3) bằng 0, mà (10.3) chính là tổng phần dư nhân với một hằng số.
 
@@ -109,7 +111,7 @@ L &= \frac{2^2 + 4^2 + 5^2 + 7^2}{4} \\[4pt]
 \end{aligned}
 $$
 
-Loss rất lớn. Hợp lý, vì đường nằm sát đáy, xa tít bốn chấm.
+Loss rất lớn. Hợp lý, vì đường nằm sát trục ngang, xa tít bốn chấm.
 
 ### Bước 2: tính gradient
 

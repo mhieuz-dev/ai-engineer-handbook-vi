@@ -101,6 +101,8 @@ Loss đi từ 0,688 xuống 0,0676, giảm thêm khoảng 90%. Gradient bước 
 Lần đầu tiên xuất hiện phần dư âm: ở A và C, đường thẳng đã đoán **cao** hơn điểm thật. Đường thẳng không còn nằm dưới mọi chấm, nó đã chen vào giữa.
 
 **Đối chiếu với máy.** Sửa code trang Code thành `if buoc <= 2:`, dòng thứ ba in ra `Bước   2 | w = 1.5437 | b = 0.5237 | MSE = 0.067615`. Máy chỉ in 4 chữ số thập phân cho $w$, $b$, còn lại khớp với tính tay.
+
+Vì sao 0,52375 in ra `0.5237` chứ không phải `0.5238`? Máy lưu số thực ở dạng nhị phân, nên $b$ máy tính ra thực ra là 0,52374999…, và Python làm tròn xuống `0.5237`. Với $w$ cũng vậy: 1,54375 được lưu thành 1,54374999…, in ra `1.5437`.
 </Fragment>
 </BaiTap>
 
@@ -117,7 +119,7 @@ Dòng bước 50 in ra `MSE = inf`, với $w$ và $b$ là hai số âm dài hơn
 
 **Chuyện gì xảy ra ở giữa.** Nếu in từng bước, bạn sẽ thấy loss nổ ngay từ bước 1: khoảng $1{,}7 \times 10^{8}$, rồi $1{,}2 \times 10^{15}$ ở bước 2. Mỗi bước loss nhân khoảng 7,3 triệu lần.
 
-Số thực lớn nhất máy lưu được là khoảng $1{,}8 \times 10^{308}$. Tới bước 45, MSE vượt mức đó và máy ghi là `inf` (vô cực). Khi các số đã thành vô cực, những phép như vô cực trừ vô cực không có kết quả, máy ghi là `nan` (not a number). Từ bước 91, mọi thứ đều là `nan`.
+Số thực lớn nhất máy lưu được là khoảng $1{,}8 \times 10^{308}$. Tới bước 45, MSE vượt mức đó và máy ghi là `inf` (vô cực). Khi các số đã thành vô cực, những phép như vô cực trừ vô cực không có kết quả, máy ghi là `nan` (not a number). Bước 91, MSE và $w$ đã là `nan`, còn $b$ vẫn là `inf`. Từ bước 92, cả ba đều là `nan`.
 
 **Vì sao.** Số giờ nhân 60, các con số trong dữ liệu lớn hẳn lên, vách bát dốc đứng hơn rất nhiều. Ngưỡng an toàn của $\eta$ tụt từ khoảng 0,12 xuống khoảng $3{,}7 \times 10^{-5}$ (khung Đào sâu "vì sao ngưỡng là 0,12" ở trang Toán). Bước chân 0,05 dài gấp hơn 1000 lần ngưỡng.
 

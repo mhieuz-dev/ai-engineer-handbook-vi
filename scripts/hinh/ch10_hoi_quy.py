@@ -183,6 +183,10 @@ assert gan(mse_p[1], 1.705e8, 1e5) and gan(mse_p[2], 1.242e15, 1e12)
 dau_inf = int(np.argmax(np.isinf(mse_p)))
 dau_nan = int(np.argmax(np.isnan(mse_p)))
 assert dau_inf == 45 and dau_nan == 91 and np.isinf(mse_p[50]) and np.all(np.isnan(mse_p[[100, 150, 200]]))
+# duong_p[k] là (w, b) đang dùng ở bước k. Bước 91: MSE và w đã nan, b vẫn inf. Từ bước 92 cả ba đều nan.
+assert np.isnan(duong_p[91][0]) and np.isinf(duong_p[91][1])
+assert not np.isnan(duong_p[:91]).any() and not np.isnan(mse_p[:91]).any()
+assert np.isnan(duong_p[92:201]).all() and np.isnan(mse_p[92:]).all()
 assert gan(mse_p[2] / mse_p[1], 7.285e6, 0.01e6)
 print(f"phut: buoc1={mse_p[1]:.4e} buoc2={mse_p[2]:.4e} inf tu buoc {dau_inf}, nan tu buoc {dau_nan}")
 
@@ -223,13 +227,19 @@ assert 1.79e308 < np.finfo(float).max < np.inf  # số thực lớn nhất kho�
 w50, b50 = duong_p[50]
 assert len(f"{abs(w50):.0f}") > 160 and len(f"{abs(b50):.0f}") > 160 and w50 < 0 and b50 < 0  # bài 10.3: "dài hơn 160 chữ số"
 
-# Trang 04: biến thể in 3 bước đầu, và lỗi quên dấu trừ (đi lên dốc)
-ba_dong = [f"Bước {k:3d} | w = {duong200[k][0]:.4f} | b = {duong200[k][1]:.4f} | MSE = {mse200[k]:.6f}" for k in range(3)]
-assert ba_dong == [
+# Trang 04: biến thể `if buoc <= 1:` in 2 bước đầu (bước 2 để dành cho Bài 10.2)
+dong_buoc = [f"Bước {k:3d} | w = {duong200[k][0]:.4f} | b = {duong200[k][1]:.4f} | MSE = {mse200[k]:.6f}" for k in range(3)]
+assert dong_buoc[:2] == [
     "Bước   0 | w = 0.0000 | b = 0.0000 | MSE = 23.500000",
     "Bước   1 | w = 1.3250 | b = 0.4500 | MSE = 0.688437",
-    "Bước   2 | w = 1.5437 | b = 0.5237 | MSE = 0.067615",
-], ba_dong
+], dong_buoc
+# Bài 10.2: `if buoc <= 2:` in thêm dòng bước 2. 1,54375 và 0,52375 in ra 1.5437 và 0.5237 vì số máy tính ra
+# thực ra hơi nhỏ hơn (1,54374999… và 0,52374999…), nên làm tròn xuống.
+assert dong_buoc[2] == "Bước   2 | w = 1.5437 | b = 0.5237 | MSE = 0.067615", dong_buoc[2]
+from decimal import Decimal
+w_may, b_may = duong200[2]
+assert gan(w_may, 1.54375, 1e-12) and gan(b_may, 0.52375, 1e-12)
+assert str(Decimal(w_may)).startswith("1.54374999") and str(Decimal(b_may)).startswith("0.52374999")
 wn = bn = 0.0
 for buoc in range(51):
     e = y - (wn * x + bn)
