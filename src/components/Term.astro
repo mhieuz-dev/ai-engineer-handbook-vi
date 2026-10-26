@@ -9,19 +9,22 @@ const { id } = Astro.props;
 const muc = await getEntry('thuatNgu', id);
 if (!muc) throw new Error(`Thuật ngữ chưa khai báo: ${id}`);
 const { ten, giaiThich, hocKy } = muc.data;
+const tipId = `tip-${id}-${Math.random().toString(36).slice(2, 8)}`;
 const docIds = hocKy ? (await getCollection('docs')).map((d) => d.id) : [];
 const hoc = hocKy ? linkHocKy(hocKy, docIds) : undefined;
 ---
 
-<span class="term" tabindex="0" role="button" aria-expanded="false"><slot /><span class="tip"><span class="nhan">NHẮC NHANH · {ten.toUpperCase()}</span><span class="nd">{giaiThich}</span>{hoc && <a class="hoc-ky" href={hoc.href}>Học kỹ ở Chương {hoc.so} →</a>}</span></span>
+<span class="term-wrap"><span class="term" tabindex="0" role="button" aria-expanded="false" aria-describedby={tipId}><slot /></span><span class="tip" role="tooltip" id={tipId}><span class="nhan">NHẮC NHANH · {ten.toUpperCase()}</span><span class="nd">{giaiThich}</span>{hoc && <a class="hoc-ky" href={hoc.href}>Học kỹ ở Chương {hoc.so} →</a>}</span></span>
 
 <style is:global>
+	.term-wrap {
+		position: relative;
+	}
 	.term {
 		border-bottom: 2px dotted var(--pri);
 		cursor: help;
-		position: relative;
 	}
-	.term .tip {
+	.term-wrap .tip {
 		display: none;
 		position: absolute;
 		left: 0;
@@ -43,19 +46,19 @@ const hoc = hocKy ? linkHocKy(hocKy, docIds) : undefined;
 		cursor: default;
 		z-index: 9;
 	}
-	.term[aria-expanded='true'] .tip {
+	.term-wrap[data-open] .tip {
 		display: block;
 	}
-	.term .tip .nhan {
+	.term-wrap .tip .nhan {
 		display: block;
 		color: var(--pri);
 		font-weight: 600;
 		margin-bottom: 4px;
 	}
-	.term .tip .nd {
+	.term-wrap .tip .nd {
 		display: block;
 	}
-	.term .tip .hoc-ky {
+	.term-wrap .tip .hoc-ky {
 		display: block;
 		margin-top: 6px;
 		color: var(--pri);
@@ -64,42 +67,70 @@ const hoc = hocKy ? linkHocKy(hocKy, docIds) : undefined;
 </style>
 
 <script>
-	// Gắn một lần cho mọi .term trong trang.
+	// Gắn một lần cho mọi .term-wrap trong trang.
 	const BIEN = 8;
-	function dat(t: HTMLElement, mo: boolean) {
-		t.setAttribute('aria-expanded', String(mo));
+	function dat(w: HTMLElement, mo: boolean) {
+		w.querySelector('.term')?.setAttribute('aria-expanded', String(mo));
+		w.toggleAttribute('data-open', mo);
 		if (!mo) return;
-		const tip = t.querySelector<HTMLElement>('.tip');
+		const tip = w.querySelector<HTMLElement>('.tip');
 		if (!tip) return;
 		tip.style.transform = '';
 		const r = tip.getBoundingClientRect();
+		const rong = document.documentElement.clientWidth;
 		let dich = 0;
-		if (r.right > window.innerWidth - BIEN) dich = window.innerWidth - BIEN - r.right;
+		if (r.right > rong - BIEN) dich = rong - BIEN - r.right;
 		if (r.left + dich < BIEN) dich = BIEN - r.left;
 		if (dich) tip.style.transform = `translateX(${dich}px)`;
 	}
-	const moBangRe = new WeakSet<HTMLElement>(); // mở bởi hover/focus, click kế tiếp không đóng lại
-	document.querySelectorAll<HTMLElement>('.term').forEach((t) => {
-		const mo = () => {
-			if (t.getAttribute('aria-expanded') !== 'true') moBangRe.add(t);
-			dat(t, true);
-		};
-		t.addEventListener('mouseenter', mo);
-		t.addEventListener('focus', mo);
-		t.addEventListener('mouseleave', () => dat(t, false));
-		t.addEventListener('blur', () => dat(t, false));
-		t.addEventListener('keydown', (e) => {
-			if (e.key === 'Escape') dat(t, false);
+	const dangMo = (w: HTMLElement) => w.hasAttribute('data-open');
+	const moBangRe = new WeakSet<HTMLElement>(); // mở bởi hover/focus: click kế tiếp không đóng lại
+	const chamLuc = new WeakMap<HTMLElement, number>();
+	const vuaCham = (w: HTMLElement) => performance.now() - (chamLuc.get(w) ?? -1e9) < 500;
+	const moTuDong = (w: HTMLElement) => {
+		if (!dangMo(w)) moBangRe.add(w);
+		dat(w, true);
+	};
+	document.querySelectorAll<HTMLElement>('.term-wrap').forEach((w) => {
+		const nut = w.querySelector<HTMLElement>('.term')!;
+		w.addEventListener('pointerenter', (e) => {
+			if (e.pointerType === 'mouse') moTuDong(w);
 		});
-		t.addEventListener('click', (e) => {
-			if ((e.target as HTMLElement).closest('a')) return;
-			if (moBangRe.delete(t)) return;
-			dat(t, t.getAttribute('aria-expanded') !== 'true');
+		w.addEventListener('pointerleave', (e) => {
+			if (e.pointerType === 'mouse' && !w.contains(document.activeElement)) dat(w, false);
+		});
+		// Chạm/bút: bật tắt ngay ở pointerdown (click có thể bị chuyển mục tiêu khi trang cuộn), bỏ focus và click theo sau.
+		nut.addEventListener('pointerdown', (e) => {
+			if (e.pointerType === 'mouse') return;
+			chamLuc.set(w, performance.now());
+			dat(w, !dangMo(w));
+		});
+		nut.addEventListener('focus', () => {
+			if (!vuaCham(w)) moTuDong(w);
+		});
+		w.addEventListener('focusout', (e) => {
+			if (!w.contains(e.relatedTarget as Node | null)) dat(w, false);
+		});
+		w.addEventListener('keydown', (e) => {
+			if (e.key === 'Escape') {
+				nut.focus({ preventScroll: true });
+				dat(w, false);
+			} else if ((e.key === 'Enter' || e.key === ' ') && e.target === nut) {
+				e.preventDefault();
+				moBangRe.delete(w);
+				dat(w, !dangMo(w));
+			}
+		});
+		nut.addEventListener('click', () => {
+			if (vuaCham(w) && !moBangRe.has(w)) return;
+			if (moBangRe.delete(w)) return;
+			dat(w, !dangMo(w));
 		});
 	});
-	document.addEventListener('click', (e) => {
-		document.querySelectorAll<HTMLElement>('.term[aria-expanded="true"]').forEach((t) => {
-			if (!t.contains(e.target as Node)) dat(t, false);
+	// Chạm ra ngoài: iOS Safari không blur khi chạm phần tử không focus được, nên nghe pointerdown.
+	document.addEventListener('pointerdown', (e) => {
+		document.querySelectorAll<HTMLElement>('.term-wrap[data-open]').forEach((w) => {
+			if (!w.contains(e.target as Node)) dat(w, false);
 		});
 	});
 </script>

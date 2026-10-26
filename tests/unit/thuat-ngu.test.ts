@@ -1,4 +1,7 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import yaml from 'js-yaml';
+import { CHUONG } from '../../src/data/chuong';
 import { trichIdThuatNgu, dungLinkNguoc, linkHocKy } from '../../src/lib/thuat-ngu';
 
 describe('trichIdThuatNgu', () => {
@@ -44,5 +47,13 @@ describe('linkHocKy', () => {
 	});
 	it('slug lạ trả undefined', () => {
 		expect(linkHocKy('khong-co', [])).toBeUndefined();
+	});
+});
+
+describe('dữ liệu thuat-ngu.yaml', () => {
+	it('mọi hocKy đều có trong danh mục chương', () => {
+		const muc = yaml.load(readFileSync('src/data/thuat-ngu.yaml', 'utf8')) as { id: string; hocKy?: string }[];
+		const slug = new Set(CHUONG.map((c) => c.slug));
+		for (const m of muc) if (m.hocKy) expect(slug.has(m.hocKy), `${m.id}: ${m.hocKy}`).toBe(true);
 	});
 });

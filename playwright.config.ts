@@ -11,6 +11,6 @@ export default defineConfig({
 	use: { baseURL: 'http://localhost:4321' },
 	projects: [
 		{ name: 'desktop', use: { viewport: { width: 1280, height: 800 } } },
-		{ name: 'mobile', use: { viewport: { width: 375, height: 812 } } },
+		{ name: 'mobile', use: { viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: true } },
 	],
 });
