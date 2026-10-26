@@ -6,6 +6,11 @@ test('trang chủ có tên site và lang vi', async ({ page }) => {
 	await expect(page.locator('html')).toHaveAttribute('lang', 'vi');
 });
 
+test('đầu trang không có biểu tượng GitHub', async ({ page }) => {
+	await page.goto('/ai-engineer/ch10-hoi-quy-tuyen-tinh/02-toan/');
+	await expect(page.locator('header a[href*="github.com"]')).toHaveCount(0);
+});
+
 test('nút đổi sáng tối đổi nền', async ({ page }) => {
 	await page.goto('/');
 	const nenSang = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);

@@ -20,7 +20,6 @@ export default defineConfig({
 			title: 'AI & Robotics',
 			defaultLocale: 'root',
 			locales: { root: { label: 'Tiếng Việt', lang: 'vi' } },
-			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/mhieuz-dev/ai-engineer-handbook-vi' }],
 			sidebar: cauHinhSidebar(),
 			components: {
 				SocialIcons: './src/components/overrides/SocialIcons.astro',
