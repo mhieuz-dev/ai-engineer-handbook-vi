@@ -29,6 +29,7 @@
 		function ve() {
 			const lr = Number(thanh.value);
 			giaTri.textContent = phay(lr);
+			thanh.setAttribute('aria-valuetext', phay(lr));
 			const mse = chayGD(X, Y, lr, 40);
 			const lg = (v: number) => Math.log10(Math.max(v, 1e-3));
 			const lo = lg(0.03);
@@ -39,8 +40,8 @@
 			const no = mse[39] > mse[0];
 			hinh.innerHTML =
 				`<line x1="10" y1="120" x2="400" y2="120" stroke="var(--line)"/>` +
-				`<polyline fill="none" stroke="${no ? '#c0392b' : 'var(--pri)'}" stroke-width="3" points="${diem}"/>` +
-				`<text x="330" y="112" font-size="11" fill="var(--mut)">bước lặp →</text>` +
+				`<polyline fill="none" stroke="${no ? 'var(--red)' : 'var(--pri)'}" stroke-width="3" points="${diem}"/>` +
+				`<text x="395" y="129" text-anchor="end" font-size="11" fill="var(--mut)">bước lặp →</text>` +
 				`<text x="12" y="12" font-size="11" fill="var(--mut)">MSE (thang log)</text>`;
 			ketQua.innerHTML = no
 				? '<b class="tn-no">Phát nổ!</b> Bước chân dài quá ngưỡng 0,12, loss tăng mãi.'
@@ -92,7 +93,7 @@
 		color: var(--mut);
 	}
 	.tn-lr :global(.tn-no) {
-		color: #c0392b;
+		color: var(--red);
 	}
 	@media print {
 		.tn-lr {
