@@ -16,6 +16,9 @@ test('thanh trượt 0,135 phát nổ, 0,05 hội tụ', async ({ page }) => {
 	await datThanh(page, '0.05');
 	await expect(page.getByText('MSE = 0,050')).toBeVisible();
 	await expect(page.locator('[data-tn-lr] [data-gia-tri]')).toHaveText('0,050');
+	await datThanh(page, '0.118');
+	await expect(page.locator('[data-tn-lr] [data-ketqua]')).toContainText('gần ngưỡng 0,12');
+	await expect(page.locator('[data-tn-lr] [data-ketqua]')).not.toContainText('hơi ngắn');
 });
 
 test('thanh trượt dùng được bằng bàn phím', async ({ page, isMobile }) => {
