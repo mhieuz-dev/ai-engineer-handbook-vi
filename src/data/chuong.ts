@@ -1,9 +1,13 @@
 export type TrangThai = 'xong' | 'sap-co';
-export interface Nhanh { id: 'ai-engineer'; ten: string }
+export interface Nhanh { id: 'ai-engineer' | 'robotics'; ten: string }
 export interface Phan { id: string; nhanh: Nhanh['id']; ten: string }
 export interface Chuong { so: number; phan: Phan['id']; ten: string; slug: string; trangThai: TrangThai; notebook?: string }
 
-export const NHANH: Nhanh[] = [{ id: 'ai-engineer', ten: 'AI Engineer' }];
+/** Robotics chưa có Phần nào: sidebar và lộ trình bỏ qua nhánh không có Phần, chỉ kệ sách ở trang chủ hiện nó là "Sắp có". */
+export const NHANH: Nhanh[] = [
+	{ id: 'ai-engineer', ten: 'AI Engineer' },
+	{ id: 'robotics', ten: 'Robotics' },
+];
 
 export const PHAN: Phan[] = [
 	{ id: 'phan-0', nhanh: 'ai-engineer', ten: 'Phần 0. Bắt đầu' },

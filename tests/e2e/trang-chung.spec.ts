@@ -6,8 +6,8 @@ test('trang chủ: tiêu đề, hai thẻ nhánh, nút Bắt đầu học', asyn
 	await page.goto('/');
 	await expect(page.locator('h1')).toHaveText('AI & Robotics');
 	await expect(page.getByText('Giáo trình tiếng Việt miễn phí: hiểu tận gốc AI, từ Python cơ bản đến mô hình ngôn ngữ lớn.')).toBeVisible();
-	const ai = page.locator('.the-nhanh', { hasText: 'AI Engineer' });
-	const robot = page.locator('.the-nhanh', { hasText: 'Robotics' });
+	const ai = page.locator('#ke-sach .the-chon', { hasText: 'AI Engineer' });
+	const robot = page.locator('#ke-sach .the-chon', { hasText: 'Robotics' });
 	await expect(ai).toBeVisible();
 	await expect(ai).toContainText('Đang viết');
 	await expect(robot).toContainText('Sắp có');

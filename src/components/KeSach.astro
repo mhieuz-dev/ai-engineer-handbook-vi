@@ -1,0 +1,274 @@
+---
+import { dsCuonSach } from '../lib/ke-sach/du-lieu';
+
+const sach = dsCuonSach();
+const nhanThe = (i: number, sapCo: boolean) => `Nhánh ${i + 1}${sapCo ? '' : ' · Đang viết'}`;
+const moTaThe = (s: (typeof sach)[number]) => (s.sapCo ? 'Sắp có' : `${s.tongChuong} chương · đã viết ${s.daViet}`);
+---
+
+<section id="ke-sach" class="ke-sach" aria-labelledby="ke-sach-tieu-de" data-ds={JSON.stringify(sach)}>
+	<div class="khung">
+		<div class="thanh">
+			<h2 id="ke-sach-tieu-de">Kệ sách</h2>
+			<p class="goi-y">Chọn một cuốn để đọc<span class="chi-3d"> · Kéo để xoay kệ</span></p>
+		</div>
+		<div class="san-khau" data-frames="0" data-trang-thai="phang">
+			<div class="ke-phang" aria-hidden="true">
+				<div class="hang-bia">
+					{
+						sach.map((s) => {
+							const noiDung = (
+								<Fragment>
+									{s.anhBia && <img class="anh-bia" src={s.anhBia} alt="" loading="lazy" decoding="async" />}
+									<span class="bia-nhan">AI &amp; ROBOTICS</span>
+									<span class="bia-ten">{s.ten.toUpperCase().split(' ').map((t) => <span>{t}</span>)}</span>
+									<span class="bia-phu">{s.phuDe}</span>
+									{s.sapCo && <span class="bia-dai">Sắp có</span>}
+								</Fragment>
+							);
+							return s.href ? (
+								<a class={`bia-phang bia-${s.id}`} data-cuon={s.id} href={s.href} tabindex="-1">
+									{noiDung}
+								</a>
+							) : (
+								<div class={`bia-phang bia-${s.id}`} data-cuon={s.id}>
+									{noiDung}
+								</div>
+							);
+						})
+					}
+				</div>
+				<div class="van-ke"></div>
+			</div>
+		</div>
+		<div class="hang-the">
+			{
+				sach.map((s, i) =>
+					s.href ? (
+						<a class="the-chon" data-cuon={s.id} href={s.href}>
+							<span class="the-nhan">{nhanThe(i, s.sapCo)}</span>
+							<strong class="the-ten">{s.ten}</strong>
+							<span class="the-mo-ta">{moTaThe(s)}</span>
+						</a>
+					) : (
+						<button type="button" class="the-chon the-sap-co" data-cuon={s.id}>
+							<span class="the-nhan">{nhanThe(i, s.sapCo)}</span>
+							<strong class="the-ten">{s.ten}</strong>
+							<span class="the-mo-ta">{moTaThe(s)}</span>
+						</button>
+					),
+				)
+			}
+		</div>
+	</div>
+	<p class="thong-bao" role="status" aria-live="polite"></p>
+</section>
+
+<script>
+	import type { CuonSach } from '../lib/ke-sach/du-lieu';
+	import type { KeSach3D } from '../lib/ke-sach/canh-3d';
+
+	const goc = document.getElementById('ke-sach');
+	if (goc) {
+		const sanKhau = goc.querySelector<HTMLElement>('.san-khau')!;
+		const thongBao = goc.querySelector<HTMLElement>('.thong-bao')!;
+		const sach: CuonSach[] = JSON.parse(goc.dataset.ds ?? '[]');
+		let ke: KeSach3D | null = null;
+
+		const khiChon = (s: CuonSach) => {
+			if (s.href) {
+				location.href = s.href;
+				return;
+			}
+			thongBao.textContent = '';
+			requestAnimationFrame(() => {
+				thongBao.textContent = `Nhánh ${s.ten} đang được soạn. Trong lúc chờ, bạn có thể bắt đầu với AI Engineer.`;
+			});
+		};
+
+		goc.addEventListener('click', (e) => {
+			const el = (e.target as HTMLElement).closest<HTMLElement>('[data-cuon]');
+			if (!el || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+			const s = sach.find((x) => x.id === el.dataset.cuon);
+			if (!s) return;
+			// Cảnh 3D đã sẵn sàng thì để cuốn sách trên kệ diễn hiệu ứng trước khi chuyển trang.
+			if (ke?.chon(s.id)) {
+				e.preventDefault();
+				return;
+			}
+			if (!s.href) khiChon(s);
+		});
+		for (const loai of ['pointerover', 'focusin'] as const) {
+			goc.addEventListener(loai, (e) => {
+				const el = (e.target as HTMLElement).closest<HTMLElement>('.the-chon');
+				if (el) ke?.danhDau(el.dataset.cuon as CuonSach['id']);
+			});
+		}
+		for (const loai of ['pointerout', 'focusout'] as const) {
+			goc.addEventListener(loai, (e) => {
+				if ((e.target as HTMLElement).closest('.the-chon')) ke?.danhDau(null);
+			});
+		}
+
+		// Chỉ máy tính (≥ 820px) không yêu cầu giảm chuyển động và có WebGL2 mới tải three; điện thoại giữ bản phẳng.
+		const coWebGL = () => {
+			try {
+				const gl = document.createElement('canvas').getContext('webgl2');
+				gl?.getExtension('WEBGL_lose_context')?.loseContext();
+				return !!gl;
+			} catch {
+				return false;
+			}
+		};
+		const du3D =
+			matchMedia('(min-width: 820px)').matches &&
+			!matchMedia('(prefers-reduced-motion: reduce)').matches &&
+			'IntersectionObserver' in window;
+
+		if (du3D) {
+			let daDung = false;
+			const batDau = async () => {
+				// Kiểm WebGL2 lúc kệ sắp hiện, không làm chậm lần tải đầu; không có thì giữ bản phẳng, không tải three.
+				if (!coWebGL()) return;
+				daDung = true;
+				const { dungKe } = await import('../lib/ke-sach/canh-3d');
+				ke = dungKe(sanKhau, sach, khiChon);
+			};
+			const io = new IntersectionObserver(
+				(e) => {
+					if (!e.some((x) => x.isIntersecting)) return;
+					io.disconnect();
+					batDau();
+				},
+				{ rootMargin: '200px' },
+			);
+			io.observe(goc);
+			// Rời trang thì giải phóng GPU; quay lại bằng nút Back (bfcache) thì dựng lại.
+			addEventListener('pagehide', () => {
+				ke?.huy();
+				ke = null;
+			});
+			addEventListener('pageshow', (e) => {
+				if (e.persisted && daDung && !ke) batDau();
+			});
+		}
+	}
+</script>
+
+<style>
+	.ke-sach { margin: 2.2rem 0 2.5rem; }
+	.khung {
+		border: 1px solid var(--line);
+		border-radius: 14px;
+		background: var(--panel);
+		overflow: hidden;
+		box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 18px 40px -28px rgba(60, 40, 20, 0.35);
+	}
+	.thanh { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; padding: 0.75rem 1.1rem; border-bottom: 1px solid var(--line); }
+	.thanh h2 { margin: 0; font-size: 0.82rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--tx); border: 0; }
+	.goi-y { margin: 0; font-size: 0.8rem; color: var(--mut); }
+	.chi-3d { display: none; }
+	.ke-sach:has(.san-khau[data-trang-thai='san-sang']) .chi-3d { display: inline; }
+
+	/* Sân khấu: "bức tường" sau kệ, tối dần về mép như có đèn rọi. */
+	.san-khau {
+		position: relative;
+		--tuong-1: #f7f0e3;
+		--tuong-2: #e4d6bd;
+		background: radial-gradient(ellipse 70% 85% at 50% 38%, var(--tuong-1), var(--tuong-2) 78%, #d6c4a5);
+		padding: 1.6rem 1rem 1.2rem;
+	}
+	:global([data-theme='dark']) .san-khau {
+		--tuong-1: #2c2620;
+		--tuong-2: #1a1714;
+		background: radial-gradient(ellipse 70% 85% at 50% 38%, var(--tuong-1), var(--tuong-2) 78%, #121010);
+	}
+	.san-khau :global(canvas.canvas-3d) { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: pan-y; animation: hien 0.35s ease-out; }
+	@keyframes hien { from { opacity: 0; } to { opacity: 1; } }
+	.san-khau[data-trang-thai='san-sang'] .ke-phang { visibility: hidden; }
+
+	/* Bản phẳng: hai bìa CSS đứng trên một tấm ván. Cỡ chữ theo bề rộng bìa (cqw) để bìa nào cũng cân. */
+	.ke-phang { max-width: 30rem; margin: 0 auto; }
+	.hang-bia { display: flex; justify-content: center; align-items: flex-end; gap: 7%; padding: 0 6%; }
+	.bia-phang {
+		position: relative;
+		flex: 0 1 42%;
+		container-type: inline-size;
+		aspect-ratio: 1.3 / 1.86;
+		border-radius: 2px 5px 5px 2px;
+		overflow: hidden;
+		text-decoration: none;
+		font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+		box-shadow: inset 5px 0 0 rgba(0, 0, 0, 0.22), inset 6px 0 0 rgba(255, 255, 255, 0.1), 6px 8px 14px -6px rgba(40, 25, 10, 0.55);
+	}
+	.anh-bia { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+	.anh-bia ~ span { display: none; }
+	.bia-nhan { position: absolute; top: 9cqw; left: 11cqw; font-size: 3.6cqw; font-weight: 600; letter-spacing: 0.14em; opacity: 0.75; white-space: nowrap; }
+	.bia-ten { position: absolute; left: 11cqw; bottom: 25cqw; font-weight: 800; line-height: 1; }
+	.bia-ten span { display: block; }
+	.bia-phu { position: absolute; left: 11cqw; right: 8cqw; bottom: 9cqw; font-size: 4.4cqw; line-height: 1.35; opacity: 0.85; }
+	.bia-ai-engineer {
+		color: #fff;
+		background:
+			radial-gradient(circle at 60% 30%, rgba(150, 210, 255, 0.9) 0 1.5px, transparent 2.5px),
+			radial-gradient(circle at 46% 22%, rgba(150, 210, 255, 0.8) 0 1px, transparent 2px),
+			radial-gradient(circle at 74% 40%, rgba(150, 210, 255, 0.8) 0 1px, transparent 2px),
+			radial-gradient(circle at 66% 18%, rgba(150, 210, 255, 0.7) 0 1px, transparent 2px),
+			radial-gradient(circle at 60% 30%, rgba(70, 160, 255, 0.45), rgba(40, 110, 210, 0.12) 34%, transparent 55%),
+			linear-gradient(135deg, #0b1a29, #0e2233);
+	}
+	.bia-ai-engineer .bia-nhan { color: #a0d2ff; }
+	.bia-ai-engineer .bia-ten { font-size: 11.5cqw; color: #8ec9ff; letter-spacing: 0.03em; }
+	.bia-ai-engineer .bia-ten span:first-child { font-size: 25cqw; color: #fff; }
+	.bia-ai-engineer .bia-ten::before { content: ''; display: block; width: 11cqw; height: 1.2cqw; min-height: 2px; background: #e07a1f; margin-bottom: 3cqw; }
+	.bia-robotics { color: #1f2a33; background: radial-gradient(circle at 66% 40%, #fff, transparent 60%), linear-gradient(160deg, #eef0f2, #c9ced3); }
+	.bia-robotics .bia-ten { left: 5cqw; bottom: 9cqw; writing-mode: vertical-rl; transform: rotate(180deg); font-size: 20cqw; letter-spacing: 0.03em; }
+	.bia-robotics .bia-nhan, .bia-robotics .bia-phu { left: 34cqw; color: #4a5560; }
+	.bia-robotics .bia-nhan { white-space: normal; }
+	.bia-dai { position: absolute; top: 9cqw; right: -15cqw; transform: rotate(45deg); background: #e07a1f; color: #fff; font-size: 4cqw; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; padding: 1.2cqw 18cqw; }
+	.van-ke {
+		height: 14px;
+		margin-top: -1px;
+		border-radius: 3px;
+		background: repeating-linear-gradient(90deg, rgba(0, 0, 0, 0) 0 37px, rgba(40, 20, 8, 0.08) 37px 39px), linear-gradient(#93623b, #6e4527);
+		box-shadow: 0 10px 16px -8px rgba(40, 25, 10, 0.55);
+	}
+
+	/* Thẻ chọn: điều khiển thật, dùng được bằng bàn phím. */
+	.hang-the { display: grid; gap: 0.5rem; padding: 0.8rem; border-top: 1px solid var(--line); }
+	.the-chon {
+		display: grid;
+		grid-template-columns: 1fr auto;
+		align-items: baseline;
+		column-gap: 0.8rem;
+		padding: 0.55rem 0.8rem;
+		border: 1px solid var(--line);
+		border-radius: 8px;
+		background: var(--bg);
+		color: var(--tx);
+		font: inherit;
+		text-align: left;
+		text-decoration: none;
+		cursor: pointer;
+		transition: border-color 0.15s, transform 0.15s;
+	}
+	.the-chon:hover { border-color: var(--pri); transform: translateY(-1px); }
+	.the-chon:focus-visible { outline: 2px solid var(--pri); outline-offset: 2px; }
+	.the-nhan { grid-column: 1 / -1; font-size: 0.75rem; color: var(--mut); }
+	.the-ten { font-size: 1rem; font-weight: 700; color: var(--tx); }
+	.the-mo-ta { font-size: 0.82rem; color: var(--pri); white-space: nowrap; }
+	.the-sap-co .the-mo-ta { color: var(--acc); }
+	.thong-bao { min-height: 1.5em; margin: 0.6rem 0 0; text-align: center; font-size: 0.9rem; color: var(--tx); }
+
+	@media (min-width: 50rem) {
+		/* Giữ đúng chiều cao cho cả bản phẳng lẫn canvas để không nhảy bố cục khi 3D hiện. */
+		.san-khau { aspect-ratio: 16 / 9; padding: 0; display: flex; align-items: center; }
+		.ke-phang { width: 40%; max-width: none; }
+		.hang-the { display: flex; justify-content: center; gap: 0.75rem; }
+		.the-chon { display: flex; flex-direction: column; align-items: flex-start; gap: 0.1rem; min-width: 13rem; }
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.the-chon { transition: none; }
+		.the-chon:hover { transform: none; }
+	}
+</style>

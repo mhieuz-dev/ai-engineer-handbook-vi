@@ -10,7 +10,7 @@ const timNhom = (cha: Nut[], nhan: string) =>
 
 /** Trộn cây sidebar của Starlight (chỉ chương xong) với danh mục: chèn chương "Sắp có" theo `so`. */
 export function dungCay(goc: Nut[], nhanh: Nhanh[], phan: Phan[], chuong: Chuong[]): NutNhom[] {
-	return nhanh.map((n) => {
+	return nhanh.filter((n) => phan.some((p) => p.nhanh === n.id)).map((n) => {
 		const nhomNhanh = timNhom(goc, n.ten);
 		const phanCon = phan.filter((p) => p.nhanh === n.id).map((p): NutNhom => {
 			const nhomPhan = timNhom(nhomNhanh?.entries ?? [], p.ten);

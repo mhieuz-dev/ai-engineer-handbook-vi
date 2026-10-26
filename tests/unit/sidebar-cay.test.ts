@@ -25,6 +25,10 @@ describe('dungCay', () => {
 		const p2 = n.entries[1] as NutNhom;
 		expect(p2.entries).toEqual([{ type: 'sap-co', label: '4. T4' }]);
 	});
+	it('bỏ qua nhánh chưa có Phần nào (Robotics sắp có)', () => {
+		const cay = dungCay(goc, [...nhanh, { id: 'robotics', ten: 'Robotics' }], phan, chuong);
+		expect(cay.map((n) => n.label)).toEqual(['AI Engineer']);
+	});
 	it('ném lỗi khi chương xong không có nhóm trong Starlight', () => {
 		expect(() => dungCay([], nhanh, phan, chuong)).toThrow(/Chương 2 "T2" đã xuất bản/);
 	});

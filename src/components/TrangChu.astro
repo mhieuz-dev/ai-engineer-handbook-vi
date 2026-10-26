@@ -3,6 +3,7 @@ import ThemeSelect from '@astrojs/starlight/components/ThemeSelect.astro';
 import { MENU_CHUNG } from '../data/menu-chung';
 import { CHUONG, chuongDaXuatBan } from '../data/chuong';
 import { trangBatDauHoc } from '../lib/trang-dau';
+import KeSach from './KeSach.astro';
 
 const batDau = (await trangBatDauHoc()) ?? '/lo-trinh/';
 const daCo = chuongDaXuatBan().map((c) => `Chương ${c.so}, ${c.ten}`).join('; ');
@@ -28,18 +29,7 @@ const tinhNang = [
 		<div class="doi-giao-dien"><ThemeSelect /></div>
 	</section>
 
-	<section class="nhanh">
-		<a class="the-nhanh" href="/lo-trinh/">
-			<h2>AI Engineer</h2>
-			<p>Từ Python cơ bản đến mô hình ngôn ngữ lớn. {CHUONG.length} chương.</p>
-			<span class="nhan dang-viet">Đang viết</span>
-		</a>
-		<div class="the-nhanh the-tat">
-			<h2>Robotics</h2>
-			<p>Nhánh thứ hai, bắt đầu sau khi nhánh đầu viết xong.</p>
-			<span class="nhan">Sắp có</span>
-		</div>
-	</section>
+	<KeSach />
 
 	<section class="cach-hoc">
 		<h2>Cách học trên trang này</h2>
@@ -67,15 +57,6 @@ const tinhNang = [
 	.doi-giao-dien { display: flex; justify-content: center; margin-top: 0.8rem; }
 	/* Trang splash không có menu ☰ trên điện thoại, nên đặt nút đổi giao diện và liên kết nhanh ngay trên trang. */
 	@media (min-width: 50rem) { .nav-chung-mobile, .doi-giao-dien { display: none; } }
-	.nhanh { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 1rem; margin: 2rem 0; }
-	.the-nhanh { display: block; position: relative; padding: 1.2rem 1.2rem 1.4rem; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); text-decoration: none; color: var(--tx); }
-	a.the-nhanh:hover { border-color: var(--pri); }
-	.the-nhanh h2 { margin: 0 0 0.4rem; font-size: 1.3rem; color: var(--pri); border: 0; }
-	.the-nhanh p { margin: 0 0 0.8rem; color: var(--tx); }
-	.the-tat { opacity: 0.8; }
-	.the-tat h2 { color: var(--mut); }
-	.nhan { display: inline-block; font-size: 0.8rem; padding: 0.1em 0.7em; border-radius: 999px; border: 1px solid var(--line); color: var(--mut); }
-	.dang-viet { background: var(--accbg); border-color: var(--acc); color: var(--tx); }
 	.cach-hoc h2 { border: 0; margin-top: 0; }
 	.buoc { display: flex; flex-wrap: wrap; gap: 0.5rem; list-style: none; padding: 0; margin: 1rem 0; counter-reset: b; }
 	.buoc li { counter-increment: b; margin: 0; padding: 0.35rem 0.9rem; border-radius: 999px; background: var(--accbg); font-weight: 600; }
