@@ -1,6 +1,7 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import sitemap from '@astrojs/sitemap';
 import { unified } from '@astrojs/markdown-remark';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
@@ -13,6 +14,8 @@ export default defineConfig({
 		processor: unified({ remarkPlugins: [remarkMath], rehypePlugins: [rehypeKatex] }),
 	},
 	integrations: [
+		// Tự khai báo sitemap (Starlight sẽ bỏ qua bản của nó) để loại trang in PDF.
+		sitemap({ filter: (url) => !new URL(url).pathname.startsWith('/in/') }),
 		starlight({
 			title: 'AI & Robotics',
 			defaultLocale: 'root',
@@ -22,6 +25,8 @@ export default defineConfig({
 			components: {
 				Sidebar: './src/components/overrides/Sidebar.astro',
 				Pagination: './src/components/overrides/Pagination.astro',
+				PageTitle: './src/components/overrides/PageTitle.astro',
+				TableOfContents: './src/components/overrides/TableOfContents.astro',
 			},
 			customCss: [
 				'@fontsource/be-vietnam-pro/400.css',

@@ -1,0 +1,49 @@
+---
+import Default from '@astrojs/starlight/components/TableOfContents.astro';
+import { timChuongTheoSlugTrang } from '../../data/chuong';
+
+const chuong = timChuongTheoSlugTrang(Astro.locals.starlightRoute.id);
+const coKhung = chuong?.trangThai === 'xong';
+const REPO = 'https://github.com/mhieuz-dev/ai-engineer-handbook-vi';
+---
+
+<Default><slot /></Default>
+{
+	coKhung && (
+		<nav class="tai-ve" aria-labelledby="tai-ve-nhan">
+			<h2 id="tai-ve-nhan">TẢI VỀ</h2>
+			<ul>
+				<li><a href={`/in/${chuong!.slug}/?in=1`}>📄 PDF chương</a></li>
+				{chuong!.notebook && (
+					<li><a href={`${REPO}/blob/main/notebooks/${chuong!.notebook}`} target="_blank" rel="noopener">📓 Notebook</a></li>
+				)}
+			</ul>
+		</nav>
+	)
+}
+
+<style>
+	.tai-ve {
+		margin-top: 1.5rem;
+		font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+	}
+	.tai-ve h2 {
+		font-size: var(--sl-text-xs);
+		letter-spacing: 0.04em;
+		color: var(--mut);
+		margin: 0 0 0.4rem;
+	}
+	.tai-ve ul {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+	}
+	.tai-ve a {
+		display: block;
+		padding: 0.2rem 0;
+		font-size: var(--sl-text-sm);
+		color: var(--pri);
+		text-decoration: none;
+	}
+	.tai-ve a:hover { text-decoration: underline; }
+</style>

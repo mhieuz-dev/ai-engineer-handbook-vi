@@ -184,3 +184,28 @@ pre {
 	font-weight: 600;
 	color: var(--pri);
 }
+
+/* Mục lục bên phải: nhãn in hoa như bản mẫu. */
+#starlight__on-this-page { text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* In PDF: khổ 19x25 cm, nền trắng, giữ khung màu, ẩn phần tương tác. */
+@page { size: 19cm 25cm; margin: 1.8cm 1.6cm; }
+@media print {
+	:root,
+	:root[data-theme='dark'] {
+		--bg: #fff;
+		--tx: #1a1a1a;
+	}
+	html, body { background: #fff !important; color: #1a1a1a; }
+	body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+	header.header, .sidebar, .right-sidebar, mobile-starlight-toc, starlight-menu-button,
+	.nut-da-doc, .pagination-links, footer, .sl-hidden, site-search,
+	input[type='range'], .tai-ve, .thu-ngay-lr, .tn-lr { display: none !important; }
+	.main-pane, .main-frame { margin: 0 !important; padding: 0 !important; }
+	.sl-markdown-content { max-width: none; font-size: 11pt; line-height: 1.6; }
+	.khung, .bai-tap, .can-biet-truoc, .hinh-ket-qua { break-inside: avoid; }
+	details.khung-dao-sau > * { display: block; }
+	.in-chuong { max-width: none; padding: 0; }
+	.in-muc { break-before: page; }
+	.in-muc:first-of-type { break-before: auto; }
+}

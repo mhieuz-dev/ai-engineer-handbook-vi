@@ -1,0 +1,69 @@
+---
+import { getCollection, render } from 'astro:content';
+import { chuongDaXuatBan } from '../../data/chuong';
+import '@fontsource/be-vietnam-pro/400.css';
+import '@fontsource/be-vietnam-pro/600.css';
+import '@fontsource/be-vietnam-pro/800.css';
+import '@fontsource/lora/400.css';
+import '@fontsource/lora/400-italic.css';
+import '@fontsource/lora/600.css';
+import '@fontsource/jetbrains-mono/400.css';
+import 'katex/dist/katex.min.css';
+import '../../styles/theme.css';
+
+export async function getStaticPaths() {
+	const docs = await getCollection('docs');
+	return chuongDaXuatBan().map((chuong) => {
+		const muc = docs.filter((e) => e.id.startsWith(`${chuong.slug}/`)).sort((a, b) => a.id.localeCompare(b.id));
+		return { params: { chuong: chuong.slug }, props: { chuong, muc } };
+	});
+}
+
+const { chuong, muc } = Astro.props;
+const noiDung = await Promise.all(muc.map(async (e) => ({ e, ...(await render(e)) })));
+---
+
+<!doctype html>
+<html lang="vi">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="robots" content="noindex, nofollow" />
+		<title>Chương {chuong.so}. {chuong.ten} | AI & Robotics</title>
+	</head>
+	<body class="trang-in">
+		<main class="in-chuong">
+			<h1>Chương {chuong.so}. {chuong.ten}</h1>
+			{noiDung.map(({ e, Content }) => (
+				<section class="in-muc">
+					<h2>{e.data.title}</h2>
+					<div class="sl-markdown-content"><Content /></div>
+				</section>
+			))}
+		</main>
+		<script>
+			if (new URLSearchParams(location.search).has('in')) {
+				document.fonts.ready.then(() => window.print());
+			}
+		</script>
+	</body>
+</html>
+
+<style is:global>
+	.trang-in {
+		margin: 0;
+		background: var(--bg);
+		color: var(--tx);
+	}
+	.in-chuong {
+		max-width: 760px;
+		margin: 0 auto;
+		padding: 2rem 1rem;
+	}
+	.in-muc { margin-top: 2rem; }
+	.in-muc > h2 {
+		font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+		color: var(--pri);
+	}
+	.trang-in a { color: var(--pri); }
+</style>

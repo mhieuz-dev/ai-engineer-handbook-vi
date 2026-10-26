@@ -1,0 +1,30 @@
+---
+import Default from '@astrojs/starlight/components/PageTitle.astro';
+import { PHAN, timChuongTheoSlugTrang } from '../../data/chuong';
+
+const { id, entry } = Astro.locals.starlightRoute;
+const chuong = timChuongTheoSlugTrang(id);
+const coKhung = chuong?.trangThai === 'xong';
+const nhanPhan = coKhung ? PHAN.find((p) => p.id === chuong!.phan)?.ten.split('.')[0] : undefined;
+const soTu = (entry.body ?? '').split(/\s+/).filter(Boolean).length;
+const phut = Math.max(1, Math.ceil(soTu / 200));
+---
+
+{
+	coKhung && (
+		<p class="crumb">
+			<span>{nhanPhan}</span> › <span>Chương {chuong!.so}</span> › <span>{entry.data.title}</span>
+			<span class="crumb-phut"> · ⏱ {phut} phút đọc</span>
+		</p>
+	)
+}
+<Default><slot /></Default>
+
+<style>
+	.crumb {
+		margin: 0;
+		font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+		font-size: 0.8rem;
+		color: var(--mut);
+	}
+</style>
