@@ -1,6 +1,117 @@
 ---
 title: Bài toán và trực giác
-description: Bài toán và trực giác - hồi quy tuyến tính.
+description: Hồi quy tuyến tính là gì, dùng để làm gì, và hình ảnh sợi dây thun kéo thanh gỗ giúp hiểu nó trước khi đụng tới công thức.
 ---
 
-Nội dung đang được viết.
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+<CanBietTruoc>
+Đạo hàm và đạo hàm riêng (Chương 6). Vector và phép nhân ma trận (Chương 5). NumPy cơ bản (Chương 3).
+
+Chưa đọc các chương đó cũng được. Chữ nào có gạch chấm bên dưới, bạn rê chuột hoặc chạm vào sẽ thấy lời nhắc ngắn ngay tại chỗ.
+
+<Fragment slot="sau-chuong">
+Giải thích được vì sao hàm mất mát dùng bình phương sai số. Tự dẫn được công thức gradient. Tính tay được một bước gradient descent. Đọc được đường cong loss, mặt loss và đồ thị phần dư để biết mô hình đang khỏe hay đang bệnh.
+</Fragment>
+</CanBietTruoc>
+
+## Một câu hỏi đời thường
+
+Mỗi tuần mình tự học thêm 1 giờ thì điểm thi tăng thêm bao nhiêu?
+
+Để trả lời, bạn hỏi bốn người bạn cùng lớp. Mỗi người cho biết hai con số: số giờ tự học mỗi tuần và điểm thi cuối kỳ.
+
+**Bảng 10.1.** Dữ liệu của bốn sinh viên, dùng xuyên suốt chương này.
+
+| Sinh viên | Giờ tự học mỗi tuần ($x$) | Điểm thi ($y$) |
+|:---:|:---:|:---:|
+| A | 1 | 2 |
+| B | 2 | 4 |
+| C | 3 | 5 |
+| D | 4 | 7 |
+
+Nhìn bảng, bạn thấy ngay: ai học nhiều thì điểm cao hơn.
+
+Bạn còn thấy mức tăng khá đều. Mỗi giờ học thêm, điểm nhích lên chừng một hai điểm.
+
+Nhưng "khá đều" và "chừng một hai điểm" chưa phải câu trả lời. Ta muốn **một con số chính xác**.
+
+## Kẻ một đường thẳng
+
+Hãy vẽ bốn bạn thành bốn chấm trên giấy. Trục ngang là giờ học, trục dọc là điểm.
+
+Bốn chấm gần như nằm trên một đường thẳng, nhưng không thẳng hàng hẳn. Không có đường thẳng nào đi qua đúng cả bốn chấm.
+
+Vậy ta tìm đường thẳng đi **gần nhất có thể** với cả bốn chấm. Việc đó gọi là <Term id="hoi-quy-tuyen-tinh">hồi quy tuyến tính</Term>.
+
+Đường thẳng được viết như sau:
+
+$$
+\hat y = w x + b
+$$
+
+Đọc từng ký hiệu:
+
+- $x$ là số giờ tự học, thứ ta biết trước. Mỗi thông tin đầu vào như vậy gọi là một <Term id="dac-trung">đặc trưng</Term>.
+- $\hat y$ (đọc là "y mũ") là điểm mà đường thẳng **đoán**. Dấu mũ để phân biệt với $y$ là điểm **thật**.
+- $w$ là độ dốc: học thêm 1 giờ thì điểm đoán tăng thêm $w$ điểm. Tên tiếng Anh là weight, trọng số.
+- $b$ là điểm đoán khi không học giờ nào ($x = 0$). Tên tiếng Anh là bias, hệ số chặn.
+
+Hai con số $w$ và $b$ là hai núm vặn của mô hình. Vặn $w$ thì đường thẳng xoay, vặn $b$ thì đường thẳng trượt lên xuống. Những núm vặn mà máy tự chỉnh khi học gọi là <Term id="tham-so">tham số</Term>.
+
+Cả chương này chỉ xoay quanh một việc: **tìm $w$ và $b$ tốt nhất**.
+
+## Hình ảnh dây thun
+
+<Khung loai="truc-giac">
+Tưởng tượng bốn chấm là bốn cây đinh đóng trên tường. Đường thẳng là một thanh gỗ.
+
+Mỗi cây đinh nối với thanh gỗ bằng một sợi dây thun dựng thẳng đứng.
+
+Dây càng dài thì kéo càng mạnh. Thanh gỗ bị kéo qua kéo lại, rồi tự xoay và trượt tới chỗ các lực kéo cân bằng nhau.
+
+Chỗ thanh gỗ nằm yên chính là đường hồi quy.
+
+Thêm một điều thú vị. Dây thun kéo mạnh theo độ dài, nên chỗ thanh gỗ nằm yên cũng là chỗ tổng **bình phương** độ dài các dây nhỏ nhất. Chữ "bình phương" này sẽ quay lại ở trang sau.
+</Khung>
+
+Độ dài mỗi sợi dây thun là khoảng cách theo chiều dọc từ chấm thật tới đường thẳng. Đó là chỗ đường thẳng đoán sai cho bạn đó, gọi là <Term id="phan-du">phần dư</Term>.
+
+Muốn biết đường thẳng tốt hay dở, ta gom độ dài các sợi dây thành **một con số duy nhất**. Con số đó gọi là <Term id="ham-mat-mat">hàm mất mát</Term> (loss). Loss càng nhỏ, đường thẳng càng gần dữ liệu.
+
+Trang sau sẽ chỉ ra cách gom cụ thể. Giờ chỉ cần nhớ: **học nghĩa là vặn $w$, $b$ để loss nhỏ nhất**.
+
+## Hồi quy tuyến tính có mặt ở đâu
+
+Ngoài đời, bài toán "từ con số này đoán con số kia" có ở khắp nơi.
+
+Đoán giá nhà theo diện tích. Đoán doanh số theo tiền quảng cáo. Đoán thời gian giao hàng theo quãng đường.
+
+Quan trọng hơn với người học AI: hồi quy tuyến tính là **viên gạch đầu tiên của mạng nơ-ron**.
+
+Mỗi nơ-ron trong một mạng deep learning làm đúng phép tính $wx + b$, rồi đưa kết quả qua thêm một hàm uốn cong (Chương 23). Hiểu thật kỹ chương này là bạn đã nắm một nửa cơ chế của deep learning.
+
+## Vòng lặp học
+
+Máy không "nhìn" ra đường thẳng như mắt người. Nó dò từng bước theo một vòng lặp năm ô:
+
+<figure class="hinh-ket-qua">
+	<img src="/hinh/ch10/h0_vong_lap.svg" alt="Sơ đồ vòng lặp: tham số, dự đoán, đo sai số, tính gradient, cập nhật, rồi quay lại tham số" loading="lazy" />
+	<figcaption>Vòng lặp huấn luyện. Ô xanh là chiều xuôi (đoán rồi chấm điểm), ô cam là chiều ngược (tìm cách sửa).</figcaption>
+</figure>
+
+Đọc sơ đồ theo chiều mũi tên:
+
+1. Đang có hai núm vặn $w$, $b$ (lúc đầu chọn đại).
+2. Dùng chúng để đoán điểm cho cả bốn bạn.
+3. So với điểm thật, gom lại thành một con số loss.
+4. Tính xem nhích $w$, $b$ theo hướng nào thì loss giảm. Cái "hướng" đó là gradient, trang sau sẽ giải thích.
+5. Nhích $w$, $b$ một chút theo hướng đó, rồi quay lại ô 1.
+
+Vòng lặp này lặp vài trăm lần cho bài toán nhỏ của ta.
+
+Bạn sẽ gặp lại **đúng vòng lặp này** ở mọi chương sau. Kể cả khi huấn luyện một mô hình ngôn ngữ hàng tỷ tham số, năm ô vẫn y như vậy. Chỉ có số tham số và cách tính ô 2 là phức tạp hơn.
+
+Trang tiếp theo đi vào từng ô bằng toán, chậm và không nhảy bước.

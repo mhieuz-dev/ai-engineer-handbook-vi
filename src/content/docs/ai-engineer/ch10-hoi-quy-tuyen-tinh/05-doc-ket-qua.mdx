@@ -1,6 +1,144 @@
 ---
 title: Đọc kết quả
-description: Đọc kết quả - hồi quy tuyến tính.
+description: Đọc bốn biểu đồ của hồi quy tuyến tính, gồm đường hồi quy, đường cong loss, mặt loss và đồ thị phần dư, để biết mô hình đang khỏe hay đang bệnh.
 ---
 
-Nội dung đang được viết.
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+Code đã chạy xong, ra $w \approx 1{,}6$ và $b \approx 0{,}5$.
+
+Nhưng một cặp số chưa nói được mô hình tốt hay dở. Giống như kết quả xét nghiệm: con số chỉ có nghĩa khi biết đọc.
+
+Trang này đọc bốn biểu đồ. Mỗi biểu đồ trả lời một câu hỏi, và mỗi biểu đồ có dáng vẻ riêng khi mô hình "bệnh".
+
+## Đường hồi quy và phần dư
+
+Câu hỏi: đường thẳng tìm được có bám dữ liệu không?
+
+<HinhKetQua src="/hinh/ch10/h1_duong_hoi_quy.svg" alt="Bốn chấm cam là bốn sinh viên, đường xanh là đường hồi quy y mũ bằng 1,6x cộng 0,5, các đoạn đỏ đứt nét nối mỗi chấm với đường thẳng" so="10.1" chuThich="Đường hồi quy tìm được trên dữ liệu bốn sinh viên. Đoạn đỏ đứt nét là phần dư của từng bạn.">
+**Trục.** Trục ngang là số giờ tự học mỗi tuần, trục dọc là điểm thi. Chấm cam là bốn bạn A, B, C, D. Đường xanh là đường mô hình đoán. Đoạn đỏ đứt nét là phần dư, chính là "sợi dây thun" ở trang đầu. Nhãn $e$ ghi độ dài có dấu của nó.
+
+**Điều cần thấy.** Phần dư có cả dương lẫn âm, và cộng lại đúng bằng 0: $-0{,}1 + 0{,}3 - 0{,}3 + 0{,}1 = 0$. Đường thẳng nằm "giữa" các chấm, không thiên lên trên hay xuống dưới. Mọi đường hồi quy có hệ số chặn $b$ đều cân bằng phần dư như vậy, vì ở đáy bát công thức (10.3) bằng 0.
+
+**Nếu mô hình bệnh.** Mọi đoạn đỏ cùng chỉ lên (đường nằm dưới hết các chấm) là $b$ chưa được học tới nơi. Bên trái đoạn đỏ chỉ lên, bên phải chỉ xuống là độ dốc sai. Cả hai đều là dấu hiệu vòng lặp dừng quá sớm, hoặc code có lỗi.
+</HinhKetQua>
+
+### Chấm điểm đường thẳng bằng R bình phương
+
+Ở trang Code, scikit-learn in ra R² $\approx 0{,}9846$. Con số đó từ đâu ra?
+
+Hãy hình dung một "mô hình lười": không thèm nhìn giờ học, đoán ai cũng được điểm trung bình 4,5.
+
+Mô hình lười sai bao nhiêu? Cộng bình phương độ lệch của từng bạn so với 4,5:
+
+$$
+\begin{aligned}
+\sum (y_i - \bar y)^2 &= 2{,}5^2 + 0{,}5^2 \\
+&\quad + 0{,}5^2 + 2{,}5^2 \\
+&= 13
+\end{aligned}
+$$
+
+Mô hình của ta sai bao nhiêu? Cộng bình phương phần dư: $\sum e_i^2 = 0{,}2$ (bảng ở trang Tính tay).
+
+Mô hình lười sai 13, mô hình của ta chỉ còn sai 0,2. Phần sai số đã gỡ được là:
+
+$$
+\begin{aligned}
+R^2 &= 1 - \frac{\sum e_i^2}{\sum (y_i - \bar y)^2} \\[4pt]
+&= 1 - \frac{0{,}2}{13} \approx 0{,}985
+\end{aligned}
+$$
+
+Nói bằng lời: đường thẳng giải thích được khoảng 98,5% sự chênh lệch điểm giữa bốn bạn. R² bằng 1 là khớp hoàn toàn. R² bằng 0 là không hơn gì mô hình lười.
+
+Nhưng cẩn thận với câu "học thêm 1 giờ **làm** điểm tăng 1,6".
+
+Hồi quy chỉ đo <Term id="tuong-quan">tương quan</Term>: giờ học và điểm hay đi cùng nhau. Nó không chứng minh cái này gây ra cái kia. Có thể bạn học nhiều vốn đã giỏi sẵn, hoặc có thời gian rảnh hơn.
+
+Và với 4 bạn, ta không thể nói gì chắc chắn về cả lớp. Bốn điểm dữ liệu đủ để học cách tính, chưa đủ để kết luận.
+
+## Đường cong loss và learning rate
+
+Câu hỏi: vòng lặp có đang đi xuống đáy không, và đi nhanh hay chậm?
+
+<HinhKetQua src="/hinh/ch10/h2_loss_lr.svg" alt="Ba đường MSE theo bước lặp trên thang log: đường xanh rơi thẳng xuống 0,05, đường xám đi xuống chậm, đường đỏ đi lên thành đường thẳng tới hơn một tỷ" so="10.2" chuThich="MSE theo bước lặp với ba learning rate khác nhau, cùng khởi đầu w = b = 0, bước 0 đến bước 39.">
+**Trục.** Trục ngang là số bước lặp. Trục dọc là MSE trên <Term id="thang-log">thang log</Term>: mỗi vạch lớn gấp 10 lần vạch ngay dưới ($10^{-1}$ là 0,1, $10^{1}$ là 10, $10^{9}$ là một tỷ). Phải dùng thang log vì loss trải từ 0,05 đến hơn một tỷ. Ở thang thường, đường xanh và đường xám dính sát đáy, không thấy gì.
+
+**Đường xanh, $\eta = 0{,}05$.** Rơi gần như thẳng đứng: từ 23,5 xuống 0,69 ngay bước 1, đến bước 3 còn 0,051. Sau đó đi ngang. Đi ngang không có nghĩa là mô hình ngừng học. Nó đã chạm mức 0,05, mức thấp nhất mà một đường thẳng có thể đạt với 4 chấm không thẳng hàng.
+
+**Đường xám, $\eta = 0{,}005$.** Đi đúng hướng nhưng chậm. Tới cuối hình (bước 39), loss vẫn khoảng 0,076, cao hơn đáy chừng 50%. Learning rate nhỏ quá **không sai**, chỉ tốn thời gian. Với mô hình lớn, thời gian là tiền thuê GPU.
+
+**Đường đỏ, $\eta = 0{,}135$.** Loss **tăng** ngay từ bước 1: 23,5 rồi 37, 58, 91. Tới bước 39 đã vượt một tỷ. Mỗi bước nhảy quá xa, vượt qua đáy sang vách bên kia ở chỗ còn cao hơn chỗ cũ.
+
+Để ý đường đỏ là một **đường thẳng** trên thang log. Đi lên đều trên thang log nghĩa là mỗi bước loss bị **nhân** với cùng một số, ở đây khoảng 1,57. Khung Đào sâu "vì sao ngưỡng là 0,12" ở trang Toán giải thích con số đó.
+
+**Nếu mô hình bệnh.** Loss thành `nan` hoặc `inf`, hay đi lên như đường đỏ: nghi phạm số một luôn là learning rate quá lớn (hoặc dữ liệu chưa chuẩn hóa). Loss đi ngang ở mức cao ngay từ đầu: learning rate quá nhỏ, hoặc gradient bị tính sai.
+</HinhKetQua>
+
+## Mặt loss
+
+Câu hỏi: cái bát loss trông ra sao, và gradient descent đã đi đường nào trong bát?
+
+<HinhKetQua src="/hinh/ch10/h3_mat_loss.svg" alt="Bản đồ đường đồng mức hình elip dài và nghiêng của hàm loss theo w và b, với quỹ đạo màu cam đi từ gốc tọa độ tới gần ngôi sao đỏ ở 1,6 và 0,5, kèm ô phóng to quanh đáy" so="10.3" chuThich="Đường đồng mức của L(w, b) và 60 bước gradient descent với η = 0,05. Ô nhỏ phóng to vùng quanh đáy.">
+**Cách đọc.** Đây là cái bát $L(w, b)$ nhìn từ trên xuống, giống bản đồ địa hình. Trục ngang là $w$, trục dọc là $b$. Mỗi đường elip nối các cặp $(w, b)$ có cùng giá trị loss. Càng vào trong càng thấp. Ngôi sao đỏ là đáy, $(1{,}6;\ 0{,}5)$.
+
+**Hình dạng elip.** Các elip dài và nghiêng, không tròn.
+
+Nghiêng vì $w$ và $b$ bù trừ cho nhau. Tăng độ dốc một chút rồi hạ hệ số chặn xuống, đường thẳng chỉ xoay quanh một điểm ở khoảng giữa đám chấm, nên vẫn gần dữ liệu như cũ.
+
+Dài vì dọc theo hướng bù trừ đó, loss gần như không đổi. Còn theo hướng vuông góc, loss tăng rất nhanh. Đáy bát là một thung lũng hẹp và dài.
+
+**Quỹ đạo cam.** Bước đầu nhảy một đoạn rất dài, từ $(0;\ 0)$ tới $(1{,}325;\ 0{,}45)$, rơi thẳng xuống lòng thung lũng. Đúng con số bạn đã tính tay.
+
+Ô phóng to cho thấy phần còn lại. Bước 2 vẫn còn dài. Sau đó quỹ đạo rẽ gắt rồi **bò chậm dọc theo đáy thung lũng** về phía ngôi sao. Sau 60 bước, nó mới tới khoảng $(1{,}595;\ 0{,}516)$, vẫn chưa tới đích.
+
+Đây là lý do ở output trang Code, MSE chạm đáy từ bước 50 mà $w$ vẫn còn nhích tới bước 200.
+
+**Nếu mô hình bệnh.** Quỹ đạo nảy zíc zắc qua lại hai vách thung lũng là learning rate sát ngưỡng. Quỹ đạo văng ra xa dần là learning rate vượt ngưỡng. Thung lũng hẹp và dài như thế này là chuyện thường gặp, và chính nó là lý do ra đời của Momentum và Adam (Chương 26): các cách đi giúp lao nhanh dọc thung lũng mà không nảy qua lại.
+</HinhKetQua>
+
+## Đồ thị phần dư
+
+Câu hỏi: dạng đường thẳng có đúng với dữ liệu không?
+
+Với 4 bạn và 1 đặc trưng, ta vẽ được mọi thứ như trên. Dữ liệu thật có hàng chục đặc trưng, không vẽ nổi đường thẳng trong không gian nhiều chiều.
+
+Công cụ chẩn đoán dùng được cho mọi trường hợp là **đồ thị phần dư**: trục ngang là giá trị dự đoán $\hat y$, trục dọc là phần dư $y - \hat y$. Dù có bao nhiêu đặc trưng, đồ thị này vẫn chỉ có hai trục.
+
+Để thấy rõ, Hình 10.4 dùng hai bộ dữ liệu giả lập, mỗi bộ 120 điểm. Bộ (a) sinh từ một đường thẳng cộng nhiễu: $y = 1{,}5x + 2 + \text{nhiễu}$. Bộ (b) sinh từ một đường cong cộng nhiễu: $y = 0{,}25x^2 + \text{nhiễu}$. Cả hai đều được khớp bằng một đường thẳng.
+
+<HinhKetQua src="/hinh/ch10/h4_phan_du.svg" alt="Hai đồ thị phần dư: hình a các điểm rải đều thành dải ngang quanh 0, R bình phương 0,879; hình b các điểm tạo thành hình chữ U, R bình phương 0,905" so="10.4" chuThich="Đồ thị phần dư khi khớp đường thẳng cho (a) dữ liệu sinh từ đường thẳng và (b) dữ liệu sinh từ đường cong.">
+**Trục.** Trục ngang là điểm mô hình đoán. Trục dọc là phần dư: trên vạch đỏ là đoán thấp, dưới vạch đỏ là đoán cao. Mỗi chấm là một điểm dữ liệu.
+
+**Hình (a), mô hình khỏe.** Các chấm rải đều thành một dải ngang quanh vạch 0, không có hình thù gì. Phần dư chỉ còn là nhiễu ngẫu nhiên. Mô hình đã lấy hết thông tin mà một đường thẳng lấy được.
+
+**Hình (b), mô hình bệnh.** Các chấm tạo thành hình chữ U: dương ở hai đầu, âm ở giữa. Nghĩa là đường thẳng đoán thấp ở hai đầu và đoán cao ở giữa, một cách **có hệ thống**. Dấu hiệu rõ ràng rằng quan hệ thật là đường cong.
+
+**Bài học bất ngờ.** R² của (b) là 0,905, **cao hơn** R² của (a) là 0,879. Nếu chỉ nhìn R², bạn sẽ chọn nhầm mô hình sai dạng. R² cao chỉ cho biết đường thẳng bám dữ liệu khá sát. Nó không cho biết dạng đường thẳng có đúng hay không. Luôn vẽ phần dư.
+
+**Một dáng bệnh khác.** Các chấm loe dần ra như cái phễu (hẹp bên trái, rộng bên phải) nghĩa là mô hình đoán càng lớn thì càng kém chắc chắn. Khi đó trung bình vẫn có thể đúng, nhưng sai số không đều.
+</HinhKetQua>
+
+<TuKiemTra
+  cauHoi="Bạn khớp đường thẳng, được R² = 0,95, nhưng đồ thị phần dư có hình chữ U rõ rệt. Kết luận nào đúng?"
+  luaChon={['Mô hình tốt vì R² rất cao', 'Quan hệ thật là đường cong, dạng đường thẳng chưa đúng', 'Learning rate quá lớn']}
+  dapAn={1}
+  giaiThich="Hình chữ U nghĩa là mô hình sai có hệ thống: đoán thấp ở hai đầu, đoán cao ở giữa. R² cao không loại trừ điều đó, như Hình 10.4 (b) cho thấy. Learning rate không liên quan, vì nghiệm đóng cho cùng đường thẳng."
+/>
+
+## Tóm lại: khám bệnh cho mô hình hồi quy
+
+| Dấu hiệu | Nhìn ở đâu | Nghĩa là |
+|:---|:---|:---|
+| Loss tăng, ra `nan` hoặc `inf` | Đường cong loss | Learning rate quá lớn, hoặc dữ liệu chưa chuẩn hóa |
+| Loss giảm rất chậm | Đường cong loss | Learning rate quá nhỏ |
+| Quỹ đạo zíc zắc hai vách | Mặt loss | Learning rate sát ngưỡng |
+| Phần dư cùng dấu | Đường hồi quy | Chưa học xong, hoặc code sai |
+| Phần dư hình chữ U | Đồ thị phần dư | Quan hệ thật là đường cong |
+| Phần dư loe hình phễu | Đồ thị phần dư | Sai số không đều theo độ lớn |
+| R² cao | Con số tóm tắt | Bám sát dữ liệu, **chưa chắc** đúng dạng |
+
+Trang cuối là bài tập. Mỗi bài kiểm tra một ý của chương, có đáp án chi tiết để bạn tự chấm.

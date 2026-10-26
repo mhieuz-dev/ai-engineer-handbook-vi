@@ -1,6 +1,375 @@
 ---
 title: Toán từng bước
-description: Toán từng bước - hồi quy tuyến tính.
+description: Dẫn từng bước công thức của hồi quy tuyến tính, từ hàm mất mát MSE, đạo hàm, gradient đến nghiệm đóng và gradient descent, kèm lý do của từng lựa chọn.
 ---
 
-Nội dung đang được viết.
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import ThuNgayLearningRate from '../../../../components/ThuNgayLearningRate.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+Trang trước có hình ảnh: bốn cây đinh, một thanh gỗ, bốn sợi dây thun.
+
+Trang này dịch hình ảnh đó sang toán, từng bước một. Mỗi công thức đều kèm câu "nó nói lên điều gì".
+
+## Đo "gần" bằng cách nào
+
+### Sai số của từng bạn
+
+Lấy một bạn bất kỳ, gọi là bạn thứ $i$. Bạn đó có điểm thật $y_i$. Đường thẳng đoán cho bạn đó $\hat y_i = w x_i + b$.
+
+Chỗ chênh giữa hai số là phần dư, ký hiệu $e_i$ (chữ e của error):
+
+$$
+e_i = y_i - \hat y_i = y_i - (w x_i + b)
+$$
+
+Ví dụ: bạn B có điểm thật 4. Giả sử đường thẳng đoán B được 3,7. Phần dư của B là $4 - 3{,}7 = +0{,}3$.
+
+Dấu cộng nghĩa là chấm thật nằm **trên** đường thẳng, đường đoán thấp quá. Dấu trừ nghĩa là chấm nằm **dưới**, đường đoán cao quá.
+
+### Gom bốn sai số thành một con số
+
+Ta có bốn phần dư. Muốn so đường thẳng này với đường thẳng khác, cần gom chúng thành một con số.
+
+Cách đầu tiên ai cũng nghĩ tới là cộng lại. Nhưng cộng thẳng thì hỏng.
+
+Một đường thẳng lệch $+3$ ở bạn này và $-3$ ở bạn kia sẽ có tổng bằng 0. Nhìn tổng, ta tưởng nó hoàn hảo, trong khi nó sai cả hai bạn.
+
+Vậy phải biến mọi sai số thành số dương trước khi cộng. Có hai cách: lấy trị tuyệt đối $|e_i|$, hoặc bình phương $e_i^2$.
+
+Hồi quy tuyến tính chọn bình phương, rồi lấy trung bình. Con số này gọi là <Term id="mse">MSE</Term> (Mean Squared Error, trung bình bình phương sai số):
+
+$$
+L(w, b) = \frac{1}{n} \sum_{i=1}^{n} e_i^2 \tag{10.1}
+$$
+
+Đọc công thức từ trong ra ngoài:
+
+- $e_i^2$: bình phương phần dư của bạn thứ $i$.
+- $\sum_{i=1}^{n}$ (chữ Hy Lạp xích-ma): cộng lần lượt từ bạn thứ 1 đến bạn thứ $n$. Ở đây $n = 4$.
+- $\frac{1}{n}$: chia cho số bạn, tức lấy trung bình.
+
+Viết đầy đủ, thay $e_i$ vào:
+
+$$
+L(w, b) = \frac{1}{n} \sum_{i=1}^{n} \bigl(y_i - w x_i - b\bigr)^2
+$$
+
+Chữ $L$ là loss. Viết $L(w, b)$ để nhớ rằng: dữ liệu $x_i$, $y_i$ đã cố định, loss chỉ còn phụ thuộc vào hai núm vặn $w$ và $b$.
+
+<Khung loai="vi-sao" tieuDe="BÌNH PHƯƠNG MÀ KHÔNG PHẢI TRỊ TUYỆT ĐỐI">
+Có ba lý do.
+
+**Một, bình phương trơn.** Đồ thị của $e^2$ là một cái chén cong đều, không có góc nhọn. Đồ thị của $|e|$ có hình chữ V, bị gãy ngay tại 0. Lát nữa ta dò đáy bằng độ dốc, mà tại chỗ gãy thì không đo được độ dốc.
+
+**Hai, bình phương phạt nặng sai số lớn.** Sai 1 điểm bị tính 1. Sai 3 điểm bị tính 9, chứ không phải 3. Vì vậy mô hình cố không để bạn nào bị đoán lệch quá xa.
+
+**Ba, bình phương có cơ sở xác suất.** Nếu nhiễu trong dữ liệu có dạng hình chuông, thì làm MSE nhỏ nhất chính là chọn đường thẳng "hợp lý nhất" với dữ liệu. Phần này cần xác suất, xem khung Đào sâu ngay dưới.
+
+**Cái giá phải trả.** Vì phạt sai số lớn rất nặng, MSE dễ bị một điểm bất thường kéo lệch. Điểm như vậy gọi là <Term id="outlier">outlier</Term>.
+
+Ví dụ: bạn D học 4 giờ nhưng gõ nhầm thành 40 giờ. Chỉ một con số gõ nhầm, độ dốc tìm được tụt từ 1,6 xuống còn khoảng 0,09. Đường thẳng gần như nằm ngang.
+
+Khi dữ liệu có nhiều outlier, người ta dùng <Term id="mae">MAE</Term> (trung bình trị tuyệt đối) hoặc Huber loss (bình phương khi sai ít, trị tuyệt đối khi sai nhiều).
+</Khung>
+
+<Khung loai="dao-sau" tieuDe="bình phương và xác suất">
+Giả sử điểm thật của mỗi bạn bằng điểm trên đường thẳng cộng thêm một chút nhiễu ngẫu nhiên: $y_i = w x_i + b + \varepsilon_i$.
+
+Giả sử thêm nhiễu $\varepsilon_i$ có phân phối chuẩn (hình chuông), trung bình 0, độ lệch chuẩn $\sigma$. Khi đó khả năng gặp đúng phần dư $e_i$ tỉ lệ với
+
+$$
+\exp\!\left(-\frac{e_i^2}{2\sigma^2}\right).
+$$
+
+Các bạn độc lập với nhau, nên khả năng gặp cả bộ dữ liệu là tích của bốn số như vậy. Tích các hàm mũ là hàm mũ của tổng:
+
+$$
+\exp\!\left(-\frac{1}{2\sigma^2} \sum_{i} e_i^2\right).
+$$
+
+Muốn khả năng này **lớn nhất**, phải làm $\sum e_i^2$ **nhỏ nhất**. Đó đúng là làm MSE nhỏ nhất.
+
+Cách chọn tham số như vậy gọi là <Term id="hop-ly-cuc-dai">ước lượng hợp lý cực đại</Term> (Chương 7). Nếu nhiễu có dạng khác, ví dụ phân phối Laplace (nhọn ở giữa, đuôi dày hơn hình chuông), thì cùng lập luận sẽ dẫn tới MAE thay vì MSE.
+</Khung>
+
+<Khung loai="vi-sao" tieuDe="CHIA CHO n">
+Chia cho $n$ biến tổng thành trung bình. Có hai cái lợi.
+
+Thứ nhất, loss không phình ra theo số dữ liệu. Bốn bạn hay bốn nghìn bạn, MSE vẫn đo "trung bình mỗi bạn sai bao nhiêu", nên so được với nhau.
+
+Thứ hai, độ dốc (sắp học ở mục dưới) cũng không phình ra. Nhờ vậy cùng một bước chân $\eta$ dùng được cho dữ liệu nhỏ lẫn lớn.
+
+Quên chia $n$ thì sao? Với bốn bạn, mỗi bước chân thực tế dài gấp 4 lần, thành $0{,}05 \times 4 = 0{,}2$. Cuối trang bạn sẽ thấy 0,2 là quá dài với dữ liệu này: loss phát nổ.
+</Khung>
+
+## Tìm đáy của loss: đạo hàm
+
+### Loss là một cái bát
+
+Mỗi cặp $(w, b)$ cho ra một giá trị loss. Vẽ loss theo $w$ và $b$, ta được một mặt cong hình cái bát. [Hình 10.3](/ai-engineer/ch10-hoi-quy-tuyen-tinh/05-doc-ket-qua/#mặt-loss) ở trang Đọc kết quả là cái bát đó nhìn từ trên xuống.
+
+Đường thẳng tốt nhất nằm ở **đáy bát**.
+
+Ở đáy bát, mặt bát nằm ngang. Nhích $w$ một chút hay nhích $b$ một chút, loss gần như không đổi.
+
+Công cụ đo "nhích đầu vào một chút thì đầu ra đổi bao nhiêu" chính là <Term id="dao-ham">đạo hàm</Term>.
+
+Loss có hai đầu vào. Nhích riêng $w$ và giữ nguyên $b$, độ đổi của loss gọi là <Term id="dao-ham-rieng">đạo hàm riêng</Term> theo $w$, viết $\partial L / \partial w$. Tương tự với $b$.
+
+Ở đáy bát, cả hai đạo hàm riêng đều bằng 0.
+
+### Tính đạo hàm riêng, từng bước
+
+Loss là trung bình của bốn số hạng giống nhau. Ta chỉ cần lấy đạo hàm **một** số hạng, rồi lấy trung bình.
+
+Xét một số hạng $\bigl(y_i - w x_i - b\bigr)^2$. Đặt phần trong ngoặc là $u$, tức $u = y_i - w x_i - b$. Số hạng thành $u^2$.
+
+Đây là hàm lồng trong hàm: $w$ đi vào $u$, rồi $u$ đi vào phép bình phương. Đạo hàm của hàm lồng tính bằng <Term id="quy-tac-chuoi">quy tắc chuỗi</Term>: đạo hàm lớp ngoài nhân đạo hàm lớp trong.
+
+- Lớp ngoài: đạo hàm của $u^2$ theo $u$ là $2u$.
+- Lớp trong theo $w$: trong $u = y_i - w x_i - b$, chỉ có $- w x_i$ chứa $w$. Đạo hàm của nó theo $w$ là $-x_i$.
+- Lớp trong theo $b$: chỉ có $-b$ chứa $b$. Đạo hàm theo $b$ là $-1$.
+
+Nhân lại, rồi nhớ rằng $u$ chính là phần dư $e_i$:
+
+$$
+\begin{gathered}
+\frac{\partial}{\partial w} e_i^2 = 2 e_i \cdot (-x_i) \\[6pt]
+\frac{\partial}{\partial b} e_i^2 = 2 e_i \cdot (-1)
+\end{gathered}
+$$
+
+Lấy trung bình trên $n$ bạn, ta được hai công thức quan trọng nhất của chương:
+
+$$
+\frac{\partial L}{\partial w} = -\frac{2}{n} \sum_{i=1}^{n} x_i \, e_i \tag{10.2}
+$$
+
+$$
+\frac{\partial L}{\partial b} = -\frac{2}{n} \sum_{i=1}^{n} e_i \tag{10.3}
+$$
+
+Gộp hai đạo hàm riêng thành một cặp số, ta có <Term id="gradient">gradient</Term>. Gradient như một mũi tên chỉ hướng **lên dốc** nhanh nhất.
+
+### Hai công thức này nói gì
+
+Dừng lại đọc nghĩa. Phần này quan trọng hơn bản thân phép tính.
+
+**Công thức (10.3)** chỉ cộng các phần dư.
+
+Giả sử đường thẳng nằm **dưới** phần lớn các chấm. Phần dư phần lớn dương, tổng dương. Có dấu trừ phía trước, nên $\partial L / \partial b$ âm.
+
+Lát nữa ta sẽ bước **ngược** hướng gradient. Ngược với số âm là đi lên: $b$ tăng, đường thẳng được nhấc lên, lại gần các chấm hơn. Đúng như mong muốn.
+
+**Công thức (10.2)** cũng cộng phần dư, nhưng mỗi phần dư được nhân với $x_i$ của bạn đó.
+
+Bạn nào ở xa về bên phải (học nhiều giờ) thì có "tiếng nói" lớn hơn khi quyết định xoay độ dốc. Giống cánh tay đòn: đẩy ở đầu xa của thanh gỗ thì thanh xoay mạnh hơn đẩy ở gần trục.
+
+<TuKiemTra
+  cauHoi="Cả bốn chấm đều nằm phía trên đường thẳng hiện tại. Sau một bước cập nhật, b sẽ thế nào?"
+  luaChon={['Tăng', 'Giảm', 'Giữ nguyên']}
+  dapAn={0}
+  giaiThich="Bốn phần dư đều dương nên tổng dương. Theo (10.3), ∂L/∂b mang dấu âm. Bước ngược hướng gradient nghĩa là trừ đi một số âm, nên b tăng và đường thẳng được nhấc lên phía các chấm."
+/>
+
+## Hai con đường xuống đáy bát
+
+### Con đường 1: giải thẳng ra đáp án
+
+Ở đáy bát, cả hai đạo hàm bằng 0. Cho (10.2) và (10.3) bằng 0, ta có hệ hai phương trình với hai ẩn $w$, $b$. Giải ra:
+
+$$
+\begin{gathered}
+w^{*} = \frac{\sum_{i} (x_i - \bar x)(y_i - \bar y)}{\sum_{i} (x_i - \bar x)^2} \\[6pt]
+b^{*} = \bar y - w^{*} \bar x
+\end{gathered} \tag{10.4}
+$$
+
+Gạch ngang trên đầu là trung bình: $\bar x$ là số giờ học trung bình, $\bar y$ là điểm trung bình. Dấu sao nghĩa là "giá trị tốt nhất".
+
+Công thức cho ra đáp án ngay, không cần lặp. Loại công thức như vậy gọi là <Term id="nghiem-dong">nghiệm đóng</Term>. Tên trong sách thống kê là bình phương tối thiểu (OLS, ordinary least squares).
+
+Đọc nghĩa dòng đầu: tử số đo $x$ và $y$ hay lệch **cùng phía** so với trung bình tới mức nào. Mẫu số đo riêng $x$ trải rộng tới mức nào. Tỉ số là: $x$ lệch 1 đơn vị thì $y$ thường lệch theo bao nhiêu. Đó chính là độ dốc.
+
+Dòng hai nói rằng đường thẳng tốt nhất luôn đi qua điểm trung bình $(\bar x, \bar y)$.
+
+<Khung loai="dao-sau" tieuDe="từ đạo hàm bằng 0 đến công thức (10.4)">
+**Dòng hai.** Cho (10.3) bằng 0, tức tổng phần dư bằng 0:
+
+$$
+\sum_i (y_i - w x_i - b) = 0
+$$
+
+Tách tổng thành ba phần:
+
+$$
+\sum_i y_i - w \sum_i x_i - n b = 0
+$$
+
+Chia cả hai vế cho $n$. Tổng chia $n$ chính là trung bình:
+
+$$
+\begin{gathered}
+\bar y - w \bar x - b = 0 \\[4pt]
+\Rightarrow\; b = \bar y - w \bar x
+\end{gathered}
+$$
+
+**Dòng đầu.** Thay $b$ vừa tìm vào phần dư:
+
+$$
+e_i = (y_i - \bar y) - w (x_i - \bar x)
+$$
+
+Cho (10.2) bằng 0, tức $\sum_i x_i e_i = 0$. Ta đã biết $\sum_i e_i = 0$, nên trừ đi $\bar x \sum_i e_i$ (bằng 0) cũng không đổi gì:
+
+$$
+\sum_i (x_i - \bar x)\, e_i = 0
+$$
+
+Thay $e_i$ vào rồi tách thành hai tổng:
+
+$$
+\begin{aligned}
+&\sum_i (x_i - \bar x)(y_i - \bar y) \\
+&\quad - w \sum_i (x_i - \bar x)^2 = 0
+\end{aligned}
+$$
+
+Chuyển tổng thứ hai sang vế phải rồi chia, ra đúng dòng đầu của (10.4).
+</Khung>
+
+### Con đường 2: đi từng bước xuống dốc
+
+Tưởng tượng bạn đứng trên sườn đồi trong sương mù dày đặc. Không thấy đáy thung lũng ở đâu. Bạn chỉ cảm nhận được mặt đất dưới chân dốc về phía nào.
+
+Cách xuống: bước một bước về phía dốc xuống. Đứng lại, cảm nhận lại độ dốc. Bước tiếp. Lặp lại cho tới khi mặt đất bằng phẳng.
+
+Đó là <Term id="gradient-descent">gradient descent</Term>. Viết thành công thức:
+
+$$
+\begin{gathered}
+w \leftarrow w - \eta \, \frac{\partial L}{\partial w} \\[6pt]
+b \leftarrow b - \eta \, \frac{\partial L}{\partial b}
+\end{gathered} \tag{10.5}
+$$
+
+Mũi tên $\leftarrow$ nghĩa là "thay giá trị cũ bằng giá trị mới".
+
+Dấu trừ là "đi ngược hướng gradient". Gradient chỉ hướng lên dốc, ta muốn xuống dốc nên đi ngược lại.
+
+Chữ $\eta$ (đọc là "ê-ta") là <Term id="learning-rate">learning rate</Term>, độ dài mỗi bước chân. Ta tự chọn con số này trước khi chạy.
+
+<Khung loai="vi-sao" tieuDe="GRADIENT DESCENT KHI ĐÃ CÓ CÔNG THỨC GIẢI THẲNG">
+Với 4 bạn và 1 đặc trưng, công thức (10.4) cho đáp án tức thì. Vậy học gradient descent làm gì?
+
+Vì bài toán thật không nhỏ như vậy.
+
+Khi có $d$ đặc trưng, nghiệm đóng phải nghịch đảo một bảng số $d \times d$. Việc đó tốn khoảng $d^3$ phép tính. Với $d = 10\,000$ là $10^{12}$ phép tính, và phải giữ cả bảng trong bộ nhớ.
+
+Tệ hơn, ngay khi mô hình có một hàm uốn cong ở giữa, như mọi mạng nơ-ron, thì **không còn** công thức giải thẳng nào nữa.
+
+Gradient descent chỉ cần tính đạo hàm, việc máy làm rất nhanh. Nên nó là phương pháp chung của cả deep learning.
+
+Ta học nó trên bài toán đơn giản nhất, để nhìn rõ từng bước.
+</Khung>
+
+## Bước chân dài bao nhiêu
+
+Chương này dùng $\eta = 0{,}05$. Con số đó từ đâu ra?
+
+<Khung loai="vi-sao" tieuDe="η = 0,05">
+Learning rate là **độ dài mỗi bước chân** khi đi xuống dốc.
+
+Bước quá ngắn: đi đúng đường nhưng lâu tới đáy (đường xám, [Hình 10.2](/ai-engineer/ch10-hoi-quy-tuyen-tinh/05-doc-ket-qua/#đường-cong-loss-và-learning-rate)).
+
+Bước quá dài: nhảy vọt qua đáy, sang sườn bên kia ở chỗ còn cao hơn chỗ cũ, càng nhảy càng xa (đường đỏ).
+
+Với dữ liệu 4 bạn sinh viên, bước dài hơn khoảng 0,12 là bắt đầu nhảy loạn. 0,05 nằm an toàn dưới ngưỡng đó mà vẫn đủ nhanh.
+
+Điều quan trọng: ngưỡng này phụ thuộc vào con số trong dữ liệu. Đổi giờ sang phút (số lớn gấp 60) thì cùng bước chân 0,05 sẽ nổ ngay. Vì vậy người ta luôn đưa dữ liệu về cùng cỡ nhỏ trước khi huấn luyện, gọi là <Term id="chuan-hoa">**chuẩn hóa**</Term>.
+
+*(Muốn biết vì sao ngưỡng đúng là 0,12? Xem khung "Đào sâu" bên dưới.)*
+</Khung>
+
+Đừng tin lời, hãy tự kéo. Thanh trượt dưới đây chạy gradient descent thật trên 4 bạn, 40 bước, và vẽ loss theo từng bước.
+
+<ThuNgayLearningRate />
+
+Thử ba chỗ: 0,005 (đi chậm), 0,05 (vừa), rồi kéo qua 0,12.
+
+Thử cả 0,11, sát ngưỡng mà chưa vượt. Nó vẫn tới đáy, nhưng mấy bước đầu chậm hẳn: sau bước 1, loss còn khoảng 16,5, trong khi với 0,05 đã xuống 0,69. Bước chân dài quá nên cứ dội qua dội lại giữa hai vách thung lũng.
+
+Vì vậy người ta không chọn sát ngưỡng. Dữ liệu chỉ cần đổi một chút là ngưỡng dịch theo, và bước sát ngưỡng thành bước vượt ngưỡng. Đứng cách mép vực một quãng là thói quen an toàn.
+
+<Khung loai="dao-sau" tieuDe="vì sao ngưỡng là 0,12">
+**Một chiều trước.** Tưởng tượng cái bát chỉ có một chiều, hình parabol $L(u) = \tfrac{\lambda}{2} u^2$. Ở đây $u$ là khoảng cách tới đáy, còn $\lambda$ đo độ cong: $\lambda$ càng lớn, vách bát càng dốc.
+
+Đạo hàm là $\lambda u$. Một bước gradient descent:
+
+$$
+u \leftarrow u - \eta \lambda u = (1 - \eta \lambda)\, u.
+$$
+
+Mỗi bước, khoảng cách tới đáy bị nhân với $(1 - \eta\lambda)$.
+
+- Nếu $|1 - \eta\lambda| < 1$, khoảng cách co lại: hội tụ.
+- Nếu $|1 - \eta\lambda| > 1$, khoảng cách phình ra: phát nổ.
+
+Điều kiện $|1 - \eta\lambda| < 1$ tương đương $0 < \eta < 2/\lambda$. Đó là ngưỡng.
+
+**Hai chiều.** Cái bát MSE của ta có hai trục chính (hai trục của các hình elip ở Hình 10.3). Mỗi trục có độ cong riêng. Hai độ cong đó là hai <Term id="tri-rieng">trị riêng</Term> (Chương 5) của ma trận
+
+$$
+H = \frac{2}{n} X^\top X,
+$$
+
+trong đó $X$ là bảng dữ liệu có hai cột: cột $x$ và cột toàn số 1 (cho $b$). Với 4 bạn:
+
+$$
+X^\top X = \begin{pmatrix} \sum x_i^2 & \sum x_i \\ \sum x_i & n \end{pmatrix} = \begin{pmatrix} 30 & 10 \\ 10 & 4 \end{pmatrix}
+$$
+
+Nhân với $\frac{2}{n} = \frac{2}{4}$:
+
+$$
+H = \begin{pmatrix} 15 & 5 \\ 5 & 2 \end{pmatrix}
+$$
+
+Trị riêng của $H$ là nghiệm của $\lambda^2 - 17\lambda + 5 = 0$ (17 là tổng đường chéo, 5 là định thức). Giải ra $\lambda_{\max} = (17 + \sqrt{269})/2 \approx 16{,}70$ và $\lambda_{\min} \approx 0{,}299$.
+
+Bước chân phải an toàn cho **cả hai** trục, nên ngưỡng do trục dốc nhất quyết định:
+
+$$
+\eta < \frac{2}{\lambda_{\max}} \approx \frac{2}{16{,}70} \approx 0{,}1198.
+$$
+
+Làm tròn là 0,12.
+
+**Áp vào các con số đã thấy.**
+
+Với $\eta = 0{,}05$, trục dốc có hệ số $1 - 0{,}05 \times 16{,}70 \approx 0{,}165$: mỗi bước chỉ còn 16,5% khoảng cách. Vì vậy loss rơi thẳng đứng ngay từ bước đầu.
+
+Trục thoải có hệ số $1 - 0{,}05 \times 0{,}299 \approx 0{,}985$: mỗi bước chỉ bớt 1,5%. Vì vậy sau khi rơi xuống thung lũng, các bước bò rất chậm dọc theo đáy. Hai trục chênh nhau khoảng 56 lần, nên thung lũng hẹp và dài.
+
+Với $\eta = 0{,}135$, trục dốc có hệ số $1 - 0{,}135 \times 16{,}70 \approx -1{,}25$. Dấu trừ nghĩa là mỗi bước nhảy sang vách bên kia. Độ lớn 1,25 nghĩa là mỗi lần lại xa đáy hơn 25%. Loss nhân khoảng $1{,}25^2 \approx 1{,}57$ lần mỗi bước: 23,5 thành 37, rồi 58, rồi 91.
+
+**Đổi giờ sang phút.** Mọi $x_i$ nhân 60, nên ô $\sum x_i^2$ trong $X^\top X$ phình ra $60^2 = 3\,600$ lần. Khi đó $\lambda_{\max} \approx 54\,000$ và ngưỡng tụt xuống khoảng $3{,}7 \times 10^{-5}$.
+
+Bước $\eta = 0{,}05$ lớn gấp hơn 1000 lần ngưỡng. Hệ số của trục dốc là khoảng $-2\,700$: mỗi bước, khoảng cách tới đáy nhân 2 700 lần, loss nhân khoảng 7,3 triệu lần. Đây là lý do toán học đứng sau việc phải chuẩn hóa dữ liệu (Chương 14), và lý do mạng nơ-ron hay dùng $\eta$ cỡ $10^{-3}$ đến $10^{-4}$.
+</Khung>
+
+## Tóm lại trang này
+
+Năm công thức, mỗi cái một vai trò:
+
+| Công thức | Vai trò |
+|:---:|:---|
+| (10.1) | Đo đường thẳng sai bao nhiêu: MSE |
+| (10.2), (10.3) | Chỉ hướng làm loss tăng nhanh nhất: gradient |
+| (10.4) | Giải thẳng ra đáp án, chỉ dùng được với bài toán nhỏ và tuyến tính |
+| (10.5) | Đi từng bước xuống đáy, dùng được cho mọi mô hình tính được đạo hàm |
+
+Trang sau, ta cầm bút tính tay cả hai con đường trên đúng 4 bạn sinh viên, để thấy từng con số chạy ra sao.

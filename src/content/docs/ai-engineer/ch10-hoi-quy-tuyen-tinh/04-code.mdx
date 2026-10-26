@@ -1,6 +1,122 @@
 ---
 title: Code
-description: Code - hồi quy tuyến tính.
+description: Tự cài hồi quy tuyến tính bằng gradient descent với NumPy, từng dòng có chú thích, rồi đối chiếu với scikit-learn. Output in trong bài là output thật.
 ---
 
-Nội dung đang được viết.
+import ColabButton from '../../../../components/ColabButton.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+<ColabButton notebook="ch10_hoi_quy_tuyen_tinh.ipynb" />
+
+Bấm nút trên để mở notebook của chương trong Google Colab. Chương này không cần GPU, bản Colab miễn phí là đủ.
+
+## Gradient descent tự viết bằng NumPy
+
+Đoạn code dưới đây làm **đúng** những gì bạn vừa tính tay ở trang trước. Khác biệt duy nhất: lặp 200 lần thay vì 1 lần.
+
+Hãy đọc chậm, đối chiếu từng dòng với công thức (10.1) đến (10.5).
+
+```python
+import numpy as np  # NumPy: thư viện tính toán trên cả mảng số cùng một lúc
+
+# Dữ liệu Bảng 10.1. dtype=float vì lát nữa sẽ nhân chia ra số thập phân
+x = np.array([1, 2, 3, 4], dtype=float)  # giờ tự học mỗi tuần của 4 bạn A, B, C, D
+y = np.array([2, 4, 5, 7], dtype=float)  # điểm thi tương ứng của 4 bạn
+n = len(x)                               # số mẫu dữ liệu, ở đây n = 4
+
+w, b = 0.0, 0.0  # khởi tạo: chưa biết gì nên bắt đầu từ đường nằm ngang y = 0
+lr = 0.05        # learning rate η, xem khung "Vì sao lại là η = 0,05?" ở trang Toán
+
+for buoc in range(201):        # lặp 201 lần (bước 0 đến 200) để in được cả bước 0 lẫn bước 200
+    y_hat = w * x + b          # đoán cho cả 4 bạn cùng lúc: NumPy nhân w với từng phần tử của x
+    e = y - y_hat              # phần dư e_i = y_i - ŷ_i, cũng là một mảng 4 phần tử
+    loss = np.mean(e ** 2)     # MSE, công thức (10.1): bình phương từng phần dư rồi lấy trung bình
+    if buoc % 50 == 0:         # % là phép chia lấy dư: đúng ở bước 0, 50, 100, 150, 200
+        print(f"Bước {buoc:3d} | w = {w:.4f} | b = {b:.4f} | MSE = {loss:.6f}")  # w, b in 4 chữ số thập phân, MSE in 6
+    grad_w = -2 / n * np.sum(x * e)  # công thức (10.2): x * e nhân từng cặp phần tử rồi cộng lại
+    grad_b = -2 / n * np.sum(e)      # công thức (10.3): cộng các phần dư
+    w = w - lr * grad_w              # công thức (10.5): bước ngược hướng gradient
+    b = b - lr * grad_b              # công thức (10.5) cho b, cùng độ dài bước lr
+```
+
+Kết quả khi chạy:
+
+```text title="Output"
+Bước   0 | w = 0.0000 | b = 0.0000 | MSE = 23.500000
+Bước  50 | w = 1.5937 | b = 0.5186 | MSE = 0.050058
+Bước 100 | w = 1.5970 | b = 0.5088 | MSE = 0.050013
+Bước 150 | w = 1.5986 | b = 0.5041 | MSE = 0.050003
+Bước 200 | w = 1.5993 | b = 0.5019 | MSE = 0.050001
+```
+
+### Đọc output
+
+Dòng bước 0 khớp với tính tay: $w = b = 0$, MSE là 23,5.
+
+Dòng bước 200: $w \approx 1{,}5993$, $b \approx 0{,}5019$, MSE $\approx 0{,}050001$. Gần sát đáp án $w = 1{,}6$, $b = 0{,}5$, MSE $= 0{,}05$ của nghiệm đóng.
+
+Để ý một điều lạ. Từ bước 50, MSE đã gần như chạm đáy (0,050058). Nhưng $w$ và $b$ vẫn còn nhích dần qua các bước 100, 150, 200.
+
+Lý do: đáy bát không phải một cái hố tròn, mà là một thung lũng dài và rất thoải. Đi dọc thung lũng, loss gần như không đổi, nên gradient rất nhỏ và bước đi rất ngắn. Bạn sẽ thấy tận mắt thung lũng này ở [Hình 10.3](/ai-engineer/ch10-hoi-quy-tuyen-tinh/05-doc-ket-qua/#mặt-loss).
+
+### Tự kiểm chứng bước 1
+
+Muốn chắc code làm đúng như tính tay? Đổi dòng `if buoc % 50 == 0:` thành `if buoc <= 2:` rồi chạy lại. Ba dòng đầu sẽ là:
+
+```text title="Output"
+Bước   0 | w = 0.0000 | b = 0.0000 | MSE = 23.500000
+Bước   1 | w = 1.3250 | b = 0.4500 | MSE = 0.688437
+Bước   2 | w = 1.5437 | b = 0.5237 | MSE = 0.067615
+```
+
+Dòng bước 1 khớp đúng trang trước: $w = 1{,}325$, $b = 0{,}45$, MSE $\approx 0{,}688$. Dòng bước 2 là đáp án của Bài tập 10.2, hãy tự tính tay trước khi nhìn.
+
+## Mấy chỗ đáng dừng lại trong code
+
+**`x * e` không phải phép nhân ma trận.** Với mảng NumPy, `*` nhân **từng cặp** phần tử ở cùng vị trí: `[1, 2, 3, 4] * [2, 4, 5, 7]` ra `[2, 8, 15, 28]`. Cộng lại được 53, đúng con số $\sum x_i e_i$ đã tính tay.
+
+**Không có vòng lặp qua từng bạn.** Dòng `y_hat = w * x + b` đoán cho cả 4 bạn bằng một phép tính. Viết phép tính cho cả mảng một lần thay vì lặp từng phần tử gọi là <Term id="vector-hoa">vector hóa</Term>. Phần tính toán bên dưới NumPy chạy bằng mã đã biên dịch sẵn, nên nhanh hơn vòng `for` của Python rất nhiều khi dữ liệu lớn.
+
+**Vòng `for buoc` thì không bỏ được.** Mỗi bước cần $w$, $b$ của bước trước. Phải xong bước này mới biết bước sau đứng ở đâu. Chỉ phần tính trong một bước là vector hóa được.
+
+**`-2 / n * np.sum(...)`** là $-\frac{2}{n}\sum$ viết theo thứ tự trái sang phải. Python tính `-2 / n` trước, ra $-0{,}5$, rồi nhân với tổng.
+
+## Đối chiếu với scikit-learn
+
+Ngoài đời, không ai tự viết vòng lặp cho hồi quy tuyến tính. Ta dùng thư viện scikit-learn. Nhưng chính vì đã tự viết, giờ bạn biết thư viện đang làm gì bên trong.
+
+```python
+from sklearn.linear_model import LinearRegression  # mô hình hồi quy tuyến tính có sẵn của scikit-learn
+
+X = x.reshape(-1, 1)          # sklearn cần X là bảng (số mẫu, số đặc trưng): đổi hình dạng từ (4,) thành (4, 1)
+mo_hinh = LinearRegression()  # tạo mô hình rỗng, chưa học gì
+mo_hinh.fit(X, y)             # "học": giải thẳng bằng nghiệm đóng, không lặp từng bước
+print("w =", mo_hinh.coef_[0])      # coef_ là mảng các w, mỗi đặc trưng một số; ở đây chỉ có 1
+print("b =", mo_hinh.intercept_)    # intercept_ là hệ số chặn b
+print("R² =", mo_hinh.score(X, y))  # score trả về R², trang Đọc kết quả sẽ giải thích
+```
+
+```text title="Output"
+w = 1.5999999999999996
+b = 0.5000000000000009
+R² = 0.9846153846153847
+```
+
+$w$ và $b$ trùng với nghiệm đóng: 1,6 và 0,5.
+
+Số `1.5999999999999996` chính là 1,6. Máy tính lưu số thực bằng khoảng 16 chữ số có nghĩa, nên lệch ở chữ số cuối cùng là chuyện bình thường. Khi so hai số thực trong code, đừng dùng `==`, hãy xem chúng có đủ gần nhau không.
+
+Dòng cuối là <Term id="r-binh-phuong">R bình phương</Term>, một cách chấm điểm đường hồi quy trên thang 0 đến 1. Trang sau sẽ tính tay ra đúng con số này.
+
+`reshape(-1, 1)` cần giải thích thêm. scikit-learn luôn coi dữ liệu là một **bảng**: mỗi dòng một mẫu, mỗi cột một đặc trưng. `x` của ta là dãy 4 số, chưa phải bảng. `reshape(-1, 1)` nghĩa là "xếp thành 1 cột, số dòng thì tự tính" (số $-1$ là "tự tính"). Kết quả là bảng 4 dòng, 1 cột.
+
+<Khung loai="loi">
+**Quên dấu trừ khi cập nhật.** Viết `w = w + lr * grad_w` là bước **theo** hướng gradient, tức leo lên dốc. Loss tăng không ngừng: chạy thử, đến bước 50 MSE đã vượt $10^{27}$.
+
+**Lặp `for` qua từng bạn để tính tổng.** Kết quả vẫn đúng, nhưng chậm hẳn khi có hàng triệu mẫu. Thấy mình viết `for i in range(n)` bên trong vòng huấn luyện là lúc nghĩ tới vector hóa.
+
+**Quên chia cho $n$.** Bỏ `/ n` thì bước chân thực tế dài gấp $n$ lần. Với 4 bạn, bước chân thành 0,2, vượt ngưỡng 0,12, và loss phát nổ ngay. Với dữ liệu lớn hơn còn tệ hơn: cùng một $\eta$, dữ liệu càng nhiều càng dễ nổ.
+
+**Dùng `y_hat` của bước trước.** Phải tính lại `y_hat` và `e` ở **đầu mỗi bước**, sau khi $w$, $b$ đã đổi. Đặt sai chỗ là gradient luôn trễ một nhịp.
+</Khung>

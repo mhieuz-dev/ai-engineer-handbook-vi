@@ -1,6 +1,185 @@
 ---
 title: Tính tay một ví dụ nhỏ
-description: Tính tay một ví dụ nhỏ - hồi quy tuyến tính.
+description: Cầm bút tính tay hồi quy tuyến tính trên 4 sinh viên, bằng nghiệm đóng và bằng một bước gradient descent, thấy từng con số chạy ra sao.
 ---
 
-Nội dung đang được viết.
+import Khung from '../../../../components/Khung.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+Công thức chỉ thật sự "vào đầu" khi bạn tự tay thay số.
+
+Trang này dùng đúng 4 bạn ở Bảng 10.1: giờ học $x = 1, 2, 3, 4$ và điểm $y = 2, 4, 5, 7$.
+
+Ta đi cả hai con đường của trang trước. Bạn nên lấy giấy bút tính theo, rồi so với số trong bài.
+
+## Con đường 1: nghiệm đóng
+
+### Bước 1: tính hai trung bình
+
+$$
+\begin{gathered}
+\bar x = \frac{1 + 2 + 3 + 4}{4} = 2{,}5 \\[6pt]
+\bar y = \frac{2 + 4 + 5 + 7}{4} = 4{,}5
+\end{gathered}
+$$
+
+Trung bình mỗi bạn học 2,5 giờ và được 4,5 điểm.
+
+### Bước 2: mỗi bạn lệch khỏi trung bình bao nhiêu
+
+Lập bảng. Mỗi dòng là một bạn. Ví dụ bạn A học 1 giờ, lệch trung bình $1 - 2{,}5 = -1{,}5$; được 2 điểm, lệch $2 - 4{,}5 = -2{,}5$.
+
+Cột "tích" là tích của hai cột trước nó. Hai cột cuối là hai thứ cần cộng trong công thức (10.4).
+
+| Bạn | $x_i - \bar x$ | $y_i - \bar y$ | tích | $(x_i - \bar x)^2$ |
+|:---:|:---:|:---:|:---:|:---:|
+| A | −1,5 | −2,5 | 3,75 | 2,25 |
+| B | −0,5 | −0,5 | 0,25 | 0,25 |
+| C | 0,5 | 0,5 | 0,25 | 0,25 |
+| D | 1,5 | 2,5 | 3,75 | 2,25 |
+| **Tổng** | **0** | **0** | **8** | **5** |
+
+Hai cột độ lệch cộng lại đều bằng 0. Luôn như vậy: độ lệch so với trung bình bao giờ cũng bù trừ nhau. Đây là cách tự kiểm tra nhanh xem tính trung bình có đúng không.
+
+Để ý cột tích: cả bốn số đều dương.
+
+Đó là vì bạn nào học ít hơn trung bình (A, B) thì điểm cũng thấp hơn trung bình, hai số âm nhân nhau ra dương. Bạn nào học nhiều hơn (C, D) thì điểm cũng cao hơn, hai số dương. Học và điểm luôn lệch **cùng phía**, nên độ dốc sẽ dương.
+
+### Bước 3: thay vào công thức (10.4)
+
+$$
+\begin{gathered}
+w^{*} = \frac{8}{5} = 1{,}6 \\[6pt]
+b^{*} = 4{,}5 - 1{,}6 \times 2{,}5 = 0{,}5
+\end{gathered}
+$$
+
+Mô hình tìm được là:
+
+$$
+\hat y = 1{,}6\,x + 0{,}5
+$$
+
+Nói bằng lời: **mỗi giờ tự học thêm mỗi tuần đi kèm khoảng 1,6 điểm thi**.
+
+Còn $b = 0{,}5$ có nghĩa "không học giờ nào thì được 0,5 điểm" không? Không nên hiểu vậy. Trong dữ liệu không có ai học 0 giờ. Kéo đường thẳng ra ngoài vùng có dữ liệu là đoán liều. Ở đây $b$ chỉ là chỗ để đường thẳng đặt cho đúng độ cao.
+
+### Bước 4: kiểm tra lại
+
+Dùng mô hình đoán cho từng bạn, $\hat y_i = 1{,}6x_i + 0{,}5$, rồi tính phần dư $e_i = y_i - \hat y_i$:
+
+| Bạn | $x_i$ | $y_i$ | $\hat y_i$ | $e_i$ | $e_i^2$ |
+|:---:|:---:|:---:|:---:|:---:|:---:|
+| A | 1 | 2 | 2,1 | −0,1 | 0,01 |
+| B | 2 | 4 | 3,7 | +0,3 | 0,09 |
+| C | 3 | 5 | 5,3 | −0,3 | 0,09 |
+| D | 4 | 7 | 6,9 | +0,1 | 0,01 |
+
+MSE là trung bình cột cuối:
+
+$$
+\begin{aligned}
+L &= \frac{0{,}01 + 0{,}09 + 0{,}09 + 0{,}01}{4} \\[4pt]
+&= \frac{0{,}2}{4} = 0{,}05
+\end{aligned}
+$$
+
+Đây là mức loss **thấp nhất có thể** với 4 bạn này. Không đường thẳng nào làm tốt hơn 0,05, vì bốn chấm vốn không thẳng hàng.
+
+Thêm một chi tiết: cộng cột $e_i$ lại, $-0{,}1 + 0{,}3 - 0{,}3 + 0{,}1 = 0$. Không phải trùng hợp. Ở đáy bát, công thức (10.3) bằng 0, mà (10.3) chính là tổng phần dư nhân với một hằng số.
+
+## Con đường 2: một bước gradient descent
+
+Giờ giả vờ ta không biết công thức (10.4). Ta dò đáy bằng cách bước từng bước.
+
+Khởi đầu chọn đại $w = 0$, $b = 0$, tức đường nằm ngang sát trục. Bước chân $\eta = 0{,}05$.
+
+### Bước 1: đoán và đo sai số
+
+Với $w = b = 0$, đường thẳng đoán ai cũng được 0 điểm. Phần dư chính là điểm thật:
+
+$$
+e = (2,\ 4,\ 5,\ 7)
+$$
+
+$$
+\begin{aligned}
+L &= \frac{2^2 + 4^2 + 5^2 + 7^2}{4} \\[4pt]
+&= \frac{4 + 16 + 25 + 49}{4} = \frac{94}{4} = 23{,}5
+\end{aligned}
+$$
+
+Loss rất lớn. Hợp lý, vì đường nằm sát đáy, xa tít bốn chấm.
+
+### Bước 2: tính gradient
+
+Theo (10.2), cần tổng $x_i e_i$. Nhân từng cặp giờ học với phần dư: $1 \times 2 = 2$, $2 \times 4 = 8$, $3 \times 5 = 15$, $4 \times 7 = 28$. Cộng lại:
+
+$$
+\sum x_i e_i = 2 + 8 + 15 + 28 = 53
+$$
+
+$$
+\frac{\partial L}{\partial w} = -\frac{2}{4} \times 53 = -26{,}5
+$$
+
+Theo (10.3), cần tổng $e_i$:
+
+$$
+\sum e_i = 2 + 4 + 5 + 7 = 18
+$$
+
+$$
+\frac{\partial L}{\partial b} = -\frac{2}{4} \times 18 = -9
+$$
+
+Cả hai đạo hàm đều âm. Nghĩa là: tăng $w$ hay tăng $b$ thì loss đều giảm. Đúng với hình dung, đường thẳng đang nằm quá thấp và quá thoải.
+
+### Bước 3: cập nhật
+
+Theo (10.5):
+
+$$
+\begin{gathered}
+w = 0 - 0{,}05 \times (-26{,}5) = 1{,}325 \\[6pt]
+b = 0 - 0{,}05 \times (-9) = 0{,}45
+\end{gathered}
+$$
+
+### Kiểm tra sau một bước
+
+Đường thẳng mới là $\hat y = 1{,}325x + 0{,}45$:
+
+| Bạn | $\hat y_i$ | $e_i$ | $e_i^2$ |
+|:---:|:---:|:---:|:---:|
+| A | 1,775 | 0,225 | 0,050625 |
+| B | 3,1 | 0,9 | 0,81 |
+| C | 4,425 | 0,575 | 0,330625 |
+| D | 5,75 | 1,25 | 1,5625 |
+
+Cộng cột cuối: $0{,}050625 + 0{,}81 + 0{,}330625 + 1{,}5625 = 2{,}75375$. Chia cho 4:
+
+$$
+L = \frac{2{,}75375}{4} \approx 0{,}688
+$$
+
+**Chỉ một bước, loss từ 23,5 xuống 0,688, tức giảm hơn 97%.**
+
+Vì sao bước đầu nhảy xa thế? Vì quãng đường mỗi bước là $\eta \times$ độ dốc. Bước chân $\eta$ cố định, nhưng ở xa đáy thì dốc rất đứng (−26,5), nên quãng đi dài. Càng gần đáy, dốc càng thoải, quãng đi tự ngắn lại. Không ai phải ra lệnh "đi chậm lại".
+
+So với đáp án: sau một bước, $w = 1{,}325$ (đích là 1,6) và $b = 0{,}45$ (đích là 0,5). Đã gần, nhưng chưa tới. Vòng lặp sẽ làm tiếp phần còn lại.
+
+<TuKiemTra
+  cauHoi="Ở bước thứ hai, độ lớn của ∂L/∂w sẽ thế nào so với 26,5 của bước đầu?"
+  luaChon={['Lớn hơn 26,5', 'Gần bằng 26,5', 'Nhỏ hơn nhiều']}
+  dapAn={2}
+  giaiThich="Sau bước 1, các phần dư chỉ còn 0,225; 0,9; 0,575; 1,25 thay vì 2; 4; 5; 7. Tổng x·e nhỏ đi nhiều, nên độ dốc cũng nhỏ đi nhiều. Bài tập 10.2 cho bạn tính con số chính xác."
+/>
+
+<Khung loai="loi">
+**Đảo chiều phần dư.** Chương này định nghĩa $e_i = y_i - \hat y_i$ (thật trừ đoán). Có sách viết ngược lại, $\hat y_i - y_i$. Cả hai đều được, nhưng dấu trừ trong (10.2) và (10.3) đảo theo. Trộn định nghĩa của sách này với công thức của sách kia là bước lên dốc thay vì xuống dốc.
+
+**Quên rằng $e_i$ đổi sau mỗi bước.** Gradient luôn tính bằng phần dư **của đường thẳng hiện tại**. Bước 2 phải tính lại phần dư từ $w = 1{,}325$, $b = 0{,}45$, không dùng lại $(2, 4, 5, 7)$.
+</Khung>
+
+Tính tay một bước đã thấy mệt. Trang sau giao việc lặp cho máy: vẫn đúng các phép tính này, chỉ là chạy 200 lần.

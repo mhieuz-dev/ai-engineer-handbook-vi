@@ -1,6 +1,146 @@
 ---
 title: Bài tập
-description: Bài tập - hồi quy tuyến tính.
+description: Ba bài tập hồi quy tuyến tính có đáp án chi tiết (tính tay nghiệm đóng, tính tay gradient descent, dự đoán rồi chạy kiểm chứng) và câu hỏi phỏng vấn.
 ---
 
-Nội dung đang được viết.
+import BaiTap from '../../../../components/BaiTap.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Ba bài dưới đây không cần công thức mới. Mỗi bài kiểm tra một ý của chương.
+
+Hãy làm ra giấy trước. Với mỗi bài, **đoán kết quả trước khi tính**, rồi so đoán với đáp án. Chỗ đoán sai chính là chỗ đáng học nhất.
+
+<BaiTap so="10.1">
+**Thêm một bạn vào lớp.** Bạn E học 5 giờ mỗi tuần và được 6 điểm $(x = 5,\ y = 6)$.
+
+Dùng 5 bạn A đến E, tính tay lại $w^{*}$ và $b^{*}$ bằng công thức (10.4).
+
+Trước khi tính, hãy đoán: độ dốc sẽ tăng hay giảm so với 1,6? Sau khi tính, giải thích vì sao kết quả hợp lý khi nhìn vị trí của E so với bốn bạn kia.
+
+<Fragment slot="dap-an">
+
+Trung bình mới: $\bar x = 15/5 = 3$ và $\bar y = 24/5 = 4{,}8$.
+
+Mỗi dòng là một bạn, theo thứ tự A đến E. Dòng cuối là tổng.
+
+| $x_i - \bar x$ | $y_i - \bar y$ | tích | $(x_i - \bar x)^2$ |
+|:---:|:---:|:---:|:---:|
+| −2 | −2,8 | 5,6 | 4 |
+| −1 | −0,8 | 0,8 | 1 |
+| 0 | 0,2 | 0 | 0 |
+| 1 | 2,2 | 2,2 | 1 |
+| 2 | 1,2 | 2,4 | 4 |
+| **0** | **0** | **11** | **10** |
+
+Hai cột đầu cộng lại bằng 0, đúng như phép tự kiểm tra ở trang Tính tay.
+
+$$
+\begin{gathered}
+w^{*} = \frac{11}{10} = 1{,}1 \\[6pt]
+b^{*} = 4{,}8 - 1{,}1 \times 3 = 1{,}5
+\end{gathered}
+$$
+
+Độ dốc **giảm** từ 1,6 xuống 1,1.
+
+Lý do: E học nhiều nhất lớp nhưng điểm lại thấp hơn D. Chấm E nằm thấp hơn hẳn chỗ đường thẳng cũ đi qua (đường cũ đoán E được $1{,}6 \times 5 + 0{,}5 = 8{,}5$ điểm).
+
+E lại đứng ở đầu phải, xa trung bình nhất $(x_E - \bar x = 2)$. Nhớ hình ảnh cánh tay đòn ở công thức (10.2): điểm càng xa thì kéo đường thẳng xoay càng mạnh. E kéo đầu phải của đường thẳng xuống, nên đường thẳng nằm thoải ra.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="10.2">
+**Bước gradient descent thứ hai.** Sau bước 1 ở trang Tính tay, ta có $w = 1{,}325$ và $b = 0{,}45$.
+
+Tính tay bước thứ hai với $\eta = 0{,}05$: phần dư, hai đạo hàm riêng, $w$ và $b$ mới, rồi MSE mới.
+
+Gợi ý: phần dư của bước này đã có sẵn trong bảng "Kiểm tra sau một bước" ở trang Tính tay.
+
+<Fragment slot="dap-an">
+
+**Phần dư.** Đường thẳng hiện tại đoán 1,775; 3,1; 4,425; 5,75. Trừ khỏi điểm thật 2; 4; 5; 7, ta được phần dư 0,225; 0,9; 0,575; 1,25.
+
+**Gradient.** Nhân từng cặp giờ học với phần dư: $1 \times 0{,}225 = 0{,}225$, $2 \times 0{,}9 = 1{,}8$, $3 \times 0{,}575 = 1{,}725$, $4 \times 1{,}25 = 5$. Cộng lại:
+
+$$
+\begin{aligned}
+\sum x_i e_i &= 0{,}225 + 1{,}8 \\
+&\quad + 1{,}725 + 5 \\
+&= 8{,}75 \\[4pt]
+\sum e_i &= 2{,}95
+\end{aligned}
+$$
+
+$$
+\begin{gathered}
+\frac{\partial L}{\partial w} = -\frac{2}{4} \times 8{,}75 = -4{,}375 \\[6pt]
+\frac{\partial L}{\partial b} = -\frac{2}{4} \times 2{,}95 = -1{,}475
+\end{gathered}
+$$
+
+**Cập nhật.**
+
+$$
+\begin{aligned}
+w &= 1{,}325 + 0{,}05 \times 4{,}375 \\
+&= 1{,}325 + 0{,}21875 = 1{,}54375
+\end{aligned}
+$$
+
+$$
+\begin{aligned}
+b &= 0{,}45 + 0{,}05 \times 1{,}475 \\
+&= 0{,}45 + 0{,}07375 = 0{,}52375
+\end{aligned}
+$$
+
+**MSE mới.** Đường thẳng mới đoán 2,0675; 3,61125; 5,155; 6,69875. Phần dư là −0,0675; 0,38875; −0,155; 0,30125. Bình phương rồi lấy trung bình, được MSE ≈ 0,0676.
+
+Loss đi từ 0,688 xuống 0,0676, giảm thêm khoảng 90%. Gradient bước này nhỏ hơn bước đầu khoảng 6 lần (4,375 so với 26,5), đúng như câu Tự kiểm tra ở trang Tính tay.
+
+Lần đầu tiên xuất hiện phần dư âm: ở A và C, đường thẳng đã đoán **cao** hơn điểm thật. Đường thẳng không còn nằm dưới mọi chấm, nó đã chen vào giữa.
+
+**Đối chiếu với máy.** Sửa code trang Code thành `if buoc <= 2:`, dòng thứ ba in ra `Bước   2 | w = 1.5437 | b = 0.5237 | MSE = 0.067615`. Máy chỉ in 4 chữ số thập phân cho $w$, $b$, còn lại khớp với tính tay.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="10.3">
+**Đổi giờ sang phút.** Trong code ở trang Code, đổi dòng dữ liệu thành `x = np.array([1, 2, 3, 4], dtype=float) * 60` (giờ học tính bằng phút), giữ nguyên $\eta = 0{,}05$.
+
+Trước khi chạy, hãy đoán và viết ra: output sẽ trông thế nào? Rồi chạy để kiểm chứng.
+
+<Fragment slot="dap-an">
+
+**Output thật.** Dòng bước 0 vẫn là `MSE = 23.500000`, vì $w = b = 0$ thì đơn vị của $x$ chưa ảnh hưởng gì.
+
+Dòng bước 50 in ra `MSE = inf`, với $w$ và $b$ là hai số âm dài hơn 160 chữ số. Từ bước 100 trở đi, cả $w$, $b$ lẫn MSE đều là `nan`. NumPy còn in thêm cảnh báo `RuntimeWarning: overflow encountered`.
+
+**Chuyện gì xảy ra ở giữa.** Nếu in từng bước, bạn sẽ thấy loss nổ ngay từ bước 1: khoảng $1{,}7 \times 10^{8}$, rồi $1{,}2 \times 10^{15}$ ở bước 2. Mỗi bước loss nhân khoảng 7,3 triệu lần.
+
+Số thực lớn nhất máy lưu được là khoảng $1{,}8 \times 10^{308}$. Tới bước 45, MSE vượt mức đó và máy ghi là `inf` (vô cực). Khi các số đã thành vô cực, những phép như vô cực trừ vô cực không có kết quả, máy ghi là `nan` (not a number). Từ bước 91, mọi thứ đều là `nan`.
+
+**Vì sao.** Số giờ nhân 60, các con số trong dữ liệu lớn hẳn lên, vách bát dốc đứng hơn rất nhiều. Ngưỡng an toàn của $\eta$ tụt từ khoảng 0,12 xuống khoảng $3{,}7 \times 10^{-5}$ (khung Đào sâu "vì sao ngưỡng là 0,12" ở trang Toán). Bước chân 0,05 dài gấp hơn 1000 lần ngưỡng.
+
+**Sửa thế nào.** Hoặc chọn $\eta$ nhỏ hơn $3{,}7 \times 10^{-5}$, nhưng khi đó $b$ học cực chậm. Hoặc tốt hơn: **chuẩn hóa** $x$ về cỡ nhỏ trước khi huấn luyện, rồi dùng $\eta$ bình thường. Đây là việc ai cũng làm trước khi huấn luyện mạng nơ-ron.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+**1. Vì sao MSE nhạy với outlier? Khi dữ liệu có nhiều outlier, bạn làm gì?**
+
+*Gợi ý:* bình phương làm sai số lớn bị phạt rất nặng, một điểm sai có thể kéo lệch cả đường. Có thể dùng MAE hoặc Huber loss, hoặc kiểm tra và xử lý dữ liệu trước (điểm đó là lỗi nhập liệu hay là hiện tượng thật?).
+
+**2. Khi nào dùng nghiệm đóng, khi nào dùng gradient descent?**
+
+*Gợi ý:* nghiệm đóng cần nghịch đảo ma trận $d \times d$, tốn cỡ $d^3$ phép tính và giữ cả ma trận trong bộ nhớ. Ít đặc trưng thì nghiệm đóng nhanh và chính xác. Nhiều đặc trưng, dữ liệu không vừa bộ nhớ, hoặc mô hình phi tuyến thì dùng gradient descent.
+
+**3. Loss đang giảm thì đột ngột thành `nan`. Ba thứ đầu tiên bạn kiểm tra là gì?**
+
+*Gợi ý:* learning rate có quá lớn không; dữ liệu đã chuẩn hóa chưa, có cột nào số rất lớn không; dữ liệu có sẵn `nan` hay `inf`, hoặc có phép chia cho 0, lấy log của 0 không.
+
+**4. Mô hình có R² = 0,95. Bạn có kết luận mô hình đúng không?**
+
+*Gợi ý:* chưa. R² cao chỉ nói đường thẳng bám dữ liệu sát. Phải vẽ đồ thị phần dư: có hình chữ U hay hình phễu thì dạng mô hình chưa đúng. Ngoài ra R² trên dữ liệu huấn luyện không nói gì về dữ liệu mới.
+</Khung>
+
+Xong chương 10. Bạn vừa đi trọn vòng lặp sẽ gặp lại ở mọi chương sau: đoán, đo sai số, tính gradient, cập nhật.

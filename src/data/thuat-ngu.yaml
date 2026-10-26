@@ -63,3 +63,48 @@
   tenTiengAnh: closed-form solution
   giaiThich: Nghiệm đóng là công thức cho ra đáp án ngay, không cần lặp nhiều bước. Với hồi quy tuyến tính, w và b tính được bằng vài phép nhân ma trận. Ở đây dùng để đối chiếu với kết quả của gradient descent.
   hocKy: ai-engineer/ch10-hoi-quy-tuyen-tinh
+- id: hoi-quy-tuyen-tinh
+  ten: Hồi quy tuyến tính
+  tenTiengAnh: linear regression
+  giaiThich: Hồi quy tuyến tính là cách tìm một đường thẳng đi gần nhất với các điểm dữ liệu, để từ một con số đoán ra một con số khác. Nó là viên gạch đầu tiên của mạng nơ-ron. Ở đây đường thẳng có dạng ŷ = wx + b.
+  hocKy: ai-engineer/ch10-hoi-quy-tuyen-tinh
+- id: tham-so
+  ten: Tham số
+  tenTiengAnh: parameter
+  giaiThich: Tham số là những con số bên trong mô hình mà máy tự chỉnh trong lúc học, như hai núm vặn. Học xong, mô hình chỉ là các tham số đã vặn đúng chỗ. Ở đây có hai tham số là w và b.
+  hocKy: ai-engineer/ch09-quy-trinh-du-an-ml
+- id: dac-trung
+  ten: Đặc trưng
+  tenTiengAnh: feature
+  giaiThich: Đặc trưng là một thông tin đầu vào mà mô hình dùng để đoán, như một cột trong bảng dữ liệu. Một bài toán có thể có một hay hàng nghìn đặc trưng. Ở đây chỉ có một đặc trưng là số giờ tự học.
+  hocKy: ai-engineer/ch09-quy-trinh-du-an-ml
+- id: quy-tac-chuoi
+  ten: Quy tắc chuỗi
+  tenTiengAnh: chain rule
+  giaiThich: Quy tắc chuỗi dùng để lấy đạo hàm của một hàm lồng trong hàm khác. Đạo hàm lớp ngoài nhân với đạo hàm lớp trong. Ở đây dùng để lấy đạo hàm của bình phương sai số theo w và b.
+  hocKy: ai-engineer/ch06-giai-tich
+- id: tri-rieng
+  ten: Trị riêng
+  tenTiengAnh: eigenvalue
+  giaiThich: Trị riêng của một ma trận cho biết ma trận đó kéo giãn mạnh bao nhiêu theo từng hướng đặc biệt của nó. Hướng có trị riêng lớn là hướng bị kéo mạnh nhất. Ở đây trị riêng đo độ dốc của cái bát hàm mất mát theo từng hướng.
+  hocKy: ai-engineer/ch05-dai-so-tuyen-tinh
+- id: hop-ly-cuc-dai
+  ten: Ước lượng hợp lý cực đại
+  tenTiengAnh: maximum likelihood estimation
+  giaiThich: Ước lượng hợp lý cực đại là chọn tham số sao cho dữ liệu đã thấy có xác suất xảy ra cao nhất. Nó là lý do sâu xa của nhiều hàm mất mát quen thuộc. Ở đây nó giải thích vì sao MSE dùng bình phương.
+  hocKy: ai-engineer/ch07-xac-suat-thong-ke
+- id: mae
+  ten: MAE
+  tenTiengAnh: mean absolute error
+  giaiThich: MAE là trung bình của trị tuyệt đối độ lệch giữa dự đoán và giá trị thật. Nó không bình phương nên ít bị một điểm lệch xa kéo đi. Ở đây là phương án thay MSE khi dữ liệu có outlier.
+  hocKy: ai-engineer/ch12-danh-gia-mo-hinh
+- id: thang-log
+  ten: Thang log
+  tenTiengAnh: logarithmic scale
+  giaiThich: Thang log là trục mà mỗi vạch lớn gấp 10 lần vạch ngay dưới, thay vì cộng thêm một khoảng đều. Nhờ vậy số rất nhỏ và số rất lớn cùng nằm vừa một hình. Ở đây dùng để vẽ MSE trải từ 0,05 đến hơn một tỷ.
+  hocKy: ai-engineer/ch04-pandas-va-matplotlib
+- id: tuong-quan
+  ten: Tương quan
+  tenTiengAnh: correlation
+  giaiThich: Tương quan là hai đại lượng hay đi cùng nhau, cái này lớn thì cái kia cũng hay lớn (hoặc hay nhỏ). Tương quan không có nghĩa cái này gây ra cái kia. Ở đây hồi quy chỉ đo tương quan giữa giờ học và điểm.
+  hocKy: ai-engineer/ch07-xac-suat-thong-ke
