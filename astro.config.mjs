@@ -14,8 +14,8 @@ export default defineConfig({
 		processor: unified({ remarkPlugins: [remarkMath], rehypePlugins: [rehypeKatex] }),
 	},
 	integrations: [
-		// Tự khai báo sitemap (Starlight sẽ bỏ qua bản của nó) để loại trang in PDF.
-		sitemap({ filter: (url) => !new URL(url).pathname.startsWith('/in/') }),
+		// Tự khai báo sitemap (Starlight sẽ bỏ qua bản của nó) để loại trang in PDF và trang mẫu cho e2e.
+		sitemap({ filter: (url) => !/^\/(in|kiem-thu)\//.test(new URL(url).pathname) }),
 		starlight({
 			title: 'AI & Robotics',
 			defaultLocale: 'root',

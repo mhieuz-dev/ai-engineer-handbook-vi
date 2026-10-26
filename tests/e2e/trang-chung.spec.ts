@@ -15,6 +15,13 @@ test('trang chủ: tiêu đề, hai thẻ nhánh, nút Bắt đầu học', asyn
 	await expect(page.getByText('Cách học trên trang này')).toBeVisible();
 });
 
+test('sitemap không chứa trang mẫu kiểm thử và trang in', async ({ request }) => {
+	const xml = await (await request.get('/sitemap-0.xml')).text();
+	expect(xml).toContain('/ai-engineer/ch10-hoi-quy-tuyen-tinh/01-truc-giac/');
+	expect(xml).not.toContain('/kiem-thu/');
+	expect(xml).not.toContain('/in/');
+});
+
 test('lộ trình: 65 dòng chương, chỉ chương 10 là link, còn lại có nhãn Sắp có', async ({ page }) => {
 	await page.goto('/lo-trinh/');
 	const dong = page.locator('li[id^="ch"]');
