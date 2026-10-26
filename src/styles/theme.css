@@ -220,3 +220,9 @@ pre,
 	.in-muc { break-before: page; }
 	.in-muc:first-of-type { break-before: auto; }
 }
+
+/* .main-pane của Starlight là một stacking context z auto nằm trước .right-sidebar (position: fixed) trong DOM, nên cột phải vẽ đè lên khung giải thích Term. Nâng .main-pane lên z 1 để khung nổi trên cột phải; header và menu mobile có z-index cao hơn nên không bị ảnh hưởng. */
+.main-pane {
+	position: relative;
+	z-index: 1;
+}
