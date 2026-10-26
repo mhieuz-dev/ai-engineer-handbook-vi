@@ -2,33 +2,14 @@
 import MobileMenuFooter from 'virtual:starlight/components/MobileMenuFooter';
 import SidebarPersister from '@astrojs/starlight/components/SidebarPersister.astro';
 import { NHANH, PHAN, CHUONG } from '../../data/chuong';
+import { dungCay, type Nut } from '../../lib/sidebar-cay';
 import SidebarCay from './SidebarCay.astro';
 
-type SidebarEntry = typeof Astro.locals.starlightRoute.sidebar[number];
-type Nut = SidebarEntry | { type: 'sap-co'; label: string };
-type Nhom = Extract<SidebarEntry, { type: 'group' }>;
-
-// Cây Starlight chỉ có chương đã xong; chèn thêm chương "Sắp có" theo `so` dưới đúng Phần.
-const goc = Astro.locals.starlightRoute.sidebar;
-const nhomCon = (cha: Nhom[] | SidebarEntry[], nhan: string) =>
-	cha.find((e): e is Nhom => e.type === 'group' && e.label === nhan);
-
-const cay: SidebarEntry[] = NHANH.map((nhanh) => {
-	const nhomNhanh = nhomCon(goc, nhanh.ten);
-	const phanGroups = PHAN.filter((p) => p.nhanh === nhanh.id).map((p) => {
-		const nhomPhan = nhomCon(nhomNhanh?.entries ?? [], p.ten);
-		const chuongPhan = CHUONG.filter((c) => c.phan === p.id).map((c): Nut => {
-			if (c.trangThai === 'sap-co') return { type: 'sap-co', label: `${c.so}. ${c.ten}` };
-			return nhomCon(nhomPhan?.entries ?? [], `${c.so}. ${c.ten}`) ?? { type: 'sap-co', label: `${c.so}. ${c.ten}` };
-		});
-		return { type: 'group', label: p.ten, entries: chuongPhan, collapsed: true, badge: undefined } as unknown as Nhom;
-	});
-	return { type: 'group', label: nhanh.ten, entries: phanGroups, collapsed: false, badge: undefined } as unknown as Nhom;
-});
+const cay = dungCay(Astro.locals.starlightRoute.sidebar as Nut[], NHANH, PHAN, CHUONG);
 ---
 
 <SidebarPersister>
-	<SidebarCay sublist={cay as any} />
+	<SidebarCay sublist={cay} />
 </SidebarPersister>
 
 <div class="md:sl-hidden">

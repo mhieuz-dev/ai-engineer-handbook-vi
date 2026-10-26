@@ -3,9 +3,11 @@
 import { Icon } from '@astrojs/starlight/components';
 import SidebarRestorePoint from '@astrojs/starlight/components/SidebarRestorePoint.astro';
 
-interface Props { sublist: any[]; nested?: boolean }
+import type { Nut } from '../../lib/sidebar-cay';
+
+interface Props { sublist: Nut[]; nested?: boolean }
 const { sublist, nested } = Astro.props;
-const coTrangHienTai = (e: any): boolean =>
+const coTrangHienTai = (e: Nut): boolean =>
 	e.type === 'link' ? !!e.isCurrent : e.type === 'group' ? e.entries.some(coTrangHienTai) : false;
 const slugCua = (href: string) => href.replace(/^\/|\/$/g, '');
 ---
