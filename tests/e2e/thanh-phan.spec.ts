@@ -52,4 +52,5 @@ test('nút Colab gọn, kèm đường dẫn notebook cùng hàng', async ({ pag
 	expect(await path.evaluate((e) => getComputedStyle(e).fontFamily)).toMatch(/mono/i);
 	await page.emulateMedia({ media: 'print' });
 	await expect(path).toBeHidden();
+	await expect(nut).toBeHidden();
 });

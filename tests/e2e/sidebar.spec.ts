@@ -11,8 +11,8 @@ test('sidebar có Phần II và chương 11 chỉ là nhãn Sắp có', async ({
 	await moSidebar(page);
 	const sb = page.locator('nav.sidebar, #starlight__sidebar').first();
 	await expect(sb.getByText('Phần II. Machine Learning cổ điển')).toBeVisible();
-	await sb.locator('summary', { hasText: 'Phần II. Machine Learning cổ điển' }).click();
 	const muc = sb.locator('[aria-disabled="true"]', { hasText: 'Hồi quy logistic' });
+	await expect(muc).toBeVisible();
 	await expect(muc).toContainText('Sắp có');
 	await expect(sb.locator('a', { hasText: 'Hồi quy logistic' })).toHaveCount(0);
 });
