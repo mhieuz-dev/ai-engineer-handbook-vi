@@ -1,0 +1,84 @@
+---
+import ThemeSelect from '@astrojs/starlight/components/ThemeSelect.astro';
+import { trangBatDauHoc } from '../lib/trang-dau';
+
+const batDau = (await trangBatDauHoc()) ?? '/lo-trinh/';
+const buoc = ['Trực giác', 'Toán', 'Tính tay', 'Code', 'Đọc kết quả'];
+const tinhNang = [
+	['Nhắc nhanh', 'Thuật ngữ mới được giải thích ngay chỗ gặp.'],
+	['Thử ngay', 'Kéo thanh trượt, thấy kết quả đổi tại chỗ.'],
+	['Tự kiểm tra', 'Câu hỏi ngắn cuối bài, có đáp án.'],
+	['Đã đọc', 'Đánh dấu trang đã học, tiến độ lưu trong trình duyệt.'],
+	['Tải về PDF', 'In từng trang hoặc cả chương để đọc ngoại tuyến.'],
+	['Colab', 'Mở notebook chạy thẳng trên trình duyệt, không cần cài.'],
+];
+---
+
+<div class="trang-chu">
+	<section class="hero">
+		<p class="gioi-thieu">Giáo trình tiếng Việt miễn phí: hiểu tận gốc AI, từ Python cơ bản đến mô hình ngôn ngữ lớn.</p>
+		<p><a class="nut-chinh" href={batDau}>Bắt đầu học</a></p>
+		<p class="trung-thuc">Trang đang được viết dần. Hiện đã có Chương 10, Hồi quy tuyến tính.</p>
+		<nav class="nav-chung-mobile" aria-label="Liên kết nhanh">
+			<a href="/lo-trinh/">Lộ trình</a><a href="/thuat-ngu/">Thuật ngữ</a><a href="/notebook/">Notebook</a><a href="/gioi-thieu/">Giới thiệu</a>
+		</nav>
+		<div class="doi-giao-dien"><ThemeSelect /></div>
+	</section>
+
+	<section class="nhanh">
+		<a class="the-nhanh" href="/lo-trinh/">
+			<h2>AI Engineer</h2>
+			<p>Từ Python cơ bản đến mô hình ngôn ngữ lớn. 65 chương.</p>
+			<span class="nhan dang-viet">Đang viết</span>
+		</a>
+		<div class="the-nhanh the-tat">
+			<h2>Robotics</h2>
+			<p>Nhánh thứ hai, bắt đầu sau khi nhánh đầu viết xong.</p>
+			<span class="nhan">Sắp có</span>
+		</div>
+	</section>
+
+	<section class="cach-hoc">
+		<h2>Cách học trên trang này</h2>
+		<p>Mỗi chương đi qua năm bước, từ dễ đến khó.</p>
+		<ol class="buoc">
+			{buoc.map((b) => <li>{b}</li>)}
+		</ol>
+		<dl class="tinh-nang">
+			{tinhNang.map(([ten, mo]) => (<div><dt>{ten}</dt><dd>{mo}</dd></div>))}
+		</dl>
+	</section>
+</div>
+
+<style>
+	.trang-chu { max-width: 56rem; margin: 0 auto; font-family: 'Be Vietnam Pro', system-ui, sans-serif; }
+	.hero { text-align: center; padding: 0.5rem 0 1rem; }
+	/* h1 do Starlight sinh ra từ title của trang; chỉ tạo kiểu cho nó ở trang chủ. */
+	:global(main h1#_top) { font-size: clamp(2.2rem, 8vw, 3.5rem); font-weight: 800; color: var(--pri); text-align: center; line-height: 1.1; margin-top: 1.5rem; }
+	.gioi-thieu { font-size: 1.15rem; max-width: 36rem; margin: 1rem auto; color: var(--tx); }
+	.nut-chinh { display: inline-block; background: var(--acc); color: #1a1208; font-weight: 600; padding: 0.7rem 1.6rem; border-radius: 6px; text-decoration: none; }
+	.nut-chinh:hover { filter: brightness(1.08); }
+	.trung-thuc { color: var(--mut); font-size: 0.9rem; }
+	.nav-chung-mobile { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem 1.2rem; margin-top: 1rem; }
+	.nav-chung-mobile a { color: var(--pri); font-weight: 600; text-decoration: none; }
+	.doi-giao-dien { display: flex; justify-content: center; margin-top: 0.8rem; }
+	/* Trang splash không có menu ☰ trên điện thoại, nên đặt nút đổi giao diện và liên kết nhanh ngay trên trang. */
+	@media (min-width: 50rem) { .nav-chung-mobile, .doi-giao-dien { display: none; } }
+	.nhanh { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 1rem; margin: 2rem 0; }
+	.the-nhanh { display: block; position: relative; padding: 1.2rem 1.2rem 1.4rem; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); text-decoration: none; color: var(--tx); }
+	a.the-nhanh:hover { border-color: var(--pri); }
+	.the-nhanh h2 { margin: 0 0 0.4rem; font-size: 1.3rem; color: var(--pri); border: 0; }
+	.the-nhanh p { margin: 0 0 0.8rem; color: var(--tx); }
+	.the-tat { opacity: 0.8; }
+	.the-tat h2 { color: var(--mut); }
+	.nhan { display: inline-block; font-size: 0.8rem; padding: 0.1em 0.7em; border-radius: 999px; border: 1px solid var(--line); color: var(--mut); }
+	.dang-viet { background: var(--accbg); border-color: var(--acc); color: var(--tx); }
+	.cach-hoc h2 { border: 0; margin-top: 0; }
+	.buoc { display: flex; flex-wrap: wrap; gap: 0.5rem; list-style: none; padding: 0; margin: 1rem 0; counter-reset: b; }
+	.buoc li { counter-increment: b; margin: 0; padding: 0.35rem 0.9rem; border-radius: 999px; background: var(--accbg); font-weight: 600; }
+	.buoc li::before { content: counter(b) '. '; color: var(--acc); }
+	.tinh-nang { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 0.8rem; margin: 1.5rem 0; }
+	.tinh-nang div { padding: 0.7rem 0.9rem; border-left: 3px solid var(--pri); background: var(--panel); }
+	.tinh-nang dt { font-weight: 600; margin: 0; }
+	.tinh-nang dd { margin: 0.15rem 0 0; color: var(--mut); font-size: 0.92rem; }
+</style>

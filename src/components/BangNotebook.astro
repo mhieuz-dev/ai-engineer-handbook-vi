@@ -1,0 +1,33 @@
+---
+import { chuongDaXuatBan } from '../data/chuong';
+import { githubNotebookUrl } from '../lib/tai-ve';
+import ColabButton from './ColabButton.astro';
+
+const ds = chuongDaXuatBan().filter((c) => c.notebook);
+---
+
+<div class="bang-cuon">
+	<table>
+		<thead>
+			<tr><th>Chương</th><th>Notebook</th><th>Mở</th></tr>
+		</thead>
+		<tbody>
+			{ds.map((c) => (
+				<tr>
+					<td>{c.so}. {c.ten}</td>
+					<td><code>{c.notebook}</code></td>
+					<td class="mo">
+						<ColabButton notebook={c.notebook!} />
+						<a href={githubNotebookUrl(c.notebook!)} target="_blank" rel="noopener">GitHub</a>
+					</td>
+				</tr>
+			))}
+		</tbody>
+	</table>
+</div>
+
+<style>
+	.bang-cuon { overflow-x: auto; }
+	.mo { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1rem; }
+	code { overflow-wrap: anywhere; }
+</style>

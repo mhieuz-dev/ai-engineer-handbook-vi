@@ -1,0 +1,47 @@
+---
+import { NHANH, PHAN, CHUONG } from '../data/chuong';
+import { trangDauCuaChuong } from '../lib/trang-dau';
+
+const nhom = await Promise.all(
+	PHAN.map(async (p) => ({
+		phan: p,
+		chuong: await Promise.all(
+			CHUONG.filter((c) => c.phan === p.id).map(async (c) => ({ c, href: c.trangThai === 'xong' ? await trangDauCuaChuong(c) : undefined })),
+		),
+	})),
+);
+const tenNhanh = NHANH[0].ten;
+---
+
+<p class="nhanh-ten">{tenNhanh}</p>
+{
+	nhom.map(({ phan, chuong }) => (
+		<section class="phan">
+			<h2>{phan.ten}</h2>
+			<ul class="ds-chuong">
+				{chuong.map(({ c, href }) => (
+					<li id={`ch${String(c.so).padStart(2, '0')}`} class={href ? 'xong' : 'sap-co'}>
+						<span class="so">{c.so}</span>
+						{href ? <a href={href}>{c.ten}</a> : <span class="ten">{c.ten}</span>}
+						{!href && <span class="nhan-sap-co">Sắp có</span>}
+					</li>
+				))}
+			</ul>
+		</section>
+	))
+}
+
+<style>
+	.nhanh-ten { font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-weight: 800; color: var(--pri); margin: 0 0 0.5rem; }
+	.phan h2 { margin-top: 2rem; }
+	.ds-chuong { list-style: none; padding: 0; margin: 0.5rem 0 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel); }
+	.ds-chuong li { display: flex; align-items: baseline; gap: 0.75rem; padding: 0.55rem 0.9rem; margin: 0; border-top: 1px solid var(--line); font-family: 'Be Vietnam Pro', system-ui, sans-serif; scroll-margin-top: 5rem; }
+	.ds-chuong li:first-child { border-top: 0; }
+	.ds-chuong li:target { background: var(--accbg); }
+	.so { flex: none; min-width: 1.8rem; font-weight: 800; color: var(--pri); text-align: right; }
+	.ten, a { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+	a { font-weight: 600; color: var(--pri); }
+	.sap-co .ten { color: var(--mut); }
+	.nhan-sap-co { flex: none; font-size: 0.75rem; padding: 0 0.55em; border-radius: 999px; border: 1px solid var(--line); color: var(--mut); white-space: nowrap; }
+	.xong { background: var(--bg); }
+</style>

@@ -1,0 +1,17 @@
+---
+import Default from '@astrojs/starlight/components/SocialIcons.astro';
+---
+
+<nav class="nav-chung" aria-label="Menu chính">
+	<a href="/lo-trinh/">Lộ trình</a>
+	<a href="/thuat-ngu/">Thuật ngữ</a>
+	<a href="/notebook/">Notebook</a>
+	<a href="/gioi-thieu/">Giới thiệu</a>
+</nav>
+<Default {...Astro.props}><slot /></Default>
+
+<style>
+	.nav-chung { display: flex; gap: 1rem; font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: var(--sl-text-sm); margin-inline-end: 0.5rem; }
+	.nav-chung a { color: var(--sl-color-gray-2); text-decoration: none; font-weight: 600; }
+	.nav-chung a:hover { color: var(--sl-color-white); }
+</style>

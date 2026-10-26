@@ -2,6 +2,12 @@ import type { Chuong } from '../data/chuong';
 
 export const REPO = 'https://github.com/mhieuz-dev/ai-engineer-handbook-vi';
 
+/** Link xem notebook trên GitHub. */
+export const githubNotebookUrl = (notebook: string) => `${REPO}/blob/main/notebooks/${notebook}`;
+/** Link mở notebook trong Colab. */
+export const colabUrl = (notebook: string) =>
+	`https://colab.research.google.com/github/mhieuz-dev/ai-engineer-handbook-vi/blob/main/notebooks/${notebook}`;
+
 export interface LuaChonTaiVe {
 	nhan: string;
 	/** nhãn ngắn cho cột phải */
@@ -19,7 +25,7 @@ export function luaChonTaiVe(chuong: Chuong): LuaChonTaiVe[] {
 		{ nhan: '📚 Cả chương (PDF)', nhanNgan: '📚 PDF cả chương', href: `/in/${chuong.slug}/?in=1`, loai: 'lien-ket' },
 	];
 	if (chuong.notebook) {
-		ds.push({ nhan: '📓 Notebook', nhanNgan: '📓 Notebook', href: `${REPO}/blob/main/notebooks/${chuong.notebook}`, loai: 'lien-ket', target: '_blank' });
+		ds.push({ nhan: '📓 Notebook', nhanNgan: '📓 Notebook', href: githubNotebookUrl(chuong.notebook), loai: 'lien-ket', target: '_blank' });
 	}
 	return ds;
 }

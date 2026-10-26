@@ -2,8 +2,9 @@
 interface Props {
 	notebook: string;
 }
+import { colabUrl } from '../lib/tai-ve';
 const { notebook } = Astro.props;
-const href = `https://colab.research.google.com/github/mhieuz-dev/ai-engineer-handbook-vi/blob/main/notebooks/${notebook}`;
+const href = colabUrl(notebook);
 ---
 
 <a class="colab-nut" href={href} target="_blank" rel="noopener">▶ Mở trong Colab</a>

@@ -23,6 +23,7 @@ export default defineConfig({
 			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/mhieuz-dev/ai-engineer-handbook-vi' }],
 			sidebar: cauHinhSidebar(),
 			components: {
+				SocialIcons: './src/components/overrides/SocialIcons.astro',
 				Sidebar: './src/components/overrides/Sidebar.astro',
 				Pagination: './src/components/overrides/Pagination.astro',
 				PageTitle: './src/components/overrides/PageTitle.astro',
