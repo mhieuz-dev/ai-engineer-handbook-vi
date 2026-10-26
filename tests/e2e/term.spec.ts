@@ -72,3 +72,18 @@ test('trang Thuật ngữ có mục Đạo hàm, không lộ trang kiểm thử'
 	await expect(muc.locator('a[href*="kiem-thu"]')).toHaveCount(0);
 	await expect(page.locator('a[href*="/kiem-thu/"]')).toHaveCount(0);
 });
+
+test('bấm vào nội dung tooltip không đóng, bấm ra ngoài thì đóng', async ({ page }, info) => {
+	const mobile = info.project.name === 'mobile';
+	await page.goto(URL);
+	const term = page.locator('.term').first();
+	const tip = page.locator('.term-wrap .tip').first();
+	const bam = (l: ReturnType<typeof page.locator>) => (mobile ? l.tap() : l.click());
+	await term.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+	await bam(term);
+	await expect(tip).toBeVisible();
+	await bam(tip.locator('.nd'));
+	await expect(tip).toBeVisible();
+	await bam(page.locator('h1'));
+	await expect(tip).toBeHidden();
+});
