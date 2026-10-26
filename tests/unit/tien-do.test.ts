@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { taoTrong, ghiLuotDoc, chuoiNgay, phanTram, docTuStorage, luuVaoStorage, ngayDiaPhuong } from '../../src/lib/tien-do';
+import { taoTrong, ghiNgayHoc, datDaDoc, laDaDoc, chuoiNgay, phanTram, docTuStorage, luuVaoStorage, ngayDiaPhuong } from '../../src/lib/tien-do';
 
 const ba = { daDoc: {}, ngayHoc: ['2026-10-25', '2026-10-26', '2026-10-27'] };
 
@@ -15,14 +15,34 @@ describe('chuoiNgay', () => {
 	it('rỗng thì 0', () => expect(chuoiNgay(taoTrong(), '2026-10-27')).toBe(0));
 });
 
-describe('ghiLuotDoc', () => {
+describe('ghiNgayHoc', () => {
 	it('hai lần cùng ngày chỉ một ngày học, không sửa gốc', () => {
 		const g = taoTrong();
-		const a = ghiLuotDoc(g, 'a/b', '2026-10-27');
-		const b = ghiLuotDoc(a, 'a/c', '2026-10-27');
+		const a = ghiNgayHoc(g, '2026-10-27');
+		const b = ghiNgayHoc(a, '2026-10-27');
 		expect(b.ngayHoc.length).toBe(1);
 		expect(g).toEqual({ daDoc: {}, ngayHoc: [] });
-		expect(a.daDoc).toEqual({ 'a/b': '2026-10-27' });
+		expect(a.ngayHoc).toEqual(['2026-10-27']);
+	});
+});
+
+describe('datDaDoc / laDaDoc', () => {
+	it('đánh dấu đã đọc, giữ ngày cũ khi đánh dấu lại', () => {
+		const g = taoTrong();
+		const a = datDaDoc(g, 'a', true, '2026-10-27');
+		expect(laDaDoc(a, 'a')).toBe(true);
+		expect(datDaDoc(a, 'a', true, '2026-10-28').daDoc.a).toBe('2026-10-27');
+		expect(g).toEqual({ daDoc: {}, ngayHoc: [] });
+	});
+	it('bỏ đánh dấu xoá khoá, không sửa gốc', () => {
+		const a = datDaDoc(taoTrong(), 'a', true, '2026-10-27');
+		const b = datDaDoc(a, 'a', false, '2026-10-27');
+		expect(laDaDoc(b, 'a')).toBe(false);
+		expect('a' in b.daDoc).toBe(false);
+		expect(laDaDoc(a, 'a')).toBe(true);
+	});
+	it('không thêm ngày vào ngayHoc', () => {
+		expect(datDaDoc(taoTrong(), 'a', true, '2026-10-27').ngayHoc).toEqual([]);
 	});
 });
 

@@ -1,0 +1,48 @@
+---
+interface Props { slug: string }
+const { slug } = Astro.props;
+---
+
+<button type="button" class="nut-da-doc" aria-pressed="false" data-slug-trang={slug} hidden>
+	<span class="ndd-dau" aria-hidden="true">○</span> <span class="ndd-chu">Chưa đọc</span>
+</button>
+
+<script>
+	import { KHOA_STORAGE, docTuStorage, luuVaoStorage, datDaDoc, laDaDoc, ngayDiaPhuong } from '../lib/tien-do';
+
+	function chay() {
+		const nut = document.querySelector<HTMLButtonElement>('.nut-da-doc');
+		if (!nut) return;
+		let kho: Storage | undefined;
+		try {
+			kho = window.localStorage;
+			kho.getItem(KHOA_STORAGE);
+		} catch {
+			kho = undefined;
+		}
+		if (!kho) return; // nút giữ trạng thái ẩn
+		const slug = nut.dataset.slugTrang!;
+		const ve = (da: boolean) => {
+			nut.setAttribute('aria-pressed', String(da));
+			nut.querySelector('.ndd-dau')!.textContent = da ? '✓' : '○';
+			nut.querySelector('.ndd-chu')!.textContent = da ? 'Đã đọc' : 'Chưa đọc';
+		};
+		ve(laDaDoc(docTuStorage(kho), slug));
+		nut.hidden = false;
+		nut.addEventListener('click', () => {
+			const td = docTuStorage(kho);
+			const moi = datDaDoc(td, slug, !laDaDoc(td, slug), ngayDiaPhuong(new Date()));
+			luuVaoStorage(kho, moi);
+			ve(laDaDoc(moi, slug));
+			window.dispatchEvent(new CustomEvent('tien-do-doi'));
+		});
+	}
+	chay();
+</script>
+
+<style is:global>
+	.nut-da-doc { display: inline-flex; gap: 0.4rem; align-items: center; margin-top: 3rem; padding: 0.5rem 1rem; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--mut); font: 600 0.9rem 'Be Vietnam Pro', sans-serif; cursor: pointer; }
+	.nut-da-doc[hidden] { display: none; }
+	.nut-da-doc[aria-pressed='true'] { border-color: var(--ok); color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent); }
+	.nut-da-doc:focus-visible { outline: 2px solid var(--pri); outline-offset: 2px; }
+</style>

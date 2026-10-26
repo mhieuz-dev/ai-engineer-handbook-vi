@@ -19,7 +19,10 @@ export default defineConfig({
 			locales: { root: { label: 'Tiếng Việt', lang: 'vi' } },
 			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/mhieuz-dev/ai-engineer-handbook-vi' }],
 			sidebar: cauHinhSidebar(),
-			components: { Sidebar: './src/components/overrides/Sidebar.astro' },
+			components: {
+				Sidebar: './src/components/overrides/Sidebar.astro',
+				Pagination: './src/components/overrides/Pagination.astro',
+			},
 			customCss: [
 				'@fontsource/be-vietnam-pro/400.css',
 				'@fontsource/be-vietnam-pro/600.css',

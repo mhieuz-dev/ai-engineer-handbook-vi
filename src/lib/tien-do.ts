@@ -10,9 +10,20 @@ export function ngayDiaPhuong(d: Date): string {
 	return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
-export function ghiLuotDoc(td: TienDo, slugTrang: string, ngay: string): TienDo {
+export function ghiNgayHoc(td: TienDo, ngay: string): TienDo {
 	const ngayHoc = td.ngayHoc.includes(ngay) ? [...td.ngayHoc] : [...td.ngayHoc, ngay].sort();
-	return { daDoc: { ...td.daDoc, [slugTrang]: ngay }, ngayHoc };
+	return { daDoc: { ...td.daDoc }, ngayHoc };
+}
+
+export function datDaDoc(td: TienDo, slugTrang: string, daDoc: boolean, ngay: string): TienDo {
+	const moi = { ...td.daDoc };
+	if (!daDoc) delete moi[slugTrang];
+	else if (!(slugTrang in moi)) moi[slugTrang] = ngay;
+	return { daDoc: moi, ngayHoc: [...td.ngayHoc] };
+}
+
+export function laDaDoc(td: TienDo, slugTrang: string): boolean {
+	return slugTrang in td.daDoc;
 }
 
 // Ngày kế trước, tính theo lịch (UTC để không dính giờ mùa hè).

@@ -1,12 +1,7 @@
 ---
-import { getCollection } from 'astro:content';
-import { chuongDaXuatBan } from '../data/chuong';
+import { slugTrangDaXuatBan } from '../lib/slug-xuat-ban';
 
-const tienTo = chuongDaXuatBan().map((c) => `${c.slug}/`);
-const slugs = (await getCollection('docs'))
-	.map((e) => e.id)
-	.filter((id) => tienTo.some((t) => id.startsWith(t)))
-	.sort();
+const slugs = await slugTrangDaXuatBan();
 ---
 
 <div class="tien-do" hidden data-slugs={JSON.stringify(slugs)}>
@@ -18,7 +13,7 @@ const slugs = (await getCollection('docs'))
 </div>
 
 <script>
-	import { KHOA_STORAGE, docTuStorage, luuVaoStorage, ghiLuotDoc, chuoiNgay, phanTram, ngayDiaPhuong } from '../lib/tien-do';
+	import { KHOA_STORAGE, docTuStorage, luuVaoStorage, ghiNgayHoc, chuoiNgay, phanTram, ngayDiaPhuong } from '../lib/tien-do';
 
 	function chay() {
 		const khoi = document.querySelector<HTMLElement>('.tien-do');
@@ -36,33 +31,38 @@ const slugs = (await getCollection('docs'))
 		const slugs: string[] = JSON.parse(khoi.dataset.slugs ?? '[]');
 		const homNay = ngayDiaPhuong(new Date());
 		let td = docTuStorage(kho);
-		const hienTai = location.pathname.replace(/^\/+|\/+$/g, '');
-		if (slugs.includes(hienTai)) {
-			td = ghiLuotDoc(td, hienTai, homNay);
-			luuVaoStorage(kho, td);
-		}
+		td = ghiNgayHoc(td, homNay);
+		luuVaoStorage(kho, td);
 
-		const pt = phanTram(td, slugs);
-		khoi.querySelector('.td-pt')!.textContent = `${pt}%`;
-		(khoi.querySelector('.td-day') as HTMLElement).style.width = `${pt}%`;
-		khoi.querySelector('.td-thanh')!.setAttribute('aria-valuenow', String(pt));
-		const chuoi = chuoiNgay(td, homNay);
-		if (chuoi > 0) {
-			khoi.querySelector('.td-n')!.textContent = String(chuoi);
-			khoi.querySelector<HTMLElement>('.td-chuoi')!.hidden = false;
-		}
-		khoi.hidden = false;
-
-		document.querySelectorAll<HTMLAnchorElement>('a[data-slug]').forEach((a) => {
-			const s = a.dataset.slug!;
-			if (s in td.daDoc && !a.querySelector('.dau-doc')) {
-				const dau = document.createElement('span');
-				dau.className = 'dau-doc';
-				dau.setAttribute('aria-label', 'đã đọc');
-				dau.textContent = '✓ ';
-				a.prepend(dau);
+		function ve() {
+			td = docTuStorage(kho);
+			const pt = phanTram(td, slugs);
+			khoi.querySelector('.td-pt')!.textContent = `${pt}%`;
+			(khoi.querySelector('.td-day') as HTMLElement).style.width = `${pt}%`;
+			khoi.querySelector('.td-thanh')!.setAttribute('aria-valuenow', String(pt));
+			const chuoi = chuoiNgay(td, homNay);
+			if (chuoi > 0) {
+				khoi.querySelector('.td-n')!.textContent = String(chuoi);
+				khoi.querySelector<HTMLElement>('.td-chuoi')!.hidden = false;
 			}
-		});
+			khoi.hidden = false;
+
+			document.querySelectorAll<HTMLAnchorElement>('a[data-slug]').forEach((a) => {
+				const s = a.dataset.slug!;
+				const dau = a.querySelector('.dau-doc');
+				if (s in td.daDoc && !dau) {
+					const moi = document.createElement('span');
+					moi.className = 'dau-doc';
+					moi.setAttribute('aria-label', 'đã đọc');
+					moi.textContent = '✓ ';
+					a.prepend(moi);
+				} else if (!(s in td.daDoc) && dau) {
+					dau.remove();
+				}
+			});
+		}
+		ve();
+		window.addEventListener('tien-do-doi', ve);
 	}
 	chay();
 </script>

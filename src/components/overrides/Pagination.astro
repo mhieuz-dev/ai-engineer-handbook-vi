@@ -1,0 +1,11 @@
+---
+import Default from '@astrojs/starlight/components/Pagination.astro';
+import NutDaDoc from '../NutDaDoc.astro';
+import { slugTrangDaXuatBan } from '../../lib/slug-xuat-ban';
+
+const slug = Astro.locals.starlightRoute.id;
+const coNut = (await slugTrangDaXuatBan()).includes(slug);
+---
+
+{coNut && <NutDaDoc slug={slug} />}
+<Default><slot /></Default>

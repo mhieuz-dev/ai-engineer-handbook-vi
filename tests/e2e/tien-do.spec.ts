@@ -7,15 +7,21 @@ async function moSidebar(page: import('@playwright/test').Page) {
 	if (await nutMenu.isVisible()) await nutMenu.click();
 }
 
-test('đọc trang 01 rồi sang 02 thì 01 có dấu ✓ và phần trăm > 0', async ({ page }) => {
+test('mở trang không tự ✓; chỉ ✓ sau khi bấm Đã đọc ở trang 01', async ({ page }) => {
 	await page.goto(`${C10}/01-truc-giac/`);
 	await page.goto(`${C10}/02-toan/`);
 	await moSidebar(page);
 	const link = page.locator('a[data-slug="ai-engineer/ch10-hoi-quy-tuyen-tinh/01-truc-giac"]');
+	await expect(link).not.toContainText('✓');
+	await expect(page.locator('.td-pt')).toHaveText('0%');
+	await page.goto(`${C10}/01-truc-giac/`);
+	if (await page.evaluate(() => navigator.maxTouchPoints > 0)) await page.locator('.nut-da-doc').tap();
+	else await page.locator('.nut-da-doc').click();
+	await page.goto(`${C10}/02-toan/`);
+	await moSidebar(page);
 	await expect(link).toContainText('✓');
 	const pt = await page.locator('.td-pt').textContent();
 	expect(parseInt(pt ?? '0', 10)).toBeGreaterThan(0);
-	await expect(page.locator('.td-chuoi')).toContainText('1 ngày học liên tiếp');
 });
 
 test('JSON hỏng trong storage: trang vẫn tải, không pageerror', async ({ page }) => {
