@@ -1,0 +1,78 @@
+---
+import { getCollection } from 'astro:content';
+import { chuongDaXuatBan } from '../data/chuong';
+
+const tienTo = chuongDaXuatBan().map((c) => `${c.slug}/`);
+const slugs = (await getCollection('docs'))
+	.map((e) => e.id)
+	.filter((id) => tienTo.some((t) => id.startsWith(t)))
+	.sort();
+---
+
+<div class="tien-do" hidden data-slugs={JSON.stringify(slugs)}>
+	<div class="td-nhan">Tiến độ cả sách · <span class="td-pt">0%</span></div>
+	<div class="td-thanh" role="progressbar" aria-label="Tiến độ cả sách" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+		<div class="td-day"></div>
+	</div>
+	<div class="td-chuoi" hidden>🔥 <span class="td-n">0</span> ngày học liên tiếp</div>
+</div>
+
+<script>
+	import { KHOA_STORAGE, docTuStorage, luuVaoStorage, ghiLuotDoc, chuoiNgay, phanTram, ngayDiaPhuong } from '../lib/tien-do';
+
+	function chay() {
+		const khoi = document.querySelector<HTMLElement>('.tien-do');
+		if (!khoi) return;
+		// Bọc cả việc lấy và dùng localStorage: trình duyệt chặn có thể ném lỗi ngay ở lần truy cập đầu.
+		let kho: Storage | undefined;
+		try {
+			kho = window.localStorage;
+			kho.getItem(KHOA_STORAGE);
+		} catch {
+			kho = undefined;
+		}
+		if (!kho) return; // khối giữ nguyên trạng thái ẩn
+
+		const slugs: string[] = JSON.parse(khoi.dataset.slugs ?? '[]');
+		const homNay = ngayDiaPhuong(new Date());
+		let td = docTuStorage(kho);
+		const hienTai = location.pathname.replace(/^\/+|\/+$/g, '');
+		if (slugs.includes(hienTai)) {
+			td = ghiLuotDoc(td, hienTai, homNay);
+			luuVaoStorage(kho, td);
+		}
+
+		const pt = phanTram(td, slugs);
+		khoi.querySelector('.td-pt')!.textContent = `${pt}%`;
+		(khoi.querySelector('.td-day') as HTMLElement).style.width = `${pt}%`;
+		khoi.querySelector('.td-thanh')!.setAttribute('aria-valuenow', String(pt));
+		const chuoi = chuoiNgay(td, homNay);
+		if (chuoi > 0) {
+			khoi.querySelector('.td-n')!.textContent = String(chuoi);
+			khoi.querySelector<HTMLElement>('.td-chuoi')!.hidden = false;
+		}
+		khoi.hidden = false;
+
+		document.querySelectorAll<HTMLAnchorElement>('a[data-slug]').forEach((a) => {
+			const s = a.dataset.slug!;
+			if (s in td.daDoc && !a.querySelector('.dau-doc')) {
+				const dau = document.createElement('span');
+				dau.className = 'dau-doc';
+				dau.setAttribute('aria-label', 'đã đọc');
+				dau.textContent = '✓ ';
+				a.prepend(dau);
+			}
+		});
+	}
+	chay();
+</script>
+
+<style is:global>
+	.tien-do { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--line); font-family: 'Be Vietnam Pro', sans-serif; }
+	.tien-do[hidden], .td-chuoi[hidden] { display: none; }
+	.td-nhan { font-size: 0.8rem; color: var(--mut); margin-bottom: 0.4rem; }
+	.td-thanh { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+	.td-day { height: 100%; width: 0; background: var(--ok); }
+	.td-chuoi { margin-top: 0.5rem; font-size: 0.8rem; color: var(--tx); }
+	.dau-doc { color: var(--ok); font-weight: 700; }
+</style>
