@@ -3,7 +3,6 @@ __pycache__/
 .ipynb_checkpoints/
 *.pdf
 memory.md
-.superpowers/
 node_modules/
 dist/
 .astro/

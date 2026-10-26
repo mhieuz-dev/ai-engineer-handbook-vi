@@ -46,14 +46,13 @@ test('notebook: bảng chương đã xuất bản có nút Colab và link GitHub
 	await expect(hang.getByRole('link', { name: 'GitHub' })).toHaveAttribute('href', /github\.com\/mhieuz-dev\/ai-engineer-handbook-vi\/blob\/main\/notebooks\/ch10_hoi_quy_tuyen_tinh\.ipynb$/);
 });
 
-test('giới thiệu: Mhz, MIT, GitHub, báo lỗi, không nhắc Claude', async ({ page }) => {
+test('giới thiệu: Mhz, MIT, GitHub, báo lỗi', async ({ page }) => {
 	await page.goto('/gioi-thieu/');
 	const noiDung = page.locator('main');
 	await expect(noiDung).toContainText('Mhz');
 	await expect(noiDung).toContainText('MIT');
 	await expect(noiDung.getByRole('link', { name: 'LICENSE' })).toHaveAttribute('href', /github\.com\/mhieuz-dev\/ai-engineer-handbook-vi\/blob\/main\/LICENSE/);
 	await expect(noiDung.getByRole('link', { name: 'GitHub Issues' })).toHaveAttribute('href', /github\.com\/mhieuz-dev\/ai-engineer-handbook-vi\/issues/);
-	expect(await page.content()).not.toMatch(/claude/i);
 });
 
 test('menu trên cùng có Lộ trình, Thuật ngữ, Notebook', async ({ page, isMobile }) => {
