@@ -14,7 +14,7 @@ const coKhung = chuong?.trangThai === 'xong';
 			<h2 id="tai-ve-nhan">TẢI VỀ</h2>
 			<ul>
 				{luaChonTaiVe(chuong!).map((m) => (
-					<li><a href={m.href} target={m.target} rel={m.target ? 'noopener' : undefined} data-in-trang={m.loai === 'in' ? '' : undefined}>{m.nhan.replace('Trang này (PDF)', 'PDF trang này').replace('Cả chương (PDF)', 'PDF cả chương')}</a></li>
+					<li><a href={m.href} target={m.target} rel={m.target ? 'noopener' : undefined} data-in-trang={m.loai === 'in' ? '' : undefined}>{m.nhanNgan}</a></li>
 				))}
 			</ul>
 		</nav>

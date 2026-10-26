@@ -60,11 +60,20 @@ test('desktop: Trang này gọi window.print, Escape đóng, cột phải có PD
 
 test('in trang thường: chỉ còn nội dung bài', async ({ page }) => {
 	await page.goto(TRANG);
+	const an = ['header.header', '.nut-da-doc', '.nut-tai-ve', '.pagination-links'];
+	for (const sel of an) await expect(page.locator(sel).first(), `${sel} hiện trên màn hình`).toBeVisible();
 	await page.emulateMedia({ media: 'print' });
 	await expect(page.locator('h1').first()).toBeVisible();
-	for (const sel of ['header.header', '#starlight__sidebar', '.nut-da-doc', '.nut-tai-ve', '.pagination-links']) {
+	for (const sel of [...an, '#starlight__sidebar']) {
 		await expect(page.locator(sel).first(), sel).toBeHidden();
 	}
+});
+
+test('in trang thường: nút Colab bị ẩn', async ({ page }) => {
+	await page.goto('/kiem-thu/thanh-phan/');
+	await expect(page.locator('.colab-nut').first()).toBeVisible();
+	await page.emulateMedia({ media: 'print' });
+	await expect(page.locator('.colab-nut').first()).toBeHidden();
 });
 
 test('trang thuật ngữ không có nút Tải về', async ({ page }) => {

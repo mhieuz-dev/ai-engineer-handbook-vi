@@ -200,7 +200,7 @@ pre {
 	body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 	header.header, .sidebar, .right-sidebar, mobile-starlight-toc, starlight-menu-button,
 	.nut-da-doc, .nut-tai-ve, .pagination-links, footer, .sl-hidden, site-search,
-	input[type='range'], .tai-ve, .thu-ngay-lr, .tn-lr { display: none !important; }
+	input[type='range'], .tai-ve, .thu-ngay-lr, .tn-lr, .colab-nut { display: none !important; }
 	.main-pane, .main-frame { margin: 0 !important; padding: 0 !important; }
 	.sl-markdown-content { max-width: none; font-size: 11pt; line-height: 1.6; }
 	.khung, .bai-tap, .can-biet-truoc, .hinh-ket-qua { break-inside: avoid; }
