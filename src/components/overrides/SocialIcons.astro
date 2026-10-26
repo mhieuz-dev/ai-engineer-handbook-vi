@@ -1,12 +1,10 @@
 ---
 import Default from '@astrojs/starlight/components/SocialIcons.astro';
+import { MENU_CHUNG } from '../../data/menu-chung';
 ---
 
 <nav class="nav-chung" aria-label="Menu chính">
-	<a href="/lo-trinh/">Lộ trình</a>
-	<a href="/thuat-ngu/">Thuật ngữ</a>
-	<a href="/notebook/">Notebook</a>
-	<a href="/gioi-thieu/">Giới thiệu</a>
+	{MENU_CHUNG.map((m) => <a href={m.href}>{m.nhan}</a>)}
 </nav>
 <Default {...Astro.props}><slot /></Default>
 

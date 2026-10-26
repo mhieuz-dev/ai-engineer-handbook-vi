@@ -6,7 +6,7 @@ export const REPO = 'https://github.com/mhieuz-dev/ai-engineer-handbook-vi';
 export const githubNotebookUrl = (notebook: string) => `${REPO}/blob/main/notebooks/${notebook}`;
 /** Link mở notebook trong Colab. */
 export const colabUrl = (notebook: string) =>
-	`https://colab.research.google.com/github/mhieuz-dev/ai-engineer-handbook-vi/blob/main/notebooks/${notebook}`;
+	`https://colab.research.google.com/github/${REPO.replace('https://github.com/', '')}/blob/main/notebooks/${notebook}`;
 
 export interface LuaChonTaiVe {
 	nhan: string;

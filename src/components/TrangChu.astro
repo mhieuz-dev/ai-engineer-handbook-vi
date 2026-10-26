@@ -1,8 +1,11 @@
 ---
 import ThemeSelect from '@astrojs/starlight/components/ThemeSelect.astro';
+import { MENU_CHUNG } from '../data/menu-chung';
+import { CHUONG, chuongDaXuatBan } from '../data/chuong';
 import { trangBatDauHoc } from '../lib/trang-dau';
 
 const batDau = (await trangBatDauHoc()) ?? '/lo-trinh/';
+const daCo = chuongDaXuatBan().map((c) => `Chương ${c.so}, ${c.ten}`).join('; ');
 const buoc = ['Trực giác', 'Toán', 'Tính tay', 'Code', 'Đọc kết quả'];
 const tinhNang = [
 	['Nhắc nhanh', 'Thuật ngữ mới được giải thích ngay chỗ gặp.'],
@@ -18,9 +21,9 @@ const tinhNang = [
 	<section class="hero">
 		<p class="gioi-thieu">Giáo trình tiếng Việt miễn phí: hiểu tận gốc AI, từ Python cơ bản đến mô hình ngôn ngữ lớn.</p>
 		<p><a class="nut-chinh" href={batDau}>Bắt đầu học</a></p>
-		<p class="trung-thuc">Trang đang được viết dần. Hiện đã có Chương 10, Hồi quy tuyến tính.</p>
+		<p class="trung-thuc">Trang đang được viết dần. Đã viết xong: {daCo}. Còn lại {CHUONG.length - chuongDaXuatBan().length} chương sắp có.</p>
 		<nav class="nav-chung-mobile" aria-label="Liên kết nhanh">
-			<a href="/lo-trinh/">Lộ trình</a><a href="/thuat-ngu/">Thuật ngữ</a><a href="/notebook/">Notebook</a><a href="/gioi-thieu/">Giới thiệu</a>
+			{MENU_CHUNG.map((m) => <a href={m.href}>{m.nhan}</a>)}
 		</nav>
 		<div class="doi-giao-dien"><ThemeSelect /></div>
 	</section>
@@ -28,7 +31,7 @@ const tinhNang = [
 	<section class="nhanh">
 		<a class="the-nhanh" href="/lo-trinh/">
 			<h2>AI Engineer</h2>
-			<p>Từ Python cơ bản đến mô hình ngôn ngữ lớn. 65 chương.</p>
+			<p>Từ Python cơ bản đến mô hình ngôn ngữ lớn. {CHUONG.length} chương.</p>
 			<span class="nhan dang-viet">Đang viết</span>
 		</a>
 		<div class="the-nhanh the-tat">

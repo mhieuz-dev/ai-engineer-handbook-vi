@@ -59,3 +59,13 @@ test('mobile 375px: trang chủ, lộ trình, notebook, giới thiệu không tr
 		expect(await page.evaluate(() => document.documentElement.scrollWidth), url).toBeLessThanOrEqual(375);
 	}
 });
+
+test('mobile: menu ☰ trên trang bài có liên kết Lộ trình', async ({ page, isMobile }) => {
+	test.skip(!isMobile);
+	await page.goto('/ai-engineer/ch10-hoi-quy-tuyen-tinh/02-toan/');
+	await page.locator('button.sl-menu-button').tap();
+	const lk = page.locator('.nav-sidebar').getByRole('link', { name: 'Lộ trình' });
+	await expect(lk).toBeVisible();
+	await lk.tap();
+	await expect(page).toHaveURL(/\/lo-trinh\/$/);
+});

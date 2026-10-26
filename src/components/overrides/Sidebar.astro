@@ -4,6 +4,7 @@ import SidebarPersister from '@astrojs/starlight/components/SidebarPersister.ast
 import { NHANH, PHAN, CHUONG } from '../../data/chuong';
 import { dungCay, type Nut } from '../../lib/sidebar-cay';
 import SidebarCay from './SidebarCay.astro';
+import { MENU_CHUNG } from '../../data/menu-chung';
 import TienDoSidebar from '../TienDoSidebar.astro';
 
 const cay = dungCay(Astro.locals.starlightRoute.sidebar as Nut[], NHANH, PHAN, CHUONG);
@@ -15,6 +16,15 @@ const cay = dungCay(Astro.locals.starlightRoute.sidebar as Nut[], NHANH, PHAN, C
 
 <TienDoSidebar />
 
+<nav class="nav-sidebar md:sl-hidden" aria-label="Menu chính">
+	{MENU_CHUNG.map((m) => <a href={m.href}>{m.nhan}</a>)}
+</nav>
+
 <div class="md:sl-hidden">
 	<MobileMenuFooter />
 </div>
+
+<style>
+	.nav-sidebar { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--sl-color-hairline); font-weight: 600; }
+	.nav-sidebar a { color: var(--sl-color-text-accent); text-decoration: none; }
+</style>
