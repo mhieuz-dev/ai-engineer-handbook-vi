@@ -106,3 +106,11 @@ test('câu riêng của chương (oDay) chỉ hiện trong tooltip, không có �
 	await expect(page.locator('#dac-trung')).toContainText('Đặc trưng là một thông tin đầu vào');
 	await expect(page.locator('main')).not.toContainText('Ở đây');
 });
+
+test('tên tiếng Anh trong trang Thuật ngữ có màu nhấn', async ({ page }) => {
+	await page.goto('/thuat-ngu/');
+	const en = page.locator('#dao-ham .en');
+	await expect(en).toHaveText('derivative');
+	await expect(en).toHaveCSS('color', 'rgb(224, 122, 31)');
+});
+
