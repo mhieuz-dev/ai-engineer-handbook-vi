@@ -4,8 +4,10 @@ import { linkHocKy } from '../lib/thuat-ngu';
 
 interface Props {
 	id: string;
+	/** Một câu riêng cho chương đang dùng thuật ngữ, chỉ hiện trong tooltip (trang /thuat-ngu/ không có). */
+	oDay?: string;
 }
-const { id } = Astro.props;
+const { id, oDay } = Astro.props;
 const muc = await getEntry('thuatNgu', id);
 if (!muc) throw new Error(`Thuật ngữ chưa khai báo: ${id}`);
 const { ten, giaiThich, hocKy } = muc.data;
@@ -14,7 +16,7 @@ const docIds = hocKy ? (await getCollection('docs')).map((d) => d.id) : [];
 const hoc = hocKy ? linkHocKy(hocKy, docIds, Astro.url.pathname) : undefined;
 ---
 
-<span class="term-wrap"><span class="term" tabindex="0" role="button" aria-expanded="false" aria-describedby={tipId}><slot /></span><span class="tip" role="tooltip" id={tipId} tabindex="-1"><span class="nhan">NHẮC NHANH · {ten.toUpperCase()}</span><span class="nd">{giaiThich}</span>{hoc && <a class="hoc-ky" href={hoc.href}>Học kỹ ở Chương {hoc.so} →</a>}</span></span>
+<span class="term-wrap"><span class="term" tabindex="0" role="button" aria-expanded="false" aria-describedby={tipId}><slot /></span><span class="tip" role="tooltip" id={tipId} tabindex="-1"><span class="nhan">NHẮC NHANH · {ten.toUpperCase()}</span><span class="nd">{giaiThich}</span>{oDay && <span class="o-day">{oDay}</span>}{hoc && <a class="hoc-ky" href={hoc.href}>Học kỹ ở Chương {hoc.so} →</a>}</span></span>
 
 <style is:global>
 	.term-wrap {
@@ -55,8 +57,12 @@ const hoc = hocKy ? linkHocKy(hocKy, docIds, Astro.url.pathname) : undefined;
 		font-weight: 600;
 		margin-bottom: 4px;
 	}
-	.term-wrap .tip .nd {
+	.term-wrap .tip .nd,
+	.term-wrap .tip .o-day {
 		display: block;
+	}
+	.term-wrap .tip .o-day {
+		margin-top: 4px;
 	}
 	.term-wrap .tip .hoc-ky {
 		display: block;

@@ -67,4 +67,8 @@ describe('dữ liệu thuat-ngu.yaml', () => {
 		const slug = new Set(CHUONG.map((c) => c.slug));
 		for (const m of muc) if (m.hocKy) expect(slug.has(m.hocKy), `${m.id}: ${m.hocKy}`).toBe(true);
 	});
+	it('giaiThich không gắn với chương nào (không có câu "Ở đây")', () => {
+		const muc = yaml.load(readFileSync('src/data/thuat-ngu.yaml', 'utf8')) as { id: string; giaiThich: string }[];
+		for (const m of muc) expect(m.giaiThich, m.id).not.toMatch(/ở đây/i);
+	});
 });

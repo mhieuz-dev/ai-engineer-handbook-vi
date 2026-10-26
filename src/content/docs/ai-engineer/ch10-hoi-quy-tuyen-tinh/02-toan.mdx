@@ -91,7 +91,7 @@ $$
 
 Muốn khả năng này **lớn nhất**, phải làm $\sum e_i^2$ **nhỏ nhất**. Đó đúng là làm MSE nhỏ nhất.
 
-Cách chọn tham số như vậy gọi là <Term id="hop-ly-cuc-dai">ước lượng hợp lý cực đại</Term> (Chương 7). Nếu nhiễu có dạng khác, ví dụ phân phối Laplace (nhọn ở giữa, đuôi dày hơn hình chuông), thì cùng lập luận sẽ dẫn tới MAE thay vì MSE.
+Cách chọn tham số như vậy gọi là <Term id="hop-ly-cuc-dai" oDay="Ở đây nó giải thích vì sao MSE dùng bình phương.">ước lượng hợp lý cực đại</Term> (Chương 7). Nếu nhiễu có dạng khác, ví dụ phân phối Laplace (nhọn ở giữa, đuôi dày hơn hình chuông), thì cùng lập luận sẽ dẫn tới MAE thay vì MSE.
 </Khung>
 
 <Khung loai="vi-sao" tieuDe="CHIA CHO n">
@@ -114,9 +114,9 @@ Mỗi cặp $(w, b)$ cho ra một giá trị loss. Vẽ loss theo $w$ và $b$, t
 
 Ở đáy bát, mặt bát nằm ngang. Nhích $w$ một chút hay nhích $b$ một chút, loss gần như không đổi.
 
-Công cụ đo "nhích đầu vào một chút thì đầu ra đổi bao nhiêu" chính là <Term id="dao-ham">đạo hàm</Term>.
+Công cụ đo "nhích đầu vào một chút thì đầu ra đổi bao nhiêu" chính là <Term id="dao-ham" oDay="Ở đây dùng để biết nên tăng hay giảm w và b.">đạo hàm</Term>.
 
-Loss có hai đầu vào. Nhích riêng $w$ và giữ nguyên $b$, độ đổi của loss gọi là <Term id="dao-ham-rieng">đạo hàm riêng</Term> theo $w$, viết $\partial L / \partial w$. Tương tự với $b$.
+Loss có hai đầu vào. Nhích riêng $w$ và giữ nguyên $b$, độ đổi của loss gọi là <Term id="dao-ham-rieng" oDay="Ở đây dùng để biết w và b mỗi cái nên chỉnh bao nhiêu.">đạo hàm riêng</Term> theo $w$, viết $\partial L / \partial w$. Tương tự với $b$.
 
 Ở đáy bát, cả hai đạo hàm riêng đều bằng 0.
 
@@ -126,7 +126,7 @@ Loss là trung bình của bốn số hạng giống nhau. Ta chỉ cần lấy 
 
 Xét một số hạng $\bigl(y_i - w x_i - b\bigr)^2$. Đặt phần trong ngoặc là $u$, tức $u = y_i - w x_i - b$. Số hạng thành $u^2$.
 
-Đây là hàm lồng trong hàm: $w$ đi vào $u$, rồi $u$ đi vào phép bình phương. Đạo hàm của hàm lồng tính bằng <Term id="quy-tac-chuoi">quy tắc chuỗi</Term>: đạo hàm lớp ngoài nhân đạo hàm lớp trong.
+Đây là hàm lồng trong hàm: $w$ đi vào $u$, rồi $u$ đi vào phép bình phương. Đạo hàm của hàm lồng tính bằng <Term id="quy-tac-chuoi" oDay="Ở đây dùng để lấy đạo hàm của bình phương sai số theo w và b.">quy tắc chuỗi</Term>: đạo hàm lớp ngoài nhân đạo hàm lớp trong.
 
 - Lớp ngoài: đạo hàm của $u^2$ theo $u$ là $2u$.
 - Lớp trong theo $w$: trong $u = y_i - w x_i - b$, chỉ có $- w x_i$ chứa $w$. Đạo hàm của nó theo $w$ là $-x_i$.
@@ -189,7 +189,7 @@ $$
 
 Gạch ngang trên đầu là trung bình: $\bar x$ là số giờ học trung bình, $\bar y$ là điểm trung bình. Dấu sao nghĩa là "giá trị tốt nhất".
 
-Công thức cho ra đáp án ngay, không cần lặp. Loại công thức như vậy gọi là <Term id="nghiem-dong">nghiệm đóng</Term>. Tên trong sách thống kê là bình phương tối thiểu (OLS, ordinary least squares).
+Công thức cho ra đáp án ngay, không cần lặp. Loại công thức như vậy gọi là <Term id="nghiem-dong" oDay="Ở đây dùng để đối chiếu với kết quả của gradient descent.">nghiệm đóng</Term>. Tên trong sách thống kê là bình phương tối thiểu (OLS, ordinary least squares).
 
 Đọc nghĩa dòng đầu: tử số đo $x$ và $y$ hay lệch **cùng phía** so với trung bình tới mức nào. Mẫu số đo riêng $x$ trải rộng tới mức nào. Tỉ số là: $x$ lệch 1 đơn vị thì $y$ thường lệch theo bao nhiêu. Đó chính là độ dốc.
 
@@ -247,7 +247,7 @@ Tưởng tượng bạn đứng trên sườn đồi trong sương mù dày đ�
 
 Cách xuống: bước một bước về phía dốc xuống. Đứng lại, cảm nhận lại độ dốc. Bước tiếp. Lặp lại cho tới khi mặt đất bằng phẳng.
 
-Đó là <Term id="gradient-descent">gradient descent</Term>. Viết thành công thức:
+Đó là <Term id="gradient-descent" oDay="Ở đây dùng để tìm w và b làm mất mát nhỏ nhất.">gradient descent</Term>. Viết thành công thức:
 
 $$
 \begin{gathered}
@@ -320,7 +320,7 @@ Mỗi bước, khoảng cách tới đáy bị nhân với $(1 - \eta\lambda)$.
 
 Điều kiện $|1 - \eta\lambda| < 1$ tương đương $0 < \eta < 2/\lambda$. Đó là ngưỡng.
 
-**Hai chiều.** Cái bát MSE của ta có hai trục chính (hai trục của các hình elip ở Hình 10.3). Mỗi trục có độ cong riêng. Hai độ cong đó là hai <Term id="tri-rieng">trị riêng</Term> (Chương 5) của ma trận
+**Hai chiều.** Cái bát MSE của ta có hai trục chính (hai trục của các hình elip ở Hình 10.3). Mỗi trục có độ cong riêng. Hai độ cong đó là hai <Term id="tri-rieng" oDay="Ở đây hai trị riêng là độ cong của cái bát hàm mất mát theo hai trục chính.">trị riêng</Term> (Chương 5) của ma trận
 
 $$
 H = \frac{2}{n} X^\top X,

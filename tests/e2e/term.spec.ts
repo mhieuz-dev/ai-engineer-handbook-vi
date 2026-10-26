@@ -97,3 +97,12 @@ test('trang chương 10: thuật ngữ học kỹ ở chính chương 10 không 
 	await page.goto('/thuat-ngu/');
 	await expect(page.locator('#mse .hoc-ky a')).toHaveText('Học kỹ ở Chương 10 →');
 });
+
+test('câu riêng của chương (oDay) chỉ hiện trong tooltip, không có ở trang Thuật ngữ', async ({ page }) => {
+	await page.goto('/ai-engineer/ch10-hoi-quy-tuyen-tinh/01-truc-giac/');
+	const tip = page.locator('.term-wrap .tip', { has: page.locator('.nhan', { hasText: /· ĐẶC TRƯNG$/ }) });
+	await expect(tip.locator('.o-day')).toHaveText('Ở đây chỉ có một đặc trưng là số giờ tự học.');
+	await page.goto('/thuat-ngu/');
+	await expect(page.locator('#dac-trung')).toContainText('Đặc trưng là một thông tin đầu vào');
+	await expect(page.locator('main')).not.toContainText('Ở đây');
+});

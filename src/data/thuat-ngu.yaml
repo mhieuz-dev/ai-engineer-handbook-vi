@@ -1,110 +1,110 @@
 - id: dao-ham
   ten: Đạo hàm
   tenTiengAnh: derivative
-  giaiThich: Đạo hàm cho biết một đại lượng đổi nhanh hay chậm khi nhích đầu vào một chút. Dương là đang lên dốc, âm là đang xuống dốc. Ở đây dùng để biết nên tăng hay giảm w.
+  giaiThich: Đạo hàm cho biết một đại lượng đổi nhanh hay chậm khi nhích đầu vào một chút. Dương là đang lên dốc, âm là đang xuống dốc. Nhờ dấu của nó, ta biết nên tăng hay giảm đầu vào.
   hocKy: ai-engineer/ch06-giai-tich
 - id: dao-ham-rieng
   ten: Đạo hàm riêng
   tenTiengAnh: partial derivative
-  giaiThich: Khi hàm có nhiều đầu vào, ta chỉ nhích một đầu vào và giữ nguyên các đầu vào còn lại. Độ đổi của đầu ra theo riêng đầu vào đó gọi là đạo hàm riêng. Ở đây dùng để biết w và b mỗi cái nên chỉnh bao nhiêu.
+  giaiThich: Khi hàm có nhiều đầu vào, ta chỉ nhích một đầu vào và giữ nguyên các đầu vào còn lại. Độ đổi của đầu ra theo riêng đầu vào đó gọi là đạo hàm riêng.
   hocKy: ai-engineer/ch06-giai-tich
 - id: gradient
   ten: Gradient
   tenTiengAnh: gradient
-  giaiThich: Gradient là một danh sách các đạo hàm riêng, mỗi đầu vào một số. Nó chỉ hướng dốc lên nhanh nhất, như mũi tên chỉ lên đỉnh đồi. Ở đây ta đi ngược hướng đó để xuống đáy hàm mất mát.
+  giaiThich: Gradient là một danh sách các đạo hàm riêng, mỗi đầu vào một số. Nó chỉ hướng dốc lên nhanh nhất, như mũi tên chỉ lên đỉnh đồi. Đi ngược hướng đó là cách xuống dốc nhanh nhất.
   hocKy: ai-engineer/ch06-giai-tich
 - id: learning-rate
   ten: Learning rate
   tenTiengAnh: learning rate
-  giaiThich: Learning rate là độ dài mỗi bước khi xuống dốc. Bước quá nhỏ thì đi rất lâu, bước quá lớn thì nhảy qua đáy. Ở đây nó là số η ta tự chọn trước khi huấn luyện.
+  giaiThich: Learning rate là độ dài mỗi bước khi xuống dốc. Bước quá nhỏ thì đi rất lâu, bước quá lớn thì nhảy qua đáy. Người huấn luyện tự chọn con số này trước khi chạy.
   hocKy: ai-engineer/ch08-toi-uu-hoa
 - id: mse
   ten: MSE
   tenTiengAnh: mean squared error
-  giaiThich: MSE là trung bình của bình phương độ lệch giữa dự đoán và giá trị thật. Bình phương làm sai số lớn bị phạt nặng hơn sai số nhỏ. Ở đây dùng làm hàm mất mát cho hồi quy tuyến tính.
+  giaiThich: MSE là trung bình của bình phương độ lệch giữa dự đoán và giá trị thật. Bình phương làm sai số lớn bị phạt nặng hơn sai số nhỏ. Đây là hàm mất mát quen thuộc nhất khi mô hình phải đoán ra một con số.
   hocKy: ai-engineer/ch10-hoi-quy-tuyen-tinh
 - id: phan-du
   ten: Phần dư
   tenTiengAnh: residual
-  giaiThich: Phần dư là chênh lệch giữa giá trị thật và giá trị mô hình dự đoán cho từng điểm dữ liệu. Nó cho thấy mô hình lệch bao nhiêu ở điểm đó. Ở đây ta nhìn phần dư để biết đường thẳng khớp chưa.
+  giaiThich: Phần dư là chênh lệch giữa giá trị thật và giá trị mô hình dự đoán cho từng điểm dữ liệu. Nó cho thấy mô hình lệch bao nhiêu ở điểm đó. Nhìn mọi phần dư cùng lúc sẽ biết mô hình khớp dữ liệu tốt hay chưa.
   hocKy: ai-engineer/ch10-hoi-quy-tuyen-tinh
 - id: ham-mat-mat
   ten: Hàm mất mát
   tenTiengAnh: loss function
-  giaiThich: Hàm mất mát là một con số đo mô hình đang sai nhiều hay ít. Con số càng nhỏ thì mô hình càng đúng. Ở đây huấn luyện nghĩa là chỉnh tham số để con số này nhỏ đi.
+  giaiThich: Hàm mất mát là một con số đo mô hình đang sai nhiều hay ít. Con số càng nhỏ thì mô hình càng đúng. Huấn luyện nghĩa là chỉnh tham số để con số này nhỏ đi.
   hocKy: ai-engineer/ch10-hoi-quy-tuyen-tinh
 - id: gradient-descent
   ten: Gradient descent
   tenTiengAnh: gradient descent
-  giaiThich: Gradient descent là cách xuống đáy bằng nhiều bước nhỏ, như xuống dốc trong sương mù, mỗi bước theo hướng dốc xuống. Sau mỗi bước ta tính lại hướng rồi đi tiếp. Ở đây dùng để tìm w và b làm mất mát nhỏ nhất.
+  giaiThich: Gradient descent là cách xuống đáy bằng nhiều bước nhỏ, như xuống dốc trong sương mù, mỗi bước theo hướng dốc xuống. Sau mỗi bước ta tính lại hướng rồi đi tiếp. Phần lớn mô hình học máy, kể cả mạng nơ-ron, học theo cách này.
   hocKy: ai-engineer/ch08-toi-uu-hoa
 - id: chuan-hoa
   ten: Chuẩn hóa
   tenTiengAnh: standardization
-  giaiThich: Chuẩn hóa đưa các cột dữ liệu về cùng một thang đo, thường là trung bình 0 và độ lệch chuẩn 1. Nhờ vậy cột có số lớn không lấn át cột có số nhỏ. Ở đây giúp gradient descent đi thẳng xuống đáy thay vì zích zắc.
+  giaiThich: Chuẩn hóa đưa các cột dữ liệu về cùng một thang đo, thường là trung bình 0 và độ lệch chuẩn 1. Nhờ vậy cột có số lớn không lấn át cột có số nhỏ. Gradient descent cũng nhờ đó đi thẳng xuống đáy hơn, ít zích zắc.
   hocKy: ai-engineer/ch14-knn
 - id: r-binh-phuong
   ten: R bình phương
   tenTiengAnh: R-squared
-  giaiThich: R bình phương cho biết mô hình giải thích được bao nhiêu phần của độ biến thiên trong dữ liệu. Bằng 1 là khớp hoàn toàn, bằng 0 là không hơn gì việc đoán mức trung bình. Ở đây dùng để chấm điểm đường hồi quy.
+  giaiThich: R bình phương cho biết mô hình giải thích được bao nhiêu phần của độ biến thiên trong dữ liệu. Bằng 1 là khớp hoàn toàn, bằng 0 là không hơn gì việc đoán mức trung bình. Nó hay dùng để chấm điểm mô hình hồi quy.
   hocKy: ai-engineer/ch10-hoi-quy-tuyen-tinh
 - id: outlier
   ten: Outlier
   tenTiengAnh: outlier
-  giaiThich: Outlier là điểm dữ liệu nằm rất xa phần còn lại, như một người cao 2,5 m giữa lớp học. Một điểm như vậy có thể kéo cả đường hồi quy lệch theo. Ở đây ta phát hiện nó rồi quyết định giữ hay bỏ.
+  giaiThich: Outlier là điểm dữ liệu nằm rất xa phần còn lại, như một người cao 2,5 m giữa lớp học. Một điểm như vậy có thể kéo cả mô hình lệch theo. Gặp outlier, cần tìm hiểu vì sao nó lạ rồi mới quyết định giữ hay bỏ.
   hocKy: ai-engineer/ch10-hoi-quy-tuyen-tinh
 - id: vector-hoa
   ten: Vector hóa
   tenTiengAnh: vectorization
-  giaiThich: Vector hóa là viết phép tính cho cả mảng một lần thay vì lặp từng phần tử bằng vòng for. Như chấm cả xấp bài bằng một động tác thay vì từng tờ. Ở đây NumPy làm việc đó và nhanh hơn nhiều lần.
+  giaiThich: Vector hóa là viết phép tính cho cả mảng một lần thay vì lặp từng phần tử bằng vòng for. Như chấm cả xấp bài bằng một động tác thay vì từng tờ. Thư viện như NumPy làm việc đó nhanh hơn vòng for nhiều lần.
   hocKy: ai-engineer/ch03-numpy
 - id: nghiem-dong
   ten: Nghiệm đóng
   tenTiengAnh: closed-form solution
-  giaiThich: Nghiệm đóng là công thức cho ra đáp án ngay, không cần lặp nhiều bước. Với hồi quy tuyến tính, w và b tính được bằng vài phép nhân ma trận. Ở đây dùng để đối chiếu với kết quả của gradient descent.
+  giaiThich: Nghiệm đóng là công thức cho ra đáp án ngay, không cần lặp nhiều bước. Hồi quy tuyến tính có nghiệm đóng. Phần lớn mô hình khác thì không, nên phải học bằng cách lặp từng bước.
   hocKy: ai-engineer/ch10-hoi-quy-tuyen-tinh
 - id: hoi-quy-tuyen-tinh
   ten: Hồi quy tuyến tính
   tenTiengAnh: linear regression
-  giaiThich: Hồi quy tuyến tính là cách tìm một đường thẳng đi gần nhất với các điểm dữ liệu, để từ một con số đoán ra một con số khác. Nó là viên gạch đầu tiên của mạng nơ-ron. Ở đây đường thẳng có dạng ŷ = wx + b.
+  giaiThich: Hồi quy tuyến tính là cách tìm một đường thẳng đi gần nhất với các điểm dữ liệu, để từ một con số đoán ra một con số khác. Nó là viên gạch đầu tiên của mạng nơ-ron. Với một đặc trưng, đường thẳng có dạng ŷ = wx + b.
   hocKy: ai-engineer/ch10-hoi-quy-tuyen-tinh
 - id: tham-so
   ten: Tham số
   tenTiengAnh: parameter
-  giaiThich: Tham số là những con số bên trong mô hình mà máy tự chỉnh trong lúc học, như hai núm vặn. Học xong, mô hình chỉ là các tham số đã vặn đúng chỗ. Ở đây có hai tham số là w và b.
+  giaiThich: Tham số là những con số bên trong mô hình mà máy tự chỉnh trong lúc học, như những núm vặn. Học xong, mô hình chỉ là các tham số đã vặn đúng chỗ.
   hocKy: ai-engineer/ch09-quy-trinh-du-an-ml
 - id: dac-trung
   ten: Đặc trưng
   tenTiengAnh: feature
-  giaiThich: Đặc trưng là một thông tin đầu vào mà mô hình dùng để đoán, như một cột trong bảng dữ liệu. Một bài toán có thể có một hay hàng nghìn đặc trưng. Ở đây chỉ có một đặc trưng là số giờ tự học.
+  giaiThich: Đặc trưng là một thông tin đầu vào mà mô hình dùng để đoán, như một cột trong bảng dữ liệu. Một bài toán có thể có một hay hàng nghìn đặc trưng.
   hocKy: ai-engineer/ch09-quy-trinh-du-an-ml
 - id: quy-tac-chuoi
   ten: Quy tắc chuỗi
   tenTiengAnh: chain rule
-  giaiThich: Quy tắc chuỗi dùng để lấy đạo hàm của một hàm lồng trong hàm khác. Đạo hàm lớp ngoài nhân với đạo hàm lớp trong. Ở đây dùng để lấy đạo hàm của bình phương sai số theo w và b.
+  giaiThich: Quy tắc chuỗi dùng để lấy đạo hàm của một hàm lồng trong hàm khác. Đạo hàm lớp ngoài nhân với đạo hàm lớp trong. Mạng nơ-ron tính gradient bằng cách dùng quy tắc này qua từng lớp.
   hocKy: ai-engineer/ch06-giai-tich
 - id: tri-rieng
   ten: Trị riêng
   tenTiengAnh: eigenvalue
-  giaiThich: Trị riêng của một ma trận cho biết ma trận đó kéo giãn mạnh bao nhiêu theo từng hướng đặc biệt của nó. Hướng có trị riêng lớn là hướng bị kéo mạnh nhất. Ở đây trị riêng đo độ dốc của cái bát hàm mất mát theo từng hướng.
+  giaiThich: Trị riêng của một ma trận cho biết ma trận đó kéo giãn mạnh bao nhiêu theo từng hướng đặc biệt của nó. Hướng có trị riêng lớn là hướng bị kéo mạnh nhất.
   hocKy: ai-engineer/ch05-dai-so-tuyen-tinh
 - id: hop-ly-cuc-dai
   ten: Ước lượng hợp lý cực đại
   tenTiengAnh: maximum likelihood estimation
-  giaiThich: Ước lượng hợp lý cực đại là chọn tham số sao cho dữ liệu đã thấy có xác suất xảy ra cao nhất. Nó là lý do sâu xa của nhiều hàm mất mát quen thuộc. Ở đây nó giải thích vì sao MSE dùng bình phương.
+  giaiThich: Ước lượng hợp lý cực đại là chọn tham số sao cho dữ liệu đã thấy có xác suất xảy ra cao nhất. Nó là lý do sâu xa của nhiều hàm mất mát quen thuộc.
   hocKy: ai-engineer/ch07-xac-suat-thong-ke
 - id: mae
   ten: MAE
   tenTiengAnh: mean absolute error
-  giaiThich: MAE là trung bình của trị tuyệt đối độ lệch giữa dự đoán và giá trị thật. Nó không bình phương nên ít bị một điểm lệch xa kéo đi. Ở đây là phương án thay MSE khi dữ liệu có outlier.
+  giaiThich: MAE là trung bình của trị tuyệt đối độ lệch giữa dự đoán và giá trị thật. Nó không bình phương nên ít bị một điểm lệch xa kéo đi. Vì vậy MAE hay được dùng thay MSE khi dữ liệu có outlier.
   hocKy: ai-engineer/ch12-danh-gia-mo-hinh
 - id: thang-log
   ten: Thang log
   tenTiengAnh: logarithmic scale
-  giaiThich: Thang log là trục mà mỗi vạch lớn gấp 10 lần vạch ngay dưới, thay vì cộng thêm một khoảng đều. Nhờ vậy số rất nhỏ và số rất lớn cùng nằm vừa một hình. Ở đây dùng để vẽ MSE trải từ 0,05 đến hơn một tỷ.
+  giaiThich: Thang log là trục mà mỗi vạch lớn gấp 10 lần vạch ngay dưới, thay vì cộng thêm một khoảng đều. Nhờ vậy số rất nhỏ và số rất lớn cùng nằm vừa một hình.
   hocKy: ai-engineer/ch04-pandas-va-matplotlib
 - id: tuong-quan
   ten: Tương quan
   tenTiengAnh: correlation
-  giaiThich: Tương quan là hai đại lượng hay đi cùng nhau, cái này lớn thì cái kia cũng hay lớn (hoặc hay nhỏ). Tương quan không có nghĩa cái này gây ra cái kia. Ở đây hồi quy chỉ đo tương quan giữa giờ học và điểm.
+  giaiThich: Tương quan là hai đại lượng hay đi cùng nhau, cái này lớn thì cái kia cũng hay lớn (hoặc hay nhỏ). Tương quan không có nghĩa cái này gây ra cái kia.
   hocKy: ai-engineer/ch07-xac-suat-thong-ke
