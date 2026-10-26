@@ -17,6 +17,8 @@ import HinhKetQua from '../../../components/HinhKetQua.astro';
 import ColabButton from '../../../components/ColabButton.astro';
 import BaiTap from '../../../components/BaiTap.astro';
 import Term from '../../../components/Term.astro';
+import ThuNgayLearningRate from '../../../components/ThuNgayLearningRate.astro';
+import TuKiemTra from '../../../components/TuKiemTra.astro';
 
 <CanBietTruoc>
 Đại số lớp 10.
@@ -49,3 +51,14 @@ Tính 6 × 7.
 Ta dò đáy bằng <Term id="dao-ham">đạo hàm</Term> của hàm mất mát.
 
 <p style="text-align:right">Gần mép phải: <Term id="gradient-descent">gradient descent</Term></p>
+
+<ThuNgayLearningRate />
+
+<TuKiemTra
+  cauHoi="Đổi giờ sang phút mà giữ η = 0,05 thì chuyện gì xảy ra?"
+  luaChon={['Vẫn chạy tốt', 'Loss phát nổ']}
+  dapAn={1}
+  giaiThich="Số lớn gấp 60 lần làm ngưỡng an toàn tụt từ 0,12 xuống khoảng 0,000037."
+/>
+
+<TuKiemTra cauHoi="Câu thứ hai để kiểm tra độc lập?" luaChon={['A', 'B']} dapAn={0} giaiThich="Chọn A là đúng." />

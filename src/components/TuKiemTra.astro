@@ -1,0 +1,91 @@
+---
+interface Props {
+	cauHoi: string;
+	luaChon: string[];
+	dapAn: number;
+	giaiThich: string;
+}
+const { cauHoi, luaChon, dapAn, giaiThich } = Astro.props;
+---
+
+<div class="tkt" data-tkt data-dap-an={dapAn} data-giai-thich={giaiThich}>
+	<span class="tkt-nhan">❓ TỰ KIỂM TRA</span>
+	<p class="tkt-hoi">{cauHoi}</p>
+	<div class="tkt-chon">
+		{luaChon.map((lc, i) => <button type="button" class="tkt-nut" data-chi-so={i}>{lc}</button>)}
+	</div>
+	<div class="tkt-phan-hoi" aria-live="polite" data-phan-hoi></div>
+</div>
+
+<script>
+	function khoiTao(goc: HTMLElement) {
+		const dapAn = Number(goc.dataset.dapAn);
+		const giaiThich = goc.dataset.giaiThich ?? '';
+		const phanHoi = goc.querySelector<HTMLElement>('[data-phan-hoi]')!;
+		const nut = goc.querySelectorAll<HTMLButtonElement>('.tkt-nut');
+		nut.forEach((n) =>
+			n.addEventListener('click', () => {
+				const dung = Number(n.dataset.chiSo) === dapAn;
+				nut.forEach((m) => m.classList.remove('dung', 'sai'));
+				n.classList.add(dung ? 'dung' : 'sai');
+				phanHoi.replaceChildren();
+				const b = document.createElement('b');
+				b.className = dung ? 'tkt-dung' : 'tkt-sai';
+				b.textContent = dung ? 'Đúng!' : 'Chưa đúng.';
+				phanHoi.append(b);
+				if (dung) phanHoi.append(' ' + giaiThich);
+			}),
+		);
+	}
+	document.querySelectorAll<HTMLElement>('[data-tkt]').forEach(khoiTao);
+</script>
+
+<style>
+	.tkt {
+		background: var(--panel);
+		border: 1px solid var(--line);
+		border-radius: 12px;
+		padding: 16px 18px;
+		margin: 20px 0;
+		font-family: 'Be Vietnam Pro', sans-serif;
+	}
+	.tkt-nhan {
+		font-size: 12px;
+		font-weight: 700;
+		letter-spacing: 0.06em;
+		color: var(--acc);
+	}
+	.tkt-hoi {
+		margin: 8px 0 0;
+	}
+	.tkt-nut {
+		font: inherit;
+		color: var(--tx);
+		background: transparent;
+		border: 1.5px solid var(--line);
+		border-radius: 8px;
+		padding: 5px 12px;
+		margin: 6px 8px 0 0;
+		cursor: pointer;
+	}
+	.tkt-nut.dung {
+		border-color: var(--ok);
+	}
+	.tkt-nut.sai {
+		border-color: #c0392b;
+	}
+	.tkt-phan-hoi {
+		margin-top: 8px;
+	}
+	.tkt-dung {
+		color: var(--ok);
+	}
+	.tkt-sai {
+		color: #c0392b;
+	}
+	@media print {
+		.tkt {
+			display: none;
+		}
+	}
+</style>
