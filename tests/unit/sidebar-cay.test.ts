@@ -28,4 +28,12 @@ describe('dungCay', () => {
 	it('ném lỗi khi chương xong không có nhóm trong Starlight', () => {
 		expect(() => dungCay([], nhanh, phan, chuong)).toThrow(/Chương 2 "T2" đã xuất bản/);
 	});
+	it('Phần có chương xong mở sẵn, Phần chỉ Sắp có thu gọn kèm đếm', () => {
+		const [n] = dungCay(goc, nhanh, phan, chuong);
+		const [p1, p2] = n.entries as NutNhom[];
+		expect(p1.collapsed).toBe(false);
+		expect(p1.sapCo).toBe(2);
+		expect(p2.collapsed).toBe(true);
+		expect(p2.sapCo).toBe(1);
+	});
 });

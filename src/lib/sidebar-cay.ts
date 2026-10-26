@@ -1,7 +1,7 @@
 import type { Chuong, Nhanh, Phan } from '../data/chuong';
 
 export interface NutLink { type: 'link'; label: string; href: string; isCurrent: boolean; attrs?: { class?: string } }
-export interface NutNhom { type: 'group'; label: string; entries: Nut[]; collapsed: boolean }
+export interface NutNhom { type: 'group'; label: string; entries: Nut[]; collapsed: boolean; sapCo?: number }
 export interface NutSapCo { type: 'sap-co'; label: string }
 export type Nut = NutLink | NutNhom | NutSapCo;
 
@@ -14,8 +14,8 @@ export function dungCay(goc: Nut[], nhanh: Nhanh[], phan: Phan[], chuong: Chuong
 		const nhomNhanh = timNhom(goc, n.ten);
 		const phanCon = phan.filter((p) => p.nhanh === n.id).map((p): NutNhom => {
 			const nhomPhan = timNhom(nhomNhanh?.entries ?? [], p.ten);
-			const entries = chuong
-				.filter((c) => c.phan === p.id)
+			const cuaPhan = chuong.filter((c) => c.phan === p.id);
+			const entries = cuaPhan
 				.sort((a, b) => a.so - b.so)
 				.map((c): Nut => {
 					const nhan = `${c.so}. ${c.ten}`;
@@ -28,7 +28,8 @@ export function dungCay(goc: Nut[], nhanh: Nhanh[], phan: Phan[], chuong: Chuong
 					}
 					return nhomChuong;
 				});
-			return { type: 'group', label: p.ten, entries, collapsed: true };
+			const sapCo = cuaPhan.filter((c) => c.trangThai === 'sap-co').length;
+			return { type: 'group', label: p.ten, entries, collapsed: sapCo === cuaPhan.length, sapCo };
 		});
 		return { type: 'group', label: n.ten, entries: phanCon, collapsed: false };
 	});

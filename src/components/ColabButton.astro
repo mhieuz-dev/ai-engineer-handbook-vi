@@ -7,4 +7,7 @@ const { notebook } = Astro.props;
 const href = colabUrl(notebook);
 ---
 
-<a class="colab-nut" href={href} target="_blank" rel="noopener">▶ Mở trong Colab</a>
+<div class="colab-hang">
+	<a class="colab-nut" href={href} target="_blank" rel="noopener">▶ Mở trong Colab</a>
+	<code class="colab-duong-dan">notebooks/{notebook}</code>
+</div>

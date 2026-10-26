@@ -34,3 +34,22 @@ test('hình kết quả có chú thích đánh số', async ({ page }) => {
 	await page.goto(URL);
 	await expect(page.locator('figure figcaption')).toHaveText(/^Hình 10\.1\./);
 });
+
+test('nút Colab gọn, kèm đường dẫn notebook cùng hàng', async ({ page }) => {
+	await page.goto('/ai-engineer/ch10-hoi-quy-tuyen-tinh/04-code/');
+	const nut = page.locator('.colab-nut');
+	await expect(nut).toHaveText(/Mở trong Colab/);
+	const hop = await nut.boundingBox();
+	expect(hop!.height).toBeLessThanOrEqual(32);
+	const path = page.getByText('notebooks/ch10_hoi_quy_tuyen_tinh.ipynb', { exact: true });
+	await expect(path).toBeVisible();
+	const hopP = await path.boundingBox();
+	// điện thoại hẹp cho phép xuống dòng; desktop phải cùng hàng
+	if ((page.viewportSize()?.width ?? 0) >= 1000) {
+		expect(Math.abs(hopP!.y - hop!.y)).toBeLessThanOrEqual(8);
+		expect(hopP!.x).toBeGreaterThan(hop!.x + hop!.width - 1);
+	}
+	expect(await path.evaluate((e) => getComputedStyle(e).fontFamily)).toMatch(/mono/i);
+	await page.emulateMedia({ media: 'print' });
+	await expect(path).toBeHidden();
+});

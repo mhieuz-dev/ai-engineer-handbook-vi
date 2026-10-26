@@ -35,6 +35,7 @@ const slugCua = (href: string) => href.replace(/^\/|\/$/g, '');
 						<summary>
 							<span class="group-label">
 								<span class="large">{entry.label}</span>
+								{entry.collapsed && entry.sapCo ? <span class="dem-sap-co">· {entry.sapCo} chương sắp có</span> : null}
 							</span>
 							<Icon name="right-caret" class="caret" size="1.25rem" />
 						</summary>
@@ -56,6 +57,7 @@ const slugCua = (href: string) => href.replace(/^\/|\/$/g, '');
 			border-inline-start: 1px solid var(--sl-color-hairline-light);
 			padding-inline-start: var(--sl-sidebar-item-padding-inline);
 		}
+		.dem-sap-co { margin-inline-start: 0.4em; font-size: var(--sl-text-xs); font-weight: 400; color: var(--sl-color-gray-3); }
 		.large { font-size: var(--sl-text-lg); font-weight: 600; color: var(--sl-color-white); }
 		.top-level > li + li { margin-top: 0.75rem; }
 		summary {
