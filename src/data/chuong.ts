@@ -17,8 +17,11 @@ export const PHAN: Phan[] = [
 	{ id: 'phan-7', nhanh: 'ai-engineer', ten: 'Phần VII. Lên senior' },
 ];
 
-// [số, phần, tên, hậu tố slug]
-const BANG: [number, string, string, string][] = [
+/** Chương đã xuất bản: thêm phần tử thứ 5 vào dòng của chương trong BANG. Xuất bản chương mới chỉ là sửa dữ liệu. */
+interface XuatBan { trangThai: 'xong'; notebook?: string }
+
+// [số, phần, tên, hậu tố slug, xuất bản?]
+const BANG: [number, string, string, string, XuatBan?][] = [
 	[0, 'phan-0', 'Lộ trình AI Engineer và cách dùng Colab', 'lo-trinh-va-colab'],
 	[1, 'phan-1', 'Python từ đầu', 'python-tu-dau'],
 	[2, 'phan-1', 'Python cho dữ liệu', 'python-cho-du-lieu'],
@@ -29,7 +32,7 @@ const BANG: [number, string, string, string][] = [
 	[7, 'phan-1', 'Xác suất và thống kê', 'xac-suat-thong-ke'],
 	[8, 'phan-1', 'Tối ưu hóa', 'toi-uu-hoa'],
 	[9, 'phan-2', 'Quy trình một dự án ML', 'quy-trinh-du-an-ml'],
-	[10, 'phan-2', 'Hồi quy tuyến tính', 'hoi-quy-tuyen-tinh'],
+	[10, 'phan-2', 'Hồi quy tuyến tính', 'hoi-quy-tuyen-tinh', { trangThai: 'xong', notebook: 'ch10_hoi_quy_tuyen_tinh.ipynb' }],
 	[11, 'phan-2', 'Hồi quy logistic', 'hoi-quy-logistic'],
 	[12, 'phan-2', 'Đánh giá mô hình', 'danh-gia-mo-hinh'],
 	[13, 'phan-2', 'Overfitting, bias-variance và regularization', 'overfitting-regularization'],
@@ -86,15 +89,15 @@ const BANG: [number, string, string, string][] = [
 	[64, 'phan-7', 'Phỏng vấn và portfolio', 'phong-van-portfolio'],
 ];
 
-export const CHUONG: Chuong[] = BANG.map(([so, phan, ten, hauTo]) => {
+export const CHUONG: Chuong[] = BANG.map(([so, phan, ten, hauTo, xuatBan]) => {
 	const c: Chuong = {
 		so,
 		phan,
 		ten,
 		slug: `ai-engineer/ch${String(so).padStart(2, '0')}-${hauTo}`,
-		trangThai: so === 10 ? 'xong' : 'sap-co',
+		trangThai: xuatBan?.trangThai ?? 'sap-co',
 	};
-	if (so === 10) c.notebook = 'ch10_hoi_quy_tuyen_tinh.ipynb';
+	if (xuatBan?.notebook) c.notebook = xuatBan.notebook;
 	return c;
 });
 

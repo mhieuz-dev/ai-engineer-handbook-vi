@@ -20,6 +20,9 @@ describe('danh mục chương', () => {
 	it('chỉ chương 10 đã xuất bản', () => {
 		expect(chuongDaXuatBan().map((c) => c.so)).toEqual([10]);
 	});
+	it('chỉ chương 10 có notebook, lấy từ dòng dữ liệu của chương', () => {
+		expect(CHUONG.filter((c) => c.notebook).map((c) => [c.so, c.notebook])).toEqual([[10, 'ch10_hoi_quy_tuyen_tinh.ipynb']]);
+	});
 	it('tìm chương theo slug trang', () => {
 		expect(timChuongTheoSlugTrang('ai-engineer/ch10-hoi-quy-tuyen-tinh/02-toan')?.so).toBe(10);
 		expect(timChuongTheoSlugTrang('gioi-thieu')).toBeUndefined();
