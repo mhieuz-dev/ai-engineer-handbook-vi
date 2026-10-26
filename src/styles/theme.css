@@ -58,6 +58,11 @@
 	--sl-content-width: 45rem;
 }
 
+/* Starlight đặt 67.5rem cho trang không có sidebar (html:not([data-has-sidebar])), mạnh hơn :root của chế độ sáng; ghim lại để trang chủ sáng và tối cùng căn giữa cột 720px. */
+html:not([data-has-sidebar]):root {
+	--sl-content-width: 45rem;
+}
+
 /* Nội dung bài: Lora 17px, cột tối đa 720px. */
 .sl-markdown-content {
 	font-family: 'Lora', Georgia, serif;
