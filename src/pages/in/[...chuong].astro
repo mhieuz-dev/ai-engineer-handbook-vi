@@ -66,4 +66,8 @@ const noiDung = await Promise.all(muc.map(async (e) => ({ e, ...(await render(e)
 		color: var(--pri);
 	}
 	.trang-in a { color: var(--pri); }
+	/* Trang này không nạp CSS Starlight nên liên kết neo của tiêu đề (chứa chữ sr-only "Phần tiêu đề ...") hiện ra thành chữ thường; ẩn đi vì bản in không cần. */
+	.trang-in .sl-anchor-link { display: none; }
+	.trang-in table { border-collapse: collapse; margin: 1rem 0; }
+	.trang-in th, .trang-in td { padding: 0.4rem 0.9rem; border-bottom: 1px solid var(--line); text-align: left; }
 </style>
