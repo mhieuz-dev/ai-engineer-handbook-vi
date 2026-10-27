@@ -51,6 +51,15 @@ describe('phanTram', () => {
 	it('1/3 -> 33', () => expect(phanTram(td, ['a', 'b', 'c'])).toBe(33));
 	it('slug ngoài danh sách không tính', () => expect(phanTram({ daDoc: { x: '2026-10-27' }, ngayHoc: [] }, ['a'])).toBe(0));
 	it('danh sách rỗng -> 0', () => expect(phanTram(td, [])).toBe(0));
+	it('đọc 1 trên 250 trang vẫn hiện 1%, không làm tròn về 0', () => {
+		const nhieu = Array.from({ length: 250 }, (_, i) => `t${i}`);
+		expect(phanTram({ daDoc: { t0: '2026-10-28' }, ngayHoc: [] }, nhieu)).toBe(1);
+	});
+	it('còn 1 trên 250 trang chưa đọc thì 99%, chưa phải 100%', () => {
+		const nhieu = Array.from({ length: 250 }, (_, i) => `t${i}`);
+		const daDoc = Object.fromEntries(nhieu.slice(1).map((s) => [s, '2026-10-28']));
+		expect(phanTram({ daDoc, ngayHoc: [] }, nhieu)).toBe(99);
+	});
 });
 
 describe('storage', () => {

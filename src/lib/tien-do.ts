@@ -46,7 +46,11 @@ export function chuoiNgay(td: TienDo, homNay: string): number {
 export function phanTram(td: TienDo, cacSlugTrangDaXuatBan: string[]): number {
 	if (cacSlugTrangDaXuatBan.length === 0) return 0;
 	const doc = cacSlugTrangDaXuatBan.filter((s) => s in td.daDoc).length;
-	return Math.floor((doc * 100) / cacSlugTrangDaXuatBan.length);
+	const pt = Math.floor((doc * 100) / cacSlugTrangDaXuatBan.length);
+	// Khi có hơn 100 trang, đọc 1 trang bị làm tròn xuống 0%: đã đọc thì hiện ít nhất 1%, chưa đọc hết thì nhiều nhất 99%.
+	if (doc > 0 && pt === 0) return 1;
+	if (doc < cacSlugTrangDaXuatBan.length && pt === 100) return 99;
+	return pt;
 }
 
 export function docTuStorage(s: Pick<Storage, 'getItem'> | undefined): TienDo {
