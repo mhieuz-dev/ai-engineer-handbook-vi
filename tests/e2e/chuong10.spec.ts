@@ -154,3 +154,43 @@ test('trang 04 khi in ở theme tối: khối code và OUTPUT vẫn nền trắn
 	expect(tuongPhan.output).toBeGreaterThanOrEqual(4.5);
 	expect(tuongPhan.code).toBeGreaterThanOrEqual(4.5);
 });
+
+test('công thức hiển thị nằm trong thẻ trắng bo góc, số (10.1) là viên bo tròn căn giữa bên phải', async ({ page, isMobile }) => {
+	await page.goto('/ai-engineer/ch10-hoi-quy-tuyen-tinh/02-toan/');
+	await page.evaluate(() => (document.documentElement.dataset.theme = 'light'));
+	const the = page.locator('.katex-display', { has: page.locator('.tag', { hasText: '(10.1)' }) });
+	const kieu = await the.evaluate((e) => {
+		const s = getComputedStyle(e);
+		return { nen: s.backgroundColor, bo: parseFloat(s.borderTopLeftRadius), vien: s.borderTopWidth, cuon: s.overflowX };
+	});
+	expect(kieu.nen).toBe('rgb(255, 255, 255)');
+	expect(kieu.bo).toBeGreaterThanOrEqual(8);
+	expect(kieu.vien).toBe('1px');
+	expect(kieu.cuon).toBe('auto');
+	const tag = the.locator('.tag');
+	expect(parseFloat(await tag.evaluate((e) => getComputedStyle(e).borderTopLeftRadius))).toBeGreaterThanOrEqual(8);
+	expect(await tag.evaluate((e) => getComputedStyle(e).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)');
+	const hThe = (await the.boundingBox())!;
+	const hTag = (await tag.boundingBox())!;
+	// viên số nằm gọn trong thẻ, ở nửa phải, tâm lệch tâm thẻ không quá 12px theo chiều dọc
+	expect(hTag.x + hTag.width).toBeLessThanOrEqual(hThe.x + hThe.width);
+	expect(hTag.x).toBeGreaterThan(hThe.x + hThe.width / 2);
+	expect(Math.abs(hTag.y + hTag.height / 2 - (hThe.y + hThe.height / 2))).toBeLessThanOrEqual(12);
+	if (!isMobile) {
+		await page.evaluate(() => (document.documentElement.dataset.theme = 'dark'));
+		expect(await the.evaluate((e) => getComputedStyle(e).backgroundColor)).toBe('rgb(26, 30, 36)');
+	}
+});
+
+test('mobile 375px: các trang chương 10 không tràn ngang, công thức cuộn trong thẻ', async ({ page, isMobile }) => {
+	test.skip(!isMobile);
+	for (const trang of ['01-truc-giac', '02-toan', '03-tinh-tay', '04-code', '05-doc-ket-qua', '06-bai-tap']) {
+		await page.goto(`/ai-engineer/ch10-hoi-quy-tuyen-tinh/${trang}/`);
+		expect(await page.evaluate(() => document.documentElement.scrollWidth), trang).toBeLessThanOrEqual(375);
+		// công thức nào rộng hơn thẻ thì cuộn bên trong thẻ, không đẩy trang
+		const tran = await page.locator('.katex-display').evaluateAll((ds) =>
+			ds.filter((d) => d.scrollWidth > d.clientWidth && getComputedStyle(d).overflowX !== 'auto').length,
+		);
+		expect(tran, trang).toBe(0);
+	}
+});
