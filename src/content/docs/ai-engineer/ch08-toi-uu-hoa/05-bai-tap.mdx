@@ -1,0 +1,107 @@
+---
+title: Bài tập
+description: Ba bài tập tối ưu hóa có đáp án chi tiết (đếm số bước để tới gần đáy, tách bát dẹt thành hai hướng, momentum với beta bằng 0) và câu hỏi phỏng vấn.
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Dùng công thức (8.2) để đoán trước, rồi chạy code trong notebook để kiểm tra.
+
+<BaiTap so="8.1">
+**Đếm số bước.** Với $f(x) = (x - 3)^2$, xuất phát $x_0 = 0$ và $\eta = 0{,}25$. Cần ít nhất bao nhiêu bước để $|x - 3| < 0{,}01$? Đoán bằng công thức trước khi chạy.
+
+<Fragment slot="dap-an">
+
+Hệ số co là $1 - 2 \times 0{,}25 = 0{,}5$: mỗi bước khoảng cách còn một nửa. Ban đầu cách 3. Cần $3 \times 0{,}5^k < 0{,}01$, tức $0{,}5^k < 1/300$. Ta có $0{,}5^8 = 1/256$ (chưa đủ) và $0{,}5^9 = 1/512$ (đủ). Vậy **9 bước**.
+
+```python
+x, k = 0.0, 0
+while abs(x - 3) >= 0.01:
+    x = x - 0.25 * 2 * (x - 3)
+    k += 1
+print(k, x)
+```
+
+```text title="Output"
+9 2.994140625
+```
+
+Sau 9 bước, $x = 3 - 3/512 \approx 2{,}99414$. Công thức (8.2) cho phép tính trước số bước mà không cần chạy, điều chỉ làm được với hàm bậc hai. Với mạng nơ-ron, ta phải chạy và vẽ đường loss.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="8.2">
+**Tách bát dẹt thành hai hướng.** Trên $f(x, y) = x^2 + 50y^2$ với $\eta = 0{,}019$, xuất phát $(-8, 1)$:
+
+1. Tính hệ số co theo từng hướng $x$ và $y$.
+2. Dự đoán $x$ và $y$ sau 100 bước.
+3. Hướng nào là "nút thắt"?
+
+<Fragment slot="dap-an">
+
+**1.** Gradient theo $x$ là $2x$, theo $y$ là $100y$. Hai hướng độc lập nhau, mỗi hướng là một bài toán một chiều:
+
+- Hướng $x$: hệ số $1 - 2 \times 0{,}019 = 0{,}962$.
+- Hướng $y$: hệ số $1 - 100 \times 0{,}019 = -0{,}9$. Âm nên $y$ đổi dấu mỗi bước, đó là kiểu lắc lên xuống thấy trong hình 8.3.
+
+**2.** $x_{100} = -8 \times 0{,}962^{100} \approx -0{,}166$ và $y_{100} = 1 \times (-0{,}9)^{100} \approx 2{,}66 \times 10^{-5}$.
+
+```python
+p = np.array([-8.0, 1.0])
+for _ in range(100):
+    p = p - 0.019 * np.array([2 * p[0], 100 * p[1]])
+print(p, 8 * 0.962 ** 100, 0.9 ** 100)
+```
+
+```text title="Output"
+[-1.66187055e-01  2.65613989e-05] 0.16618705462070174 2.6561398887587544e-05
+```
+
+**3.** Hướng $x$. Theo $y$ đã gần như tới đáy ($10^{-5}$), theo $x$ vẫn cách 0,17. Nhưng không thể tăng $\eta$ để $x$ đi nhanh hơn, vì chỉ cần $\eta > 0{,}02$ là hướng $y$ phân kỳ. Đây đúng là vấn đề mà Adam giải quyết: cho $x$ và $y$ hai bước đi khác nhau.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="8.3">
+**Momentum không có quán tính.** Trong hàm `duong` ở trang Momentum và Adam, gọi `duong("momentum", 0.019, 100, beta=0.0)`. Trước khi chạy, đoán loss sau 100 bước. So với `duong("gd", 0.019, 100)`.
+
+<Fragment slot="dap-an">
+
+Với $\beta = 0$, công thức (8.4) thành $v_{k+1} = \nabla f(p_k)$: vận tốc chỉ là gradient hiện tại, không nhớ gì. Bước cập nhật trở thành $p_{k+1} = p_k - \eta \nabla f(p_k)$, đúng gradient descent thường. Hai lời gọi phải cho cùng một kết quả.
+
+```python
+print(round(float(f2(duong("momentum", 0.019, 100, beta=0.0))), 5))
+print(round(float(f2(duong("gd", 0.019, 100))), 5))
+```
+
+```text title="Output"
+0.02762
+0.02762
+```
+
+Một cách tốt để kiểm tra code tối ưu tự viết: đặt các siêu tham số về giá trị mà thuật toán thu gọn về một thuật toán đơn giản hơn đã biết, rồi so kết quả. Tương tự, Adam với $\beta_1 = 0$ và bỏ phép chia sẽ thu về gradient descent.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Loss của bạn thành NaN sau vài bước. Bạn làm gì?**
+
+<p lang="en"><em>Your loss becomes NaN after a few steps. What do you do?</em></p>
+
+*Gợi ý:* nghi đầu tiên là learning rate quá lớn, giảm 10 lần. Sau đó kiểm tra dữ liệu (có NaN, có giá trị cực lớn chưa chuẩn hóa), phép log hay chia cho 0 trong hàm loss, và gradient quá lớn (gradient clipping).
+
+**2. So sánh batch gradient descent, mini-batch và SGD.**
+
+<p lang="en"><em>Compare batch gradient descent, mini-batch gradient descent, and SGD.</em></p>
+
+*Gợi ý:* đánh đổi giữa độ chính xác của gradient và số bước mỗi epoch; mini-batch tận dụng song song trên GPU và vừa bộ nhớ; nhiễu của SGD cần lịch giảm learning rate để hội tụ sát đáy.
+
+**3. Adam khác SGD có momentum ở đâu?**
+
+<p lang="en"><em>How does Adam differ from SGD with momentum?</em></p>
+
+*Gợi ý:* cả hai đều có trung bình động của gradient; Adam thêm trung bình động của bình phương gradient để chuẩn hóa bước đi cho từng tham số, cộng phép hiệu chỉnh độ chệch ban đầu. Nêu AdamW cho weight decay.
+</Khung>

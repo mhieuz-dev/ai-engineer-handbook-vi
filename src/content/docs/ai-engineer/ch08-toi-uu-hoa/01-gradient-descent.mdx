@@ -1,0 +1,100 @@
+---
+title: Gradient descent một chiều
+description: Thuật toán gradient descent trên hàm đơn giản nhất f(x) = (x - 3)², tính tay vài bước, và công thức cho biết mỗi bước rút ngắn khoảng cách tới đáy bao nhiêu lần.
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+<CanBietTruoc>
+Đạo hàm, gradient và ý tưởng đi ngược hướng gradient (Chương 6). Vòng lặp và mảng NumPy (Chương 1, 3).
+
+<Fragment slot="sau-chuong">
+Tự viết gradient descent và dự đoán được nó hội tụ hay phân kỳ với một learning rate cho trước. Hiểu vì sao bát dẹt làm gradient descent chậm. Phân biệt gradient descent đầy đủ, mini-batch và SGD. Biết momentum và Adam sửa những yếu điểm nào, và vì sao Adam là lựa chọn mặc định.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch08_toi_uu_hoa.ipynb" />
+
+## Bài toán tối ưu
+
+Học trong ML là **tìm tham số làm loss nhỏ nhất**. Đó là một bài toán tối ưu. Chương 6 đã cho hướng đi: ngược hướng gradient. Chương này trả lời các câu hỏi còn lại: bước dài bao nhiêu, khi nào dừng, và làm sao đi nhanh hơn.
+
+Để thấy rõ từng bước, ta dùng hàm đơn giản nhất có một đáy:
+
+$$
+f(x) = (x - 3)^2, \qquad f'(x) = 2(x - 3)
+$$
+
+Đáy ở $x = 3$, nơi $f = 0$. Ta giả vờ không biết điều đó và để <Term id="gradient-descent">gradient descent</Term> tự tìm.
+
+## Thuật toán
+
+$$
+x_{k+1} = x_k - \eta\, f'(x_k) \tag{8.1}
+$$
+
+Bắt đầu từ $x_0 = 0$, với <Term id="learning-rate">learning rate</Term> $\eta = 0{,}05$:
+
+- Bước 1: $f'(0) = 2(0 - 3) = -6$. Vậy $x_1 = 0 - 0{,}05 \times (-6) = 0{,}3$.
+- Bước 2: $f'(0{,}3) = -5{,}4$. Vậy $x_2 = 0{,}3 + 0{,}27 = 0{,}57$.
+- Bước 3: $f'(0{,}57) = -4{,}86$. Vậy $x_3 = 0{,}57 + 0{,}243 = 0{,}813$.
+
+```python
+def gd_1d(lr, x=0.0, n=20):
+    xs = [x]
+    for _ in range(n):
+        x = x - lr * 2 * (x - 3)     # công thức (8.1) với f'(x) = 2(x - 3)
+        xs.append(x)
+    return xs
+
+xs = gd_1d(0.05)
+print([round(v, 4) for v in xs[:4]], round(xs[20], 4))   # 3 bước đầu và sau 20 bước
+```
+
+```text title="Output"
+[0.0, 0.3, 0.57, 0.813] 2.6353
+```
+
+Ba bước đầu khớp với tính tay. Sau 20 bước, $x \approx 2{,}64$: đã gần, nhưng chưa tới 3.
+
+## Mỗi bước rút ngắn bao nhiêu
+
+Quan sát: bước 1 đi 0,3, bước 2 đi 0,27, bước 3 đi 0,243. Mỗi bước ngắn hơn bước trước đúng 10%. Không phải trùng hợp.
+
+Gọi $d_k = x_k - 3$ là khoảng cách (có dấu) tới đáy. Thay vào (8.1):
+
+$$
+d_{k+1} = d_k - \eta \cdot 2 d_k = (1 - 2\eta)\, d_k \tag{8.2}
+$$
+
+Mỗi bước, khoảng cách bị **nhân với cùng một số** $1 - 2\eta$. Với $\eta = 0{,}05$, số đó là 0,9: khoảng cách còn 90%, rồi 81%, rồi 72,9%. Sau 20 bước còn $0{,}9^{20} \approx 0{,}12$ lần ban đầu: $3 \times 0{,}12 \approx 0{,}36$, nên $x_{20} \approx 2{,}64$. Khớp với máy.
+
+<Khung loai="truc-giac">
+Công thức (8.2) nói toàn bộ câu chuyện của learning rate, cho hàm bậc hai:
+
+- $|1 - 2\eta| < 1$ thì khoảng cách co dần về 0: **hội tụ**.
+- $|1 - 2\eta| > 1$ thì khoảng cách phình ra: **phân kỳ**.
+- $1 - 2\eta$ âm thì dấu của $d$ đổi mỗi bước: nhảy qua nhảy lại hai bên đáy.
+
+Trang sau sẽ thử bốn giá trị $\eta$ và thấy đúng ba trường hợp này.
+</Khung>
+
+## Khi nào dừng
+
+Gradient descent không tự biết lúc nào đã tới đáy. Có ba cách dừng thường dùng:
+
+1. **Đủ số bước** định trước, ví dụ 200 bước như Chương 10. Đơn giản, hay dùng nhất.
+2. **Gradient đủ nhỏ**, ví dụ $|f'(x)| < 10^{-6}$. Ở đáy, gradient bằng 0.
+3. **Loss ngừng giảm**: loss của 10 bước gần nhất không giảm thêm quá một ngưỡng.
+
+Với mạng nơ-ron, cách thứ ba thường được đo trên dữ liệu **validation** chứ không phải dữ liệu huấn luyện. Chương 13 gọi kỹ thuật này là early stopping.
+
+<Khung loai="loi">
+**Nghĩ rằng gradient descent luôn tìm ra đáy thấp nhất.** Với hàm có nhiều thung lũng, nó dừng ở thung lũng gần chỗ xuất phát nhất (Bài tập 6.1 đã cho một ví dụ). Hàm bậc hai và MSE của hồi quy tuyến tính chỉ có một đáy, nên không gặp vấn đề này.
+
+**Dừng chỉ vì loss giảm chậm.** Loss giảm chậm có thể vì learning rate quá nhỏ, không phải vì đã tới đáy. Vẽ đường loss theo số bước trước khi kết luận.
+</Khung>

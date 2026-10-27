@@ -1,0 +1,95 @@
+---
+title: Chọn learning rate
+description: Bốn learning rate trên cùng một hàm cho bốn hành vi (chậm, một bước tới đích, dao động, phân kỳ), ngưỡng phân kỳ 2/độ cong, và vì sao bát dẹt buộc gradient descent đi chậm.
+---
+
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Bốn learning rate
+
+```python
+for lr in [0.05, 0.5, 0.9, 1.1]:
+    xs = gd_1d(lr)
+    print(lr, [round(v, 4) for v in xs[:4]], round(xs[10], 4), round(xs[20], 4))
+```
+
+```text title="Output"
+0.05 [0.0, 0.3, 0.57, 0.813] 1.954 2.6353
+0.5 [0.0, 3.0, 3.0, 3.0] 3.0 3.0
+0.9 [0.0, 5.4, 1.08, 4.536] 2.6779 2.9654
+1.1 [0.0, 6.6, -1.32, 8.184] -15.5752 -112.0128
+```
+
+<HinhKetQua src="/hinh/ch08/h1_learning_rate.svg" alt="Bốn đường x theo số bước từ 0 tới 20. Đường xám eta 0,05 đi lên chậm, sau 20 bước tới khoảng 2,6. Đường xanh lá eta 0,5 nhảy thẳng tới 3 ở bước 1 rồi nằm yên. Đường cam eta 0,9 dao động trên dưới 3 với biên độ giảm dần. Đường đỏ eta 1,1 dao động với biên độ tăng nhanh, ra khỏi khung hình." so="8.1" chuThich="Vị trí x sau từng bước gradient descent trên f(x) = (x - 3)², xuất phát từ x = 0, với bốn learning rate.">
+**Trục.** Ngang là số bước, dọc là vị trí $x$. Đường chấm ngang là đáy $x = 3$.
+
+**Bốn hành vi.** Đối chiếu với hệ số $1 - 2\eta$ của công thức (8.2):
+
+- $\eta = 0{,}05$, hệ số 0,9 (xám): khoảng cách co 10% mỗi bước. Hội tụ, nhưng chậm: 20 bước vẫn chưa tới.
+- $\eta = 0{,}5$, hệ số 0 (xanh lá): khoảng cách nhân 0, tới đáy **đúng một bước**. Learning rate lý tưởng cho riêng hàm này.
+- $\eta = 0{,}9$, hệ số $-0{,}8$ (cam): đổi dấu mỗi bước nên nhảy qua nhảy lại hai bên đáy, nhưng biên độ co 20% mỗi lần. Vẫn hội tụ.
+- $\eta = 1{,}1$, hệ số $-1{,}2$ (đỏ): đổi dấu và **phình 20%** mỗi bước. Sau 20 bước $x \approx -112$. Phân kỳ.
+
+**Điều cần thấy.** Ranh giới giữa hội tụ và phân kỳ là $|1 - 2\eta| = 1$, tức $\eta = 1$. Lớn hơn một chút là hỏng.
+</HinhKetQua>
+
+## Ngưỡng phân kỳ
+
+Hàm $f(x) = (x - 3)^2$ có **độ cong** (đạo hàm bậc hai) bằng 2. Một hàm bậc hai tổng quát $f(x) = \frac{c}{2}(x - a)^2$ có độ cong $c$, và lặp lại phép tính (8.2) cho hệ số $1 - c\eta$. Vậy:
+
+$$
+\text{hội tụ} \iff 0 < \eta < \frac{2}{c} \tag{8.3}
+$$
+
+Hàm càng cong (càng "nhọn"), learning rate được phép càng nhỏ. Hàm $(x - 3)^2$ có $c = 2$ nên ngưỡng là 1, đúng như hình 8.1.
+
+Chương 10 nói với bốn sinh viên, learning rate vượt khoảng 0,12 là bắt đầu nhảy loạn. Con số đó chính là $2/c$, với $c \approx 16{,}7$ là độ cong lớn nhất của cái bát MSE theo $(w, b)$: $2/16{,}7 \approx 0{,}12$.
+
+## Bát dẹt
+
+Bài toán thật có nhiều tham số, và mỗi hướng có thể cong khác nhau. Lấy một cái bát dẹt:
+
+$$
+f(x, y) = x^2 + 50 y^2
+$$
+
+Theo $x$, độ cong là 2: ngưỡng $\eta < 1$. Theo $y$, độ cong là 100: ngưỡng $\eta < 0{,}02$. Chỉ có một learning rate chung cho cả hai, nên phải chọn **dưới ngưỡng chặt nhất**: $\eta < 0{,}02$.
+
+Nhưng với $\eta = 0{,}019$, hướng $x$ có hệ số $1 - 2 \times 0{,}019 = 0{,}962$: mỗi bước chỉ rút ngắn 3,8%. Cần khoảng 60 bước mới rút còn 10% khoảng cách. Hướng dốc **buộc** cả thuật toán đi chậm theo hướng thoải.
+
+```python
+K = 50
+g2 = lambda p: np.array([2 * p[0], 2 * K * p[1]])        # gradient của x² + 50y²
+f2 = lambda p: p[0] ** 2 + K * p[1] ** 2
+for lr in [0.019, 0.021]:
+    p = np.array([-8.0, 1.0])                           # xuất phát, f = 114
+    for _ in range(100):
+        p = p - lr * g2(p)
+    print(lr, f2(p))
+```
+
+```text title="Output"
+0.019 0.027618172398899857
+0.021 9495263823.035332
+```
+
+Với $\eta = 0{,}019$, sau 100 bước loss từ 114 xuống 0,028. Nhích lên $0{,}021$, vượt ngưỡng $0{,}02$ một chút, là loss nổ lên gần $10^{10}$.
+
+Tỷ lệ giữa độ cong lớn nhất và nhỏ nhất (ở đây $100/2 = 50$) gọi là **số điều kiện**. Số điều kiện càng lớn, bát càng dẹt, gradient descent càng chậm. Chuẩn hóa đặc trưng (Bài tập 3.2) giúp làm bát tròn hơn, đó là lý do Chương 10 chuẩn hóa dữ liệu trước khi huấn luyện. Trang 4 cho thêm hai cách chữa ngay trong thuật toán.
+
+<TuKiemTra
+	cauHoi="Hàm f(x) = 5x² có độ cong 10. Learning rate lớn nhất để gradient descent còn hội tụ là bao nhiêu?"
+	luaChon={['0,5', '0,2', '0,1', '2']}
+	dapAn={1}
+	giaiThich="Theo (8.3), η < 2/c = 2/10 = 0,2. Ở đúng 0,2 thì hệ số 1 - 10 × 0,2 = -1: nhảy qua lại mãi không co lại."
+/>
+
+<Khung loai="loi">
+**Chỉnh learning rate từng chút một.** Learning rate tốt và tệ thường cách nhau **cấp số nhân**. Thử theo thang log: 1, 0,1, 0,01, 0,001, rồi mới tinh chỉnh quanh giá trị tốt nhất.
+
+**Thấy loss là `nan` mà không nghĩ tới learning rate.** Loss phân kỳ lên vô cực, rồi vô cực trừ vô cực ra `nan`. Gặp `nan` trong vài bước đầu, việc đầu tiên là giảm learning rate 10 lần.
+</Khung>

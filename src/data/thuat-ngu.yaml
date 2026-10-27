@@ -268,3 +268,23 @@
   tenTiengAnh: Bayes' theorem
   giaiThich: Định lý Bayes cho cách cập nhật niềm tin khi có bằng chứng mới. Xác suất của giả thuyết sau khi thấy bằng chứng tỷ lệ với xác suất ban đầu nhân với khả năng giả thuyết đó sinh ra bằng chứng.
   hocKy: ai-engineer/ch07-xac-suat-thong-ke
+- id: sgd
+  ten: SGD
+  tenTiengAnh: stochastic gradient descent
+  giaiThich: SGD tính gradient trên một mẫu hoặc một nhóm nhỏ mẫu thay vì cả bộ dữ liệu, rồi cập nhật ngay. Mỗi bước rẻ hơn rất nhiều nhưng ồn hơn, đường đi lắc lư quanh hướng đúng. Mọi mạng nơ-ron lớn đều huấn luyện theo cách này.
+  hocKy: ai-engineer/ch08-toi-uu-hoa
+- id: epoch
+  ten: Epoch
+  tenTiengAnh: epoch
+  giaiThich: Một epoch là một lượt mô hình đi qua toàn bộ dữ liệu huấn luyện đúng một lần. Với lô 32 mẫu và 3200 mẫu dữ liệu, một epoch gồm 100 bước cập nhật.
+  hocKy: ai-engineer/ch08-toi-uu-hoa
+- id: momentum
+  ten: Momentum
+  tenTiengAnh: momentum
+  giaiThich: Momentum cộng dồn các gradient cũ thành một vận tốc, như hòn bi lăn có quán tính. Các thành phần đổi dấu liên tục triệt tiêu nhau, thành phần cùng hướng thì cộng dồn, nên đi nhanh dọc thung lũng dài mà ít lắc qua lại.
+  hocKy: ai-engineer/ch08-toi-uu-hoa
+- id: adam
+  ten: Adam
+  tenTiengAnh: Adam
+  giaiThich: Adam là thuật toán tối ưu kết hợp momentum với việc chia gradient cho độ lớn trung bình gần đây của chính nó, nên mỗi tham số có bước đi riêng. Đây là lựa chọn mặc định khi huấn luyện mạng nơ-ron.
+  hocKy: ai-engineer/ch08-toi-uu-hoa

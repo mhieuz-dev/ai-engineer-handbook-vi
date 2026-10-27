@@ -1,0 +1,93 @@
+---
+title: SGD và mini-batch
+description: Tính gradient trên một phần dữ liệu thay vì cả bộ. So gradient descent đầy đủ, mini-batch và SGD trên 10 sinh viên, đọc đường loss ồn, và vì sao mọi mạng lớn đều huấn luyện theo cách này.
+---
+
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Gradient đầy đủ thì đắt
+
+Gradient của MSE là **trung bình** đóng góp của từng mẫu (quy tắc tổng, Chương 6). Với 10 sinh viên, tính trung bình đó tốn 10 phép tính. Với 10 triệu ảnh, mỗi bước gradient descent phải chạy mô hình trên **cả** 10 triệu ảnh, chỉ để nhích tham số một bước nhỏ.
+
+Ý tưởng của <Term id="sgd">SGD</Term> (stochastic gradient descent, gradient descent ngẫu nhiên): trung bình trên một **phần** dữ liệu chọn ngẫu nhiên đã là một ước lượng khá tốt của trung bình trên cả bộ. Vậy tính gradient trên phần đó rồi bước luôn.
+
+Ba cách gọi theo kích thước phần dữ liệu đó, gọi là **lô** <En>batch</En>:
+
+**Bảng 8.1.** Ba biến thể của gradient descent.
+
+| Tên | Kích thước lô | Số bước mỗi epoch (10 mẫu) |
+|:---|:---:|:---:|
+| Gradient descent đầy đủ | cả bộ dữ liệu (10) | 1 |
+| Mini-batch | một nhóm nhỏ (ví dụ 5) | 2 |
+| SGD thuần | 1 mẫu | 10 |
+
+Một <Term id="epoch">epoch</Term> là một lượt đi qua toàn bộ dữ liệu. Đầu mỗi epoch, dữ liệu được xáo trộn ngẫu nhiên rồi chia thành các lô.
+
+## Thử trên 10 sinh viên
+
+Bài toán: hồi quy điểm theo giờ học trên Bảng 4.1. Đáy thật (Bài tập 4.2) là $w \approx 1{,}14$, $b \approx 1{,}33$, MSE $\approx 0{,}388$.
+
+```python
+gio = np.array([1, 2, 3, 4, 5, 2, 6, 3, 7, 4.0])
+diem = np.array([2, 4, 5, 7, 6, 3.5, 8.5, 4, 9, 6.5])
+mse = lambda w, b: float(np.mean((diem - (w * gio + b)) ** 2))
+
+def train(bs, lr, ep=100, seed=0):
+    rng = np.random.default_rng(seed)
+    w = b = 0.0
+    L = [mse(w, b)]                              # loss trên CẢ 10 bạn, đo sau mỗi epoch
+    for _ in range(ep):
+        idx = rng.permutation(10)                # xáo trộn thứ tự 10 bạn
+        for s in range(0, 10, bs):               # chia thành các lô kích thước bs
+            j = idx[s:s + bs]                    # chỉ số các bạn trong lô này
+            e = diem[j] - (w * gio[j] + b)       # phần dư chỉ trên lô
+            w -= lr * (-2 * np.mean(gio[j] * e)) # gradient ước lượng từ lô, bước luôn
+            b -= lr * (-2 * np.mean(e))
+        L.append(mse(w, b))
+    return w, b, L
+
+for bs, lr in [(10, 0.03), (5, 0.03), (1, 0.01)]:
+    w, b, L = train(bs, lr)
+    print(bs, round(w, 4), round(b, 4), round(L[100], 4), round(min(L), 4))
+```
+
+```text title="Output"
+10 1.2176 0.9827 0.4103 0.4103
+5 1.1274 1.2165 0.415 0.3911
+1 1.0894 1.3378 0.4298 0.3882
+```
+
+<HinhKetQua src="/hinh/ch08/h2_sgd.svg" alt="Ba đường MSE theo epoch trên thang log từ 0 tới 100. Đường xanh GD giảm mượt và chậm. Đường cam mini-batch và đường đỏ SGD giảm nhanh ở vài epoch đầu rồi dao động lởm chởm quanh 0,4 đến 0,8, có lúc chạm sát đường đáy 0,388." so="8.2" chuThich="MSE trên cả 10 sinh viên sau mỗi epoch, với ba kích thước lô. Đường chấm là đáy thật 0,388.">
+**Trục.** Ngang là số epoch. Dọc là MSE tính trên **cả 10 bạn** (dù mỗi bước chỉ nhìn một lô), chia theo thang log để thấy cả đoạn đầu lẫn đoạn cuối.
+
+**Đường xanh (GD đầy đủ).** Mượt, giảm đều, nhưng chậm: 100 epoch là 100 bước, MSE mới tới 0,410, chưa chạm đáy 0,388. Bát MSE ở đây dẹt (hướng $b$ thoải hơn hướng $w$ nhiều), đúng chuyện của trang trước.
+
+**Đường đỏ (SGD).** Mỗi epoch đi 10 bước, nên xuống nhanh hơn nhiều ở đầu. Nhưng đường **lởm chởm**: mỗi bước chỉ nhìn một bạn, có bạn kéo đường thẳng lên, có bạn kéo xuống. Có lúc chạm 0,3882, sát đáy hơn cả GD, nhưng epoch cuối lại nảy lên 0,430.
+
+**Điều cần thấy.** SGD không bao giờ nằm yên ở đáy với learning rate cố định: gần đáy, gradient thật gần 0 nhưng gradient của từng mẫu thì không. Mini-batch (cam) nằm giữa: ít ồn hơn SGD, nhiều bước hơn GD.
+</HinhKetQua>
+
+## Vì sao SGD vẫn thắng
+
+Với 10 mẫu, GD đầy đủ rẻ, nên không có lý do gì dùng SGD. Nhưng với dữ liệu lớn, phép so sánh đổi hẳn:
+
+- **Cùng thời gian, nhiều bước hơn.** Với 1 triệu mẫu và lô 100, một epoch là 10 000 bước SGD thay vì 1 bước GD. Mỗi bước SGD hơi lệch, nhưng 10 000 bước lệch nhẹ đi xa hơn nhiều so với 1 bước chính xác.
+- **Vừa bộ nhớ GPU.** Một lô 32 hay 256 ảnh vừa với bộ nhớ GPU. Cả triệu ảnh thì không.
+- **Tiếng ồn có ích.** Với mạng nơ-ron có nhiều thung lũng, nhiễu của SGD giúp lắc ra khỏi những thung lũng nông.
+
+Để có được độ chính xác ở cuối, người ta **giảm dần** learning rate theo thời gian (learning rate schedule). Bước nhỏ dần thì nhiễu cũng nhỏ dần, đường đỏ trong hình 8.2 sẽ lắng xuống sát đáy. Chương 26 sẽ cài các lịch giảm phổ biến.
+
+<Khung loai="vi-sao" tieuDe="KÍCH THƯỚC LÔ LÀ LŨY THỪA CỦA 2">
+Bạn sẽ thấy lô 32, 64, 128, 256 ở khắp nơi. GPU xử lý dữ liệu theo khối có kích thước là lũy thừa của 2, nên các kích thước đó tận dụng phần cứng tốt hơn một chút. Không có gì thần kỳ: lô 50 vẫn chạy bình thường.
+
+Lô lớn hơn cho gradient ít ồn hơn và cho phép learning rate lớn hơn, nhưng tốn bộ nhớ hơn và có xu hướng tổng quát hóa kém hơn một chút. Lô 32 là điểm xuất phát an toàn.
+</Khung>
+
+<Khung loai="loi">
+**Không xáo trộn dữ liệu mỗi epoch.** Nếu dữ liệu xếp theo nhãn (mọi ảnh mèo trước, mọi ảnh chó sau), các lô liên tiếp toàn một loại và mô hình bị kéo qua kéo lại. Luôn xáo trộn, như `rng.permutation` ở trên.
+
+**Đo loss trên một lô rồi lo lắng vì nó nhảy.** Loss của từng lô luôn ồn. Muốn theo dõi tiến độ, lấy trung bình loss qua cả epoch, hoặc đo trên một tập cố định như hình 8.2.
+</Khung>

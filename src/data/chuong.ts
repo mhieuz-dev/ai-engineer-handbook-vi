@@ -34,7 +34,7 @@ const BANG: [number, string, string, string, XuatBan?][] = [
 	[5, 'phan-1', 'Đại số tuyến tính cho ML', 'dai-so-tuyen-tinh', { trangThai: 'xong', notebook: 'ch05_dai_so_tuyen_tinh.ipynb' }],
 	[6, 'phan-1', 'Giải tích cho ML', 'giai-tich', { trangThai: 'xong', notebook: 'ch06_giai_tich.ipynb' }],
 	[7, 'phan-1', 'Xác suất và thống kê', 'xac-suat-thong-ke', { trangThai: 'xong', notebook: 'ch07_xac_suat_thong_ke.ipynb' }],
-	[8, 'phan-1', 'Tối ưu hóa', 'toi-uu-hoa'],
+	[8, 'phan-1', 'Tối ưu hóa', 'toi-uu-hoa', { trangThai: 'xong', notebook: 'ch08_toi_uu_hoa.ipynb' }],
 	[9, 'phan-2', 'Quy trình một dự án ML', 'quy-trinh-du-an-ml'],
 	[10, 'phan-2', 'Hồi quy tuyến tính', 'hoi-quy-tuyen-tinh', { trangThai: 'xong', notebook: 'ch10_hoi_quy_tuyen_tinh.ipynb' }],
 	[11, 'phan-2', 'Hồi quy logistic', 'hoi-quy-logistic'],

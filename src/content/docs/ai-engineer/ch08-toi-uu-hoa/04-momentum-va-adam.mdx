@@ -1,0 +1,98 @@
+---
+title: Momentum và Adam
+description: Hai cách sửa bát dẹt ngay trong thuật toán. Momentum cộng dồn gradient như hòn bi có quán tính, Adam cho mỗi tham số một bước đi riêng. So ba đường đi trên cùng một bát.
+---
+
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Vấn đề cần sửa
+
+Trang 2 để lại một vấn đề: trên bát dẹt $f(x, y) = x^2 + 50y^2$, learning rate bị hướng dốc ($y$) chặn dưới 0,02, nên hướng thoải ($x$) đi rất chậm. Gradient descent tốn phần lớn công sức **lắc qua lắc lại** theo $y$ thay vì tiến theo $x$.
+
+## Momentum
+
+<Term id="momentum">Momentum</Term> giữ một **vận tốc** $v$, cộng dồn các gradient cũ:
+
+$$
+v_{k+1} = \beta\, v_k + \nabla f(p_k), \qquad p_{k+1} = p_k - \eta\, v_{k+1} \tag{8.4}
+$$
+
+$\beta$ (thường là 0,9) là hệ số giữ lại của vận tốc cũ. Với $\beta = 0$, (8.4) trở lại gradient descent thường.
+
+<Khung loai="truc-giac">
+Thả một hòn bi xuống thung lũng dài và hẹp. Theo chiều ngang thung lũng, mặt đất đổi dốc liên tục: nghiêng trái rồi nghiêng phải. Cộng dồn các cú đẩy ngược chiều nhau thì chúng **triệt tiêu**, hòn bi ít lắc hơn.
+
+Theo chiều dọc thung lũng, mặt đất luôn nghiêng về cùng một phía. Các cú đẩy cùng chiều **cộng dồn**, hòn bi càng lăn càng nhanh. Kết quả: ít lắc, tiến nhanh. Đúng thứ bát dẹt cần.
+</Khung>
+
+## Adam
+
+<Term id="adam">Adam</Term> (adaptive moment estimation) đi xa hơn một bước. Ngoài trung bình của gradient (như momentum), nó theo dõi trung bình của **bình phương** gradient cho từng tham số, rồi chia bước đi cho căn bậc hai của nó:
+
+$$
+\begin{aligned}
+m_k &= \beta_1 m_{k-1} + (1 - \beta_1)\, g_k \\
+s_k &= \beta_2 s_{k-1} + (1 - \beta_2)\, g_k^2 \\
+p_k &= p_{k-1} - \eta\, \frac{\hat m_k}{\sqrt{\hat s_k} + \epsilon}
+\end{aligned} \tag{8.5}
+$$
+
+với $g_k$ là gradient, $\beta_1 = 0{,}9$, $\beta_2 = 0{,}999$, $\epsilon = 10^{-8}$ để tránh chia cho 0. $\hat m_k$ và $\hat s_k$ là $m_k$, $s_k$ chia cho $1 - \beta^k$: một phép hiệu chỉnh cho những bước đầu, khi $m$ và $s$ còn bị kéo về 0 vì khởi đầu bằng 0.
+
+Ý nghĩa của phép chia: tham số nào có gradient **lớn** đều đặn (như $y$ trong bát dẹt) thì bị chia cho số lớn, bước đi nhỏ lại. Tham số nào có gradient **nhỏ** (như $x$) thì bị chia cho số nhỏ, bước đi được nới ra. Mỗi tham số có một learning rate hiệu dụng riêng, tự điều chỉnh.
+
+## So ba thuật toán
+
+```python
+def duong(kieu, lr, n, beta=0.9):
+    p = np.array([-8.0, 1.0])                         # xuất phát, f = 114
+    v, m, s = np.zeros(2), np.zeros(2), np.zeros(2)
+    for t in range(1, n + 1):
+        gr = g2(p)
+        if kieu == "gd":
+            p = p - lr * gr                            # (8.1)
+        elif kieu == "momentum":
+            v = beta * v + gr                          # (8.4)
+            p = p - lr * v
+        else:                                          # Adam (8.5)
+            m = 0.9 * m + 0.1 * gr
+            s = 0.999 * s + 0.001 * gr ** 2
+            p = p - lr * (m / (1 - 0.9 ** t)) / (np.sqrt(s / (1 - 0.999 ** t)) + 1e-8)
+    return p
+
+for kieu, lr in [("gd", 0.019), ("momentum", 0.01), ("adam", 0.3)]:
+    print(kieu, [round(float(f2(duong(kieu, lr, n))), 5) for n in (25, 50, 100)])
+```
+
+```text title="Output"
+gd [9.48199, 1.33082, 0.02762]
+momentum [6.97099, 0.47314, 0.00124]
+adam [2.11279, 0.44973, 0.00051]
+```
+
+<HinhKetQua src="/hinh/ch08/h3_momentum_adam.svg" alt="Các đường đồng mức hình elip dẹt quanh gốc tọa độ. Đường xám GD xuất phát từ (-8, 1), lắc lên xuống mạnh theo trục y với biên độ giảm dần trong khi tiến chậm theo x, sau 50 bước còn ở khoảng x bằng -1. Đường cam momentum đi những bước dài, vượt qua gốc tới x khoảng 2,4 rồi quay lại. Đường xanh Adam đi một đường cong mượt gần như thẳng tới gốc." so="8.3" chuThich="50 bước đầu của gradient descent, momentum và Adam trên bát dẹt x² + 50y², cùng xuất phát từ (-8, 1). Ngôi sao đỏ là đáy.">
+**Trục.** Mặt phẳng $(x, y)$. Các elip mờ là đường đồng mức: mọi điểm trên một elip có cùng giá trị $f$. Elip dẹt theo chiều dọc vì hướng $y$ dốc gấp 50 lần.
+
+**Đường xám (GD).** Lắc lên xuống theo $y$ rất mạnh ở đầu, mỗi bước chỉ tiến một chút theo $x$. Sau 50 bước vẫn còn cách đáy khoảng 1,2 theo $x$: loss 1,33.
+
+**Đường cam (momentum).** Bước dài hơn hẳn nhờ vận tốc cộng dồn, **vượt qua** đáy tới khoảng $x = 2{,}4$ rồi quay lại: quán tính có cái giá của nó. Dù vậy, sau 100 bước loss là 0,00124, nhỏ hơn GD hơn 20 lần.
+
+**Đường xanh (Adam).** Đi gần như thẳng về đáy theo một đường cong mượt, không lắc theo $y$ vì bước theo $y$ đã bị thu nhỏ tự động. Sau 100 bước loss 0,00051, tốt nhất trong ba.
+</HinhKetQua>
+
+Ba learning rate ở đây khác nhau (0,019, 0,01, 0,3), mỗi cái chọn gần tốt nhất cho thuật toán của nó. So sánh công bằng giữa các thuật toán tối ưu là so khi **mỗi thuật toán** được chỉnh learning rate riêng.
+
+<Khung loai="vi-sao" tieuDe="ADAM LÀ MẶC ĐỊNH">
+Adam ít nhạy với learning rate hơn GD và momentum: giá trị $\eta = 0{,}001$ chạy được khá tốt cho rất nhiều bài toán, nên người mới đỡ phải dò. Nó xử lý được cả khi các tham số có thang đo rất khác nhau, chuyện thường gặp trong mạng sâu.
+
+Nhưng Adam không phải lúc nào cũng thắng. Với một số bài toán thị giác máy tính, SGD có momentum và lịch giảm learning rate tốt cho mô hình tổng quát hóa tốt hơn. Biến thể AdamW (Chương 26) sửa cách Adam xử lý weight decay và là mặc định cho Transformer.
+</Khung>
+
+<Khung loai="loi">
+**Dùng learning rate của SGD cho Adam.** SGD thường dùng $\eta$ cỡ 0,01 đến 0,1; Adam thường dùng 0,001. Đổi thuật toán mà giữ nguyên $\eta$ là hay hỏng.
+
+**Quên hiệu chỉnh ở những bước đầu.** Bỏ phép chia cho $1 - \beta^k$, những bước đầu của Adam dùng $m$ và $s$ bị kéo về 0, bước đi bị méo. Thư viện đã làm sẵn; chỉ cần nhớ nếu tự cài.
+</Khung>
