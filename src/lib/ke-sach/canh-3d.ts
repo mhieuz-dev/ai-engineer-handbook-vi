@@ -20,6 +20,7 @@ import {
 	Scene,
 	SRGBColorSpace,
 	Vector2,
+	Vector3,
 	WebGLRenderer,
 	type BufferGeometry,
 	type Material,
@@ -456,8 +457,26 @@ export function dungKe(goc: HTMLElement, sach: CuonSach[], khiBam: (s: CuonSach)
 		renderer.render(scene, camera);
 		goc.dataset.nho = Math.max(...cuon.map((c) => c.nho)).toFixed(2);
 		goc.dataset.frames = String(++soKhung);
+		ghiViTriBia(conDong);
 		if (conDong) yeuCauVe();
 		else tLan = 0;
+	}
+
+	// Vị trí tâm bìa trước của từng cuốn trên canvas (px, tính từ góc trên trái), ghi vào data-pos-<id>
+	// khi cảnh đứng yên; lúc đang chuyển động thì gỡ đi. Cuốn đang mở thì đó là tâm tấm bìa đã lật.
+	// Dùng cho e2e bấm đúng vào sách mà không phải đoán tọa độ.
+	const tamBia = new Vector3();
+	function ghiViTriBia(dangDong: boolean) {
+		for (const c of cuon) {
+			const ten = `data-pos-${c.s.id}`;
+			if (dangDong) {
+				goc.removeAttribute(ten);
+				continue;
+			}
+			c.banLeBia.children[0].getWorldPosition(tamBia).project(camera);
+			const giaTri = `${Math.round(((tamBia.x + 1) / 2) * goc.clientWidth)},${Math.round(((1 - tamBia.y) / 2) * goc.clientHeight)}`;
+			if (goc.getAttribute(ten) !== giaTri) goc.setAttribute(ten, giaTri);
+		}
 	}
 
 	function yeuCauVe() {
@@ -537,6 +556,7 @@ export function dungKe(goc: HTMLElement, sach: CuonSach[], khiBam: (s: CuonSach)
 			renderer.domElement.remove();
 			renderer = null;
 		}
+		ghiViTriBia(true); // gỡ data-pos-* cũ: canvas không còn
 		goc.dataset.trangThai = 'phang';
 	}
 
@@ -740,6 +760,17 @@ export function dungKe(goc: HTMLElement, sach: CuonSach[], khiBam: (s: CuonSach)
 			const c = trungSach(e);
 			if (c) khiBam(c.s);
 		};
+		// Cử chỉ bị hủy (trình duyệt giành lấy để cuộn, chạm bằng tay trên laptop cảm ứng...): chỉ bỏ trạng thái
+		// kéo, không bao giờ tính là một lần bấm sách.
+		const huyCham = (e: PointerEvent) => {
+			const k = keo;
+			if (!k || k.id !== e.pointerId) return;
+			keo = null;
+			if (k.da) {
+				if (cv.hasPointerCapture(e.pointerId)) cv.releasePointerCapture(e.pointerId);
+				cv.style.cursor = 'grab';
+			}
+		};
 		const roi = () => {
 			if (keo?.da) return;
 			rePhai = null;
@@ -748,14 +779,14 @@ export function dungKe(goc: HTMLElement, sach: CuonSach[], khiBam: (s: CuonSach)
 		cv.addEventListener('pointerdown', xuong);
 		cv.addEventListener('pointermove', di);
 		cv.addEventListener('pointerup', len);
-		cv.addEventListener('pointercancel', len);
+		cv.addEventListener('pointercancel', huyCham);
 		cv.addEventListener('pointerleave', roi);
 		cv.style.cursor = 'grab';
 		donDep.push(() => {
 			cv.removeEventListener('pointerdown', xuong);
 			cv.removeEventListener('pointermove', di);
 			cv.removeEventListener('pointerup', len);
-			cv.removeEventListener('pointercancel', len);
+			cv.removeEventListener('pointercancel', huyCham);
 			cv.removeEventListener('pointerleave', roi);
 		});
 

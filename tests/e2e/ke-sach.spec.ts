@@ -213,14 +213,19 @@ test('mobile: bấm cuốn khác khi một cuốn đang mở thì bảng đổi 
 const keGoc = (page: Page) => page.locator('#ke-sach');
 const sanKhau3D = (page: Page) => page.locator('#ke-sach [data-frames]');
 
-/** Bấm vào canvas tại vị trí tính theo tỉ lệ khung (0..1). Ở 1280x800 cuốn AI Engineer nằm quanh x ≈ 0.37,
- * Robotics quanh x ≈ 0.62; khi Robotics mở, bảng thông tin che nửa phải nên bìa đã lật (x ≈ 0.48) là phần còn bấm được. */
-async function bamCanvas(page: Page, fx: number, fy: number) {
+/** Tọa độ trang của tâm bìa cuốn `id`, lấy từ data-pos-<id> mà cảnh 3D ghi khi đứng yên (chờ tới khi có). */
+async function viTriBia(page: Page, id: string) {
+	await page.mouse.move(5, 5);
+	await expect(sanKhau3D(page)).toHaveAttribute(`data-pos-${id}`, /^\d+,\d+$/);
+	const [x, y] = (await sanKhau3D(page).getAttribute(`data-pos-${id}`))!.split(',').map(Number);
 	const b = (await page.locator('#ke-sach canvas').boundingBox())!;
-	const x = b.x + b.width * fx;
-	const y = b.y + b.height * fy;
+	const diem = { x: b.x + x, y: b.y + y };
 	// Điểm bấm phải trúng canvas chứ không phải bảng thông tin nằm đè lên.
-	expect(await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.tagName, [x, y])).toBe('CANVAS');
+	expect(await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.tagName, diem)).toBe('CANVAS');
+	return diem;
+}
+async function bamCanvas(page: Page, id: string) {
+	const { x, y } = await viTriBia(page, id);
 	await page.mouse.click(x, y);
 }
 
@@ -282,28 +287,41 @@ test('mobile: bấm bìa phẳng của cuốn đang mở thì đóng', async ({ 
 
 test('desktop: bấm cuốn trên canvas 3D lần hai thì cuốn đóng lại, bảng ẩn theo', async ({ page, isMobile }) => {
 	test.skip(!!isMobile);
+	await page.setViewportSize({ width: 1280, height: 800 });
 	await page.goto('/');
 	await keGoc(page).scrollIntoViewIfNeeded();
 	await expect(sanKhau3D(page)).toHaveAttribute('data-trang-thai', 'san-sang', { timeout: 5000 });
 
-	await bamCanvas(page, 0.37, 0.45);
+	await bamCanvas(page, 'ai-engineer');
 	await kiemDangMo(page, 'ai-engineer', /AI Engineer/, true);
-	await bamCanvas(page, 0.37, 0.45);
+	await bamCanvas(page, 'ai-engineer'); // lúc này là tâm tấm bìa đã lật của cuốn đang mở
 	await kiemDaDong(page, true);
 
-	await bamCanvas(page, 0.62, 0.45);
+	await bamCanvas(page, 'robotics');
 	await kiemDangMo(page, 'robotics', /Robotics/, true);
-	await page.waitForTimeout(800); // chờ bìa lật xong rồi mới bấm vào nó
-	await bamCanvas(page, 0.48, 0.6);
+	await bamCanvas(page, 'robotics');
 	await kiemDaDong(page, true);
+});
 
-	// Đang mở AI Engineer, bấm Robotics trên canvas thì đổi sang Robotics. Bảng che gần hết cuốn Robotics
-	// (mép trái bảng ở x ≈ 0.58), nên bấm vào mép trái gáy còn lộ ra.
-	await bamCanvas(page, 0.37, 0.45);
+test('desktop: cử chỉ bị hủy (pointercancel) trên cuốn đang mở không tính là bấm, sách vẫn mở', async ({ page, isMobile }) => {
+	test.skip(!!isMobile);
+	await page.setViewportSize({ width: 1280, height: 800 });
+	await page.goto('/');
+	await keGoc(page).scrollIntoViewIfNeeded();
+	await expect(sanKhau3D(page)).toHaveAttribute('data-trang-thai', 'san-sang', { timeout: 5000 });
+	await theAi(page).click();
 	await kiemDangMo(page, 'ai-engineer', /AI Engineer/, true);
-	await page.waitForTimeout(800);
-	await bamCanvas(page, 0.565, 0.45);
-	await kiemDangMo(page, 'robotics', /Robotics/, true);
+	const diem = await viTriBia(page, 'ai-engineer');
+	await page.locator('#ke-sach canvas').evaluate((cv, { x, y }) => {
+		const tao = (loai: string) => new PointerEvent(loai, { bubbles: true, clientX: x, clientY: y, pointerId: 7, button: 0, isPrimary: true });
+		cv.dispatchEvent(tao('pointerdown'));
+		cv.dispatchEvent(tao('pointercancel'));
+	}, diem);
+	await page.waitForTimeout(300); // không có gì để chờ: khẳng định trạng thái không đổi sau vài khung
+	await kiemDangMo(page, 'ai-engineer', /AI Engineer/, true);
+	// Bấm thật (down + up) ở cùng chỗ thì vẫn đóng như thường.
+	await page.mouse.click(diem.x, diem.y);
+	await kiemDaDong(page, true);
 });
 
 test('trang chủ: nút hero "Chọn sách để học" trỏ tới #ke-sach', async ({ page }) => {
