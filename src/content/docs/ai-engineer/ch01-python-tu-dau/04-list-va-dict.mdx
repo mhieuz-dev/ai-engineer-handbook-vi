@@ -1,0 +1,135 @@
+---
+title: List và dict
+description: Giữ cả cột dữ liệu trong list, truy cập theo chỉ số và lát cắt, tra theo khóa với dict, duyệt song song bằng zip, viết gọn bằng list comprehension, và cái bẫy hai nhãn một hộp.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## List: một dãy giá trị
+
+Dữ liệu của bốn bạn A, B, C, D có hai cột: giờ học và điểm. Mỗi cột là một <Term id="list">list</Term>:
+
+**Bảng 1.3.** Dữ liệu bốn sinh viên, giống Bảng 10.1 của Chương 10.
+
+| Sinh viên | A | B | C | D |
+|:---:|:---:|:---:|:---:|:---:|
+| Giờ tự học | 1 | 2 | 3 | 4 |
+| Điểm thi | 2 | 4 | 5 | 7 |
+
+```python
+gio = [1, 2, 3, 4]     # list đặt trong ngoặc vuông, các phần tử cách nhau dấu phẩy
+diem = [2, 4, 5, 7]
+print(gio[0], gio[-1], gio[1:3], len(gio))  # phần tử đầu, phần tử cuối, lát cắt, độ dài
+gio.append(5)          # thêm 5 vào cuối list
+print(gio)
+```
+
+```text title="Output"
+1 4 [2, 3] 4
+[1, 2, 3, 4, 5]
+```
+
+Đọc từng cách truy cập:
+
+- `gio[0]` là phần tử **đầu tiên**. Chỉ số bắt đầu từ 0, giống `range`.
+- `gio[-1]` là phần tử **cuối cùng**. Chỉ số âm đếm từ cuối lên.
+- `gio[1:3]` là lát cắt <En>slice</En>: từ chỉ số 1 tới **trước** chỉ số 3, tức `[2, 3]`. Lại là quy tắc lấy đầu không lấy cuối.
+- `len(gio)` là số phần tử. Ở Chương 10, `n = len(x)` chính là số mẫu dữ liệu.
+
+## Dict: tra theo tên
+
+List tra theo số thứ tự. Khi muốn tra theo **tên**, dùng <Term id="dict">dict</Term>:
+
+```python
+ban = {"ten": "An", "gio": 3, "diem": 5}  # mỗi cặp khóa: giá trị, đặt trong ngoặc nhọn
+print(ban["diem"])                         # tra khóa "diem"
+ban["diem"] = 6                            # gán lại giá trị cho khóa đã có
+for khoa, gia_tri in ban.items():          # items() cho từng cặp (khóa, giá trị)
+    print(khoa, gia_tri)
+```
+
+```text title="Output"
+5
+ten An
+gio 3
+diem 6
+```
+
+Dict rất hay gặp trong ML: cấu hình huấn luyện (`{"lr": 0.05, "so_buoc": 200}`), kết quả đánh giá (`{"mse": 0.05, "r2": 0.98}`), hay một dòng dữ liệu có nhiều cột. Chương 4 sẽ thấy pandas xây cả bảng dữ liệu trên ý tưởng này.
+
+Tra một khóa không có trong dict sẽ báo `KeyError`. Muốn tra an toàn, dùng `ban.get("lop", 0)`: không có khóa thì trả 0.
+
+## Duyệt hai list cùng lúc với zip
+
+Muốn đi qua từng bạn, lấy cả giờ lẫn điểm, dùng `zip`. Nó ghép hai list thành từng cặp:
+
+```python
+for g, d in zip(gio, diem):  # mỗi vòng lấy một cặp (giờ, điểm) cùng vị trí
+    print(g, d)
+```
+
+```text title="Output"
+1 2
+2 4
+3 5
+4 7
+```
+
+Để ý `gio` lúc này đã có 5 phần tử (vì `append` ở trên), nhưng `diem` chỉ có 4. `zip` dừng ở list **ngắn hơn**, nên chỉ in 4 cặp, không báo lỗi. Tiện, nhưng cũng là một cái bẫy: lệch độ dài thì dữ liệu bị cắt mà bạn không hay.
+
+## List comprehension: viết gọn một vòng lặp
+
+Muốn tính điểm dự đoán cho cả bốn bạn với $w = 1{,}6$, $b = 0{,}5$:
+
+```python
+gio = [1, 2, 3, 4]                  # đặt lại về 4 bạn
+du = [1.6 * x + 0.5 for x in gio]  # với mỗi x trong gio, tính 1.6 * x + 0.5, gom thành list
+print(du)
+print([round(v, 1) for v in du])   # round(v, 1): làm tròn 1 chữ số sau dấu chấm
+```
+
+```text title="Output"
+[2.1, 3.7, 5.300000000000001, 6.9]
+[2.1, 3.7, 5.3, 6.9]
+```
+
+Một dòng `[... for x in gio]` thay cho bốn dòng: tạo list rỗng, lặp, tính, `append`. Cách viết này gọi là list comprehension.
+
+So với điểm thật 2, 4, 5, 7, đường thẳng đoán lệch đúng 0,1 hoặc 0,3 ở mỗi bạn. Bạn sẽ tự tính MSE từ những độ lệch này ở Bài tập 1.1.
+
+<Khung loai="dao-sau" tieuDe="HAI NHÃN, MỘT HỘP">
+Nhớ hình ảnh biến là cái nhãn dán lên hộp. Đoạn code sau cho kết quả nhiều người không ngờ:
+
+```python
+a = [1, 2]
+b = a          # KHÔNG tạo list mới: dán thêm nhãn b lên CÙNG hộp với a
+b.append(3)    # sửa hộp qua nhãn b
+print(a)       # a cũng thấy thay đổi, vì a và b là một hộp
+```
+
+```text title="Output"
+[1, 2, 3]
+```
+
+`b = a` không sao chép list. Nó chỉ dán nhãn thứ hai lên cùng một hộp. Sửa qua nhãn nào thì hộp cũng đổi.
+
+Muốn có bản sao độc lập, viết `b = a[:]` (lát cắt lấy hết) hoặc `b = a.copy()`. Với số và chuỗi thì không có bẫy này, vì chúng không sửa tại chỗ được. Bẫy này sẽ quay lại với mảng NumPy ở Chương 3.
+</Khung>
+
+<TuKiemTra
+	cauHoi="Với x = [10, 20, 30, 40, 50], x[1:4] là gì?"
+	luaChon={['[10, 20, 30, 40]', '[20, 30, 40]', '[20, 30, 40, 50]', '[10, 20, 30]']}
+	dapAn={1}
+	giaiThich="Từ chỉ số 1 (số 20) tới trước chỉ số 4 (số 50), nên lấy 20, 30, 40."
+/>
+
+<Khung loai="loi">
+**IndexError: list index out of range.** List 4 phần tử có chỉ số 0 tới 3. Gọi `gio[4]` là ra ngoài list.
+
+**Sửa list trong khi đang lặp qua nó.** Thêm hay xóa phần tử của `gio` bên trong `for x in gio` làm vòng lặp nhảy lung tung. Hãy tạo một list mới.
+
+**Dùng list cho phép tính toán học.** `[1, 2] * 2` ra `[1, 2, 1, 2]` (lặp lại list), không phải `[2, 4]`. Và `[1, 2] + [3, 4]` là nối list. Muốn nhân cộng từng phần tử như toán, bạn cần NumPy ở Chương 3.
+</Khung>

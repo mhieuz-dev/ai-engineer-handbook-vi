@@ -17,11 +17,14 @@ describe('danh mục chương', () => {
 		const ids = new Set(PHAN.map((p) => p.id));
 		for (const c of CHUONG) expect(ids.has(c.phan)).toBe(true);
 	});
-	it('chỉ chương 10 đã xuất bản', () => {
-		expect(chuongDaXuatBan().map((c) => c.so)).toEqual([10]);
+	it('chương 1 và 10 đã xuất bản', () => {
+		expect(chuongDaXuatBan().map((c) => c.so)).toEqual([1, 10]);
 	});
-	it('chỉ chương 10 có notebook, lấy từ dòng dữ liệu của chương', () => {
-		expect(CHUONG.filter((c) => c.notebook).map((c) => [c.so, c.notebook])).toEqual([[10, 'ch10_hoi_quy_tuyen_tinh.ipynb']]);
+	it('notebook lấy từ dòng dữ liệu của chương', () => {
+		expect(CHUONG.filter((c) => c.notebook).map((c) => [c.so, c.notebook])).toEqual([
+			[1, 'ch01_python_tu_dau.ipynb'],
+			[10, 'ch10_hoi_quy_tuyen_tinh.ipynb'],
+		]);
 	});
 	it('tìm chương theo slug trang', () => {
 		expect(timChuongTheoSlugTrang('ai-engineer/ch10-hoi-quy-tuyen-tinh/02-toan')?.so).toBe(10);
@@ -31,9 +34,14 @@ describe('danh mục chương', () => {
 		const cfg = cauHinhSidebar();
 		expect(cfg).toHaveLength(1);
 		const phan = cfg[0].items as any[];
-		expect(phan).toHaveLength(1);
-		expect(phan[0].label).toBe('Phần II. Machine Learning cổ điển');
+		expect(phan).toHaveLength(2);
+		expect(phan[0].label).toBe('Phần I. Nền tảng');
 		expect(phan[0].items[0]).toEqual({
+			label: '1. Python từ đầu',
+			items: [{ autogenerate: { directory: 'ai-engineer/ch01-python-tu-dau' } }],
+		});
+		expect(phan[1].label).toBe('Phần II. Machine Learning cổ điển');
+		expect(phan[1].items[0]).toEqual({
 			label: '10. Hồi quy tuyến tính',
 			items: [{ autogenerate: { directory: 'ai-engineer/ch10-hoi-quy-tuyen-tinh' } }],
 		});

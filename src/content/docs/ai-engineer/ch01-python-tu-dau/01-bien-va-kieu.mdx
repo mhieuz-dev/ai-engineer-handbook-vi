@@ -1,0 +1,141 @@
+---
+title: Biến, kiểu dữ liệu và phép tính
+description: Viết dòng Python đầu tiên trên Colab, hiểu biến là cái nhãn dán lên giá trị, bốn kiểu dữ liệu cơ bản và các phép tính số học. Output in trong bài là output thật.
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+<CanBietTruoc>
+Không cần biết gì trước. Chỉ cần một trình duyệt và một tài khoản Google để mở Colab.
+
+<Fragment slot="sau-chuong">
+Đọc và viết được chương trình Python ngắn: biến, phép tính, điều kiện, vòng lặp, hàm, list và dict. Tự viết được hàm tính MSE bằng Python thuần, đúng con số mà Chương 10 sẽ tính bằng NumPy.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch01_python_tu_dau.ipynb" />
+
+Bấm nút trên để mở notebook của chương trong Google Colab. Mỗi ô code trong bài đều có trong notebook, bạn bấm chạy là thấy kết quả.
+
+## Vì sao học Python trước
+
+Gần như mọi công cụ AI hiện nay đều viết cho Python: NumPy, pandas, scikit-learn, PyTorch, Hugging Face. Học Python là học cái ngôn ngữ mà cả ngành đang nói.
+
+Chương này chỉ dạy **phần Python đủ dùng** cho các chương sau. Mỗi ví dụ đều xoay quanh một bộ dữ liệu nhỏ: giờ tự học và điểm thi của bốn bạn A, B, C, D. Đến Chương 10, bạn sẽ gặp lại đúng bộ dữ liệu này.
+
+## Dòng code đầu tiên
+
+Trong Colab, gõ vào một ô code rồi bấm nút chạy (hoặc Shift + Enter):
+
+```python
+print("Xin chào, AI!")  # print in ra màn hình thứ nằm trong ngoặc
+print(2 + 3)            # Python tính 2 + 3 trước, rồi in kết quả
+```
+
+```text title="Output"
+Xin chào, AI!
+5
+```
+
+Chữ đặt trong dấu nháy là một chuỗi chữ, Python in nguyên văn. Không có dấu nháy thì Python hiểu đó là phép tính và in kết quả.
+
+Phần sau dấu `#` là chú thích <En>comment</En>. Python bỏ qua nó, chỉ người đọc mới cần.
+
+## Biến là cái nhãn
+
+<Khung loai="truc-giac">
+Hình dung mỗi giá trị là một chiếc hộp. <Term id="bien">Biến</Term> là cái nhãn bạn dán lên hộp.
+
+Viết `gio = 3` nghĩa là: lấy hộp chứa số 3, dán nhãn `gio` lên. Từ đó, cứ thấy chữ `gio` là Python mở hộp lấy số 3 ra.
+
+Dấu `=` ở đây **không phải** dấu bằng trong toán. Nó là lệnh "dán nhãn". Đọc `gio = 3` là "gán 3 cho gio", không đọc là "gio bằng 3".
+</Khung>
+
+```python
+gio = 3          # số giờ tự học của bạn An, một số nguyên
+diem = 5.5       # điểm thi, một số có phần thập phân
+ten = "An"       # tên, một chuỗi chữ đặt trong dấu nháy
+da_thi = True    # đã thi hay chưa, chỉ có hai giá trị True hoặc False
+print(type(gio), type(diem), type(ten), type(da_thi))  # type cho biết kiểu của giá trị
+```
+
+```text title="Output"
+<class 'int'> <class 'float'> <class 'str'> <class 'bool'>
+```
+
+Mỗi giá trị có một <Term id="kieu-du-lieu">kiểu dữ liệu</Term>. Bốn kiểu bạn sẽ gặp hằng ngày:
+
+**Bảng 1.1.** Bốn kiểu dữ liệu cơ bản.
+
+| Kiểu | Tên đầy đủ | Ví dụ | Dùng cho |
+|:---:|:---:|:---:|:---|
+| `int` | số nguyên <En>integer</En> | `3`, `-7` | đếm, số thứ tự |
+| `float` | số thực <En>floating-point</En> | `5.5`, `0.05` | đo lường, tham số mô hình |
+| `str` | chuỗi <En>string</En> | `"An"` | chữ, văn bản |
+| `bool` | đúng sai <En>boolean</En> | `True`, `False` | kết quả so sánh |
+
+Python dùng **dấu chấm** cho phần thập phân: viết `5.5`, không viết `5,5`. Trong bài viết, mình vẫn ghi 5,5 theo cách Việt Nam, nhưng trong code luôn là dấu chấm.
+
+Tên biến nên nói lên nó chứa gì: `gio`, `diem`, `ten`. Tên chỉ gồm chữ, số và dấu gạch dưới, không bắt đầu bằng số, phân biệt chữ hoa chữ thường (`Diem` và `diem` là hai biến khác nhau).
+
+## Phép tính số học
+
+```python
+print(7 + 2, 7 - 2, 7 * 2, 7 / 2, 7 // 2, 7 % 2, 7 ** 2)  # bảy phép tính, cách nhau bằng dấu phẩy
+```
+
+```text title="Output"
+9 5 14 3.5 3 1 49
+```
+
+**Bảng 1.2.** Bảy phép tính số học, áp cho 7 và 2.
+
+| Phép | Ý nghĩa | Kết quả |
+|:---:|:---|:---:|
+| `+` `-` `*` | cộng, trừ, nhân | 9, 5, 14 |
+| `/` | chia, **luôn ra số thực** | 3.5 |
+| `//` | chia lấy phần nguyên | 3 |
+| `%` | chia lấy dư | 1 |
+| `**` | lũy thừa | 49 |
+
+Phép `%` trông lạ nhưng rất hay dùng. Ở Chương 10, dòng `if buoc % 50 == 0` dùng nó để "cứ 50 bước in một lần": số bước chia hết cho 50 thì dư 0.
+
+Phép `**` dùng để bình phương sai số: `e ** 2` là $e^2$.
+
+## Chèn biến vào chuỗi
+
+Muốn in câu có lẫn giá trị của biến, đặt chữ `f` trước dấu nháy và bọc tên biến trong ngoặc nhọn:
+
+```python
+print(f"Bạn {ten} học {gio} giờ, được {diem} điểm")  # f-string: {ten} được thay bằng giá trị của ten
+```
+
+```text title="Output"
+Bạn An học 3 giờ, được 5.5 điểm
+```
+
+Cách viết này gọi là f-string. Trong ngoặc nhọn còn ghi được cách định dạng: `{w:.4f}` nghĩa là in `w` với 4 chữ số sau dấu chấm. Chương 10 in kết quả huấn luyện đúng bằng cách này.
+
+## Số thực không chính xác tuyệt đối
+
+```python
+print(0.1 + 0.2)  # đoán trước: kết quả có đúng 0.3 không?
+```
+
+```text title="Output"
+0.30000000000000004
+```
+
+Không phải Python tính sai. Máy lưu số thực ở hệ nhị phân, và 0,1 trong hệ nhị phân là một số vô hạn, giống 1/3 trong hệ thập phân là 0,333... Máy phải cắt bớt, nên lệch ở chữ số thứ 17.
+
+<Khung loai="loi">
+**So hai số thực bằng `==`.** `0.1 + 0.2 == 0.3` cho ra `False`. Muốn so số thực, hãy xem chúng có đủ gần nhau không: `abs(a - b) < 1e-9`, hoặc dùng `math.isclose(a, b)`.
+
+**Viết dấu phẩy thay dấu chấm.** `diem = 5,5` không báo lỗi, nhưng Python hiểu đó là **cặp hai số** 5 và 5, không phải số 5,5.
+
+**Nhầm `=` với `==`.** Một dấu bằng là gán. Hai dấu bằng là hỏi "có bằng nhau không", trả về `True` hoặc `False`. Trang sau sẽ dùng `==` trong câu lệnh điều kiện.
+</Khung>

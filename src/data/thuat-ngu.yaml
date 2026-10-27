@@ -143,3 +143,33 @@
   tenTiengAnh: residual plot
   giaiThich: Đồ thị phần dư vẽ phần dư của từng điểm theo giá trị mô hình đoán. Mô hình hợp với dữ liệu thì các chấm rải đều quanh vạch 0, không có hình thù gì. Thấy hình chữ U hay hình phễu là dấu hiệu mô hình sai dạng.
   hocKy: ai-engineer/ch10-hoi-quy-tuyen-tinh
+- id: bien
+  ten: Biến
+  tenTiengAnh: variable
+  giaiThich: Biến là một cái tên gắn vào một giá trị, như dán nhãn lên chiếc hộp. Viết tên đó ở đâu thì Python lấy giá trị trong hộp ra dùng ở đó. Gán giá trị mới thì nhãn chuyển sang hộp mới.
+  hocKy: ai-engineer/ch01-python-tu-dau
+- id: kieu-du-lieu
+  ten: Kiểu dữ liệu
+  tenTiengAnh: data type
+  giaiThich: Kiểu dữ liệu cho biết một giá trị thuộc loại nào, ví dụ số nguyên, số thực, chuỗi chữ hay đúng sai. Kiểu quyết định phép tính nào làm được với giá trị đó.
+  hocKy: ai-engineer/ch01-python-tu-dau
+- id: vong-lap
+  ten: Vòng lặp
+  tenTiengAnh: loop
+  giaiThich: Vòng lặp là cách bảo máy làm lại một khối lệnh nhiều lần, mỗi lần với một giá trị khác hoặc cho tới khi một điều kiện hết đúng. Huấn luyện mô hình chính là một vòng lặp chạy hàng trăm tới hàng triệu lần.
+  hocKy: ai-engineer/ch01-python-tu-dau
+- id: ham
+  ten: Hàm
+  tenTiengAnh: function
+  giaiThich: Hàm là một đoạn code được đặt tên, nhận đầu vào và trả về kết quả. Viết một lần rồi gọi lại bao nhiêu lần cũng được, như một chiếc máy xay chỉ cần bỏ nguyên liệu vào.
+  hocKy: ai-engineer/ch01-python-tu-dau
+- id: list
+  ten: List
+  tenTiengAnh: list
+  giaiThich: List là một dãy giá trị có thứ tự, đánh số từ 0. Thêm, bớt, sửa phần tử đều được. Đây là cách đơn giản nhất để giữ cả cột dữ liệu trong Python thuần.
+  hocKy: ai-engineer/ch01-python-tu-dau
+- id: dict
+  ten: Dict
+  tenTiengAnh: dictionary
+  giaiThich: Dict lưu các cặp khóa và giá trị, tra theo khóa thay vì theo số thứ tự. Giống một cuốn danh bạ, tra tên ra số điện thoại.
+  hocKy: ai-engineer/ch01-python-tu-dau

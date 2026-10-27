@@ -1,0 +1,85 @@
+---
+title: Hàm
+description: Đóng gói một phép tính thành hàm có tên, truyền tham số, giá trị mặc định, return khác print ở đâu. Ví dụ là hàm dự đoán của hồi quy tuyến tính.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Viết một lần, dùng nhiều lần
+
+Ở Chương 10, mô hình đoán điểm thi theo công thức $\hat y = w x + b$. Công thức này được dùng cho từng bạn, ở từng bước huấn luyện. Chép đi chép lại `w * x + b` khắp nơi thì vừa dài, vừa dễ sai.
+
+Cách gọn hơn là đặt tên cho phép tính đó, biến nó thành một <Term id="ham">hàm</Term>:
+
+```python
+def du_doan(x, w, b):   # def: định nghĩa hàm tên du_doan, nhận ba đầu vào x, w, b
+    return w * x + b    # return: trả kết quả về cho chỗ đã gọi hàm
+
+print(du_doan(3, 1.6, 0.5))  # gọi hàm: x = 3, w = 1.6, b = 0.5
+```
+
+```text title="Output"
+5.300000000000001
+```
+
+Đường thẳng $w = 1{,}6$, $b = 0{,}5$ đoán bạn học 3 giờ được $1{,}6 \times 3 + 0{,}5 = 5{,}3$ điểm. Chữ số 1 ở cuối là sai số dấu phẩy động mà trang đầu đã nói.
+
+Ba cái tên `x`, `w`, `b` trong ngoặc gọi là tham số của hàm <En>parameter</En>. Lúc gọi hàm, giá trị bạn đưa vào lần lượt được gán cho chúng theo thứ tự.
+
+<Khung loai="truc-giac">
+Hàm giống một chiếc máy xay sinh tố. Bạn bỏ nguyên liệu vào (tham số), máy làm việc bên trong, rồi rót ra cốc sinh tố (giá trị `return`).
+
+Bạn không cần nhìn vào bên trong máy mỗi lần dùng. Chỉ cần biết bỏ gì vào và nhận lại gì. Cả thư viện NumPy hay PyTorch thực chất là hàng nghìn chiếc máy như vậy, người khác đã chế tạo sẵn.
+</Khung>
+
+## Giá trị mặc định và gọi theo tên
+
+Tham số có thể có giá trị mặc định. Lúc gọi mà không truyền thì Python dùng giá trị đó:
+
+```python
+def du_doan(x, w=1.6, b=0.5):   # w và b có sẵn giá trị nếu người gọi không truyền
+    return w * x + b
+
+print(du_doan(5), du_doan(5, b=0))  # lần đầu dùng cả hai mặc định; lần sau đổi riêng b
+```
+
+```text title="Output"
+8.5 8.0
+```
+
+`du_doan(5)` dùng $w = 1{,}6$, $b = 0{,}5$: ra $8{,}5$. `du_doan(5, b=0)` giữ $w$ mặc định nhưng đổi $b$ thành 0: ra $8{,}0$.
+
+Cách viết `b=0` lúc gọi là truyền theo tên. Thư viện ML dùng kiểu này rất nhiều, ví dụ `LinearRegression(fit_intercept=False)`, vì một hàm có thể có hàng chục tham số mà bạn chỉ muốn đổi một hai cái.
+
+## return khác print
+
+Đây là chỗ người mới hay nhầm nhất.
+
+```python
+def in_ra(x):
+    print(x * 2)    # chỉ IN ra màn hình, không trả gì về
+
+kq = in_ra(3)       # màn hình hiện 6, nhưng kq nhận được gì?
+print(kq)
+```
+
+```text title="Output"
+6
+None
+```
+
+`print` chỉ hiện chữ lên màn hình cho **người** xem. Giá trị đó không đi đâu cả. Hàm không có `return` thì trả về `None`, nghĩa là "không có gì".
+
+`return` mới là thứ đưa giá trị về cho **chương trình** dùng tiếp: gán vào biến, cộng với số khác, đưa vào hàm khác.
+
+Quy tắc dễ nhớ: hàm tính toán thì `return`, còn `print` để ở bên ngoài, lúc bạn muốn xem kết quả.
+
+<Khung loai="loi">
+**Dùng print thay cho return.** Hàm vẫn "có vẻ" chạy đúng vì bạn thấy số trên màn hình, nhưng gán kết quả vào biến thì nhận về `None`. Lỗi thường lộ ra muộn, kiểu `TypeError: unsupported operand type(s) for +: 'NoneType' and 'int'`.
+
+**Code sau return không chạy.** Gặp `return` là hàm kết thúc ngay. Dòng nào đặt sau nó trong cùng khối sẽ bị bỏ qua.
+
+**Định nghĩa hàm nhưng quên gọi.** Khối `def` chỉ tạo ra chiếc máy, chưa bật máy. Phải viết `du_doan(3, 1.6, 0.5)` thì hàm mới chạy.
+</Khung>

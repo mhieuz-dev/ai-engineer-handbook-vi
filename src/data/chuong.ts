@@ -27,7 +27,7 @@ interface XuatBan { trangThai: 'xong'; notebook?: string }
 // [số, phần, tên, hậu tố slug, xuất bản?]
 const BANG: [number, string, string, string, XuatBan?][] = [
 	[0, 'phan-0', 'Lộ trình AI Engineer và cách dùng Colab', 'lo-trinh-va-colab'],
-	[1, 'phan-1', 'Python từ đầu', 'python-tu-dau'],
+	[1, 'phan-1', 'Python từ đầu', 'python-tu-dau', { trangThai: 'xong', notebook: 'ch01_python_tu_dau.ipynb' }],
 	[2, 'phan-1', 'Python cho dữ liệu', 'python-cho-du-lieu'],
 	[3, 'phan-1', 'NumPy', 'numpy'],
 	[4, 'phan-1', 'Pandas và Matplotlib', 'pandas-va-matplotlib'],

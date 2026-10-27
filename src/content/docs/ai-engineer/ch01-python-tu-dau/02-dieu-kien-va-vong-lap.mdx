@@ -1,0 +1,121 @@
+---
+title: Điều kiện và vòng lặp
+description: Dùng if, elif, else để chương trình tự chọn đường đi; dùng for, range và while để lặp lại công việc. Đây là bộ khung của mọi vòng huấn luyện mô hình.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Rẽ nhánh với if
+
+Chương trình ở trang trước chạy thẳng từ trên xuống. Giờ ta muốn nó **tự quyết định**: điểm cao thì xếp Giỏi, điểm vừa thì Khá, còn lại Trung bình.
+
+```python
+diem = 7.5                  # điểm của một bạn
+if diem >= 8:               # điều kiện thứ nhất: từ 8 trở lên
+    xep_loai = "Giỏi"
+elif diem >= 6.5:           # elif = else if: chỉ xét khi điều kiện trên sai
+    xep_loai = "Khá"
+else:                       # không điều kiện nào ở trên đúng
+    xep_loai = "Trung bình"
+print(xep_loai)
+```
+
+```text title="Output"
+Khá
+```
+
+Python xét từ trên xuống. Gặp điều kiện đúng đầu tiên thì chạy khối đó rồi **bỏ qua hết phần còn lại**. Với 7,5: điều kiện `>= 8` sai, điều kiện `>= 6.5` đúng, nên ra "Khá" và không xét tới `else`.
+
+Các phép so sánh: `==` (bằng), `!=` (khác), `<`, `<=`, `>`, `>=`. Kết quả luôn là `True` hoặc `False`. Ghép nhiều điều kiện bằng `and`, `or`, `not`.
+
+<Khung loai="dao-sau" tieuDe="THỤT LỀ LÀ CÚ PHÁP">
+Nhiều ngôn ngữ dùng ngoặc nhọn để gom các dòng thành một khối. Python dùng **thụt lề**: các dòng thụt vào cùng một mức (thường là 4 dấu cách) sau dấu hai chấm là cùng một khối.
+
+Vậy thụt lề trong Python không phải để cho đẹp, mà là cú pháp. Thụt sai là chương trình chạy sai, hoặc báo lỗi `IndentationError`.
+</Khung>
+
+## Lặp với for
+
+<Term id="vong-lap">Vòng lặp</Term> bảo máy làm lại một việc nhiều lần. Vòng `for` lặp qua từng phần tử của một dãy:
+
+```python
+for i in range(4):  # range(4) sinh ra 0, 1, 2, 3: bốn số, bắt đầu từ 0
+    print(i)        # khối thụt lề chạy một lần cho mỗi giá trị của i
+```
+
+```text title="Output"
+0
+1
+2
+3
+```
+
+`range(4)` cho 4 số nhưng **dừng trước 4**. Đây là quy ước của cả Python: đếm từ 0, khoảng nào cũng lấy đầu không lấy cuối.
+
+`range` còn nhận điểm đầu và bước nhảy:
+
+```python
+print(list(range(1, 5)), list(range(0, 10, 3)))  # list(...) đổi dãy thành danh sách để in ra
+```
+
+```text title="Output"
+[1, 2, 3, 4] [0, 3, 6, 9]
+```
+
+`range(1, 5)` là từ 1 tới trước 5. `range(0, 10, 3)` là từ 0, mỗi lần cộng 3, dừng trước 10.
+
+### Cộng dồn
+
+Mẫu code dưới đây bạn sẽ viết đi viết lại suốt cả giáo trình: tạo một biến tổng bằng 0, rồi mỗi vòng cộng thêm một phần.
+
+```python
+tong = 0                     # bắt đầu từ 0, chưa cộng gì
+for gio in [1, 2, 3, 4]:     # lặp thẳng qua giờ học của bốn bạn A, B, C, D
+    tong = tong + gio        # lấy tổng cũ cộng thêm giờ của bạn này, gán lại vào tong
+print(tong)
+```
+
+```text title="Output"
+10
+```
+
+Dòng `tong = tong + gio` lại cho thấy `=` là phép gán: vế phải được tính trước bằng giá trị **cũ** của `tong`, rồi kết quả mới dán nhãn `tong`. Viết gọn là `tong += gio`.
+
+## Lặp với while
+
+Vòng `for` dùng khi biết trước lặp qua những gì. Vòng `while` dùng khi chỉ biết **lúc nào dừng**:
+
+```python
+w = 0.0                # giá trị bắt đầu
+buoc = 0               # đếm số bước đã đi
+while w < 1.6:         # còn nhỏ hơn 1.6 thì còn lặp
+    w = w + 0.5        # mỗi bước nhích w thêm 0.5
+    buoc = buoc + 1    # đếm thêm một bước
+print(buoc, w)
+```
+
+```text title="Output"
+4 2.0
+```
+
+Lần theo từng bước: $w$ đi 0,5; 1,0; 1,5; 2,0. Sau bước thứ ba, $w = 1{,}5$ vẫn nhỏ hơn 1,6 nên lặp tiếp. Sau bước thứ tư, $w = 2{,}0$ thì điều kiện sai, vòng dừng.
+
+Để ý: vòng dừng ở 2,0 chứ không phải 1,6, vì bước nhảy quá dài. Đây là phiên bản thu nhỏ của một hiện tượng bạn sẽ gặp ở Chương 10: <Term id="learning-rate">learning rate</Term> quá lớn thì bước qua luôn chỗ cần tới.
+
+<TuKiemTra
+	cauHoi="Đoạn for gio in range(2, 8, 2): print(gio) in ra những số nào?"
+	luaChon={['2 4 6 8', '2 4 6', '2 3 4 5 6 7', '0 2 4 6']}
+	dapAn={1}
+	giaiThich="Bắt đầu từ 2, mỗi lần cộng 2, dừng TRƯỚC 8. Nên chỉ có 2, 4, 6."
+/>
+
+<Khung loai="loi">
+**Vòng while không bao giờ dừng.** Quên cập nhật biến trong điều kiện (ví dụ quên dòng `w = w + 0.5`) là vòng lặp chạy mãi. Trong Colab, bấm nút dừng ở ô code để ngắt.
+
+**Quên dấu hai chấm.** Dòng `if`, `elif`, `else`, `for`, `while` đều phải kết thúc bằng `:`. Thiếu là `SyntaxError`.
+
+**Nghĩ rằng range(4) có số 4.** Nó chỉ có 0, 1, 2, 3. Muốn có 1 tới 4 thì viết `range(1, 5)`.
+</Khung>

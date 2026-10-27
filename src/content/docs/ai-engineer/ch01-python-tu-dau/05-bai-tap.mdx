@@ -1,0 +1,140 @@
+---
+title: Bài tập
+description: Ba bài tập Python có đáp án chi tiết (tự viết hàm MSE bằng Python thuần, đếm xếp loại bằng dict, đoán output trước khi chạy) và câu hỏi phỏng vấn.
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Ba bài dưới đây chỉ dùng những gì đã học trong chương. Hãy tự viết code trong notebook trước, chạy thử, rồi mới mở đáp án.
+
+<BaiTap so="1.1">
+**Tự viết hàm MSE.** Viết hàm `mse(gio, diem, w, b)` nhận hai list dữ liệu và hai tham số của đường thẳng, trả về sai số bình phương trung bình:
+
+$$
+\text{MSE} = \frac{1}{n}\sum_{i=1}^{n}\left(y_i - (w x_i + b)\right)^2
+$$
+
+Chỉ dùng Python thuần: `for`, `zip`, `len`. Chưa dùng NumPy.
+
+Chạy với dữ liệu Bảng 1.3 cho hai trường hợp: $w = 1{,}6,\ b = 0{,}5$ và $w = 0,\ b = 0$. Trước khi chạy, đoán xem trường hợp nào ra số nhỏ hơn.
+
+<Fragment slot="dap-an">
+
+```python
+def mse(gio, diem, w, b):
+    tong = 0                          # cộng dồn bình phương sai số
+    for x, y in zip(gio, diem):       # đi qua từng bạn, lấy cặp (giờ, điểm)
+        e = y - (w * x + b)           # phần dư: điểm thật trừ điểm đoán
+        tong = tong + e ** 2          # bình phương rồi cộng vào tổng
+    return tong / len(gio)            # chia cho số bạn để lấy trung bình
+
+gio = [1, 2, 3, 4]
+diem = [2, 4, 5, 7]
+print(mse(gio, diem, 1.6, 0.5))
+print(round(mse(gio, diem, 1.6, 0.5), 6))
+print(mse(gio, diem, 0, 0))
+```
+
+```text title="Output"
+0.050000000000000065
+0.05
+23.5
+```
+
+Đường $w = 1{,}6,\ b = 0{,}5$ cho MSE $= 0{,}05$. Tính tay: phần dư là $-0{,}1;\ 0{,}3;\ -0{,}3;\ 0{,}1$. Bình phương là $0{,}01;\ 0{,}09;\ 0{,}09;\ 0{,}01$, cộng lại $0{,}2$, chia 4 được $0{,}05$.
+
+Đường nằm ngang $y = 0$ thì đoán ai cũng 0 điểm, nên phần dư chính là điểm thật: $(4 + 16 + 25 + 49)/4 = 94/4 = 23{,}5$.
+
+Hai con số 0,05 và 23,5 sẽ xuất hiện lại y hệt ở Chương 10. Ở đó, 23,5 là loss lúc bắt đầu huấn luyện và 0,05 là loss nhỏ nhất có thể đạt.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="1.2">
+**Đếm xếp loại.** Một lớp có điểm `[9, 7, 5.5, 8, 6.5]`. Viết hàm `xep_loai(d)` trả về `"Giỏi"` nếu $d \ge 8$, `"Khá"` nếu $d \ge 6{,}5$, còn lại `"Trung bình"`. Rồi dùng một dict để đếm mỗi loại có bao nhiêu bạn.
+
+Chú ý hai điểm nằm đúng ranh giới: 8 và 6,5. Chúng rơi vào loại nào?
+
+<Fragment slot="dap-an">
+
+```python
+def xep_loai(d):
+    if d >= 8:                # >= nên 8 điểm vẫn là Giỏi
+        return "Giỏi"
+    elif d >= 6.5:            # 6.5 điểm vẫn là Khá
+        return "Khá"
+    else:
+        return "Trung bình"
+
+dem = {}                                 # dict rỗng: chưa đếm loại nào
+for d in [9, 7, 5.5, 8, 6.5]:
+    loai = xep_loai(d)                   # xếp loại bạn này
+    dem[loai] = dem.get(loai, 0) + 1     # get(loai, 0): chưa có khóa thì coi như 0
+print(dem)
+```
+
+```text title="Output"
+{'Giỏi': 2, 'Khá': 2, 'Trung bình': 1}
+```
+
+9 và 8 là Giỏi, 7 và 6,5 là Khá, 5,5 là Trung bình. Điểm 8 và 6,5 thuộc loại trên vì ta dùng `>=`. Đổi thành `>` thì 8 rớt xuống Khá và 6,5 rớt xuống Trung bình: một dấu bằng đổi cả kết quả.
+
+Dòng `dem.get(loai, 0) + 1` là mẫu đếm kinh điển. Viết `dem[loai] + 1` sẽ báo `KeyError` ngay lần đầu gặp một loại mới, vì khóa đó chưa có.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="1.3">
+**Đoán output trước khi chạy.** Không chạy code, hãy viết ra giấy hai đoạn sau in gì. Rồi mới chạy để kiểm tra.
+
+```python
+for i in range(1, 10, 4):
+    print(i)
+```
+
+```python
+a = [1, 2]
+b = a[:]
+b.append(3)
+print(a, b)
+```
+
+<Fragment slot="dap-an">
+
+```text title="Output"
+1
+5
+9
+```
+
+Bắt đầu từ 1, mỗi lần cộng 4: 1, 5, 9. Số tiếp theo là 13, đã vượt 10 nên dừng. Số 9 vẫn được in vì nó nhỏ hơn 10.
+
+```text title="Output"
+[1, 2] [1, 2, 3]
+```
+
+`a[:]` là lát cắt lấy hết, tạo một **hộp mới** chứa bản sao. Thêm 3 vào `b` không đụng gì tới `a`. So với khung "Hai nhãn, một hộp" ở trang trước: nếu viết `b = a` thì `a` cũng sẽ thành `[1, 2, 3]`.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. List và dict khác nhau thế nào? Khi nào dùng cái nào?**
+
+<p lang="en"><em>What is the difference between a list and a dictionary? When would you use each?</em></p>
+
+*Gợi ý:* list giữ thứ tự, tra theo chỉ số từ 0; dict tra theo khóa. Tra một khóa trong dict nhanh gần như tức thì dù dict lớn cỡ nào, còn tìm một giá trị trong list phải dò từng phần tử. Dữ liệu là một dãy thì dùng list, cần tra theo tên thì dùng dict.
+
+**2. Vì sao 0.1 + 0.2 không bằng 0.3 trong Python?**
+
+<p lang="en"><em>Why does 0.1 + 0.2 not equal 0.3 in Python?</em></p>
+
+*Gợi ý:* số thực lưu ở dạng dấu phẩy động nhị phân, 0,1 không biểu diễn chính xác được trong hệ nhị phân nên bị làm tròn. Đây không phải lỗi riêng của Python, ngôn ngữ nào dùng chuẩn IEEE 754 cũng vậy. So số thực thì dùng sai số cho phép, ví dụ `math.isclose`.
+
+**3. Sau b = a với a là list, sửa b có ảnh hưởng a không?**
+
+<p lang="en"><em>After b = a where a is a list, does modifying b affect a?</em></p>
+
+*Gợi ý:* có. Phép gán chỉ tạo thêm một tên trỏ tới cùng đối tượng. Muốn bản sao độc lập thì dùng `a.copy()` hoặc `a[:]`; list lồng nhau thì cần `copy.deepcopy`.
+</Khung>
