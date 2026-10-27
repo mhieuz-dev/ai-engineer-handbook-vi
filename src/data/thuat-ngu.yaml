@@ -423,3 +423,18 @@
   tenTiengAnh: Gini impurity
   giaiThich: Độ vẩn Gini đo một nhóm mẫu lẫn lộn các lớp tới đâu, bằng xác suất đoán sai nếu gán nhãn ngẫu nhiên theo tỷ lệ các lớp trong nhóm. Bằng 0 khi cả nhóm cùng một lớp. Cây chọn câu hỏi làm Gini giảm nhiều nhất.
   hocKy: ai-engineer/ch17-cay-quyet-dinh
+- id: ensemble
+  ten: Ensemble
+  tenTiengAnh: ensemble
+  giaiThich: Ensemble là gộp dự đoán của nhiều mô hình thành một, bằng bỏ phiếu hoặc lấy trung bình. Nếu các mô hình sai theo những cách khác nhau, lỗi của chúng triệt tiêu một phần, như hỏi ý kiến nhiều người thay vì một người.
+  hocKy: ai-engineer/ch18-ensemble
+- id: random-forest
+  ten: Random forest
+  tenTiengAnh: random forest
+  giaiThich: Random forest là nhiều cây quyết định, mỗi cây học trên một mẫu bootstrap của dữ liệu và chỉ được xét một phần ngẫu nhiên các đặc trưng ở mỗi nút. Các cây bỏ phiếu. Giảm mạnh variance của cây đơn lẻ.
+  hocKy: ai-engineer/ch18-ensemble
+- id: boosting
+  ten: Boosting
+  tenTiengAnh: boosting
+  giaiThich: Boosting xây các mô hình nhỏ nối tiếp nhau, mỗi mô hình mới tập trung sửa phần mà các mô hình trước còn sai. Gradient boosting cho mỗi cây mới khớp phần dư của tổng các cây trước. Giảm bias của mô hình yếu.
+  hocKy: ai-engineer/ch18-ensemble

@@ -44,7 +44,7 @@ const BANG: [number, string, string, string, XuatBan?][] = [
 	[15, 'phan-2', 'Naive Bayes', 'naive-bayes', { trangThai: 'xong', notebook: 'ch15_naive_bayes.ipynb' }],
 	[16, 'phan-2', 'SVM và kernel', 'svm-kernel', { trangThai: 'xong', notebook: 'ch16_svm_kernel.ipynb' }],
 	[17, 'phan-2', 'Cây quyết định', 'cay-quyet-dinh', { trangThai: 'xong', notebook: 'ch17_cay_quyet_dinh.ipynb' }],
-	[18, 'phan-2', 'Ensemble', 'ensemble'],
+	[18, 'phan-2', 'Ensemble', 'ensemble', { trangThai: 'xong', notebook: 'ch18_ensemble.ipynb' }],
 	[19, 'phan-2', 'Phân cụm', 'phan-cum'],
 	[20, 'phan-2', 'Giảm chiều', 'giam-chieu'],
 	[21, 'phan-2', 'Feature engineering', 'feature-engineering'],

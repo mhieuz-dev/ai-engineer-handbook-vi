@@ -1,0 +1,83 @@
+---
+title: Gradient boosting
+description: Mỗi cây mới khớp phần dư của tổng các cây trước. Tính tay ba vòng đầu trên 10 bạn, MSE đi từ 4,5725 xuống 2,0056, 1,0352, 0,5787, và vì sao phần dư chính là gradient của MSE.
+---
+
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Sửa lỗi từng bước
+
+Random forest huấn luyện các cây **song song**, độc lập. <Term id="boosting">Boosting</Term> huấn luyện chúng **nối tiếp**: cây sau nhìn vào chỗ các cây trước còn sai, rồi cố sửa đúng chỗ đó.
+
+Gradient boosting cho hồi quy, với 10 bạn của Bảng 4.1 (giờ học, điểm thi):
+
+1. Bắt đầu bằng dự đoán hằng số: trung bình điểm, $f_0 = 5{,}55$ cho mọi bạn.
+2. Tính phần dư $r_i = y_i - f(x_i)$: ai còn bị đoán thấp, ai bị đoán cao.
+3. Khớp một **gốc cây** (cây độ sâu 1, chỉ một câu hỏi) vào phần dư.
+4. Cộng cây đó vào mô hình, nhân với learning rate $\eta$: $f \leftarrow f + \eta \cdot \text{cây}$.
+5. Quay lại bước 2.
+
+## Tính tay vòng đầu
+
+Phần dư lúc đầu là điểm trừ 5,55. Gốc cây tốt nhất (theo MSE) hỏi "giờ học ≤ 3,5?":
+
+- Năm bạn học từ 3,5 giờ trở xuống có điểm 2; 4; 5; 3,5; 4. Phần dư trung bình $(-3{,}55 - 1{,}55 - 0{,}55 - 2{,}05 - 1{,}55)/5 = -1{,}85$.
+- Năm bạn học nhiều hơn có phần dư trung bình $+1{,}85$ (phần dư cộng lại bằng 0).
+
+Với $\eta = 0{,}5$, mô hình mới đoán $5{,}55 - 0{,}925 = 4{,}625$ cho nhóm ít học và $5{,}55 + 0{,}925 = 6{,}475$ cho nhóm học nhiều.
+
+```python
+from sklearn.tree import DecisionTreeRegressor
+gio = np.array([1, 2, 3, 4, 5, 2, 6, 3, 7, 4.0])
+diem = np.array([2, 4, 5, 7, 6, 3.5, 8.5, 4, 9, 6.5])
+X1 = gio[:, None]
+f = np.full(10, diem.mean())                                   # f0: trung bình
+print(0, round(float(np.mean((diem - f) ** 2)), 4))
+for k in range(1, 4):
+    goc = DecisionTreeRegressor(max_depth=1).fit(X1, diem - f)  # gốc cây khớp phần dư
+    t = goc.tree_
+    f = f + 0.5 * goc.predict(X1)                               # cộng vào với learning rate 0,5
+    print(k, t.threshold[0], t.value[1:, 0, 0].round(4), round(float(np.mean((diem - f) ** 2)), 4))
+```
+
+```text title="Output"
+0 4.5725
+1 3.5 [-1.85  1.85] 2.0056
+2 5.5 [-0.5687  2.275 ] 1.0352
+3 1.5 [-2.3406  0.2601] 0.5787
+```
+
+Vòng 1 khớp đúng như tính tay: ngưỡng 3,5, hai lá $\pm 1{,}85$, MSE từ 4,5725 xuống 2,0056.
+
+Vòng 2 hỏi một câu **khác**: "giờ học ≤ 5,5?". Sau vòng 1, hai bạn G và I (6 và 7 giờ, điểm 8,5 và 9) vẫn bị đoán thấp hơn nhiều (đoán 6,475). Gốc cây mới tách riêng họ ra và đẩy dự đoán của họ lên. Vòng 3 lại sửa bạn A (1 giờ, 2 điểm) đang bị đoán quá cao. Mỗi cây chỉ một câu hỏi, nhưng mỗi câu hỏi nhắm đúng chỗ còn sai nhiều nhất.
+
+<HinhKetQua src="/hinh/ch18/h2_boosting.svg" alt="Mười chấm đen là 10 bạn theo giờ học và điểm. Đường xám nằm ngang ở 5,55 là dự đoán ban đầu. Đường cam sau 1 vòng là bậc thang hai bậc ở 4,6 và 6,5. Đường xanh sau 3 vòng có bốn bậc. Đường đỏ sau 10 vòng có nhiều bậc đi sát các chấm." so="18.2" chuThich="Dự đoán của gradient boosting (gốc cây, learning rate 0,5) trên 10 bạn sau 0, 1, 3 và 10 vòng.">
+**Đọc hình.** Mỗi đường là dự đoán của mô hình sau một số vòng. Đường xám là hằng số ban đầu. Mỗi vòng thêm một gốc cây, tức thêm một bậc vào hàm bậc thang.
+
+**Điều cần thấy.** Sau 1 vòng, chỉ có hai mức. Sau 3 vòng, bậc thang đã đi theo xu hướng tăng. Sau 10 vòng, MSE trên chính 10 bạn còn 0,1174: bậc thang đã gần như đi qua từng chấm. Với chỉ 10 điểm, đó đã là dấu hiệu bắt đầu học thuộc.
+
+**So với cây đơn.** Một cây sâu cũng có thể vẽ nhiều bậc như vậy. Khác biệt là boosting xây từng bậc **có chủ đích**, mỗi bậc chỉ nhích một nửa (learning rate 0,5) về phía sửa lỗi, nên ít bị một điểm nhiễu kéo lệch hẳn như cây đơn.
+</HinhKetQua>
+
+## Vì sao gọi là "gradient"
+
+Với MSE $L = \frac{1}{2}\sum_i (y_i - f_i)^2$ (thêm $\frac12$ cho gọn), đạo hàm theo dự đoán $f_i$ của từng mẫu là $\frac{\partial L}{\partial f_i} = -(y_i - f_i) = -r_i$. Phần dư chính là **gradient âm** của loss theo dự đoán.
+
+Vậy mỗi vòng boosting khớp một cây vào gradient âm rồi bước một đoạn $\eta$ theo hướng đó: đúng **gradient descent** của Chương 8, chỉ có điều không đi trong không gian tham số $(w, b)$ mà đi trong không gian **các hàm dự đoán**, mỗi bước là một cây.
+
+Đổi MSE thành cross-entropy là có gradient boosting cho phân loại: mỗi cây khớp $y_i - p_i$, gradient (11.3) của Chương 11.
+
+<Khung loai="vi-sao" tieuDe="CÂY NÔNG VÀ LEARNING RATE NHỎ">
+Boosting dùng cây **nông** (độ sâu 1 tới 6) vì mỗi cây chỉ cần sửa một phần nhỏ, và cây nông có variance thấp. Cây sâu sẽ học thuộc phần dư ngay từ vòng đầu.
+
+Learning rate nhỏ (0,05 tới 0,1) cộng nhiều vòng thường tổng quát hóa tốt hơn learning rate lớn cộng ít vòng: mỗi cây chỉ được sửa một chút, cây sau còn cơ hội sửa lại cây trước. Khác random forest, **số vòng là núm vặn overfitting** của boosting: quá nhiều vòng thì học thuộc. Chọn bằng validation, hoặc bằng early stopping (dừng khi lỗi validation ngừng giảm).
+</Khung>
+
+<Khung loai="loi">
+**Đặt nhiều vòng và learning rate lớn cùng lúc.** Mô hình học thuộc train rất nhanh. Giảm learning rate thì phải tăng số vòng, và ngược lại; chúng đi theo cặp.
+
+**Nhầm với AdaBoost.** AdaBoost, thuật toán boosting đầu tiên, tăng **trọng số** của những mẫu bị đoán sai cho cây sau, thay vì khớp phần dư. Ý tưởng chung giống nhau, cách làm khác. Gradient boosting tổng quát hơn: dùng được với mọi hàm loss có đạo hàm.
+</Khung>

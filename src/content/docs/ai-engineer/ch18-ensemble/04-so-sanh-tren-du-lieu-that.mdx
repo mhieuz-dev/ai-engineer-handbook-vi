@@ -1,0 +1,90 @@
+---
+title: So sánh trên dữ liệu thật
+description: Năm mô hình cây trên ung thư vú và bốn trên tiểu đường. HistGradientBoosting đạt 97,9% trên test ung thư vú, cao nhất trong các mô hình cây; trên tiểu đường, không mô hình cây nào thắng hồi quy tuyến tính.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Ung thư vú
+
+```python
+from sklearn.ensemble import GradientBoostingClassifier, HistGradientBoostingClassifier
+ung_vien = [("cây sâu 3", DecisionTreeClassifier(max_depth=3, random_state=0)),
+            ("bagging", BaggingClassifier(DecisionTreeClassifier(), n_estimators=100, random_state=0)),
+            ("random forest", RandomForestClassifier(n_estimators=300, random_state=0)),
+            ("gradient boosting", GradientBoostingClassifier(random_state=0)),
+            ("hist gradient boosting", HistGradientBoostingClassifier(random_state=0))]
+for ten, m in ung_vien:
+    cv = cross_val_score(m, Xtr, ytr, cv=5).mean()
+    print(ten, round(cv, 4), round(m.fit(Xtr, ytr).score(Xte, yte), 4))
+```
+
+```text title="Output"
+cây sâu 3 0.9295 0.958
+bagging 0.9483 0.958
+random forest 0.9554 0.951
+gradient boosting 0.9507 0.972
+hist gradient boosting 0.9601 0.979
+```
+
+**Bảng 18.2.** Các mô hình cây trên bộ ung thư vú, mọi mô hình để siêu tham số mặc định.
+
+| Mô hình | Cross-validation | Test |
+|:---|:---:|:---:|
+| Cây sâu 3 (Chương 17) | 0,930 | 0,958 |
+| Bagging 100 cây | 0,948 | 0,958 |
+| Random forest 300 cây | 0,955 | 0,951 |
+| Gradient boosting | 0,951 | 0,972 |
+| HistGradientBoosting | **0,960** | **0,979** |
+
+Mọi ensemble đều thắng cây đơn trên cross-validation, khoảng 2 tới 3 điểm. `HistGradientBoostingClassifier` cao nhất ở cả hai cột. Nó là gradient boosting được tăng tốc: chia giá trị mỗi đặc trưng vào 255 "thùng" trước, nên mỗi lần tìm ngưỡng chỉ thử tối đa 255 ngưỡng thay vì mọi giá trị. Cùng ý tưởng là nền của các thư viện XGBoost, LightGBM, CatBoost.
+
+Đừng đọc quá nhiều vào cột test: chênh lệch giữa 0,958 và 0,979 là 3 ca trên 143, nằm trong khoảng dao động mà Chương 12 đã đo. Và hồi quy logistic (98,6%, Chương 12) vẫn đứng đầu trên bộ dữ liệu này.
+
+## Tiểu đường
+
+```python
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, HistGradientBoostingRegressor
+from sklearn.datasets import load_diabetes
+from sklearn.metrics import r2_score
+Xd, yd = load_diabetes(return_X_y=True, as_frame=True, scaled=False)
+Xdtr, Xdte, ydtr, ydte = train_test_split(Xd, yd, test_size=0.2, random_state=42)
+for ten, m in [("cây sâu 3", DecisionTreeRegressor(max_depth=3, random_state=0)),
+               ("random forest", RandomForestRegressor(n_estimators=300, random_state=0)),
+               ("gradient boosting", GradientBoostingRegressor(random_state=0)),
+               ("hist gradient boosting", HistGradientBoostingRegressor(random_state=0))]:
+    print(ten, round(r2_score(ydte, m.fit(Xdtr, ydtr).predict(Xdte)), 4))
+```
+
+```text title="Output"
+cây sâu 3 0.3294
+random forest 0.4251
+gradient boosting 0.451
+hist gradient boosting 0.3866
+```
+
+Ensemble kéo $R^2$ từ 0,33 của cây đơn lên 0,43 tới 0,45. Nhưng hồi quy tuyến tính ở Chương 9 đạt 0,4526 trên cùng tập test, ngang mô hình cây tốt nhất. Với 353 bệnh nhân train và một quan hệ gần tuyến tính, không có nhiều phi tuyến để các cây khai thác, còn mỗi bậc thang thêm vào lại thêm nhiễu.
+
+<Khung loai="vi-sao" tieuDe="BOOSTING LÀ MẶC ĐỊNH CHO DỮ LIỆU BẢNG">
+Trên các cuộc thi dữ liệu dạng bảng (cột là đặc trưng, hàng là mẫu: giao dịch, khách hàng, cảm biến), gradient boosting thắng thường xuyên hơn bất kỳ họ mô hình nào khác, kể cả mạng nơ-ron. Lý do: nó tự xử lý đặc trưng thang đo khác nhau (không cần chuẩn hóa), tự bắt tương tác giữa các đặc trưng, chịu được đặc trưng nhiễu, và `HistGradientBoosting` còn tự xử lý giá trị thiếu.
+
+Hai bộ dữ liệu của chương này là ngoại lệ: nhỏ và gần tuyến tính. Bài học thực dụng: luôn thử một mô hình tuyến tính làm mốc trước. Nếu boosting không thắng rõ ràng, chọn mô hình đơn giản hơn.
+</Khung>
+
+**Bảng 18.3.** Chọn ensemble nào.
+
+| | Random forest | Gradient boosting |
+|:---|:---|:---|
+| Cách huấn luyện | song song, chạy đa luồng dễ | nối tiếp |
+| Núm vặn quan trọng | `max_features`, `min_samples_leaf` | số vòng, learning rate, độ sâu |
+| Thêm mô hình con | không bao giờ hại | quá nhiều thì overfit |
+| Chỉnh siêu tham số | ít nhạy, mặc định thường ổn | nhạy hơn, đáng chỉnh |
+| Độ chính xác tốt nhất | thường kém boosting một chút | thường cao nhất |
+
+<Khung loai="loi">
+**So các mô hình mà không cố định cách chia.** Mọi con số ở đây dùng cùng `random_state` cho `train_test_split` như Chương 9 và 12. Đổi cách chia giữa các mô hình là so táo với cam.
+
+**Chọn mô hình theo cột test.** Bảng 18.2 in cột test để minh họa. Quyết định phải dựa trên cột cross-validation; cột test chỉ đo một lần cho mô hình đã chọn.
+</Khung>

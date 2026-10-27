@@ -1,0 +1,103 @@
+---
+title: Bagging và random forest
+description: Mỗi cây học trên một mẫu bootstrap, random forest còn giới hạn đặc trưng ở mỗi nút để các cây bớt giống nhau. Trên hai vầng trăng, một cây đạt 84%, 100 cây đạt 93%. OOB score cho ước lượng miễn phí không cần tập validation.
+---
+
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Bagging
+
+Bagging (bootstrap aggregating) tạo các cây khác nhau bằng cách cho mỗi cây một **mẫu bootstrap** của dữ liệu: lấy $n$ mẫu **có hoàn lại** từ $n$ mẫu train, đúng phép lấy mẫu của khoảng tin cậy ở Chương 12. Mỗi cây thấy một bộ dữ liệu hơi khác: có mẫu bị lấy hai ba lần, có mẫu không được lấy.
+
+Xác suất một mẫu cụ thể **không** được lấy trong $n$ lần là $(1 - 1/n)^n \approx e^{-1} \approx 0{,}368$. Vậy mỗi cây chỉ thấy khoảng 63% số mẫu khác nhau, phần còn lại 37% gọi là mẫu **ngoài túi** <En>out-of-bag</En> của cây đó.
+
+## Random forest
+
+<Term id="random-forest">Random forest</Term> thêm một nguồn ngẫu nhiên nữa: ở **mỗi nút**, cây chỉ được xét một tập con ngẫu nhiên các đặc trưng (mặc định $\sqrt{d}$ đặc trưng cho phân loại; với 30 đặc trưng là 5). Một đặc trưng rất mạnh không còn được chọn ở gốc của mọi cây, nên các cây bớt giống nhau: $\rho$ trong (18.1) nhỏ đi.
+
+Đo thật tương quan giữa các cây, trên bộ ung thư vú của Chương 12:
+
+```python
+import numpy as np
+from sklearn.datasets import load_breast_cancer
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import BaggingClassifier, RandomForestClassifier
+dd = load_breast_cancer()
+Xb, yb = dd.data, 1 - dd.target
+Xtr, Xte, ytr, yte = train_test_split(Xb, yb, test_size=0.25, random_state=0, stratify=yb)
+for ten, m in [("bagging", BaggingClassifier(DecisionTreeClassifier(), n_estimators=100, random_state=0)),
+               ("random forest", RandomForestClassifier(n_estimators=100, random_state=0))]:
+    m.fit(Xtr, ytr)
+    P = np.array([cay.predict_proba(Xte)[:, 1] for cay in m.estimators_])        # 100 cây nhân 143 ca test
+    tq = np.corrcoef(P)[np.triu_indices(len(P), 1)]                              # tương quan giữa mọi cặp cây
+    rieng = np.mean([cay.score(Xte, yte) for cay in m.estimators_])              # độ chính xác trung bình của MỘT cây
+    print(ten, round(float(tq.mean()), 4), round(float(rieng), 4), round(m.score(Xte, yte), 4))
+```
+
+```text title="Output"
+bagging 0.8242 0.9266 0.958
+random forest 0.7955 0.9183 0.958
+```
+
+Mỗi cây riêng lẻ chỉ đúng khoảng 92%. Gộp 100 cây lại: 95,8%. Random forest làm các cây kém đi một chút (91,8% so với 92,7%, vì mỗi nút bị giới hạn đặc trưng) nhưng cũng bớt tương quan (0,80 so với 0,82). Trên bộ dữ liệu này, hai hiệu ứng bù nhau và hai ensemble ngang nhau trên test.
+
+<HinhKetQua src="/hinh/ch18/h1_ba_mo_hinh.svg" alt="Ba khung trên hai vầng trăng, nền tô màu theo xác suất. Một cây: các vùng đỏ xanh đậm chia bằng ranh giới bậc thang góc cạnh với nhiều dải mỏng, test 84%. Random forest 100 cây: màu chuyển dần từ đỏ sang xanh, ranh giới đen cong theo hai vầng trăng, test 93%. Gradient boosting: ranh giới bậc thang mượt hơn cây đơn, test 90%." so="18.1" chuThich="Xác suất của lớp xanh (màu nền) và ranh giới 0,5 (đường đen) của một cây, random forest 100 cây và gradient boosting, trên 210 điểm train của make_moons.">
+**Một cây.** Màu nền chỉ có hai mức, đậm đỏ hoặc đậm xanh: mỗi lá thuần nên xác suất là 0 hoặc 1. Ranh giới góc cạnh, có những dải mỏng bao quanh điểm lạc.
+
+**Random forest.** Màu chuyển dần: mỗi điểm trên mặt phẳng được 100 cây bỏ phiếu, tỷ lệ phiếu là xác suất. Những dải mỏng của từng cây riêng biệt ở những chỗ khác nhau, khi gộp lại thì mờ đi. Ranh giới gần với hai vầng trăng hơn hẳn, test 93%, gần với SVM RBF ở Chương 16 (94%).
+
+**Gradient boosting.** Trang sau sẽ giải thích. Nó vẫn là tổng của những cây nhỏ, nên ranh giới còn dáng bậc thang, nhưng mượt hơn cây đơn, test 90%.
+</HinhKetQua>
+
+## Thêm cây không bao giờ làm overfit thêm
+
+```python
+from sklearn.datasets import make_moons
+Xm, ym = make_moons(300, noise=0.3, random_state=0)
+a, b, c, e = train_test_split(Xm, ym, test_size=0.3, random_state=0)
+for n in [1, 10, 100, 500]:
+    rf = RandomForestClassifier(n_estimators=n, random_state=0).fit(a, c)
+    print(n, round(rf.score(a, c), 4), round(rf.score(b, e), 4))
+```
+
+```text title="Output"
+1 0.9667 0.8444
+10 1.0 0.9111
+100 1.0 0.9333
+500 1.0 0.9333
+```
+
+Từ 1 cây lên 100 cây, test tăng từ 84% lên 93%, rồi đứng yên tới 500 cây. Theo (18.1), thêm cây chỉ làm số hạng $\frac{1-\rho}{n}\sigma^2$ nhỏ đi, không bao giờ làm variance tăng. Số cây trong random forest **không** phải là núm vặn overfitting: càng nhiều càng tốt (hoặc ngang), chỉ tốn thời gian hơn.
+
+## OOB score
+
+Mỗi mẫu train là mẫu ngoài túi của khoảng 37% số cây. Cho những cây đó bỏ phiếu cho mẫu này, ta có một dự đoán **chưa từng thấy** mẫu đó lúc huấn luyện. Làm vậy cho mọi mẫu train là được một ước lượng độ chính xác như trên validation, không tốn thêm dữ liệu:
+
+```python
+rf = RandomForestClassifier(n_estimators=300, random_state=0, oob_score=True).fit(Xtr, ytr)
+print(round(rf.oob_score_, 4), round(cross_val_score(RandomForestClassifier(n_estimators=300, random_state=0), Xtr, ytr, cv=5).mean(), 4), round(rf.score(Xte, yte), 4))
+```
+
+```text title="Output"
+0.9577 0.9554 0.951
+```
+
+OOB 95,8%, cross-validation 5 phần 95,5%, test 95,1%. Ba con số gần nhau, nhưng OOB chỉ cần huấn luyện **một lần**, còn cross-validation cần năm lần.
+
+<TuKiemTra
+	cauHoi="Với n = 1000 mẫu train, mỗi cây của random forest trung bình KHÔNG thấy khoảng bao nhiêu mẫu khác nhau?"
+	luaChon={['0 mẫu', 'Khoảng 100 mẫu', 'Khoảng 368 mẫu', 'Khoảng 632 mẫu']}
+	dapAn={2}
+	giaiThich="Xác suất một mẫu không được lấy trong 1000 lần có hoàn lại là (1 - 1/1000)^1000 ≈ e^(-1) ≈ 0,368. Vậy khoảng 368 mẫu là ngoài túi của mỗi cây."
+/>
+
+<Khung loai="loi">
+**Chỉnh số cây để chống overfitting.** Vô ích, như bảng ở trên. Các núm vặn đúng là `max_depth`, `min_samples_leaf`, `max_features` của từng cây.
+
+**Đọc độ quan trọng đặc trưng của random forest như nhân quả.** Nó ổn định hơn của một cây (trung bình qua nhiều cây), nhưng vẫn chia điểm giữa các đặc trưng tương quan với nhau. Trên ung thư vú, rừng chia độ quan trọng đều cho số điểm lõm, chu vi lớn nhất, bán kính lớn nhất, diện tích lớn nhất, thay vì dồn 77% cho một đặc trưng như cây đơn ở Chương 17.
+</Khung>

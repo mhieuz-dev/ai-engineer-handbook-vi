@@ -1,0 +1,97 @@
+---
+title: Bài tập
+description: Ba bài tập ensemble có đáp án chi tiết (tỷ lệ mẫu ngoài túi tiến về 1/e, variance của trung bình các mô hình tương quan, kiểm boosting tự viết bằng GradientBoostingRegressor) và câu hỏi phỏng vấn.
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Tính tay trước, rồi chạy code trong notebook để kiểm tra.
+
+<BaiTap so="18.1">
+**Mẫu ngoài túi.** Tính tỷ lệ mẫu **không** được chọn trong một mẫu bootstrap, $(1 - 1/n)^n$, với $n = 10$, 100, 1000. So với $e^{-1}$.
+
+<Fragment slot="dap-an">
+
+```python
+print([round((1 - 1 / n) ** n, 4) for n in [10, 100, 1000]], round(np.exp(-1), 4))
+```
+
+```text title="Output"
+[0.3487, 0.366, 0.3677] 0.3679
+```
+
+Với 10 mẫu, 34,9% không được chọn; với 1000 mẫu, 36,8%, sát $e^{-1} \approx 0{,}3679$. Đây là một giới hạn quen thuộc trong giải tích: $(1 - 1/n)^n \to e^{-1}$ khi $n \to \infty$.
+
+Hệ quả: dù dữ liệu lớn hay nhỏ, mỗi cây của random forest luôn bỏ lại khoảng một phần ba số mẫu, đủ để OOB score là một ước lượng đáng tin.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="18.2">
+**Sàn của variance.** Theo (18.1), với $\sigma^2 = 1$:
+
+1. 100 mô hình tương quan $\rho = 0{,}8$: variance của trung bình là bao nhiêu? Vô số mô hình thì sao?
+2. Nếu random forest hạ được tương quan xuống $\rho = 0{,}3$ thì sao?
+
+<Fragment slot="dap-an">
+
+**1.** $0{,}8 + \frac{0{,}2}{100} = 0{,}802$. Vô số mô hình: $0{,}8$. 100 mô hình chỉ giảm variance 20%, và thêm bao nhiêu nữa cũng không qua được 0,8.
+
+**2.** $0{,}3 + \frac{0{,}7}{100} = 0{,}307$. Giảm gần 70%.
+
+```python
+print(0.8 + 0.2 / 100, 0.3 + 0.7 / 100)
+```
+
+```text title="Output"
+0.802 0.307
+```
+
+Hạ tương quan có tác dụng lớn hơn nhiều so với thêm mô hình. Đó là lý do random forest chấp nhận làm từng cây **kém đi** (chỉ xét một phần đặc trưng ở mỗi nút): cái giá nhỏ ở $\sigma^2$, cái lợi lớn ở $\rho$. Ở trang 2, trên ung thư vú, tương quan chỉ giảm từ 0,82 xuống 0,80, nên lợi ích chưa thấy rõ; trên dữ liệu có vài đặc trưng áp đảo, khoảng cách thường lớn hơn nhiều.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="18.3">
+**Kiểm boosting tự viết.** Vòng lặp tự viết ở trang 3 cho MSE 2,0056 sau 1 vòng và 0,5787 sau 3 vòng. Kiểm lại bằng `GradientBoostingRegressor` với `learning_rate=0.5`, `max_depth=1`, số vòng 1, 3, 10.
+
+<Fragment slot="dap-an">
+
+```python
+from sklearn.ensemble import GradientBoostingRegressor
+for n in [1, 3, 10]:
+    g = GradientBoostingRegressor(n_estimators=n, learning_rate=0.5, max_depth=1, random_state=0).fit(X1, diem)
+    print(n, round(float(np.mean((diem - g.predict(X1)) ** 2)), 4))
+```
+
+```text title="Output"
+1 2.0056
+3 0.5787
+10 0.1174
+```
+
+Khớp từng chữ số với vòng lặp tự viết, kể cả 0,1174 sau 10 vòng ở hình 18.2. `GradientBoostingRegressor` làm đúng năm bước của trang 3: khởi đầu bằng trung bình, khớp cây vào phần dư, cộng với learning rate. Khác biệt duy nhất là thư viện được tối ưu và có thêm các tùy chọn (lấy mẫu con, early stopping, nhiều hàm loss).
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Bagging và boosting khác nhau thế nào?**
+
+<p lang="en"><em>What is the difference between bagging and boosting?</em></p>
+
+*Gợi ý:* bagging huấn luyện song song trên mẫu bootstrap, lấy trung bình, giảm variance của mô hình mạnh nhưng bất ổn. Boosting huấn luyện nối tiếp, mỗi mô hình sửa lỗi của tổng trước đó, giảm bias của mô hình yếu; nhạy với nhiễu và cần chọn số vòng.
+
+**2. Vì sao random forest chọn ngẫu nhiên đặc trưng ở mỗi nút?**
+
+<p lang="en"><em>Why does random forest sample features at each split?</em></p>
+
+*Gợi ý:* để các cây ít tương quan với nhau; variance của trung bình có sàn $\rho\sigma^2$, nên giảm $\rho$ quan trọng hơn thêm cây.
+
+**3. Gradient boosting liên quan gì tới gradient descent?**
+
+<p lang="en"><em>How is gradient boosting related to gradient descent?</em></p>
+
+*Gợi ý:* mỗi vòng khớp một mô hình yếu vào gradient âm của loss theo dự đoán (với MSE là phần dư), rồi bước một đoạn learning rate theo hướng đó: gradient descent trong không gian hàm.
+</Khung>

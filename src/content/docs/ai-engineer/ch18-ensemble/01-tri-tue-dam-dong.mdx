@@ -1,0 +1,68 @@
+---
+title: Trí tuệ đám đông
+description: Gộp nhiều mô hình yếu thành một mô hình mạnh. Vì sao trung bình của các dự đoán tương quan thấp có variance nhỏ hơn hẳn từng dự đoán, và ba họ ensemble chính.
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+<CanBietTruoc>
+Cây quyết định và tính bất ổn của nó (Chương 17). Bias và variance (Chương 13). Phương sai và hiệp phương sai (Chương 7).
+
+<Fragment slot="sau-chuong">
+Giải thích vì sao lấy trung bình nhiều mô hình giảm variance, và vì sao các mô hình phải khác nhau. Dùng bagging và random forest, đọc OOB score. Tính tay vài vòng gradient boosting trên 10 bạn. So sánh các ensemble trên dữ liệu thật và biết vì sao gradient boosting là lựa chọn mặc định cho dữ liệu dạng bảng.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch18_ensemble.ipynb" />
+
+## Đoán số hạt đậu
+
+Một hũ thủy tinh đựng đầy hạt đậu. Một người đoán có thể sai 30%. Nhưng trung bình lời đoán của một trăm người thường sát số thật đến bất ngờ. Mỗi người sai một kiểu: người đoán cao, người đoán thấp; cộng lại, phần lớn các sai lệch triệt tiêu nhau.
+
+<Term id="ensemble">Ensemble</Term> làm đúng việc đó với mô hình: huấn luyện nhiều mô hình, gộp dự đoán của chúng lại.
+
+## Vì sao trung bình giảm variance
+
+Gọi $n$ mô hình, mỗi mô hình có dự đoán với phương sai $\sigma^2$ (đó là variance của Chương 13). Nếu các dự đoán **độc lập** với nhau, trung bình của chúng có phương sai:
+
+$$
+\operatorname{Var}\!\left(\frac{1}{n}\sum_{i=1}^{n} f_i\right) = \frac{\sigma^2}{n}
+$$
+
+100 mô hình độc lập, phương sai giảm 100 lần. Nhưng các mô hình học từ **cùng một** dữ liệu thì không độc lập; chúng sai giống nhau ở cùng những chỗ khó. Với hệ số tương quan $\rho$ giữa từng cặp mô hình:
+
+$$
+\operatorname{Var}\!\left(\frac{1}{n}\sum_{i=1}^{n} f_i\right) = \rho\,\sigma^2 + \frac{1 - \rho}{n}\,\sigma^2 \tag{18.1}
+$$
+
+Khi $n$ tăng, số hạng thứ hai về 0, nhưng số hạng đầu $\rho\sigma^2$ **không giảm**. Tương quan đặt ra một sàn: dù có vô số mô hình, variance không thấp hơn $\rho\sigma^2$.
+
+<Khung loai="truc-giac">
+Một trăm người đoán hạt đậu, nhưng nếu họ bàn với nhau trước khi đoán, ý kiến của họ tương quan cao. Trung bình của một trăm người bàn bạc với nhau gần như chỉ bằng ý kiến của một người. Đám đông chỉ khôn ngoan khi các thành viên **độc lập** và **khác nhau**.
+
+Công thức (18.1) nói chính xác điều đó: muốn ensemble mạnh, cần hai thứ, nhiều mô hình ($n$ lớn) **và** các mô hình ít tương quan ($\rho$ nhỏ). Mọi kỹ thuật ensemble đều là cách tạo ra những mô hình khác nhau từ cùng một bộ dữ liệu.
+</Khung>
+
+## Ba họ ensemble
+
+**Bảng 18.1.** Ba cách gộp mô hình.
+
+| Họ | Cách tạo mô hình | Gộp bằng | Giảm chủ yếu |
+|:---|:---|:---|:---|
+| Bagging, random forest | huấn luyện song song, mỗi mô hình trên một mẫu ngẫu nhiên của dữ liệu | bỏ phiếu hoặc trung bình | variance |
+| Boosting | huấn luyện nối tiếp, mỗi mô hình sửa lỗi của các mô hình trước | tổng có trọng số | bias |
+| Stacking | huấn luyện nhiều loại mô hình khác nhau | một mô hình nữa học cách gộp | cả hai |
+
+Bagging lấy những mô hình **mạnh nhưng bất ổn** (cây sâu: bias thấp, variance cao) và làm chúng ổn định. Boosting lấy những mô hình **yếu nhưng ổn định** (cây rất nông: bias cao, variance thấp) và làm chúng mạnh lên. Hai hướng ngược nhau trên trục bias-variance của Chương 13.
+
+Cây quyết định là viên gạch lý tưởng cho cả hai: rẻ, linh hoạt, và (Chương 17) rất bất ổn, tức là các cây học từ dữ liệu hơi khác nhau sẽ ra rất khác nhau, đúng thứ ensemble cần.
+
+<Khung loai="loi">
+**Gộp nhiều bản của cùng một mô hình.** Huấn luyện 100 cây quyết định giống hệt nhau trên cùng dữ liệu với cùng `random_state` cho 100 cây y hệt: $\rho = 1$, ensemble bằng đúng một cây. Phải có nguồn ngẫu nhiên khác nhau cho mỗi mô hình.
+
+**Mong ensemble sửa được bias.** Bagging 1000 đường thẳng vẫn là một đường thẳng. Lấy trung bình không giúp mô hình vẽ được thứ mà từng thành viên không vẽ được. Muốn giảm bias, cần boosting hoặc mô hình mạnh hơn.
+</Khung>
