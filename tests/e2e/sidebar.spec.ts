@@ -47,9 +47,11 @@ test('Phần chưa có chương xong thu gọn kèm đếm, Phần có chương 
 	await page.goto('/ai-engineer/ch10-hoi-quy-tuyen-tinh/01-truc-giac/');
 	await moSidebar(page);
 	const sb = page.locator('nav.sidebar, #starlight__sidebar').first();
-	const phan3 = sb.locator('summary', { hasText: 'Phần III. Deep Learning' }).locator('xpath=..');
-	await expect(phan3).not.toHaveAttribute('open', '');
-	await expect(phan3.locator('summary')).toContainText(/· \d+ chương sắp có/);
+	// Phần đầu tiên chưa có chương nào xong, lấy từ dữ liệu (đầu tiên là Phần III, rồi III-B, IV khi viết tiếp)
+	const phanTrong = PHAN.find((p) => p.nhanh === 'ai-engineer' && !chuongDaXuatBan().some((c) => c.phan === p.id))!;
+	const thu = sb.locator('summary', { hasText: phanTrong.ten }).locator('xpath=..');
+	await expect(thu).not.toHaveAttribute('open', '');
+	await expect(thu.locator('summary')).toContainText(/· \d+ chương sắp có/);
 	const phan2 = sb.locator('summary', { hasText: 'Phần II. Machine Learning cổ điển' }).locator('xpath=..');
 	await expect(phan2).toHaveAttribute('open', '');
 });
