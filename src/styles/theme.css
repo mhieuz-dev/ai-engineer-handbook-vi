@@ -18,6 +18,7 @@
 	/* Chữ nhạt cho nhãn nhỏ: --mut chỉ 3,3-3,8:1 trên nền nhạt, hai bản đậm này >= 5,1:1 trên --panel. */
 	--mut-chu: #6b6354;
 	--ok-chu: #1f6b43;
+	--red-chu: #a32d21;
 }
 :root[data-theme='dark'] {
 	--bg: #14171c;
@@ -35,6 +36,7 @@
 	--be-mat: #252b33;
 	--mut-chu: #8a94a3;
 	--ok-chu: #4cc38a;
+	--red-chu: #ee7d70;
 }
 
 /* Ánh xạ sang biến của Starlight. */
@@ -145,35 +147,82 @@ html .katex-display > .katex > .katex-html > .tag {
 	}
 }
 
-/* Các khung nội dung: vạch trái 3px, nền nhạt, nhãn sans in hoa đậm. */
+/* Các khung nội dung (bản mẫu Stitch 28/10): viền 1px màu khung (nhạt 55%), vạch trái 3px đậm, bo 10px, nền pha
+   6% màu khung trên trắng (tối: 9% trên --bg), biểu tượng nét + tiêu đề in hoa, viên nhãn tuỳ chọn bên phải.
+   --mau là màu viền, --mau-chu là màu chữ tiêu đề và biểu tượng: bản đậm cho cam, đỏ, xanh lá, xám để đạt
+   >= 5,5:1 trên nền khung ở theme sáng; theme tối dùng thẳng màu khung (>= 5,1:1).
+   .khung giữ đệm và lề cũ vì kệ sách trang chủ cũng mang lớp .khung (div), phần kiểu mới chỉ cho aside/details. */
 .khung {
-	--mau: var(--pri);
-	border-left: 3px solid var(--mau);
-	background: color-mix(in srgb, var(--mau) 7%, var(--bg));
 	padding: 0.7rem 1rem;
 	margin: 1.2rem 0;
-	border-radius: 0 3px 3px 0;
 }
-.khung-truc-giac { --mau: var(--pri); }
-.khung-vi-sao { --mau: var(--acc); }
-.khung-loi { --mau: var(--red); }
-.khung-doc-bieu-do { --mau: var(--ok); }
-.khung-phong-van { --mau: var(--purple); }
-.khung-dao-sau { --mau: var(--mut); }
+:is(aside, details).khung {
+	--mau: var(--pri);
+	--mau-chu: var(--mau);
+	--nen-khung: color-mix(in srgb, var(--mau) 6%, #fff);
+	--nen-nhan: color-mix(in srgb, var(--mau) 14%, var(--nen-khung));
+	border: 1px solid color-mix(in srgb, var(--mau) 55%, transparent);
+	border-left: 3px solid var(--mau);
+	border-radius: 10px;
+	background: var(--nen-khung);
+	padding: 0.85rem 1.2rem 0.95rem;
+	margin: 1.4rem 0;
+}
+:root[data-theme='dark'] :is(aside, details).khung {
+	--nen-khung: color-mix(in srgb, var(--mau) 9%, var(--bg));
+	--nen-nhan: color-mix(in srgb, var(--mau) 10%, var(--nen-khung));
+}
+/* .khung.khung-x: phải mạnh hơn :is(aside, details).khung ở trên. */
+.khung.khung-truc-giac { --mau: var(--pri); }
+.khung.khung-vi-sao { --mau: var(--acc); --mau-chu: var(--acc-chu); }
+.khung.khung-loi { --mau: var(--red); --mau-chu: var(--red-chu); }
+.khung.khung-doc-bieu-do { --mau: var(--ok); --mau-chu: var(--ok-chu); }
+.khung.khung-phong-van { --mau: var(--purple); }
+.khung.khung-dao-sau { --mau: var(--mut); --mau-chu: var(--mut-chu); }
 .khung-nhan {
 	font-family: 'Be Vietnam Pro', system-ui, sans-serif;
 	font-weight: 800;
 	font-size: 0.72rem;
 	letter-spacing: 0.04em;
-	color: var(--mau, var(--pri));
+	color: var(--mau-chu, var(--pri));
 	margin-bottom: 0.3rem;
+}
+.khung > .khung-nhan {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	line-height: 1.4;
+	margin-bottom: 0.45rem;
+}
+.khung-icon { flex: none; }
+.khung-tieu-de { min-width: 0; }
+.khung-tag {
+	flex: none;
+	margin-inline-start: auto;
+	padding: 0.1rem 0.6rem;
+	border-radius: 999px;
+	background: var(--nen-nhan);
+	font-weight: 600;
+	font-size: 0.7rem;
+	letter-spacing: 0;
 }
 .khung-dao-sau > summary {
 	cursor: pointer;
 	margin-bottom: 0;
+	list-style: none;
 }
+.khung-dao-sau > summary::-webkit-details-marker { display: none; }
+/* Bỏ mũi tên trái của Starlight: khung đã có mũi tên › riêng ở mép phải. */
+.sl-markdown-content .khung-dao-sau > summary::before { display: none; }
+.sl-markdown-content .khung-dao-sau > summary { margin-inline-start: 0; padding-inline-start: 0; }
+.khung-mo { flex: none; margin-inline-start: auto; transition: transform 0.15s ease-out; }
+.khung-tag + .khung-mo { margin-inline-start: 0; }
+.khung-dao-sau[open] > summary .khung-mo { transform: rotate(90deg); }
 .khung-dao-sau[open] > summary {
-	margin-bottom: 0.4rem;
+	margin-bottom: 0.45rem;
+}
+@media (prefers-reduced-motion: reduce) {
+	.khung-mo { transition: none; }
 }
 .khung-than > :first-child { margin-top: 0; }
 .khung-than > :last-child { margin-bottom: 0; }
@@ -306,6 +355,7 @@ html .katex-display > .katex > .katex-html > .tag {
 	.sl-markdown-content { max-width: none; font-size: 11pt; line-height: 1.6; }
 	.khung, .bai-tap, .can-biet-truoc, .hinh-ket-qua { break-inside: avoid; }
 	details.khung-dao-sau > * { display: block; }
+	.khung-mo { display: none; }
 	.in-chuong { max-width: none; padding: 0; }
 	.in-muc { break-before: page; }
 	.in-muc:first-of-type { break-before: auto; }
