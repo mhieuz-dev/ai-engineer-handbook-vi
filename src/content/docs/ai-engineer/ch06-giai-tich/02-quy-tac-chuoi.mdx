@@ -1,0 +1,118 @@
+---
+title: Quy tắc đạo hàm và quy tắc chuỗi
+description: Bảng đạo hàm của các hàm thường gặp trong ML, quy tắc tổng và tích, và quy tắc chuỗi cho hàm lồng nhau. Ví dụ là hàm sigmoid và đạo hàm gọn đến bất ngờ của nó.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Bảng đạo hàm cần thuộc
+
+Không ai tính giới hạn (6.1) mỗi lần cần đạo hàm. Người ta tính một lần cho các hàm cơ bản rồi ghép lại.
+
+**Bảng 6.1.** Đạo hàm của các hàm hay gặp trong ML. $c$ là hằng số.
+
+| Hàm $f(x)$ | Đạo hàm $f'(x)$ | Gặp ở đâu |
+|:---:|:---:|:---|
+| $c$ | $0$ | hằng số không đổi khi $x$ đổi |
+| $x^n$ | $n x^{n-1}$ | bình phương sai số: $(x^2)' = 2x$ |
+| $e^x$ | $e^x$ | softmax (Chương 11) |
+| $\ln x$ | $1/x$ | cross-entropy, log-likelihood (Chương 7, 11) |
+| $c \cdot f(x)$ | $c \cdot f'(x)$ | hằng số đứng trước thì giữ nguyên |
+| $f(x) + g(x)$ | $f'(x) + g'(x)$ | đạo hàm của tổng là tổng các đạo hàm |
+| $f(x)\, g(x)$ | $f'(x)\, g(x) + f(x)\, g'(x)$ | quy tắc tích |
+
+Quy tắc tổng rất quan trọng với ML: loss là **tổng** sai số của từng mẫu, nên đạo hàm của loss là tổng đạo hàm của từng mẫu. Mỗi mẫu đóng góp phần của nó, độc lập với nhau.
+
+## Quy tắc chuỗi
+
+Phần lớn hàm trong ML là hàm **lồng nhau**: kết quả của hàm này là đầu vào của hàm kia. Ví dụ $g(x) = (2x + 1)^2$ là hàm bình phương bọc ngoài hàm $2x + 1$.
+
+<Term id="quy-tac-chuoi">Quy tắc chuỗi</Term>: nếu $y$ phụ thuộc $u$, còn $u$ phụ thuộc $x$, thì
+
+$$
+\frac{dy}{dx} = \frac{dy}{du} \cdot \frac{du}{dx} \tag{6.3}
+$$
+
+Với $g(x) = (2x + 1)^2$: đặt $u = 2x + 1$, nên $y = u^2$.
+
+- Lớp ngoài: $\frac{dy}{du} = 2u = 2(2x + 1)$.
+- Lớp trong: $\frac{du}{dx} = 2$.
+- Nhân lại: $g'(x) = 2(2x + 1) \times 2 = 4(2x + 1)$.
+
+Tại $x = 1$: $g'(1) = 4 \times 3 = 12$. Kiểm tra bằng sai phân trung tâm:
+
+```python
+g = lambda x: (2 * x + 1) ** 2
+h = 1e-5
+print((g(1 + h) - g(1 - h)) / (2 * h))    # phải gần 12
+```
+
+```text title="Output"
+12.000000000078613
+```
+
+<Khung loai="truc-giac">
+Hình dung một dãy bánh răng. Bánh răng $x$ quay 1 vòng thì bánh $u$ quay 2 vòng. Bánh $u$ quay 1 vòng thì bánh $y$ quay $2u$ vòng.
+
+Vậy $x$ quay 1 vòng thì $y$ quay $2 \times 2u$ vòng: **nhân các tỷ số truyền dọc theo chuỗi**. Một mạng 50 lớp là một chuỗi 50 bánh răng; gradient của tham số ở lớp đầu là tích của 50 tỷ số truyền. Chương 26 sẽ thấy tích dài như vậy có thể co về 0 hoặc nổ tung, và cách chữa.
+</Khung>
+
+## Hàm sigmoid
+
+Hàm <Term id="sigmoid">sigmoid</Term> ép mọi số thực vào khoảng $(0, 1)$:
+
+$$
+\sigma(z) = \frac{1}{1 + e^{-z}}
+$$
+
+$z$ rất âm thì $\sigma$ gần 0, $z$ rất dương thì gần 1, $z = 0$ thì đúng 0,5. Chương 11 dùng nó để biến một con số bất kỳ thành xác suất.
+
+Đạo hàm của sigmoid, dùng quy tắc chuỗi (lớp ngoài $1/u$, lớp trong $u = 1 + e^{-z}$), sau vài bước rút gọn ra một dạng rất gọn:
+
+$$
+\sigma'(z) = \sigma(z)\,\bigl(1 - \sigma(z)\bigr) \tag{6.4}
+$$
+
+<Khung loai="dao-sau" tieuDe="DẪN RA CÔNG THỨC 6.4">
+Viết $\sigma = u^{-1}$ với $u = 1 + e^{-z}$.
+
+Lớp ngoài: $\frac{d\sigma}{du} = -u^{-2}$. Lớp trong: $\frac{du}{dz} = -e^{-z}$ (đạo hàm của $e^{-z}$ là $e^{-z}$ nhân với đạo hàm của $-z$, lại là quy tắc chuỗi).
+
+Nhân lại: $\sigma'(z) = \frac{e^{-z}}{(1 + e^{-z})^2} = \frac{1}{1 + e^{-z}} \cdot \frac{e^{-z}}{1 + e^{-z}}$.
+
+Thừa số đầu là $\sigma(z)$. Thừa số sau là $\frac{(1 + e^{-z}) - 1}{1 + e^{-z}} = 1 - \sigma(z)$. Vậy $\sigma' = \sigma(1 - \sigma)$.
+</Khung>
+
+```python
+import numpy as np
+sig = lambda z: 1 / (1 + np.exp(-z))          # hàm sigmoid
+print(sig(0.0), sig(0.0) * (1 - sig(0.0)))    # giá trị và đạo hàm theo (6.4) tại z = 0
+print((sig(h) - sig(-h)) / (2 * h))           # kiểm tra bằng sai phân
+print(round(sig(2.0), 4), round(sig(2.0) * (1 - sig(2.0)), 4))  # tại z = 2
+```
+
+```text title="Output"
+0.5 0.25
+0.2499999999933111
+0.8808 0.105
+```
+
+Tại $z = 0$, đạo hàm là $0{,}5 \times 0{,}5 = 0{,}25$, cũng là giá trị **lớn nhất** của nó. Tại $z = 2$, sigmoid đã lên 0,88 và đạo hàm tụt còn 0,105. Càng xa 0, đường chữ S càng phẳng, đạo hàm càng gần 0. Đặc điểm này sẽ quay lại ở Chương 26 với tên gọi "gradient biến mất".
+
+Công thức (6.4) tiện ở chỗ: đã tính $\sigma(z)$ ở chiều xuôi thì có ngay đạo hàm, không cần tính thêm hàm mũ nào.
+
+<TuKiemTra
+	cauHoi="Đạo hàm của h(x) = (3x - 2)^2 tại x = 1 là bao nhiêu?"
+	luaChon={['2', '6', '1', '3']}
+	dapAn={1}
+	giaiThich="Lớp ngoài 2u với u = 3x - 2 = 1, ra 2. Lớp trong là 3. Nhân lại 2 × 3 = 6."
+/>
+
+<Khung loai="loi">
+**Quên nhân đạo hàm lớp trong.** Lỗi kinh điển: $(2x + 1)^2$ có đạo hàm $2(2x + 1)$, quên nhân thêm 2. Kết quả lệch đúng một hệ số, và sai phân sẽ bắt được ngay.
+
+**Đạo hàm của tích bằng tích các đạo hàm.** Sai: $(fg)' \neq f'g'$. Dùng quy tắc tích ở Bảng 6.1.
+</Khung>

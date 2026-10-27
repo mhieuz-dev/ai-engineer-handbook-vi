@@ -243,3 +243,8 @@
   tenTiengAnh: matrix
   giaiThich: Ma trận là bảng số chữ nhật. Nó vừa là cách lưu cả bộ dữ liệu, vừa là một phép biến đổi biến vector này thành vector khác khi đem nhân với nó.
   hocKy: ai-engineer/ch05-dai-so-tuyen-tinh
+- id: sigmoid
+  ten: Hàm sigmoid
+  tenTiengAnh: sigmoid
+  giaiThich: Hàm sigmoid ép mọi số thực vào khoảng 0 tới 1 theo một đường cong hình chữ S, nên kết quả đọc được như một xác suất. Đạo hàm của nó có dạng rất gọn là sigmoid nhân với một trừ sigmoid.
+  hocKy: ai-engineer/ch06-giai-tich

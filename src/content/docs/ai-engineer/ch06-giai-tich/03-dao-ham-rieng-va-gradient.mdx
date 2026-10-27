@@ -1,0 +1,91 @@
+---
+title: Đạo hàm riêng và gradient
+description: Hàm nhiều biến có một đạo hàm riêng cho mỗi biến; gom lại thành gradient, mũi tên chỉ hướng dốc lên nhanh nhất. Tính gradient của MSE theo w và b ra đúng -26,5 và -9 của Chương 10.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Hàm hai biến
+
+Loss của hồi quy tuyến tính phụ thuộc **hai** núm vặn cùng lúc:
+
+$$
+L(w, b) = \frac{1}{n}\sum_{i=1}^{n} \bigl(y_i - (w x_i + b)\bigr)^2
+$$
+
+Đồ thị của nó không còn là một đường cong mà là một **mặt** cong, như một cái bát. Hình 6.1 bên phải ở trang trước chỉ là một lát cắt dọc của cái bát đó, cắt tại $b = 0{,}5$.
+
+## Đạo hàm riêng: nhích từng núm một
+
+<Term id="dao-ham-rieng">Đạo hàm riêng</Term> theo $w$, viết là $\frac{\partial L}{\partial w}$ (chữ $\partial$ đọc là "đạo hàm riêng" hoặc "del"), là đạo hàm khi chỉ nhích $w$ và **giữ nguyên** $b$. Cách tính y hệt đạo hàm thường: coi $b$ như một hằng số.
+
+Lấy một số hạng $(y_i - w x_i - b)^2$. Dùng quy tắc chuỗi với lớp ngoài $u^2$ và lớp trong $u = y_i - w x_i - b$:
+
+- Theo $w$: lớp trong có đạo hàm $-x_i$ (vì $y_i$ và $b$ là hằng). Ra $2u \cdot (-x_i) = -2 x_i e_i$, với $e_i = y_i - \hat y_i$ là phần dư.
+- Theo $b$: lớp trong có đạo hàm $-1$. Ra $-2 e_i$.
+
+Lấy trung bình trên $n$ mẫu (quy tắc tổng ở Bảng 6.1):
+
+$$
+\frac{\partial L}{\partial w} = -\frac{2}{n}\sum_{i=1}^{n} x_i e_i, \qquad
+\frac{\partial L}{\partial b} = -\frac{2}{n}\sum_{i=1}^{n} e_i \tag{6.5}
+$$
+
+Đây chính là công thức (10.2) và (10.3) của Chương 10. Ở đó chúng được dẫn ra chi tiết hơn và kèm ý nghĩa của từng số hạng.
+
+## Gradient: gom các đạo hàm riêng
+
+<Term id="gradient">Gradient</Term> là vector gom mọi đạo hàm riêng lại:
+
+$$
+\nabla L = \left(\frac{\partial L}{\partial w},\ \frac{\partial L}{\partial b}\right)
+$$
+
+Ký hiệu $\nabla$ đọc là "nabla". Với $n$ tham số, gradient là vector $n$ chiều.
+
+```python
+x = np.array([1, 2, 3, 4.0])                # giờ học của A, B, C, D
+y = np.array([2, 4, 5, 7.0])                # điểm thi
+
+def grad(w, b):
+    e = y - (w * x + b)                     # phần dư
+    return float(-2 * np.mean(x * e)), float(-2 * np.mean(e))   # công thức (6.5); float để in gọn
+
+print(grad(0, 0))          # tại điểm xuất phát của Chương 10
+print(grad(1.6, 0.5))      # tại đáy
+```
+
+```text title="Output"
+(-26.5, -9.0)
+(1.9984014443252818e-15, 6.661338147750939e-16)
+```
+
+Tại $(0, 0)$, gradient là $(-26{,}5;\ -9)$. Đó đúng là hai con số mà Chương 10 tính tay ở bước gradient descent đầu tiên.
+
+Tại đáy $(1{,}6;\ 0{,}5)$, gradient bằng 0 (hai số cỡ $10^{-15}$ chỉ là sai số dấu phẩy động). Ở đáy bát, mặt đất bằng phẳng theo mọi hướng.
+
+<Khung loai="truc-giac">
+Đứng trên sườn đồi trong sương mù, bạn không thấy đỉnh hay đáy. Nhưng bạn **cảm** được dưới chân dốc về phía nào. Gradient là mũi tên chỉ hướng dốc **lên** nhanh nhất ngay tại chỗ bạn đứng, và độ dài mũi tên cho biết dốc tới đâu.
+
+Muốn xuống thung lũng, bước một bước ngắn theo hướng **ngược** gradient, rồi cảm lại. Lặp lại. Đó là gradient descent:
+
+$$
+(w, b) \leftarrow (w, b) - \eta\, \nabla L
+$$
+
+với $\eta$ là độ dài bước, gọi là <Term id="learning-rate">learning rate</Term>. Chương 8 sẽ bàn cách chọn nó.
+</Khung>
+
+Tại $(0, 0)$, gradient $(-26{,}5;\ -9)$ có cả hai thành phần âm. Đi ngược hướng nghĩa là **tăng** cả $w$ lẫn $b$. Hợp lý: đường $y = 0$ nằm dưới cả bốn chấm, cần dốc hơn và nhấc lên.
+
+Thành phần theo $w$ lớn gấp gần 3 lần thành phần theo $b$, nên bước đầu tiên chủ yếu xoay đường thẳng. Với $\eta = 0{,}05$: $w$ mới là $0 - 0{,}05 \times (-26{,}5) = 1{,}325$, $b$ mới là $0{,}45$. Khớp bước 1 của Chương 10.
+
+<Khung loai="loi">
+**Nhầm hướng.** Gradient chỉ hướng **lên dốc**. Cập nhật bằng dấu cộng là leo lên, loss tăng không ngừng.
+
+**Quên giữ biến kia cố định.** Khi lấy đạo hàm riêng theo $w$, $b$ là hằng số, nên số hạng chỉ chứa $b$ có đạo hàm 0 theo $w$.
+
+**Quên chia $n$.** Loss là trung bình thì gradient cũng là trung bình. Bỏ $\frac{1}{n}$ là gradient lớn gấp $n$ lần và learning rate cũ thành quá lớn.
+</Khung>

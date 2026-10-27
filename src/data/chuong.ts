@@ -32,7 +32,7 @@ const BANG: [number, string, string, string, XuatBan?][] = [
 	[3, 'phan-1', 'NumPy', 'numpy', { trangThai: 'xong', notebook: 'ch03_numpy.ipynb' }],
 	[4, 'phan-1', 'Pandas và Matplotlib', 'pandas-va-matplotlib', { trangThai: 'xong', notebook: 'ch04_pandas_va_matplotlib.ipynb' }],
 	[5, 'phan-1', 'Đại số tuyến tính cho ML', 'dai-so-tuyen-tinh', { trangThai: 'xong', notebook: 'ch05_dai_so_tuyen_tinh.ipynb' }],
-	[6, 'phan-1', 'Giải tích cho ML', 'giai-tich'],
+	[6, 'phan-1', 'Giải tích cho ML', 'giai-tich', { trangThai: 'xong', notebook: 'ch06_giai_tich.ipynb' }],
 	[7, 'phan-1', 'Xác suất và thống kê', 'xac-suat-thong-ke'],
 	[8, 'phan-1', 'Tối ưu hóa', 'toi-uu-hoa'],
 	[9, 'phan-2', 'Quy trình một dự án ML', 'quy-trinh-du-an-ml'],

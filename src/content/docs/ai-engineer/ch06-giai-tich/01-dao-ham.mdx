@@ -1,0 +1,108 @@
+---
+title: Đạo hàm là độ dốc
+description: Đạo hàm đo một hàm đổi nhanh hay chậm khi nhích đầu vào một chút. Từ cát tuyến tới tiếp tuyến, tính đạo hàm bằng máy với sai phân, và vì sao dấu của nó chỉ đường xuống đáy.
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+<CanBietTruoc>
+Hàm số và đồ thị ở cấp 3. Hàm Python và mảng NumPy (Chương 1, 3).
+
+<Fragment slot="sau-chuong">
+Hiểu đạo hàm như độ dốc và biết dấu của nó nói gì. Lấy đạo hàm các hàm thường gặp, dùng quy tắc chuỗi cho hàm lồng nhau. Tính đạo hàm riêng và gradient của MSE theo $w$, $b$, ra đúng các con số mà Chương 10 dùng ở bước gradient descent đầu tiên. Tự kiểm tra một công thức đạo hàm bằng sai phân, kỹ năng gỡ lỗi quan trọng nhất khi viết backpropagation.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch06_giai_tich.ipynb" />
+
+## Câu hỏi mà ML cần trả lời
+
+Chương 10 có một câu hỏi lặp đi lặp lại: đang đứng ở $w = 0{,}5$, loss là 9,125. **Nên tăng hay giảm $w$** để loss nhỏ đi, và nhích bao nhiêu?
+
+Giải tích trả lời câu hỏi đó bằng một con số: <Term id="dao-ham">đạo hàm</Term>. Chương này chỉ dạy phần giải tích mà ML cần: đạo hàm, quy tắc chuỗi, đạo hàm riêng và gradient.
+
+## Từ cát tuyến tới tiếp tuyến
+
+Lấy hàm quen thuộc $f(x) = x^2$. Đi từ $x = 3$ tới $x = 4$, hàm tăng từ 9 lên 16. Độ dốc trung bình trên đoạn đó:
+
+$$
+\frac{f(4) - f(3)}{4 - 3} = \frac{16 - 9}{1} = 7
+$$
+
+Đó là độ dốc của **cát tuyến**, đường thẳng nối hai điểm $(3; 9)$ và $(4; 16)$. Nhưng nó là độ dốc trên cả đoạn, không phải độ dốc **tại** $x = 3$.
+
+Muốn độ dốc tại đúng một điểm, ta thu ngắn đoạn lại. Gọi độ dài đoạn là $h$:
+
+$$
+\frac{f(3 + h) - f(3)}{h}
+$$
+
+```python
+f = lambda x: x ** 2                       # hàm f(x) = x bình phương
+for h in [0.1, 0.01, 0.001]:               # thu ngắn dần đoạn h
+    print(h, (f(3 + h) - f(3)) / h)        # độ dốc của cát tuyến
+```
+
+```text title="Output"
+0.1 6.100000000000012
+0.01 6.009999999999849
+0.001 6.000999999999479
+```
+
+$h$ càng nhỏ, độ dốc càng tiến về **6**. Con số giới hạn đó là đạo hàm của $f$ tại $x = 3$, viết là $f'(3) = 6$. Về hình học, nó là độ dốc của **tiếp tuyến**: đường thẳng chỉ "chạm" đồ thị tại đúng một điểm.
+
+$$
+f'(x) = \lim_{h \to 0} \frac{f(x + h) - f(x)}{h} \tag{6.1}
+$$
+
+Với $f(x) = x^2$, tính đại số: $\frac{(x + h)^2 - x^2}{h} = \frac{2xh + h^2}{h} = 2x + h$. Cho $h$ tiến về 0 được $f'(x) = 2x$. Tại $x = 3$, $f'(3) = 6$, khớp với máy. Output trên còn cho thấy phần thừa đúng bằng $h$: 6,1 khi $h = 0{,}1$, 6,01 khi $h = 0{,}01$.
+
+<HinhKetQua src="/hinh/ch06/h1_do_doc.svg" alt="Hai khung. Khung trái: parabol y bằng x bình phương, một cát tuyến nét đứt qua hai điểm (3; 9) và (4; 16), một tiếp tuyến màu cam chạm parabol tại (3; 9). Khung phải: đường cong MSE theo w hình chén, đáy ở w bằng 1,6, tiếp tuyến cam dốc xuống tại w bằng 0,5." so="6.1" chuThich="Trái: cát tuyến (độ dốc 7) và tiếp tuyến (độ dốc 6) của f(x) = x² tại x = 3. Phải: MSE của bốn bạn A, B, C, D theo w khi giữ b = 0,5, và tiếp tuyến tại w = 0,5.">
+**Khung trái.** Đường xanh là $f(x) = x^2$. Nét đứt là cát tuyến nối $(3; 9)$ với $(4; 16)$. Đường cam là tiếp tuyến tại $(3; 9)$, thoải hơn cát tuyến một chút: dốc 6 so với 7. Khi điểm thứ hai trượt dần về $(3; 9)$, cát tuyến xoay dần thành tiếp tuyến.
+
+**Khung phải.** Trục ngang là $w$, trục dọc là MSE của bốn bạn A, B, C, D khi giữ $b = 0{,}5$. Đồ thị là một cái chén, đáy ở $w = 1{,}6$ (chấm đỏ), đúng nghiệm của Chương 10.
+
+**Điều cần thấy.** Tại $w = 0{,}5$, tiếp tuyến cam **dốc xuống** mạnh: đạo hàm $-16{,}5$. Đạo hàm âm nghĩa là tăng $w$ thì loss giảm. Vậy muốn xuống đáy, ta đi theo chiều **ngược dấu** đạo hàm: đạo hàm âm thì tăng $w$, đạo hàm dương thì giảm $w$. Đó là toàn bộ ý tưởng của gradient descent.
+</HinhKetQua>
+
+## Đạo hàm bằng máy: sai phân trung tâm
+
+Công thức (6.1) cho cách tính đạo hàm bằng máy: chọn $h$ thật nhỏ rồi tính. Có một cách chính xác hơn nhiều với cùng công sức, là nhìn **cả hai phía**:
+
+$$
+f'(x) \approx \frac{f(x + h) - f(x - h)}{2h} \tag{6.2}
+$$
+
+```python
+for h in [0.1, 0.01, 0.001]:
+    print(h, (f(3 + h) - f(3 - h)) / (2 * h))   # sai phân trung tâm: nhìn cả hai phía
+```
+
+```text title="Output"
+0.1 6.000000000000005
+0.01 5.999999999999872
+0.001 5.999999999999339
+```
+
+Ngay với $h = 0{,}1$ đã ra 6 gần như tuyệt đối. Với $x^2$, cách trung tâm khử hết phần thừa $h$: $\frac{(3 + h)^2 - (3 - h)^2}{2h} = \frac{12h}{2h} = 6$. Phần lệch còn lại chỉ là sai số dấu phẩy động.
+
+Để ý một điều lạ: $h = 0{,}001$ lại **kém** chính xác hơn $h = 0{,}1$. Khi $h$ quá nhỏ, $f(3 + h)$ và $f(3 - h)$ gần bằng nhau, trừ cho nhau là mất gần hết chữ số có nghĩa. Vì vậy trong thực tế người ta chọn $h$ cỡ $10^{-5}$, không nhỏ hơn nữa.
+
+<Khung loai="vi-sao" tieuDe="CẦN CÔNG THỨC NẾU MÁY TÍNH ĐƯỢC">
+Sai phân cần gọi hàm **hai lần cho mỗi tham số**. Một mạng nơ-ron có 100 triệu tham số thì cần 200 triệu lần chạy cả mạng chỉ để có một gradient. Quá chậm.
+
+Công thức đạo hàm (và quy tắc chuỗi ở trang sau) cho cả gradient chỉ với chi phí cỡ hai lần chạy mạng, dù mạng có bao nhiêu tham số. Đó là backpropagation ở Chương 24.
+
+Sai phân vẫn có một vai trò không thay được: **kiểm tra** công thức. Tự viết đạo hàm xong, so với sai phân. Lệch nhau là công thức sai. Trang 4 sẽ làm đúng việc này.
+</Khung>
+
+<Khung loai="loi">
+**Nhầm đạo hàm với giá trị hàm.** Tại $w = 0{,}5$, loss là 9,125 còn đạo hàm là $-16{,}5$. Loss cho biết đang ở **độ cao** nào, đạo hàm cho biết mặt đất **nghiêng** về phía nào.
+
+**Chọn $h$ quá nhỏ.** $h = 10^{-12}$ cho kết quả tệ hơn $h = 10^{-5}$ vì sai số làm tròn. Nhỏ hơn không phải lúc nào cũng tốt hơn.
+</Khung>

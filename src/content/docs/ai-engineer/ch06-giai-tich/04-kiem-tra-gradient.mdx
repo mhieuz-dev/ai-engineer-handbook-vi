@@ -1,0 +1,82 @@
+---
+title: Kiểm tra gradient bằng sai phân
+description: Tự viết công thức gradient xong, so với gradient tính bằng sai phân trung tâm. Kỹ thuật gradient check bắt được lỗi quên hệ số, sai dấu, trước khi chúng làm hỏng cả buổi huấn luyện.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Lỗi gradient không báo lỗi
+
+Một công thức gradient sai không làm chương trình dừng. Code vẫn chạy, loss vẫn giảm (có khi giảm chậm, có khi đứng yên ở chỗ không phải đáy). Bạn có thể mất cả ngày chỉnh learning rate mà không biết lỗi nằm ở công thức.
+
+Cách bắt lỗi đáng tin nhất là **gradient check**: tính gradient bằng sai phân trung tâm (6.2), cho từng tham số một, rồi so với công thức.
+
+## Viết hàm kiểm tra
+
+```python
+def L(w, b):
+    return float(np.mean((y - (w * x + b)) ** 2))     # MSE của bốn bạn
+
+def grad_so(w, b, h=1e-5):
+    dw = (L(w + h, b) - L(w - h, b)) / (2 * h)        # nhích riêng w, giữ b
+    db = (L(w, b + h) - L(w, b - h)) / (2 * h)        # nhích riêng b, giữ w
+    return dw, db
+
+print(grad(0, 0))         # công thức (6.5)
+print(grad_so(0, 0))      # sai phân
+```
+
+```text title="Output"
+(-26.5, -9.0)
+(-26.499999999884945, -8.99999999965928)
+```
+
+Hai bên khớp tới chữ số thứ 10. Công thức đúng.
+
+## Bắt một lỗi thật
+
+Giả sử bạn viết nhầm, quên hệ số 2 trong công thức theo $w$:
+
+```python
+def grad_sai(w, b):
+    e = y - (w * x + b)
+    return float(-np.mean(x * e)), float(-2 * np.mean(e))   # QUÊN số 2 ở thành phần thứ nhất
+
+def lech(a, b):
+    return abs(a - b) / max(abs(a), abs(b))                 # sai lệch tương đối
+
+so = grad_so(0.3, 0.2)                                       # thử ở một điểm bất kỳ, không phải (0, 0)
+print([round(lech(a, b), 8) for a, b in zip(grad(0.3, 0.2), so)])
+print([round(lech(a, b), 8) for a, b in zip(grad_sai(0.3, 0.2), so)])
+```
+
+```text title="Output"
+[0.0, 0.0]
+[0.5, 0.0]
+```
+
+Công thức đúng lệch 0 ở cả hai thành phần (làm tròn tới 8 chữ số). Công thức sai lệch **50%** ở thành phần $w$: chỉ bằng nửa giá trị thật, đúng như quên hệ số 2. Thành phần $b$ vẫn đúng, nên ta biết ngay lỗi nằm ở dòng nào.
+
+Ngưỡng thường dùng: sai lệch tương đối dưới $10^{-7}$ là đúng, trên $10^{-3}$ là gần như chắc chắn sai.
+
+<Khung loai="vi-sao" tieuDe="KIỂM TRA Ở ĐIỂM BẤT KỲ">
+Tại $(0, 0)$ hay tại đáy, nhiều số hạng bằng 0 hoặc triệt tiêu nhau, và một công thức sai có thể tình cờ cho kết quả đúng. Ví dụ tại đáy, **mọi** công thức có dạng "hằng số nhân tổng phần dư" đều ra 0.
+
+Vì vậy hãy kiểm tra ở một điểm "lộn xộn" như $(0{,}3;\ 0{,}2)$, nơi không có gì đặc biệt. Tốt nhất là vài điểm ngẫu nhiên.
+</Khung>
+
+## Khi nào dùng gradient check
+
+Chương 24 sẽ tự cài backpropagation cho cả một mạng nơ-ron, hàng chục dòng đạo hàm viết tay. Đó là lúc gradient check cứu bạn: chạy nó trên một mạng nhỏ, vài mẫu dữ liệu, trước khi huấn luyện thật.
+
+Khi dùng PyTorch (Chương 25), gradient được tính tự động và bạn hiếm khi phải kiểm tra. Nhưng khi tự viết một lớp mới hay một hàm loss lạ, PyTorch có sẵn `torch.autograd.gradcheck` làm đúng việc của trang này.
+
+<Khung loai="loi">
+**Dùng sai phân một phía.** $(f(x + h) - f(x))/h$ có sai số tỷ lệ với $h$; trung tâm có sai số tỷ lệ với $h^2$. Với $h = 10^{-5}$, đó là khác biệt giữa sai ở chữ số thứ 5 và chữ số thứ 10.
+
+**Dùng sai phân để huấn luyện.** Nó chậm hơn công thức hàng triệu lần với mạng lớn. Chỉ dùng để kiểm tra.
+
+**Kiểm tra với số thực 32 bit.** Với `float32`, sai số làm tròn lớn hơn nhiều và gradient check báo lệch giả. Kiểm tra bằng `float64`.
+</Khung>

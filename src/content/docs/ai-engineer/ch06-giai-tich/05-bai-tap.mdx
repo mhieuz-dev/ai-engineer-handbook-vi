@@ -1,0 +1,118 @@
+---
+title: Bài tập
+description: Ba bài tập giải tích có đáp án chi tiết (tìm chỗ độ dốc bằng 0, quy tắc chuỗi qua sigmoid, tính tay gradient và bước cập nhật thứ hai của Chương 10) và câu hỏi phỏng vấn.
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Tính tay ra giấy trước, rồi kiểm tra bằng sai phân trong notebook.
+
+<BaiTap so="6.1">
+**Chỗ mặt đất bằng phẳng.** Cho $k(x) = x^3 - 3x$.
+
+1. Tính $k'(x)$ bằng Bảng 6.1, rồi $k'(2)$.
+2. Tìm mọi $x$ mà $k'(x) = 0$.
+3. Kiểm tra $k'(2)$ bằng sai phân trung tâm.
+
+<Fragment slot="dap-an">
+
+**1.** Quy tắc lũy thừa và quy tắc tổng: $k'(x) = 3x^2 - 3$. Tại $x = 2$: $k'(2) = 12 - 3 = 9$.
+
+**2.** $3x^2 - 3 = 0$ khi $x^2 = 1$, tức $x = 1$ hoặc $x = -1$. Tại hai điểm này tiếp tuyến nằm ngang. $x = -1$ là đỉnh của một ngọn đồi nhỏ ($k(-1) = 2$), $x = 1$ là đáy của một thung lũng nhỏ ($k(1) = -2$).
+
+**3.**
+
+```python
+k = lambda x: x ** 3 - 3 * x
+h = 1e-5
+print((k(2 + h) - k(2 - h)) / (2 * h))
+```
+
+```text title="Output"
+9.000000000147779
+```
+
+Câu 2 chứa một bài học cho ML: đạo hàm bằng 0 **không** có nghĩa là đáy thấp nhất. Có thể là đỉnh đồi, có thể là một thung lũng nhỏ trong khi chỗ thấp nhất còn ở nơi khác ($k$ càng về $-\infty$ càng thấp). Loss của hồi quy tuyến tính là một cái bát chỉ có một đáy, nên không gặp chuyện này; mạng nơ-ron thì có, và Chương 8 sẽ bàn.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="6.2">
+**Chuỗi qua sigmoid.** Một mô hình đoán xác suất $p = \sigma(w x)$, nhãn thật là 1, loss là $(p - 1)^2$. Với $x = 2$, tính $\frac{d\,\text{loss}}{dw}$ tại $w = 0$ bằng quy tắc chuỗi qua ba lớp, rồi kiểm tra bằng sai phân.
+
+<Fragment slot="dap-an">
+
+Chuỗi gồm ba lớp: $z = wx$, rồi $p = \sigma(z)$, rồi $\text{loss} = (p - 1)^2$.
+
+- $\frac{d\,\text{loss}}{dp} = 2(p - 1)$. Tại $w = 0$: $z = 0$, $p = 0{,}5$, nên bằng $2 \times (-0{,}5) = -1$.
+- $\frac{dp}{dz} = \sigma(1 - \sigma) = 0{,}25$ theo (6.4).
+- $\frac{dz}{dw} = x = 2$.
+
+Nhân lại: $(-1) \times 0{,}25 \times 2 = -0{,}5$.
+
+```python
+q = lambda w: (sig(w * 2) - 1) ** 2
+print((q(h) - q(-h)) / (2 * h))
+```
+
+```text title="Output"
+-0.4999999999810711
+```
+
+Đạo hàm âm: tăng $w$ thì loss giảm, vì $p$ tiến về nhãn thật 1. Đây là phiên bản thu nhỏ của backpropagation: đi ngược từ loss về tham số, mỗi lớp nhân thêm một đạo hàm cục bộ.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="6.3">
+**Bước hai của Chương 10.** Sau bước 1, $w = 1{,}325$ và $b = 0{,}45$. Tính tay gradient bằng (6.5), rồi tính $w$, $b$ sau bước 2 với $\eta = 0{,}05$.
+
+Gợi ý: phần dư lúc này là $0{,}225;\ 0{,}9;\ 0{,}575;\ 1{,}25$.
+
+<Fragment slot="dap-an">
+
+$\sum x_i e_i = 0{,}225 + 1{,}8 + 1{,}725 + 5 = 8{,}75$ và $\sum e_i = 2{,}95$.
+
+$$
+\frac{\partial L}{\partial w} = -\frac{2}{4} \times 8{,}75 = -4{,}375, \qquad
+\frac{\partial L}{\partial b} = -\frac{2}{4} \times 2{,}95 = -1{,}475
+$$
+
+Cập nhật: $w = 1{,}325 + 0{,}05 \times 4{,}375 = 1{,}54375$ và $b = 0{,}45 + 0{,}05 \times 1{,}475 = 0{,}52375$.
+
+```python
+gw, gb = grad(1.325, 0.45)
+print(gw, gb)
+print(1.325 - 0.05 * gw, 0.45 - 0.05 * gb)
+```
+
+```text title="Output"
+-4.375 -1.475
+1.54375 0.52375
+```
+
+Đây chính là Bài tập 10.2. Gradient đã nhỏ hơn bước 1 khoảng 6 lần ($26{,}5$ xuống $4{,}375$): càng gần đáy, mặt đất càng phẳng, bước đi tự ngắn lại dù $\eta$ không đổi.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Gradient là gì, và vì sao gradient descent đi ngược hướng gradient?**
+
+<p lang="en"><em>What is a gradient, and why does gradient descent move against it?</em></p>
+
+*Gợi ý:* vector các đạo hàm riêng, chỉ hướng hàm tăng nhanh nhất tại điểm đó; ngược hướng là giảm nhanh nhất. Kèm phép xấp xỉ bậc nhất: nhích một bước nhỏ ngược gradient thì loss giảm một lượng xấp xỉ $\eta \lVert \nabla L \rVert^2$.
+
+**2. Gradient checking là gì?**
+
+<p lang="en"><em>What is gradient checking?</em></p>
+
+*Gợi ý:* so gradient giải tích với sai phân trung tâm ở vài điểm ngẫu nhiên, dùng sai lệch tương đối, float64, $h$ cỡ $10^{-5}$. Chỉ để gỡ lỗi, không dùng để huấn luyện vì chi phí tỷ lệ với số tham số.
+
+**3. Đạo hàm của sigmoid là gì và nó gây ra vấn đề gì?**
+
+<p lang="en"><em>What is the derivative of the sigmoid, and what problem does it cause?</em></p>
+
+*Gợi ý:* $\sigma(1 - \sigma)$, lớn nhất 0,25 tại 0 và gần 0 khi $|z|$ lớn. Nhân nhiều lớp sigmoid làm gradient co rất nhanh (vanishing gradient), một lý do ReLU thay thế sigmoid ở các lớp ẩn.
+</Khung>
