@@ -1,0 +1,87 @@
+---
+title: Chọn số cụm
+description: Inertia luôn giảm khi tăng k, nên nhìn chỗ đường gãy khúc như khuỷu tay. Hệ số silhouette đạt đỉnh 0,58 ở đúng k = 4 trên bốn đám điểm, nhưng trên hoa iris lại thích 2 cụm hơn 3 loài thật.
+---
+
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Hai cách nhìn
+
+Không có nhãn thì không có validation theo kiểu Chương 9. Ta phải dựa vào chính hình dạng của dữ liệu.
+
+**Đường khuỷu tay.** Vẽ inertia theo $k$. Inertia luôn giảm, nhưng giảm rất nhanh khi $k$ còn nhỏ hơn số cụm thật (mỗi cụm thêm vào tách ra một đám bị gộp nhầm), rồi chậm hẳn lại khi $k$ vượt qua (cụm thêm vào chỉ chẻ một đám thành hai). Chỗ gãy là $k$ hợp lý.
+
+**Hệ số silhouette.** Với mỗi điểm, gọi $a$ là khoảng cách trung bình tới các điểm cùng cụm, $b$ là khoảng cách trung bình tới các điểm của cụm gần nhất khác:
+
+$$
+s = \frac{b - a}{\max(a, b)} \tag{19.1}
+$$
+
+<Term id="silhouette">Hệ số silhouette</Term> gần 1 khi điểm ở rất gần cụm của mình và xa cụm bên cạnh; gần 0 khi nằm lưng chừng giữa hai cụm; âm khi có lẽ đã bị gán nhầm cụm. Trung bình $s$ qua mọi điểm là một con số để so các $k$: càng cao càng tốt.
+
+```python
+from sklearn.metrics import silhouette_score
+for k in range(1, 9):
+    kmk = KMeans(k, n_init=10, random_state=0).fit(Xb)
+    print(k, round(kmk.inertia_, 1), round(silhouette_score(Xb, kmk.labels_), 4) if k > 1 else "-")
+```
+
+```text title="Output"
+1 2978.6 -
+2 1348.9 0.4964
+3 708.8 0.5151
+4 369.5 0.5801
+5 326.3 0.5032
+6 292.4 0.4305
+7 260.2 0.3955
+8 225.2 0.3444
+```
+
+<HinhKetQua src="/hinh/ch19/h2_chon_k.svg" alt="Hai khung. Trái: inertia theo k từ 1 tới 8, giảm dốc từ khoảng 2979 xuống 370 ở k bằng 4 rồi gần như nằm ngang. Phải: silhouette trung bình theo k từ 2 tới 8, tăng từ 0,50 lên đỉnh 0,58 ở k bằng 4 rồi giảm dần xuống 0,34. Đường đứt nét đứng ở k bằng 4 trong cả hai khung." so="19.2" chuThich="Inertia (trái) và silhouette trung bình (phải) theo số cụm k trên 300 điểm của bốn đám.">
+**Khung trái.** Từ $k = 1$ tới $k = 4$, inertia giảm từ 2979 xuống 370: mỗi cụm thêm vào cắt giảm hơn một nửa. Từ $k = 4$ trở đi, mỗi cụm thêm chỉ bớt khoảng 30 tới 40. Chỗ gãy rõ ràng ở $k = 4$.
+
+**Khung phải.** Silhouette đạt đỉnh 0,58 đúng ở $k = 4$. Với $k = 5$, một đám bị chẻ đôi, các điểm ở chỗ chẻ có $a \approx b$, silhouette tụt xuống.
+
+**Hai thước đo đồng ý.** Ở đây dễ vì bốn đám tách nhau rõ. Dữ liệu thật hiếm khi gọn như vậy.
+</HinhKetQua>
+
+## Khi dữ liệu không có câu trả lời rõ
+
+Bộ hoa iris có 3 loài thật. Bỏ nhãn đi, chuẩn hóa, rồi để k-means tự tìm:
+
+```python
+from sklearn.datasets import load_iris
+from sklearn.preprocessing import StandardScaler
+Xi, yi = load_iris(return_X_y=True)
+Zi = StandardScaler().fit_transform(Xi)
+for k in [2, 3, 4]:
+    li = KMeans(k, n_init=10, random_state=0).fit_predict(Zi)
+    print(k, round(silhouette_score(Zi, li), 4), round(adjusted_rand_score(yi, li), 4))
+```
+
+```text title="Output"
+2 0.5818 0.5681
+3 0.4599 0.6201
+4 0.3869 0.4728
+```
+
+Silhouette thích $k = 2$ (0,58) hơn $k = 3$ (0,46). Nhưng ARI so với 3 loài thật lại cao nhất ở $k = 3$. Chuyện gì xảy ra: một loài (setosa) tách hẳn khỏi hai loài kia; hai loài còn lại chồng lấn nhau nhiều. Về mặt hình học, dữ liệu trông như **hai** đám rõ ràng.
+
+Bài học: phân cụm tìm cấu trúc **hình học** trong dữ liệu, không phải "sự thật". Số cụm đúng phụ thuộc vào câu hỏi bạn đặt ra (chia khách thành bao nhiêu nhóm thì tiện cho bộ phận marketing?), và các thước đo chỉ là công cụ gợi ý.
+
+<TuKiemTra
+	cauHoi="Một điểm có khoảng cách trung bình tới cụm của nó a = 2 và tới cụm gần nhất khác b = 6. Silhouette của nó là bao nhiêu?"
+	luaChon={['0,33', '0,67', '3', '-0,67']}
+	dapAn={1}
+	giaiThich="s = (b - a) / max(a, b) = (6 - 2) / 6 ≈ 0,67. Điểm nằm khá gọn trong cụm của mình."
+/>
+
+<Khung loai="loi">
+**Chọn $k$ chỉ bằng một thước đo.** Đường khuỷu tay nhiều khi không có khuỷu rõ ràng; silhouette ưa cụm tròn, tách xa. Dùng cả hai, cộng với hiểu biết về bài toán.
+
+**Tính silhouette trên dữ liệu rất lớn.** Nó cần khoảng cách giữa mọi cặp điểm, $n^2$ phép tính. Với hàng trăm nghìn điểm, dùng `sample_size` để tính trên một mẫu con.
+</Khung>

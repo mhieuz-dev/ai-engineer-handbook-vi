@@ -1,0 +1,98 @@
+---
+title: K-means tính tay
+description: Không có nhãn, chỉ có điểm. K-means lặp hai bước gán và dời tâm. Tính tay trên 7 điểm, hội tụ sau 2 vòng với inertia 8,525.
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+<CanBietTruoc>
+Khoảng cách Euclid và chuẩn hóa (Chương 14). Trung bình theo trục của NumPy (Chương 3).
+
+<Fragment slot="sau-chuong">
+Tính tay k-means trên một tập điểm nhỏ. Biết vì sao kết quả phụ thuộc tâm khởi đầu và cách k-means++ cùng nhiều lần chạy giải quyết chuyện đó. Chọn số cụm bằng đường khuỷu tay và hệ số silhouette. Dùng DBSCAN khi cụm có hình dạng bất kỳ, và biết đánh giá một kết quả phân cụm khi không có đáp án.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch19_phan_cum.ipynb" />
+
+## Không có nhãn
+
+Từ Chương 9 tới Chương 18, mỗi mẫu đều có **nhãn**: điểm thi, đỗ hay trượt, lành hay ác. Đó là học **có giám sát**: mô hình có đáp án để so.
+
+Nhiều khi ta chỉ có dữ liệu mà không có nhãn. Một cửa hàng có lịch sử mua hàng của mười nghìn khách, không ai gán sẵn "khách này thuộc nhóm nào". Câu hỏi là: trong dữ liệu có những **nhóm tự nhiên** nào không? Đó là <Term id="hoc-khong-giam-sat">học không giám sát</Term>, và bài toán tìm nhóm gọi là **phân cụm** <En>clustering</En>.
+
+## Thuật toán k-means
+
+<Term id="k-means">K-means</Term> cần biết trước số cụm $k$, rồi lặp:
+
+1. **Gán:** mỗi điểm thuộc về tâm gần nó nhất.
+2. **Dời tâm:** mỗi tâm dời tới trung bình (tâm khối lượng) của các điểm vừa được gán cho nó.
+
+Lặp tới khi không điểm nào đổi cụm. Đó là toàn bộ thuật toán.
+
+## Bảy điểm
+
+**Bảng 19.1.** Bảy điểm, không nhãn.
+
+| Điểm | P1 | P2 | P3 | P4 | P5 | P6 | P7 |
+|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| $(x_1;\ x_2)$ | (1; 1) | (1,5; 2) | (3; 4) | (5; 7) | (3,5; 5) | (4,5; 5) | (3,5; 4,5) |
+
+Chọn $k = 2$, lấy P1 $(1; 1)$ và P4 $(5; 7)$ làm hai tâm khởi đầu.
+
+**Vòng 1, gán.** P3 $(3; 4)$ cách tâm 1 là $\sqrt{4 + 9} = \sqrt{13} \approx 3{,}61$, cách tâm 2 là $\sqrt{4 + 9} = \sqrt{13}$: hòa. Lấy khoảng cách bình phương để khỏi khai căn: đều là 13. Thư viện chọn tâm có chỉ số nhỏ hơn, P3 vào cụm 1. Các điểm còn lại rõ ràng hơn: P2 gần tâm 1, P5, P6, P7 gần tâm 2.
+
+**Vòng 1, dời tâm.** Cụm 1 gồm P1, P2, P3: tâm mới $\left(\frac{1 + 1{,}5 + 3}{3};\ \frac{1 + 2 + 4}{3}\right) \approx (1{,}83;\ 2{,}33)$. Cụm 2 gồm P4, P5, P6, P7: tâm mới $(4{,}125;\ 5{,}375)$.
+
+**Vòng 2, gán.** P3 giờ cách tâm 1 là $(3 - 1{,}83)^2 + (4 - 2{,}33)^2 \approx 4{,}14$, cách tâm 2 là $(3 - 4{,}125)^2 + (4 - 5{,}375)^2 \approx 3{,}16$: **chuyển sang cụm 2**. Không điểm nào khác đổi.
+
+**Vòng 2, dời tâm.** Cụm 1 gồm P1, P2: tâm $(1{,}25;\ 1{,}5)$. Cụm 2 gồm P3, ..., P7: tâm $(3{,}9;\ 5{,}1)$.
+
+**Vòng 3.** Gán lại, không điểm nào đổi cụm: hội tụ.
+
+```python
+import numpy as np
+P = np.array([[1, 1], [1.5, 2], [3, 4], [5, 7], [3.5, 5], [4.5, 5], [3.5, 4.5]])
+tam = P[[0, 3]].copy()                                            # hai tâm khởi đầu: P1 và P4
+for vong in range(1, 4):
+    d2 = ((P[:, None, :] - tam[None]) ** 2).sum(axis=2)           # bình phương khoảng cách, shape (7, 2)
+    nhan = d2.argmin(axis=1)                                      # bước gán
+    tam = np.array([P[nhan == k].mean(axis=0) for k in range(2)])   # bước dời tâm
+    qt = sum(((P[nhan == k] - tam[k]) ** 2).sum() for k in range(2))  # inertia với tâm mới
+    print(vong, nhan, tam.round(4).tolist(), round(float(qt), 4))
+```
+
+```text title="Output"
+1 [0 0 0 1 1 1 1] [[1.8333, 2.3333], [4.125, 5.375]] 12.2083
+2 [0 0 1 1 1 1 1] [[1.25, 1.5], [3.9, 5.1]] 8.525
+3 [0 0 1 1 1 1 1] [[1.25, 1.5], [3.9, 5.1]] 8.525
+```
+
+Vòng 3 cho kết quả y hệt vòng 2: hội tụ. Cột cuối là **inertia**: tổng bình phương khoảng cách từ mỗi điểm tới tâm cụm của nó. Nó giảm từ 12,2083 xuống 8,525 và không giảm được nữa.
+
+<HinhKetQua src="/hinh/ch19/h1_kmeans_tay.svg" alt="Ba khung. Bước 0: bảy điểm xám, hai dấu X đen ở (1; 1) và (5; 7). Vòng 1: ba điểm dưới trái màu xanh, bốn điểm trên phải màu cam, hai X trắng mới ở (1,83; 2,33) và (4,13; 5,38). Vòng 2: điểm (3; 4) đổi sang màu cam, hai tâm mới ở (1,25; 1,5) và (3,9; 5,1)." so="19.1" chuThich="Ba bước k-means trên 7 điểm của Bảng 19.1. Dấu X đen là tâm dùng để gán trong vòng đó, dấu X trắng là tâm mới sau khi dời.">
+**Bước 0.** Hai tâm khởi đầu nằm đúng trên P1 và P4 (che mất hai điểm đó).
+
+**Vòng 1.** P3 $(3; 4)$ cách đều hai tâm, được gán vào cụm xanh. Tâm xanh dời lên giữa ba điểm, tâm cam dời xuống giữa bốn điểm.
+
+**Vòng 2.** Tâm cam giờ đã ở gần P3 hơn tâm xanh, nên P3 đổi sang cam. Hai tâm dời lần cuối: tâm xanh về giữa hai điểm dưới trái, tâm cam về giữa năm điểm còn lại.
+
+**Điều cần thấy.** Mỗi vòng, k-means chỉ làm hai việc đơn giản, nhưng các tâm "trôi" dần về giữa những đám điểm, và điểm nằm ở giữa (P3) có thể đổi phe khi tâm trôi.
+</HinhKetQua>
+
+<Khung loai="vi-sao" tieuDe="K-MEANS LUÔN DỪNG">
+Bước gán không bao giờ làm inertia tăng: mỗi điểm chọn tâm gần nhất, nên khoảng cách của nó chỉ có thể giảm hoặc giữ nguyên. Bước dời tâm cũng không làm inertia tăng: trung bình là điểm làm tổng bình phương khoảng cách nhỏ nhất (Bài tập 9.1 và 7.3). Inertia chỉ đi xuống, và số cách chia điểm vào cụm là hữu hạn, nên thuật toán chắc chắn dừng.
+
+Nhưng "dừng" không có nghĩa là tìm được cách chia **tốt nhất**. Trang sau sẽ thấy nó có thể dừng ở một đáy cục bộ.
+</Khung>
+
+<Khung loai="loi">
+**Quên chuẩn hóa.** K-means đo khoảng cách Euclid, mắc đúng vấn đề thang đo của KNN (Chương 14). Đặc trưng có số lớn quyết định cả cách chia cụm.
+
+**Đọc nhãn cụm như nhãn lớp.** "Cụm 0" và "cụm 1" chỉ là tên đặt tùy ý. Chạy lại với tâm khởi đầu khác, cùng một cách chia có thể có tên đảo ngược.
+</Khung>

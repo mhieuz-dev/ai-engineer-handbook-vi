@@ -1,0 +1,99 @@
+---
+title: Bài tập
+description: Ba bài tập phân cụm có đáp án chi tiết (tính tay silhouette của điểm lưng chừng, xác suất chọn tâm thứ hai của k-means++, chọn eps cho DBSCAN) và câu hỏi phỏng vấn.
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Bài 19.1 và 19.2 dùng 7 điểm `P` của trang 1 và cách chia cuối cùng: cụm 0 gồm P1, P2, cụm 1 gồm P3, ..., P7.
+
+<BaiTap so="19.1">
+**Silhouette của P3.** P3 $(3; 4)$ là điểm đã đổi cụm ở vòng 2. Tính tay $a$ (khoảng cách trung bình tới 4 điểm còn lại của cụm 1), $b$ (khoảng cách trung bình tới P1, P2) và silhouette (19.1). So với các điểm khác.
+
+<Fragment slot="dap-an">
+
+Khoảng cách từ P3 tới P4, P5, P6, P7: $\sqrt{13} \approx 3{,}606$; $\sqrt{1{,}25} \approx 1{,}118$; $\sqrt{3{,}25} \approx 1{,}803$; $\sqrt{0{,}5} \approx 0{,}707$. Trung bình $a \approx 1{,}808$.
+
+Tới P1, P2: $\sqrt{13} \approx 3{,}606$ và $\sqrt{6{,}25} = 2{,}5$. Trung bình $b \approx 3{,}053$.
+
+$s = (3{,}053 - 1{,}808)/3{,}053 \approx 0{,}408$.
+
+```python
+from sklearn.metrics import silhouette_samples
+print(silhouette_samples(P, np.array([0, 0, 1, 1, 1, 1, 1])).round(4))
+```
+
+```text title="Output"
+[0.7777 0.7156 0.4076 0.5838 0.6925 0.687  0.6508]
+```
+
+P3 có silhouette thấp nhất (0,41): nó gần cụm 1 hơn, nhưng không nhiều. Đúng với chuyện nó hòa khoảng cách ở vòng 1 và đổi phe ở vòng 2. Silhouette của từng điểm là cách nhanh để tìm những điểm "lưng chừng" mà cách chia không chắc chắn.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="19.2">
+**k-means++ chọn tâm thứ hai.** Tâm đầu là P1 $(1; 1)$. k-means++ chọn tâm thứ hai với xác suất tỷ lệ với **bình phương** khoảng cách tới P1. Tính xác suất của từng điểm. Điểm nào dễ được chọn nhất?
+
+<Fragment slot="dap-an">
+
+Bình phương khoảng cách tới P1: 0; 1,25; 13; 52; 22,25; 28,25; 18,5. Tổng 135,25. Chia cho tổng:
+
+```python
+d2 = ((P - P[0]) ** 2).sum(axis=1)
+print(d2, (d2 / d2.sum()).round(4))
+```
+
+```text title="Output"
+[ 0.    1.25 13.   52.   22.25 28.25 18.5 ] [0.     0.0092 0.0961 0.3845 0.1645 0.2089 0.1368]
+```
+
+P4 $(5; 7)$, xa nhất, có xác suất 38%. P2, sát ngay P1, chỉ 0,9%. Năm điểm của cụm trên phải cộng lại chiếm khoảng 99%. Vậy gần như chắc chắn tâm thứ hai rơi vào đám còn lại, đúng điều ta muốn. Dùng bình phương (không phải khoảng cách thường) làm điểm xa càng được ưu tiên hơn.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="19.3">
+**Chọn eps.** Chạy DBSCAN (`min_samples=5`) trên hai vầng trăng ở trang 4 với `eps` bằng 0,05; 0,2; 1,0. Đếm số cụm (không kể nhiễu) và số điểm nhiễu. Đoán trước kết quả.
+
+<Fragment slot="dap-an">
+
+```python
+for e in [0.05, 0.2, 1.0]:
+    l = DBSCAN(eps=e, min_samples=5).fit_predict(Xm)
+    print(e, len(set(l) - {-1}), int((l == -1).sum()))
+```
+
+```text title="Output"
+0.05 10 243
+0.2 2 0
+1.0 1 0
+```
+
+`eps = 0,05`: bán kính quá nhỏ, rất ít điểm có đủ 4 hàng xóm. 243 trên 300 điểm thành nhiễu, phần còn lại vụn thành 10 cụm nhỏ. `eps = 0,2`: đúng 2 cụm, 0 nhiễu. `eps = 1,0`: bán kính lớn hơn khoảng trống giữa hai vầng trăng, mọi thứ nối thành 1 cụm.
+
+`eps` đóng vai trò như $k$ của k-means hay $\gamma$ của SVM: một núm vặn quyết định "gần" là bao xa, và không có giá trị đúng cho mọi bộ dữ liệu.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Mô tả thuật toán k-means và các hạn chế của nó.**
+
+<p lang="en"><em>Describe the k-means algorithm and its limitations.</em></p>
+
+*Gợi ý:* lặp gán vào tâm gần nhất và dời tâm về trung bình, giảm inertia đơn điệu. Hạn chế: phải chọn trước k, nhạy với khởi tạo (k-means++, n_init), giả định cụm tròn cỡ tương đương, nhạy với thang đo và outlier.
+
+**2. Làm sao chọn số cụm?**
+
+<p lang="en"><em>How do you choose the number of clusters?</em></p>
+
+*Gợi ý:* đường khuỷu tay của inertia, silhouette trung bình, gap statistic; nhưng cuối cùng phụ thuộc mục đích sử dụng. Kiểm tra độ ổn định của cụm khi lấy mẫu lại.
+
+**3. Khi nào dùng DBSCAN thay vì k-means?**
+
+<p lang="en"><em>When would you use DBSCAN instead of k-means?</em></p>
+
+*Gợi ý:* cụm hình dạng bất kỳ, không biết trước số cụm, cần phát hiện điểm nhiễu hoặc outlier. Không hợp khi các cụm có mật độ rất khác nhau (dùng HDBSCAN) hoặc dữ liệu nhiều chiều (khoảng cách mất ý nghĩa, Chương 14).
+</Khung>

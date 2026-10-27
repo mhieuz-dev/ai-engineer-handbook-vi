@@ -438,3 +438,23 @@
   tenTiengAnh: boosting
   giaiThich: Boosting xây các mô hình nhỏ nối tiếp nhau, mỗi mô hình mới tập trung sửa phần mà các mô hình trước còn sai. Gradient boosting cho mỗi cây mới khớp phần dư của tổng các cây trước. Giảm bias của mô hình yếu.
   hocKy: ai-engineer/ch18-ensemble
+- id: hoc-khong-giam-sat
+  ten: Học không giám sát
+  tenTiengAnh: unsupervised learning
+  giaiThich: Học không giám sát là tìm cấu trúc trong dữ liệu không có nhãn, ví dụ nhóm những khách hàng giống nhau, mà không ai cho biết trước có những nhóm nào. Khác học có giám sát, nơi mỗi mẫu có sẵn đáp án.
+  hocKy: ai-engineer/ch19-phan-cum
+- id: k-means
+  ten: K-means
+  tenTiengAnh: k-means
+  giaiThich: K-means chia dữ liệu thành k cụm bằng cách lặp hai bước - gán mỗi điểm vào tâm gần nhất, rồi dời mỗi tâm về trung bình các điểm của nó - cho tới khi không còn gì thay đổi.
+  hocKy: ai-engineer/ch19-phan-cum
+- id: silhouette
+  ten: Hệ số silhouette
+  tenTiengAnh: silhouette coefficient
+  giaiThich: Hệ số silhouette của một điểm so khoảng cách trung bình tới các điểm cùng cụm với khoảng cách tới cụm gần nhất khác, cho một số từ -1 tới 1. Gần 1 là điểm nằm gọn trong cụm của nó, gần 0 là nằm giữa hai cụm.
+  hocKy: ai-engineer/ch19-phan-cum
+- id: dbscan
+  ten: DBSCAN
+  tenTiengAnh: DBSCAN
+  giaiThich: DBSCAN gom các điểm nằm trong vùng dày đặc thành cụm, nối những điểm có đủ hàng xóm trong một bán kính cho trước. Tìm được cụm hình dạng bất kỳ và tự đánh dấu điểm nhiễu, không cần biết trước số cụm.
+  hocKy: ai-engineer/ch19-phan-cum

@@ -1,0 +1,62 @@
+---
+title: Khởi tạo và scikit-learn
+description: Khởi tạo ngẫu nhiên có thể kẹt ở đáy cục bộ với inertia 669 thay vì 370. K-means++ và nhiều lần chạy (n_init) giải quyết chuyện đó. Thử trên 300 điểm thuộc 4 đám, ARI 0,95 so với nhãn thật.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Bốn đám điểm
+
+`make_blobs` sinh điểm quanh vài tâm cho trước. Ta sinh 300 điểm quanh 4 tâm, giữ lại nhãn thật **chỉ để chấm điểm** ở cuối; k-means không được thấy nó.
+
+```python
+from sklearn.cluster import KMeans
+from sklearn.datasets import make_blobs
+from sklearn.metrics import adjusted_rand_score
+Xb, yb = make_blobs(n_samples=300, centers=4, cluster_std=0.8, random_state=0)
+km = KMeans(n_clusters=4, n_init=10, random_state=0).fit(Xb)
+print(round(km.inertia_, 1), round(adjusted_rand_score(yb, km.labels_), 4))
+```
+
+```text title="Output"
+369.5 0.9463
+```
+
+**ARI** (adjusted Rand index) đo hai cách chia giống nhau tới đâu, bất kể tên cụm: 1 là trùng hoàn toàn, 0 là như chia ngẫu nhiên. 0,9463 nghĩa là k-means tìm lại gần đúng 4 đám, chỉ lẫn vài điểm nằm ở chỗ hai đám chồng lên nhau. Ngoài đời, ta **không có** nhãn thật để tính ARI; ở đây ta dùng nó để kiểm tra phương pháp.
+
+## Khởi tạo ngẫu nhiên có thể kẹt
+
+Thử 10 lần, mỗi lần một bộ tâm khởi đầu ngẫu nhiên khác, chỉ chạy một lần (`n_init=1`):
+
+```python
+qt = [KMeans(4, n_init=1, init="random", random_state=s).fit(Xb).inertia_ for s in range(10)]
+print([round(v, 1) for v in qt])
+```
+
+```text title="Output"
+[369.5, 369.5, 369.5, 369.5, 369.5, 669.3, 369.5, 369.5, 369.5, 669.3]
+```
+
+8 trên 10 lần tìm ra cách chia có inertia 369,5. Hai lần còn lại kẹt ở **669,3**, gần gấp đôi. Ở đó, hai tâm khởi đầu rơi vào cùng một đám: hai tâm chia nhau một đám, trong khi hai đám khác bị gộp chung dưới một tâm. Thuật toán vẫn dừng (inertia không giảm được nữa với những bước gán và dời tâm), nhưng ở một **đáy cục bộ**, giống những thung lũng nhỏ của Bài tập 6.1.
+
+<Khung loai="vi-sao" tieuDe="K-MEANS++ VÀ N_INIT">
+Hai cách chữa, scikit-learn dùng cả hai theo mặc định.
+
+**k-means++** (`init="k-means++"`, mặc định) chọn tâm khởi đầu có chủ đích: tâm đầu ngẫu nhiên, mỗi tâm tiếp theo được chọn với xác suất tỷ lệ với bình phương khoảng cách tới tâm gần nhất đã có. Điểm ở xa các tâm cũ dễ được chọn hơn, nên các tâm khởi đầu trải đều, ít khi hai tâm rơi chung một đám.
+
+**Nhiều lần chạy** (`n_init`): chạy cả thuật toán vài lần với khởi đầu khác nhau, giữ lần có inertia nhỏ nhất. Ở trên, chỉ cần một trong 10 lần không kẹt là đủ.
+</Khung>
+
+## Đọc kết quả
+
+Sau khi `fit`, `km.cluster_centers_` là tọa độ các tâm, `km.labels_` là cụm của từng điểm train, `km.predict(X_moi)` gán điểm mới vào tâm gần nhất. `km.inertia_` là inertia cuối cùng.
+
+Tâm cụm thường là thứ có ý nghĩa nhất để đọc: mỗi tâm là một "khách hàng điển hình" của nhóm. Với dữ liệu khách hàng đã chuẩn hóa, tâm có giá trị cao ở cột "số lần mua" và thấp ở cột "giá trị mỗi lần" mô tả một nhóm khách hay mua lặt vặt.
+
+<Khung loai="loi">
+**Chạy k-means một lần rồi tin kết quả.** Với `n_init=1` và khởi tạo ngẫu nhiên, 2 trên 10 lần ở trên cho kết quả tệ. Giữ `n_init` mặc định (hoặc lớn hơn) và cố định `random_state` để kết quả tái hiện được.
+
+**Dùng inertia để so các giá trị $k$ khác nhau.** Inertia **luôn** giảm khi $k$ tăng: $k$ bằng số điểm thì inertia bằng 0. Muốn chọn $k$, cần cách khác, trang sau.
+</Khung>

@@ -1,0 +1,67 @@
+---
+title: DBSCAN và phân cụm phân cấp
+description: K-means cắt hai vầng trăng làm đôi theo đường thẳng, ARI chỉ 0,23. DBSCAN nối các vùng dày đặc và tìm lại đúng hai vầng trăng, ARI 1. Phân cụm phân cấp single linkage cũng vậy.
+---
+
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## K-means thích cụm tròn
+
+Mỗi điểm thuộc về tâm gần nhất, nên ranh giới giữa hai cụm k-means là đường trung trực giữa hai tâm: một **đường thẳng**. K-means ngầm giả định mỗi cụm là một đám tròn quanh tâm của nó. Với cụm có hình dạng khác, nó thất bại:
+
+```python
+from sklearn.cluster import DBSCAN, AgglomerativeClustering
+from sklearn.datasets import make_moons
+Xm, ym = make_moons(300, noise=0.06, random_state=0)              # hai vầng trăng ít nhiễu
+km2 = KMeans(2, n_init=10, random_state=0).fit_predict(Xm)
+db = DBSCAN(eps=0.2, min_samples=5).fit_predict(Xm)
+ag = AgglomerativeClustering(2, linkage="single").fit_predict(Xm)
+print(round(adjusted_rand_score(ym, km2), 4), round(adjusted_rand_score(ym, db), 4), int((db == -1).sum()), round(adjusted_rand_score(ym, ag), 4))
+```
+
+```text title="Output"
+0.2343 1.0 0 1.0
+```
+
+<HinhKetQua src="/hinh/ch19/h3_kmeans_dbscan.svg" alt="Hai khung cùng hai vầng trăng lồng nhau. Trái, k-means: điểm tô xanh ở nửa trái và cam ở nửa phải, đường chia chéo cắt ngang qua cả hai vầng trăng, ARI 0,23. Phải, DBSCAN: vầng trăng trên toàn màu cam, vầng trăng dưới toàn màu xanh, ARI 1,00." so="19.3" chuThich="K-means với k = 2 (trái) và DBSCAN (phải) trên 300 điểm của hai vầng trăng.">
+**K-means.** Ranh giới là một đường chéo cắt ngang **cả hai** vầng trăng: mỗi cụm gồm nửa vầng trên cộng nửa vầng dưới. Theo inertia, đó là cách chia tốt nhất: hai nửa "tròn" hơn hai vầng trăng dài cong. ARI 0,23.
+
+**DBSCAN.** Mỗi vầng trăng là một cụm trọn vẹn. ARI 1: trùng hoàn toàn với nhãn thật.
+</HinhKetQua>
+
+## DBSCAN
+
+<Term id="dbscan">DBSCAN</Term> (density-based spatial clustering of applications with noise) nghĩ về cụm như những **vùng dày đặc** ngăn cách bởi vùng thưa. Hai tham số:
+
+- `eps`: bán kính hàng xóm.
+- `min_samples`: một điểm có ít nhất bấy nhiêu điểm (kể cả nó) trong bán kính `eps` thì là **điểm lõi**.
+
+Các điểm lõi nằm trong bán kính của nhau được nối thành một cụm, cộng thêm những điểm không phải lõi nhưng nằm trong bán kính của một điểm lõi (điểm biên). Điểm không thuộc cụm nào là **nhiễu**, nhãn $-1$.
+
+Hai vầng trăng là hai chuỗi điểm dày đặc; khoảng trống giữa chúng thưa. DBSCAN đi dọc mỗi chuỗi, nối điểm này sang điểm kế, nên tìm được cụm dài, cong, hình dạng bất kỳ. Ở đây không điểm nào bị coi là nhiễu (số 0 trong output).
+
+DBSCAN **không cần** biết trước số cụm. Đổi lại, phải chọn `eps`: quá nhỏ thì mọi điểm thành nhiễu, quá lớn thì mọi thứ gộp thành một cụm. Một cách chọn phổ biến: vẽ khoảng cách tới láng giềng thứ `min_samples` của mọi điểm, xếp tăng dần, chọn `eps` ở chỗ đường cong bẻ gập.
+
+## Phân cụm phân cấp
+
+Phân cụm phân cấp (gộp dần) bắt đầu với mỗi điểm là một cụm, rồi lặp lại: **gộp hai cụm gần nhau nhất**. Dừng khi còn $k$ cụm. Lịch sử gộp tạo thành một cây (dendrogram) đọc được ở mọi mức $k$.
+
+"Hai cụm gần nhau" có nhiều định nghĩa (`linkage`). `single`: khoảng cách giữa **hai điểm gần nhất** của hai cụm. Với định nghĩa này, cụm lan dọc theo chuỗi điểm giống DBSCAN, nên cũng tìm đúng hai vầng trăng (ARI 1). `ward` (mặc định) gộp sao cho inertia tăng ít nhất, cho kết quả giống k-means.
+
+**Bảng 19.2.** Chọn thuật toán phân cụm.
+
+| | K-means | DBSCAN | Phân cấp |
+|:---|:---|:---|:---|
+| Cần biết số cụm | có | không | có (hoặc cắt cây ở một mức) |
+| Hình dạng cụm | tròn, cỡ tương đương | bất kỳ | tùy linkage |
+| Xử lý nhiễu | không, mọi điểm vào một cụm | có, nhãn $-1$ | không |
+| Dữ liệu lớn | rất nhanh | khá nhanh | chậm ($n^2$ bộ nhớ) |
+
+<Khung loai="loi">
+**Dùng DBSCAN khi các cụm có mật độ khác nhau.** Một `eps` chung không hợp cho cả cụm dày và cụm thưa: cụm thưa bị coi là nhiễu, hoặc cụm dày bị gộp lại. Biến thể HDBSCAN (có trong scikit-learn) xử lý được chuyện này.
+
+**Quên chuẩn hóa trước DBSCAN.** `eps` là một bán kính tính theo khoảng cách Euclid. Đặc trưng khác thang đo thì "hình tròn bán kính eps" bị méo thành elip dẹt.
+</Khung>
