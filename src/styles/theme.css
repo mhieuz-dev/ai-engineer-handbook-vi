@@ -341,10 +341,35 @@ html .katex-display > .katex > .katex-html > .tag {
 /* In PDF: khổ 19x25 cm, nền trắng, giữ khung màu, ẩn phần tương tác. */
 @page { size: 19cm 25cm; margin: 1.8cm 1.6cm; }
 @media print {
+	/* Bản in luôn là bản sáng: đặt lại MỌI token về giá trị sáng kể cả khi đang ở theme tối, nếu không các token
+	   tối (--panel, --red-chu...) lọt vào giấy trắng: công thức nền tối, tiêu đề khung nhạt dưới 4,5:1. */
 	:root,
 	:root[data-theme='dark'] {
 		--bg: #fff;
 		--tx: #1a1a1a;
+		--panel: #f3eee3;
+		--line: #e6decd;
+		--mut: #8a8170;
+		--pri: #1f5f8b;
+		--acc: #e07a1f;
+		--acc-chu: #9c4c0e;
+		--accbg: #fbeedf;
+		--ok: #2e8b57;
+		--red: #c0392b;
+		--purple: #6c3483;
+		--be-mat: #fff;
+		--mut-chu: #6b6354;
+		--ok-chu: #1f6b43;
+		--red-chu: #a32d21;
+	}
+	/* Thắng các luật :root[data-theme='dark'] riêng của công thức và khung. */
+	:root[data-theme] .katex-display { background: #fff; }
+	:root[data-theme] .katex-display > .katex > .katex-html > .tag { background: var(--panel); }
+	/* Ngoặc quanh tên tiếng Anh: --mut chỉ 3,6:1 trên nền khung khi in, dùng bản đậm. */
+	.tieng-anh .ngoac { color: var(--mut-chu); }
+	:root[data-theme] :is(aside, details).khung {
+		--nen-khung: color-mix(in srgb, var(--mau) 6%, #fff);
+		--nen-nhan: color-mix(in srgb, var(--mau) 14%, var(--nen-khung));
 	}
 	html, body { background: #fff !important; color: #1a1a1a; }
 	body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
