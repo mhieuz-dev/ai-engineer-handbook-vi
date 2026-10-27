@@ -1,4 +1,29 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+
+/** Màu đã tính của một token CSS, dạng rgb(...) để so với màu của phần tử. */
+const mauToken = (page: Page, ten: string) =>
+	page.evaluate((t) => {
+		const s = document.createElement('span');
+		s.style.color = `var(${t})`;
+		document.body.append(s);
+		const c = getComputedStyle(s).color;
+		s.remove();
+		return c;
+	}, ten);
+
+/** Tỉ lệ tương phản WCAG giữa hai màu rgb(...). */
+function tuongPhan(a: string, b: string) {
+	const L = (s: string) => {
+		const [r, g, bl] = s.match(/[\d.]+/g)!.slice(0, 3).map((v) => {
+			const c = Number(v) / 255;
+			return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+		});
+		return 0.2126 * r + 0.7152 * g + 0.0722 * bl;
+	};
+	const [x, y] = [L(a), L(b)].sort((p, q) => q - p);
+	return (x + 0.05) / (y + 0.05);
+}
+const datCheDo = (page: Page, cheDo: 'light' | 'dark') => page.evaluate((m) => (document.documentElement.dataset.theme = m), cheDo);
 
 const URL = '/kiem-thu/thanh-phan/';
 
@@ -111,7 +136,7 @@ test('tên tiếng Anh trong trang Thuật ngữ có màu nhấn', async ({ page
 	await page.goto('/thuat-ngu/');
 	const en = page.locator('#dao-ham .en');
 	await expect(en).toHaveText('derivative');
-	await expect(en).toHaveCSS('color', 'rgb(224, 122, 31)');
+	await expect(en).toHaveCSS('color', await mauToken(page, '--acc-chu'));
 });
 
 
@@ -121,8 +146,11 @@ test('tên tiếng Anh hiện ngay sau chữ tiếng Việt, nghiêng, màu nh�
 	const en = wrap(/· ĐẠO HÀM$/).first().locator(':scope > .term-en');
 	await expect(en).toHaveText('(derivative)');
 	await expect(en).toHaveAttribute('lang', 'en');
-	await expect(en).toHaveCSS('color', 'rgb(224, 122, 31)');
-	await expect(en).toHaveCSS('font-style', 'italic');
+	await expect(en.locator('i')).toHaveText('derivative');
+	await expect(en.locator('i')).toHaveCSS('color', await mauToken(page, '--acc-chu'));
+	await expect(en.locator('i')).toHaveCSS('font-style', 'italic');
+	await expect(en.locator('.ngoac').first()).toHaveCSS('font-style', 'normal');
+	await expect(en.locator('.ngoac').first()).toHaveCSS('color', await mauToken(page, '--mut'));
 	// Nằm ngoài chữ có gạch chấm, nên không bị gạch chân.
 	await expect(wrap(/· ĐẠO HÀM$/).first().locator('.term')).toHaveText('đạo hàm');
 	// Thuật ngữ vốn dùng tiếng Anh thì không lặp lại.
@@ -142,3 +170,29 @@ test('en={false} tắt tên tiếng Anh; trang in vẫn có tên tiếng Anh', a
 	await page.emulateMedia({ media: 'print' });
 	await expect(page.locator('.term-en', { hasText: '(derivative)' }).first()).toBeVisible();
 });
+
+test('tên tiếng Anh ghi tay (<En>) cùng kiểu với tên tiếng Anh tự hiện của Term', async ({ page }) => {
+	await page.goto('/ai-engineer/ch10-hoi-quy-tuyen-tinh/05-doc-ket-qua/');
+	const tay = page.locator('.tieng-anh:not(.term-en)', { hasText: 'loss curve' });
+	const tu = page.locator('.term-en').first();
+	await expect(tay).toHaveAttribute('lang', 'en');
+	await expect(tay).toHaveText('(loss curve)');
+	for (const thuocTinh of ['color', 'font-style', 'font-size']) {
+		const lay = (l: typeof tay) => l.locator('i').evaluate((el, t) => getComputedStyle(el).getPropertyValue(t), thuocTinh);
+		expect(await lay(tay), thuocTinh).toBe(await lay(tu));
+	}
+});
+
+for (const cheDo of ['light', 'dark'] as const) {
+	test(`tên tiếng Anh đủ tương phản (>= 4,5:1) ở chế độ ${cheDo}`, async ({ page }) => {
+		await page.goto('/ai-engineer/ch10-hoi-quy-tuyen-tinh/02-toan/');
+		await datCheDo(page, cheDo);
+		const chu = await page.locator('.term-en i').first().evaluate((el) => getComputedStyle(el).color);
+		expect(chu).toBe(await mauToken(page, '--acc-chu'));
+		expect(tuongPhan(chu, await mauToken(page, '--bg'))).toBeGreaterThanOrEqual(4.5);
+		await page.goto('/thuat-ngu/');
+		await datCheDo(page, cheDo);
+		const [mau, nen] = await page.locator('#dao-ham .en').evaluate((el) => [getComputedStyle(el).color, getComputedStyle(el).backgroundColor]);
+		expect(tuongPhan(mau, nen)).toBeGreaterThanOrEqual(4.5);
+	});
+}

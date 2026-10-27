@@ -1,6 +1,7 @@
 ---
 import { getCollection, getEntry } from 'astro:content';
 import { hienTenTiengAnh, linkHocKy } from '../lib/thuat-ngu';
+import En from './En.astro';
 
 interface Props {
 	id: string;
@@ -21,7 +22,7 @@ const docIds = hocKy ? (await getCollection('docs')).map((d) => d.id) : [];
 const hoc = hocKy ? linkHocKy(hocKy, docIds, Astro.url.pathname) : undefined;
 ---
 
-<span class="term-wrap"><span class="term" tabindex="0" role="button" aria-expanded="false" aria-describedby={tipId}><Fragment set:html={chu} /></span>{tenEn && <span class="term-en" lang="en"> ({tenEn})</span>}<span class="tip" role="tooltip" id={tipId} tabindex="-1"><span class="nhan">NHẮC NHANH · {ten.toUpperCase()}</span><span class="nd">{giaiThich}</span>{oDay && <span class="o-day">{oDay}</span>}{hoc && <a class="hoc-ky" href={hoc.href}>Học kỹ ở Chương {hoc.so} →</a>}</span></span>
+<span class="term-wrap"><span class="term" tabindex="0" role="button" aria-expanded="false" aria-describedby={tipId}><Fragment set:html={chu} /></span>{tenEn && <Fragment>{' '}<En class="term-en">{tenEn}</En></Fragment>}<span class="tip" role="tooltip" id={tipId} tabindex="-1"><span class="nhan">NHẮC NHANH · {ten.toUpperCase()}</span><span class="nd">{giaiThich}</span>{oDay && <span class="o-day">{oDay}</span>}{hoc && <a class="hoc-ky" href={hoc.href}>Học kỹ ở Chương {hoc.so} →</a>}</span></span>
 
 <style is:global>
 	.term-wrap {
@@ -30,13 +31,6 @@ const hoc = hocKy ? linkHocKy(hocKy, docIds, Astro.url.pathname) : undefined;
 	.term {
 		border-bottom: 2px dotted var(--pri);
 		cursor: help;
-	}
-	/* Tên tiếng Anh ngay sau chữ tiếng Việt: nhỏ, nghiêng, màu nhấn như nhãn tiếng Anh ở /thuat-ngu/ nhưng không có nền. */
-	.term-en {
-		font-size: 0.88em;
-		font-style: italic;
-		font-weight: 500;
-		color: var(--acc);
 	}
 	.term-wrap .tip {
 		display: none;

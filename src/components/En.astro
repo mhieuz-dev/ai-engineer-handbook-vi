@@ -1,0 +1,12 @@
+---
+/**
+ * Tên tiếng Anh cạnh chữ tiếng Việt: chữ nghiêng màu --acc-chu, ngoặc đứng màu nhạt.
+ * Dùng thẳng trong MDX cho khái niệm phụ (<En>loss curve</En>), và <Term> dùng lại cho tên tiếng Anh tự hiện.
+ */
+interface Props {
+	class?: string;
+}
+const { class: lop } = Astro.props;
+---
+
+<span class:list={['tieng-anh', lop]} lang="en"><span class="ngoac">(</span><i><slot /></i><span class="ngoac">)</span></span>

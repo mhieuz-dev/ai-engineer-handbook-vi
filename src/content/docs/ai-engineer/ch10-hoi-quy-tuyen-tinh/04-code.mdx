@@ -4,6 +4,7 @@ description: Tự cài hồi quy tuyến tính bằng gradient descent với Num
 ---
 
 import ColabButton from '../../../../components/ColabButton.astro';
+import En from '../../../../components/En.astro';
 import Khung from '../../../../components/Khung.astro';
 import Term from '../../../../components/Term.astro';
 
@@ -104,11 +105,11 @@ R² = 0.9846153846153847
 
 $w$ và $b$ trùng với nghiệm đóng: 1,6 và 0,5.
 
-Số `1.5999999999999996` chính là 1,6. Máy tính lưu số thực ở dạng dấu phẩy động <i lang="en">(floating-point)</i>, khoảng 16 chữ số có nghĩa, nên lệch ở chữ số cuối cùng là chuyện bình thường. Khi so hai số thực trong code, đừng dùng `==`, hãy xem chúng có đủ gần nhau không.
+Số `1.5999999999999996` chính là 1,6. Máy tính lưu số thực ở dạng dấu phẩy động <En>floating-point</En>, khoảng 16 chữ số có nghĩa, nên lệch ở chữ số cuối cùng là chuyện bình thường. Khi so hai số thực trong code, đừng dùng `==`, hãy xem chúng có đủ gần nhau không.
 
 Dòng cuối là <Term id="r-binh-phuong">R bình phương</Term>, một cách chấm điểm đường hồi quy trên thang 0 đến 1. Trang sau sẽ tính tay ra đúng con số này.
 
-`reshape(-1, 1)` cần giải thích thêm. scikit-learn luôn coi dữ liệu là một **bảng**: mỗi dòng một mẫu, mỗi cột một đặc trưng. `x` của ta là dãy 4 số, chưa phải bảng. `reshape(-1, 1)` nghĩa là "xếp thành 1 cột, số dòng thì tự tính" (số $-1$ là "tự tính"). Kết quả là bảng 4 dòng, 1 cột.
+`reshape(-1, 1)` cần giải thích thêm. scikit-learn luôn coi dữ liệu là một **bảng**: mỗi dòng một mẫu <En>sample</En>, mỗi cột một đặc trưng. `x` của ta là dãy 4 số, chưa phải bảng. `reshape(-1, 1)` nghĩa là "xếp thành 1 cột, số dòng thì tự tính" (số $-1$ là "tự tính"). Kết quả là bảng 4 dòng, 1 cột.
 
 <Khung loai="loi">
 **Quên dấu trừ khi cập nhật.** Viết `w = w + lr * grad_w` là bước **theo** hướng gradient, tức leo lên dốc. Loss tăng không ngừng: chạy thử, đến bước 50 MSE đã vượt $10^{27}$.

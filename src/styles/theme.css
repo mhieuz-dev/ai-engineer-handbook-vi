@@ -7,6 +7,8 @@
 	--mut: #8a8170;
 	--pri: #1f5f8b;
 	--acc: #e07a1f;
+	/* Chữ màu nhấn (tên tiếng Anh): --acc chỉ đạt 2,84:1 trên --bg, bản đậm này 5,73:1 trên --bg, >= 5,1:1 trên nền các khung. */
+	--acc-chu: #9c4c0e;
 	--accbg: #fbeedf;
 	--ok: #2e8b57;
 	--red: #c0392b;
@@ -20,6 +22,7 @@
 	--mut: #8a94a3;
 	--pri: #6cb3e6;
 	--acc: #f0a050;
+	--acc-chu: #f0a050; /* 8,42:1 trên --bg tối, 7,13:1 trên --accbg tối */
 	--accbg: #2e2418;
 	--ok: #4cc38a;
 	--red: #ee7d70;
@@ -209,6 +212,11 @@ pre,
 
 /* Mục lục bên phải: nhãn in hoa như bản mẫu. */
 #starlight__on-this-page { text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* Tên tiếng Anh cạnh thuật ngữ (<Term> tự hiện, <En> ghi tay): chữ nghiêng màu nhấn đậm, ngoặc đứng màu nhạt. */
+.tieng-anh { font-size: 0.88em; color: var(--acc-chu); }
+.tieng-anh i { font-style: italic; font-weight: 500; }
+.tieng-anh .ngoac { font-style: normal; color: var(--mut); }
 
 /* In PDF: khổ 19x25 cm, nền trắng, giữ khung màu, ẩn phần tương tác. */
 @page { size: 19cm 25cm; margin: 1.8cm 1.6cm; }

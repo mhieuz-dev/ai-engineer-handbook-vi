@@ -3,6 +3,7 @@ title: Toán từng bước
 description: Dẫn từng bước công thức của hồi quy tuyến tính, từ hàm mất mát MSE, đạo hàm, gradient đến nghiệm đóng và gradient descent, kèm lý do của từng lựa chọn.
 ---
 
+import En from '../../../../components/En.astro';
 import Khung from '../../../../components/Khung.astro';
 import Term from '../../../../components/Term.astro';
 import ThuNgayLearningRate from '../../../../components/ThuNgayLearningRate.astro';
@@ -75,9 +76,9 @@ Khi dữ liệu có nhiều outlier, người ta dùng <Term id="mae">MAE</Term>
 </Khung>
 
 <Khung loai="dao-sau" tieuDe="bình phương và xác suất">
-Giả sử điểm thật của mỗi bạn bằng điểm trên đường thẳng cộng thêm một chút nhiễu ngẫu nhiên <i lang="en">(noise)</i>: $y_i = w x_i + b + \varepsilon_i$.
+Giả sử điểm thật của mỗi bạn bằng điểm trên đường thẳng cộng thêm một chút nhiễu ngẫu nhiên <En>noise</En>: $y_i = w x_i + b + \varepsilon_i$.
 
-Giả sử thêm nhiễu $\varepsilon_i$ có phân phối chuẩn hình chuông <i lang="en">(normal distribution)</i>, trung bình 0, độ lệch chuẩn $\sigma$. Khi đó khả năng gặp đúng phần dư $e_i$ tỉ lệ với
+Giả sử thêm nhiễu $\varepsilon_i$ có phân phối chuẩn hình chuông <En>normal distribution</En>, trung bình 0, độ lệch chuẩn $\sigma$. Khi đó khả năng gặp đúng phần dư $e_i$ tỉ lệ với
 
 $$
 \exp\!\left(-\frac{e_i^2}{2\sigma^2}\right).
@@ -101,14 +102,14 @@ Thứ nhất, loss không phình ra theo số dữ liệu. Bốn bạn hay bốn
 
 Thứ hai, độ dốc (sắp học ở mục dưới) cũng không phình ra. Nhờ vậy cùng một độ dài bước chân (gặp ở mục Gradient descent bên dưới) dùng được cho dữ liệu nhỏ lẫn lớn.
 
-Quên chia $n$ thì sao? Với bốn bạn, mỗi bước chân thực tế dài gấp 4 lần, thành $0{,}05 \times 4 = 0{,}2$. Cuối trang bạn sẽ thấy 0,2 là quá dài với dữ liệu này: loss phát nổ <i lang="en">(diverge)</i>.
+Quên chia $n$ thì sao? Với bốn bạn, mỗi bước chân thực tế dài gấp 4 lần, thành $0{,}05 \times 4 = 0{,}2$. Cuối trang bạn sẽ thấy 0,2 là quá dài với dữ liệu này: loss phát nổ <En>diverge</En>.
 </Khung>
 
 ## Tìm đáy của loss: đạo hàm
 
 ### Loss là một cái bát
 
-Mỗi cặp $(w, b)$ cho ra một giá trị loss. Vẽ loss theo $w$ và $b$, ta được một mặt cong hình cái bát, gọi là mặt loss <i lang="en">(loss surface)</i>. [Hình 10.3](/ai-engineer/ch10-hoi-quy-tuyen-tinh/05-doc-ket-qua/#mặt-loss) ở trang Đọc kết quả là cái bát đó nhìn từ trên xuống.
+Mỗi cặp $(w, b)$ cho ra một giá trị loss. Vẽ loss theo $w$ và $b$, ta được một mặt cong hình cái bát, gọi là mặt loss <En>loss surface</En>. [Hình 10.3](/ai-engineer/ch10-hoi-quy-tuyen-tinh/05-doc-ket-qua/#mặt-loss) ở trang Đọc kết quả là cái bát đó nhìn từ trên xuống.
 
 Đường thẳng tốt nhất nằm ở **đáy bát**.
 
@@ -189,7 +190,7 @@ $$
 
 Gạch ngang trên đầu là trung bình: $\bar x$ là số giờ học trung bình, $\bar y$ là điểm trung bình. Dấu sao nghĩa là "giá trị tốt nhất".
 
-Công thức cho ra đáp án ngay, không cần lặp. Loại công thức như vậy gọi là <Term id="nghiem-dong" oDay="Ở đây dùng để đối chiếu với kết quả của gradient descent.">nghiệm đóng</Term>. Tên trong sách thống kê là bình phương tối thiểu <i lang="en">(ordinary least squares, OLS)</i>.
+Công thức cho ra đáp án ngay, không cần lặp. Loại công thức như vậy gọi là <Term id="nghiem-dong" oDay="Ở đây dùng để đối chiếu với kết quả của gradient descent.">nghiệm đóng</Term>. Tên trong sách thống kê là bình phương tối thiểu <En>ordinary least squares, OLS</En>.
 
 Đọc nghĩa dòng đầu: tử số đo $x$ và $y$ hay lệch **cùng phía** so với trung bình tới mức nào. Mẫu số đo riêng $x$ trải rộng tới mức nào. Tỉ số là: $x$ lệch 1 đơn vị thì $y$ thường lệch theo bao nhiêu. Đó chính là độ dốc.
 
@@ -300,7 +301,7 @@ Với dữ liệu 4 bạn sinh viên, bước dài hơn khoảng 0,12 là bắt 
 
 Thử ba chỗ: 0,005 (đi chậm), 0,05 (vừa), rồi kéo qua 0,12.
 
-Thử cả 0,11, sát ngưỡng mà chưa vượt. Nó vẫn <Term id="hoi-tu">hội tụ</Term>, tức là tới được đáy, nhưng mấy bước đầu chậm hẳn: sau bước 1, loss còn khoảng 16,5, trong khi với 0,05 đã xuống 0,69. Bước chân dài quá nên cứ dội qua dội lại giữa hai vách thung lũng.
+Thử cả 0,11, sát ngưỡng mà chưa vượt. Nó vẫn <Term id="hoi-tu" en={false}>hội tụ</Term> <En>converge</En>, tức là tới được đáy, nhưng mấy bước đầu chậm hẳn: sau bước 1, loss còn khoảng 16,5, trong khi với 0,05 đã xuống 0,69. Bước chân dài quá nên cứ dội qua dội lại giữa hai vách thung lũng.
 
 Vì vậy người ta không chọn sát ngưỡng. Dữ liệu chỉ cần đổi một chút là ngưỡng dịch theo, và bước sát ngưỡng thành bước vượt ngưỡng. Đứng cách mép vực một quãng là thói quen an toàn.
 
