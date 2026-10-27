@@ -131,3 +131,34 @@ test('desktop tối: chụp kệ sách, thẻ chọn đủ tương phản', asyn
 		expect(mau).not.toBe(nen);
 	}
 });
+
+test('desktop: bật giảm chuyển động khi kệ 3D đang chạy thì gỡ cảnh, về kệ phẳng', async ({ page, isMobile }) => {
+	test.skip(!!isMobile);
+	await page.goto('/');
+	await page.locator('#ke-sach').scrollIntoViewIfNeeded();
+	const sanKhau = page.locator('#ke-sach [data-frames]');
+	await expect(sanKhau).toHaveAttribute('data-trang-thai', 'san-sang', { timeout: 5000 });
+	await expect(page.locator('#ke-sach canvas')).toHaveCount(1);
+	await page.emulateMedia({ reducedMotion: 'reduce' });
+	await expect(page.locator('#ke-sach canvas')).toHaveCount(0);
+	await expect(sanKhau).toHaveAttribute('data-trang-thai', 'phang');
+	await expect(page.locator('#ke-sach .bia-phang').first()).toBeVisible();
+	// Tắt giảm chuyển động thì kệ 3D được dựng lại.
+	await page.emulateMedia({ reducedMotion: 'no-preference' });
+	await expect(sanKhau).toHaveAttribute('data-trang-thai', 'san-sang', { timeout: 5000 });
+	await expect(page.locator('#ke-sach canvas')).toHaveCount(1);
+});
+
+test.describe('máy tính bảng cảm ứng ≥ 820px', () => {
+	test.use({ viewport: { width: 1024, height: 768 }, hasTouch: true, isMobile: true });
+	test('giữ kệ phẳng, không tải three', async ({ page }, info) => {
+		test.skip(info.project.name !== 'desktop');
+		const req = ghiRequest(page);
+		await page.goto('/');
+		expect(await page.evaluate(() => [innerWidth >= 820, matchMedia('(pointer: fine)').matches])).toEqual([true, false]);
+		await page.locator('#ke-sach').scrollIntoViewIfNeeded();
+		await page.waitForTimeout(1000);
+		await expect(page.locator('#ke-sach canvas')).toHaveCount(0);
+		expect(req.filter((u) => LA_CHUNK_3D.test(u))).toEqual([]);
+	});
+});

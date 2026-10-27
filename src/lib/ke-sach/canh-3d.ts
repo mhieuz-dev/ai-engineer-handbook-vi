@@ -510,6 +510,8 @@ export function dungKe(goc: HTMLElement, sach: CuonSach[], khiChon: (s: CuonSach
 			}
 		});
 		if (renderer) {
+			// Trả context WebGL ngay, không chờ bộ dọn rác (trình duyệt giới hạn số context cùng lúc).
+			renderer.forceContextLoss();
 			renderer.dispose();
 			renderer.domElement.remove();
 			renderer = null;

@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { dsCuonSach } from '../../src/lib/ke-sach/du-lieu';
+import { du3D } from '../../src/lib/ke-sach/cong-3d';
 import { NHANH, PHAN, CHUONG, chuongDaXuatBan, cauHinhSidebar } from '../../src/data/chuong';
 
 describe('kệ sách: dữ liệu hai cuốn', () => {
@@ -45,5 +46,28 @@ describe('Robotics trong catalog không đổi sidebar', () => {
 	});
 	it('cấu hình sidebar vẫn chỉ một nhánh AI Engineer', () => {
 		expect(cauHinhSidebar().map((n) => n.label)).toEqual(['AI Engineer']);
+	});
+});
+
+describe('cổng tải kệ 3D', () => {
+	const du = { rong: 1280, giamChuyenDong: false, troChinhXac: true, webgl: true };
+	it('máy tính có chuột, đủ rộng, có WebGL2 thì dựng 3D', () => {
+		expect(du3D(du)).toBe(true);
+		expect(du3D({ ...du, rong: 820 })).toBe(true);
+	});
+	it('thiếu một điều kiện thì giữ kệ phẳng', () => {
+		expect(du3D({ ...du, rong: 819 })).toBe(false);
+		expect(du3D({ ...du, giamChuyenDong: true })).toBe(false);
+		expect(du3D({ ...du, troChinhXac: false })).toBe(false); // máy tính bảng cảm ứng ≥ 820px
+		expect(du3D({ ...du, webgl: false })).toBe(false);
+	});
+	it('chỉ thử WebGL khi các điều kiện rẻ đã đạt', () => {
+		const thu = vi.fn(() => true);
+		expect(du3D({ ...du, troChinhXac: false, webgl: thu })).toBe(false);
+		expect(du3D({ ...du, rong: 375, webgl: thu })).toBe(false);
+		expect(thu).not.toHaveBeenCalled();
+		expect(du3D({ ...du, webgl: thu })).toBe(true);
+		expect(thu).toHaveBeenCalledTimes(1);
+		expect(du3D({ ...du, webgl: () => false })).toBe(false);
 	});
 });

@@ -67,6 +67,7 @@ const moTaThe = (s: (typeof sach)[number]) => (s.sapCo ? 'Sắp có' : `${s.tong
 <script>
 	import type { CuonSach } from '../lib/ke-sach/du-lieu';
 	import type { KeSach3D } from '../lib/ke-sach/canh-3d';
+	import { du3D, RONG_3D } from '../lib/ke-sach/cong-3d';
 
 	const goc = document.getElementById('ke-sach');
 	if (goc) {
@@ -110,7 +111,8 @@ const moTaThe = (s: (typeof sach)[number]) => (s.sapCo ? 'Sắp có' : `${s.tong
 			});
 		}
 
-		// Chỉ máy tính (≥ 820px) không yêu cầu giảm chuyển động và có WebGL2 mới tải three; điện thoại giữ bản phẳng.
+		// Chỉ máy tính (≥ 820px, có chuột) không yêu cầu giảm chuyển động và có WebGL2 mới tải three;
+		// điện thoại và máy tính bảng cảm ứng giữ bản phẳng.
 		const coWebGL = () => {
 			try {
 				const gl = document.createElement('canvas').getContext('webgl2');
@@ -120,19 +122,22 @@ const moTaThe = (s: (typeof sach)[number]) => (s.sapCo ? 'Sắp có' : `${s.tong
 				return false;
 			}
 		};
-		const du3D =
-			matchMedia('(min-width: 820px)').matches &&
-			!matchMedia('(prefers-reduced-motion: reduce)').matches &&
-			'IntersectionObserver' in window;
+		const mqRong = matchMedia(`(min-width: ${RONG_3D}px)`);
+		const mqGiam = matchMedia('(prefers-reduced-motion: reduce)');
+		const mqTro = matchMedia('(pointer: fine)');
+		const dieuKien = (webgl: boolean | (() => boolean)) =>
+			du3D({ rong: mqRong.matches ? RONG_3D : 0, giamChuyenDong: mqGiam.matches, troChinhXac: mqTro.matches, webgl });
 
-		if (du3D) {
-			let daDung = false;
+		if ('IntersectionObserver' in window) {
+			let dangTai = false;
 			const batDau = async () => {
 				// Kiểm WebGL2 lúc kệ sắp hiện, không làm chậm lần tải đầu; không có thì giữ bản phẳng, không tải three.
-				if (!coWebGL()) return;
-				daDung = true;
+				if (ke || dangTai || !dieuKien(coWebGL)) return;
+				dangTai = true;
 				const { dungKe } = await import('../lib/ke-sach/canh-3d');
-				ke = dungKe(sanKhau, sach, khiChon);
+				dangTai = false;
+				// Điều kiện có thể đã đổi trong lúc tải chunk.
+				if (!ke && dieuKien(true)) ke = dungKe(sanKhau, sach, khiChon);
 			};
 			const io = new IntersectionObserver(
 				(e) => {
@@ -142,14 +147,27 @@ const moTaThe = (s: (typeof sach)[number]) => (s.sapCo ? 'Sắp có' : `${s.tong
 				},
 				{ rootMargin: '200px' },
 			);
-			io.observe(goc);
-			// Rời trang thì giải phóng GPU; quay lại bằng nút Back (bfcache) thì dựng lại.
+			// Chờ kệ tới gần màn hình nếu đủ điều kiện; hết đủ điều kiện (thu cửa sổ, bật giảm chuyển động,
+			// đổi sang cảm ứng) thì gỡ cảnh 3D, về kệ phẳng.
+			const capNhat = () => {
+				if (dieuKien(true)) {
+					if (!ke) io.observe(goc);
+					return;
+				}
+				io.disconnect();
+				ke?.huy();
+				ke = null;
+			};
+			for (const mq of [mqRong, mqGiam, mqTro]) mq.addEventListener('change', capNhat);
+			capNhat();
+			// Rời trang thì giải phóng GPU; quay lại bằng nút Back (bfcache) thì dựng lại khi kệ trong tầm nhìn.
 			addEventListener('pagehide', () => {
+				io.disconnect();
 				ke?.huy();
 				ke = null;
 			});
 			addEventListener('pageshow', (e) => {
-				if (e.persisted && daDung && !ke) batDau();
+				if (e.persisted) capNhat();
 			});
 		}
 	}
