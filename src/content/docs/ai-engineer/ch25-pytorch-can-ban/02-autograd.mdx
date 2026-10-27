@@ -1,0 +1,77 @@
+---
+title: Autograd
+description: Đánh dấu requires_grad, viết lượt xuôi, gọi backward - PyTorch tự tính gradient của nơ-ron ở Chương 24, ra đúng -0,1872. Gradient cộng dồn nếu quên xóa, và khi nào phải tắt autograd bằng no_grad.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Lặp lại Chương 24, không viết lượt ngược
+
+Nơ-ron của Chương 24: $x = 2$, $w = 0{,}5$, $b = 0{,}1$, $y = 1$, sigmoid, loss bình phương. Lần này chỉ viết lượt xuôi:
+
+```python
+w = torch.tensor(0.5, requires_grad=True)       # đánh dấu: cần gradient theo w
+b = torch.tensor(0.1, requires_grad=True)
+x, y = 2.0, 1.0
+L = (torch.sigmoid(w * x + b) - y) ** 2          # lượt xuôi: PyTorch ghi lại từng phép tính
+L.backward()                                     # lượt ngược, tự động
+print(round(L.item(), 4), round(w.grad.item(), 4), round(b.grad.item(), 4))
+```
+
+```text title="Output"
+0.0624 -0.1872 -0.0936
+```
+
+$L = 0{,}0624$, $\partial L/\partial w = -0{,}1872$, $\partial L/\partial b = -0{,}0936$: đúng từng chữ số như tính tay ở Chương 24.
+
+Đó là <Term id="autograd">autograd</Term>. Khi một tensor có `requires_grad=True`, mỗi phép tính dùng nó được ghi lại thành một nút của đồ thị tính toán (Chương 24), kèm hàm đạo hàm cục bộ. `L.backward()` đi ngược đồ thị đó, nhân dồn các đạo hàm cục bộ, và cất gradient vào thuộc tính `.grad` của mỗi tensor lá.
+
+## Gradient cộng dồn
+
+```python
+w = torch.tensor(0.5, requires_grad=True)
+for lan in range(3):
+    L = (torch.sigmoid(w * 2.0 + 0.1) - 1.0) ** 2
+    L.backward()                                 # không xóa gradient giữa các lần
+    print(lan, round(w.grad.item(), 4))
+```
+
+```text title="Output"
+0 -0.1872
+1 -0.3743
+2 -0.5615
+```
+
+Mỗi lần `backward`, gradient mới được **cộng** vào `.grad`, không thay thế. Ba lần gọi cho gần gấp ba (chữ số cuối lệch 1 vì `float32` chỉ giữ khoảng 7 chữ số có nghĩa, bảng 25.1). PyTorch làm vậy có chủ đích (để cộng gradient qua nhiều lô nhỏ khi bộ nhớ không đủ cho một lô lớn), nhưng với vòng huấn luyện thường, phải **xóa** gradient trước mỗi bước: `optimizer.zero_grad()` ở trang sau.
+
+## Khi nào tắt autograd
+
+Lúc đánh giá mô hình trên test, không cần gradient. Ghi lại đồ thị tốn bộ nhớ và thời gian vô ích. Bọc trong `torch.no_grad()`:
+
+```python
+with torch.no_grad():
+    z = w * 2.0 + 0.1                            # không ghi đồ thị
+print(z.requires_grad)
+```
+
+```text title="Output"
+False
+```
+
+Quy tắc: huấn luyện thì bật, đánh giá và dự đoán thì tắt.
+
+<TuKiemTra
+	cauHoi="Bạn quên gọi zero_grad trong vòng huấn luyện. Điều gì xảy ra?"
+	luaChon={['PyTorch báo lỗi', 'Gradient mỗi bước cộng dồn mọi gradient trước đó, bước đi ngày càng lớn và sai hướng', 'Không ảnh hưởng gì', 'Gradient luôn bằng 0']}
+	dapAn={1}
+	giaiThich="Gradient được cộng vào .grad sau mỗi backward. Không xóa thì bước thứ k dùng tổng gradient của k bước đầu, tương đương một learning rate tăng dần và một hướng đi lẫn lộn quá khứ."
+/>
+
+<Khung loai="loi">
+**Gọi `.numpy()` trên tensor đang cần gradient.** Báo lỗi `Can't call numpy() on Tensor that requires grad`. Dùng `t.detach().numpy()`: `detach` tách tensor khỏi đồ thị.
+
+**Sửa tensor lá tại chỗ.** `w += 1` trên tensor có `requires_grad=True` báo lỗi, vì làm hỏng đồ thị. Cập nhật tham số phải trong `torch.no_grad()`, và optimizer làm việc đó cho bạn.
+</Khung>

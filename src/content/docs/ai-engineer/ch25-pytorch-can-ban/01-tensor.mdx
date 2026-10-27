@@ -1,0 +1,86 @@
+---
+title: Tensor
+description: Tensor của PyTorch giống mảng NumPy - shape, dtype, nhân ma trận, tổng theo trục - cộng thêm hai thứ NumPy không có là chạy trên GPU và tự ghi nhớ phép tính để lấy gradient. Chuyển qua lại với NumPy và cái bẫy dùng chung bộ nhớ.
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+<CanBietTruoc>
+Mảng NumPy, shape, broadcasting và view (Chương 3). Lan truyền ngược và vòng huấn luyện tự viết (Chương 24). Cross-entropy và softmax (Chương 11).
+
+<Fragment slot="sau-chuong">
+Làm việc với tensor như mảng NumPy. Dùng autograd để PyTorch tự tính gradient, kiểm bằng con số của Chương 24. Viết mô hình bằng `nn.Module`, vòng huấn luyện bốn dòng chuẩn, huấn luyện theo lô bằng `DataLoader`, và chuyển mô hình sang GPU.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch25_pytorch_can_ban.ipynb" />
+
+## Vì sao PyTorch
+
+Chương 24 viết tay hai thứ: lượt xuôi và lượt ngược. Lượt ngược dài gấp đôi, dễ sai, và phải viết lại mỗi khi đổi kiến trúc. PyTorch tự tính lượt ngược, chạy được trên GPU, và có sẵn hàng trăm lớp mạng, hàm loss, thuật toán tối ưu. Nó là thư viện deep learning phổ biến nhất trong nghiên cứu, và từ chương này tới hết giáo trình, gần như mọi mô hình đều viết bằng nó.
+
+Colab có sẵn PyTorch. Output trong bài chạy với PyTorch 2.14 trên CPU; phiên bản khác hoặc GPU có thể cho số lẻ hơi khác ở các chữ số cuối.
+
+## Tensor như mảng NumPy
+
+<Term id="tensor">Tensor</Term> là mảng nhiều chiều của PyTorch. Phần lớn những gì đã học ở Chương 3 dùng y hệt:
+
+```python
+import torch
+import numpy as np
+print(torch.__version__)
+t = torch.tensor([[1.0, 2.0], [3.0, 4.0]])
+print(t.shape, t.dtype)
+print(t @ t)              # nhân ma trận, như NumPy
+print(t.T)                # chuyển vị
+print(t.sum(0))           # tổng theo trục 0 (dim=0)
+```
+
+```text title="Output"
+2.14.1+cpu
+torch.Size([2, 2]) torch.float32
+tensor([[ 7., 10.],
+        [15., 22.]])
+tensor([[1., 3.],
+        [2., 4.]])
+tensor([4., 6.])
+```
+
+Những khác biệt nhỏ cần nhớ:
+
+**Bảng 25.1.** NumPy và PyTorch.
+
+| Việc | NumPy | PyTorch |
+|:---|:---|:---|
+| Tạo mảng | `np.array(...)` | `torch.tensor(...)` |
+| Kiểu số thực mặc định | `float64` | `float32` |
+| Trục | `axis=0` | `dim=0` (cũng nhận `axis=0`) |
+| Số phần tử | `a.size` | `t.numel()` |
+| Lấy một số ra | `float(a[0])` | `t[0].item()` |
+
+Kiểu mặc định `float32` là chủ ý: GPU tính `float32` nhanh hơn nhiều, và với mạng nơ-ron, 7 chữ số có nghĩa là đủ. Chương 26 sẽ bàn cả `float16`, còn nhanh hơn nữa.
+
+## Chuyển qua lại với NumPy
+
+```python
+a = np.array([1.0, 2.0])
+ta = torch.from_numpy(a)       # KHÔNG chép dữ liệu: tensor dùng chung bộ nhớ với mảng
+ta[0] = 99                     # sửa qua tensor
+print(a)                       # mảng NumPy cũng đổi
+```
+
+```text title="Output"
+[99.  2.]
+```
+
+`torch.from_numpy` và `.numpy()` không chép dữ liệu: đúng cái bẫy "hai nhãn, một hộp" của Chương 1 và view của Chương 3, lần này giữa hai thư viện. Muốn bản sao độc lập, dùng `torch.tensor(a)` (luôn chép) hoặc `.clone()`.
+
+<Khung loai="loi">
+**Trộn `float64` với `float32`.** Tensor tạo từ mảng NumPy `float64` sẽ là `float64`; trọng số của mạng là `float32`. Nhân hai thứ đó báo lỗi `expected scalar type Float but found Double`. Chuyển ngay khi tạo: `torch.tensor(a, dtype=torch.float32)`.
+
+**Dùng `.item()` trên tensor nhiều phần tử.** `.item()` chỉ dành cho tensor đúng một phần tử. Với vector, dùng `.tolist()` hoặc `.numpy()`.
+</Khung>

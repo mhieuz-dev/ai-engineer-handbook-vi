@@ -508,3 +508,13 @@
   tenTiengAnh: computational graph
   giaiThich: Đồ thị tính toán vẽ một phép tính lớn thành chuỗi các phép tính nhỏ nối với nhau, mỗi nút là một phép tính. Đi xuôi để ra kết quả, đi ngược để tính đạo hàm từng nút bằng quy tắc chuỗi.
   hocKy: ai-engineer/ch24-backpropagation
+- id: tensor
+  ten: Tensor
+  tenTiengAnh: tensor
+  giaiThich: Tensor là mảng nhiều chiều của PyTorch, giống mảng NumPy nhưng chạy được trên GPU và ghi nhớ các phép tính đã làm để tự tính gradient. Vô hướng, vector, ma trận đều là tensor với số chiều 0, 1, 2.
+  hocKy: ai-engineer/ch25-pytorch-can-ban
+- id: autograd
+  ten: Autograd
+  tenTiengAnh: automatic differentiation
+  giaiThich: Autograd là cơ chế PyTorch ghi lại đồ thị tính toán trong lượt xuôi rồi tự chạy lan truyền ngược khi gọi backward. Người dùng chỉ viết lượt xuôi, gradient của mọi tham số được tính tự động.
+  hocKy: ai-engineer/ch25-pytorch-can-ban

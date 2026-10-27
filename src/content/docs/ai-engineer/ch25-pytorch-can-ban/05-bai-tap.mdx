@@ -1,0 +1,103 @@
+---
+title: Bài tập
+description: "Ba bài tập PyTorch có đáp án chi tiết (đạo hàm một đa thức bằng autograd, thay SGD bằng Adam trên hai vầng trăng, bỏ zero_grad để thấy gradient cộng dồn làm hỏng huấn luyện) và câu hỏi phỏng vấn."
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Đoán kết quả trước, rồi chạy code trong notebook để kiểm tra.
+
+<BaiTap so="25.1">
+**Autograd trên một đa thức.** Với $y = x^3 + 2x$ tại $x = 2$, tính tay $dy/dx$, rồi kiểm bằng `backward`.
+
+<Fragment slot="dap-an">
+
+Tính tay: $dy/dx = 3x^2 + 2 = 3 \cdot 4 + 2 = 14$, và $y = 8 + 4 = 12$.
+
+```python
+x = torch.tensor(2.0, requires_grad=True)
+y = x ** 3 + 2 * x
+y.backward()
+print(y.item(), x.grad.item())
+```
+
+```text title="Output"
+12.0 14.0
+```
+
+Autograd không dùng công thức $3x^2 + 2$: nó lan truyền ngược qua từng phép tính (lũy thừa, nhân, cộng), y như Chương 24 làm bằng tay, và ra đúng số.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="25.2">
+**Thay SGD bằng Adam.** Lấy mạng 2-32-1 ở trang 3 (cùng seed 0), thay `SGD(lr=0.5)` bằng `Adam(lr=0.01)`, huấn luyện 1000 bước. In loss train, độ chính xác train và test. Phải đổi bao nhiêu dòng code?
+
+<Fragment slot="dap-an">
+
+Chỉ đổi **một** dòng tạo optimizer; vòng bốn dòng giữ nguyên.
+
+```python
+def chay(tao_opt, xoa=True, n=1000):
+    torch.manual_seed(0)
+    m = nn.Sequential(nn.Linear(2, 32), nn.ReLU(), nn.Linear(32, 1))
+    opt = tao_opt(m.parameters())
+    for _ in range(n):
+        if xoa:
+            opt.zero_grad()
+        loss = lf(m(Xtr).squeeze(1), ytr)
+        loss.backward()
+        opt.step()
+    with torch.no_grad():
+        d = lambda X, y: ((m(X).squeeze(1) > 0).float() == y).float().mean().item()
+        print(round(lf(m(Xtr).squeeze(1), ytr).item(), 4), round(d(Xtr, ytr), 4), round(d(Xte, yte), 4))
+chay(lambda p: torch.optim.Adam(p, lr=0.01))
+```
+
+```text title="Output"
+0.151 0.9429 0.9444
+```
+
+Sau 1000 bước, Adam đạt loss 0,151, thấp hơn cả SGD sau 3000 bước (0,1567), với cùng độ chính xác test 94,4%. Adam tự điều chỉnh bước đi cho từng tham số (Chương 8), nên thường hội tụ nhanh hơn mà không cần dò learning rate kỹ.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="25.3">
+**Quên zero_grad.** Chạy lại mạng ở trang 3 với SGD learning rate 0,5 trong 1000 bước, nhưng bỏ dòng `opt.zero_grad()`. So với 0,9556 test khi có xóa gradient.
+
+<Fragment slot="dap-an">
+
+```python
+chay(lambda p: torch.optim.SGD(p, lr=0.5), xoa=False)
+```
+
+```text title="Output"
+0.4852 0.7 0.8333
+```
+
+Loss kẹt ở 0,4852 (có xóa gradient: 0,1711), train chỉ 70%, test 83,3%. Không có lỗi nào được báo: code chạy êm, chỉ kết quả tệ. Ở bước thứ $k$, `.grad` chứa tổng gradient của cả $k$ bước, nên bước đi lớn dần và mang theo hướng cũ đã lỗi thời, mô hình dao động thay vì xuống đáy. Đây là loại lỗi nguy hiểm nhất: im lặng.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Autograd của PyTorch hoạt động thế nào?**
+
+<p lang="en"><em>How does PyTorch autograd work?</em></p>
+
+*Gợi ý:* mỗi phép tính trên tensor có `requires_grad` được ghi thành một nút trong đồ thị động, dựng lại ở mỗi lượt xuôi; `backward()` đi ngược đồ thị theo quy tắc chuỗi và cộng gradient vào `.grad` của các tensor lá.
+
+**2. Vì sao phải gọi zero_grad?**
+
+<p lang="en"><em>Why do we call zero_grad?</em></p>
+
+*Gợi ý:* gradient cộng dồn theo mặc định. Thiết kế này cho phép tích lũy gradient qua nhiều lô nhỏ (gradient accumulation) khi bộ nhớ không đủ cho lô lớn; với vòng thường thì phải xóa mỗi bước.
+
+**3. model.eval() và torch.no_grad() khác nhau thế nào?**
+
+<p lang="en"><em>What is the difference between model.eval() and torch.no_grad()?</em></p>
+
+*Gợi ý:* `no_grad` tắt việc ghi đồ thị để tiết kiệm bộ nhớ và thời gian; `eval()` đổi hành vi của các lớp như dropout và batch norm sang chế độ suy luận. Lúc đánh giá thường cần cả hai.
+</Khung>

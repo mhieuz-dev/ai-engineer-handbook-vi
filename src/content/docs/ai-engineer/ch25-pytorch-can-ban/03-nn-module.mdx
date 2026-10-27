@@ -1,0 +1,86 @@
+---
+title: nn.Module và vòng huấn luyện
+description: Viết lại mạng 2-32-1 của Chương 24 bằng nn.Sequential trong ba dòng, huấn luyện bằng vòng lặp bốn dòng chuẩn - zero_grad, loss, backward, step. Test 94% trên hai vầng trăng, không viết một dòng lượt ngược nào.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Một lớp dày đặc
+
+`nn.Linear(d, m)` là một lớp dày đặc $d$ đầu vào, $m$ nơ-ron:
+
+```python
+import torch.nn as nn
+torch.manual_seed(0)
+lin = nn.Linear(2, 3)
+print(lin.weight.shape, lin.bias.shape, sum(p.numel() for p in lin.parameters()))
+```
+
+```text title="Output"
+torch.Size([3, 2]) torch.Size([3]) 9
+```
+
+Trọng số có shape `(3, 2)`, tức `(số đầu ra, số đầu vào)`: ngược với $W$ shape `(d, m)` của Chương 23 và 24. PyTorch lưu như vậy rồi tính $XW^\top + \mathbf b$; khung "Lỗi hay gặp" ở trang 3 của Chương 23 đã báo trước. Khi dùng `nn.Linear`, bạn không cần quan tâm: shape vào `(n, 2)`, shape ra `(n, 3)`.
+
+`nn.Linear` tự khởi tạo trọng số ngẫu nhiên (khởi tạo Kaiming đều, cùng ý tưởng với khởi tạo He ở Chương 24), nên `torch.manual_seed` là cần để kết quả lặp lại được.
+
+## Mạng của Chương 24, ba dòng
+
+```python
+from sklearn.datasets import make_moons
+from sklearn.model_selection import train_test_split
+Xm, ym = make_moons(300, noise=0.3, random_state=0)
+a, b_, c, e = train_test_split(Xm, ym, test_size=0.3, random_state=0)
+Xtr, ytr = torch.tensor(a, dtype=torch.float32), torch.tensor(c, dtype=torch.float32)
+Xte, yte = torch.tensor(b_, dtype=torch.float32), torch.tensor(e, dtype=torch.float32)
+torch.manual_seed(0)
+m = nn.Sequential(nn.Linear(2, 32), nn.ReLU(), nn.Linear(32, 1))   # 2 -> 32 ReLU -> 1
+print(sum(p.numel() for p in m.parameters()))
+```
+
+```text title="Output"
+129
+```
+
+129 tham số, đúng như mạng tự cài. `nn.Sequential` nối các lớp: đầu ra lớp này là đầu vào lớp sau. Lớp ra **không** có sigmoid: hàm loss ở dưới tự áp sigmoid bên trong.
+
+## Vòng huấn luyện bốn dòng
+
+```python
+opt = torch.optim.SGD(m.parameters(), lr=0.5)      # gradient descent, learning rate như Chương 24
+lf = nn.BCEWithLogitsLoss()                        # sigmoid + cross-entropy nhị phân, gộp làm một
+dung = lambda X, y: ((m(X).squeeze(1) > 0).float() == y).float().mean().item()   # logit > 0 nghĩa là p > 0,5
+for buoc in range(3001):
+    if buoc in (0, 100, 1000, 3000):
+        with torch.no_grad():
+            print(buoc, round(lf(m(Xtr).squeeze(1), ytr).item(), 4), round(dung(Xtr, ytr), 4), round(dung(Xte, yte), 4))
+    opt.zero_grad()                                # 1. xóa gradient cũ
+    loss = lf(m(Xtr).squeeze(1), ytr)              # 2. lượt xuôi và loss
+    loss.backward()                                # 3. lượt ngược, tự động
+    opt.step()                                     # 4. cập nhật tham số
+```
+
+```text title="Output"
+0 0.6924 0.5 0.3444
+100 0.3181 0.8476 0.8222
+1000 0.1711 0.9476 0.9556
+3000 0.1567 0.9476 0.9444
+```
+
+Bốn dòng trong vòng lặp là khuôn mẫu của **mọi** vòng huấn luyện PyTorch, từ mạng hai lớp này tới mô hình ngôn ngữ tỷ tham số. Thay `SGD` bằng `Adam`, thay mạng, thay hàm loss, bốn dòng vẫn y nguyên.
+
+So với mạng tự cài ở Chương 24: loss lúc đầu là 0,69 thay vì 1,17 (khởi tạo khác cho đầu ra gần 0, tức đoán gần 50-50), và test cuối 94,4% so với 93,3%. Hai mạng cùng kiến trúc, cùng thuật toán, chỉ khác điểm xuất phát ngẫu nhiên.
+
+<Khung loai="vi-sao" tieuDe="BCEWITHLOGITSLOSS">
+Sao không thêm `nn.Sigmoid()` vào cuối mạng rồi dùng `nn.BCELoss`? Hai cách cho cùng kết quả về mặt toán, nhưng khác về **số học**. Với logit $z$ rất lớn, $\sigma(z)$ làm tròn thành đúng 1, rồi $\log(1 - 1) = -\infty$. `BCEWithLogitsLoss` tính thẳng từ $z$ bằng một công thức không bao giờ tràn, đúng tinh thần mẹo trừ số lớn nhất của softmax ở Chương 11.
+
+Mạng nhiều lớp thì tương tự: không có softmax ở cuối, dùng `nn.CrossEntropyLoss` (trang sau) nhận thẳng logit.
+</Khung>
+
+<Khung loai="loi">
+**Quên `.squeeze(1)`.** Mạng ra shape `(n, 1)`, nhãn có shape `(n,)`. Không bóp chiều thừa đi, loss báo lỗi shape, hoặc tệ hơn với một số hàm, broadcasting thành `(n, n)` như cái bẫy ở Chương 3.
+
+**Đặt `zero_grad` sai chỗ.** Phải xóa **trước** `backward` của bước hiện tại. Đặt sau `step` cũng được (miễn là trước `backward` kế tiếp); đặt giữa `backward` và `step` là xóa mất gradient vừa tính, mô hình không học gì.
+</Khung>
