@@ -1,0 +1,83 @@
+---
+title: Một nơ-ron
+description: Một nơ-ron nhân tạo chỉ là w · x + b của Chương 10 đưa qua một hàm kích hoạt. Tính tay một nơ-ron với sigmoid và ReLU, và vì sao hồi quy logistic chính là một nơ-ron.
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+<CanBietTruoc>
+Hồi quy tuyến tính và logistic (Chương 10, 11). Nhân ma trận và shape (Chương 3, 5). Sigmoid và quy tắc chuỗi (Chương 6).
+
+<Fragment slot="sau-chuong">
+Tính tay đầu ra của một nơ-ron và của một mạng hai lớp. Giải thích vì sao phải có hàm kích hoạt phi tuyến. Tự đặt trọng số cho một mạng nhỏ giải bài XOR mà hồi quy logistic không giải được. Viết lượt truyền xuôi của cả một lô dữ liệu bằng phép nhân ma trận, và dùng `MLPClassifier` trên hai vầng trăng.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch23_no_ron_mang_nhieu_lop.ipynb" />
+
+## Viên gạch của deep learning
+
+Chương 10 kết thúc bằng một lời hứa: mỗi nơ-ron trong mạng deep learning làm đúng phép $wx + b$, rồi đưa kết quả qua một hàm uốn cong. Đây là chương thực hiện lời hứa đó.
+
+Một <Term id="no-ron">nơ-ron</Term> nhận $d$ đầu vào $\mathbf x = (x_1, \dots, x_d)$, có $d$ trọng số $\mathbf w$ và một hệ số chặn $b$:
+
+$$
+z = \mathbf w \cdot \mathbf x + b, \qquad a = f(z) \tag{23.1}
+$$
+
+$z$ là tổng có trọng số, tích vô hướng của Chương 5. $f$ là <Term id="ham-kich-hoat">hàm kích hoạt</Term>, $a$ là đầu ra của nơ-ron.
+
+- $f$ là hàm đồng nhất ($a = z$): nơ-ron là **hồi quy tuyến tính**.
+- $f$ là sigmoid: nơ-ron là **hồi quy logistic** (Chương 11).
+
+Mọi thứ đã học ở Phần II về một mô hình tuyến tính đều áp dụng cho từng nơ-ron. Cái mới của chương này là **nối nhiều nơ-ron lại với nhau**.
+
+## Tính tay
+
+Một nơ-ron hai đầu vào, $\mathbf w = (0{,}5;\ -0{,}4)$, $b = 0{,}1$, nhận $\mathbf x = (2;\ 3)$:
+
+$$
+z = 0{,}5 \times 2 + (-0{,}4) \times 3 + 0{,}1 = 1 - 1{,}2 + 0{,}1 = -0{,}1
+$$
+
+```python
+import numpy as np
+sig = lambda z: 1 / (1 + np.exp(-z))
+relu = lambda z: np.maximum(0, z)
+x = np.array([2.0, 3.0])
+w = np.array([0.5, -0.4])
+b = 0.1
+z = w @ x + b
+print(round(float(z), 4), round(float(sig(z)), 4), float(relu(z)))
+```
+
+```text title="Output"
+-0.1 0.475 0.0
+```
+
+Với sigmoid, đầu ra 0,475: hơi dưới 0,5, như một hồi quy logistic hơi nghiêng về lớp 0. Với <Term id="relu">ReLU</Term>, $\max(0, -0{,}1) = 0$: nơ-ron "tắt".
+
+<HinhKetQua src="/hinh/ch23/h1_kich_hoat.svg" alt="Ba đường theo z từ -4 tới 4. Sigmoid xanh hình chữ S từ 0 lên 1, cắt trục tung ở 0,5. Tanh cam hình chữ S từ -1 lên 1, đi qua gốc tọa độ. ReLU đỏ bằng 0 bên trái gốc, rồi là đường thẳng dốc 1 bên phải." so="23.1" chuThich="Ba hàm kích hoạt phổ biến: sigmoid, tanh và ReLU.">
+**Sigmoid.** Ép mọi số vào $(0, 1)$. Chương 6 đã đo: đạo hàm lớn nhất 0,25 tại 0, gần 0 khi $|z|$ lớn.
+
+**Tanh.** Giống sigmoid nhưng ép vào $(-1, 1)$ và đi qua gốc. Thực ra $\tanh(z) = 2\sigma(2z) - 1$, chỉ là sigmoid co giãn lại.
+
+**ReLU.** $\max(0, z)$: bằng 0 khi âm, giữ nguyên khi dương. Đạo hàm bằng 1 ở cả vùng dương, không bao giờ co lại như sigmoid. Tính cực rẻ (chỉ một phép so sánh). Từ khoảng năm 2012, ReLU là lựa chọn mặc định cho các lớp ẩn của mạng sâu.
+</HinhKetQua>
+
+<Khung loai="truc-giac">
+Một nơ-ron là một **bộ phát hiện**: trọng số $\mathbf w$ mô tả một "mẫu hình" nó đang tìm. Tích vô hướng $\mathbf w \cdot \mathbf x$ lớn khi đầu vào giống mẫu hình đó (cosine cao, Chương 5). Hệ số chặn $b$ là ngưỡng: phải giống tới đâu mới "kích hoạt". ReLU nói "giống đủ thì báo mức độ giống, không thì im lặng".
+
+Trong mạng nhận dạng ảnh, nơ-ron lớp đầu học phát hiện cạnh và màu, lớp sau phát hiện hình dạng, lớp sau nữa phát hiện mắt, bánh xe. Chương 27 sẽ nhìn thấy điều đó.
+</Khung>
+
+<Khung loai="loi">
+**Quên hệ số chặn.** Không có $b$, mọi nơ-ron đều phải đi qua gốc: với đầu vào toàn 0, đầu ra luôn là $f(0)$. Thư viện thêm $b$ mặc định.
+
+**Nghĩ nơ-ron nhân tạo mô phỏng nơ-ron sinh học.** Tên gọi lấy cảm hứng từ não, nhưng một nơ-ron nhân tạo chỉ là một phép tính đơn giản. Hiểu nó như "một hồi quy logistic nhỏ" chính xác hơn hiểu như "một tế bào thần kinh".
+</Khung>

@@ -478,3 +478,23 @@
   tenTiengAnh: permutation importance
   giaiThich: Permutation importance đo độ quan trọng của một đặc trưng bằng cách xáo trộn ngẫu nhiên cột đó trên dữ liệu test rồi xem điểm số của mô hình tụt bao nhiêu. Tụt nhiều là mô hình thật sự dựa vào đặc trưng đó.
   hocKy: ai-engineer/ch21-feature-engineering
+- id: no-ron
+  ten: Nơ-ron
+  tenTiengAnh: neuron
+  giaiThich: Một nơ-ron nhân tạo tính tổ hợp tuyến tính của đầu vào, w nhân x cộng b, rồi đưa qua một hàm kích hoạt phi tuyến. Đó là hồi quy tuyến tính hoặc logistic gói lại thành một viên gạch để xếp thành mạng.
+  hocKy: ai-engineer/ch23-no-ron-mang-nhieu-lop
+- id: ham-kich-hoat
+  ten: Hàm kích hoạt
+  tenTiengAnh: activation function
+  giaiThich: Hàm kích hoạt là hàm phi tuyến áp lên đầu ra tuyến tính của mỗi nơ-ron, như sigmoid, tanh hay ReLU. Không có nó, xếp bao nhiêu lớp cũng chỉ bằng một phép biến đổi tuyến tính.
+  hocKy: ai-engineer/ch23-no-ron-mang-nhieu-lop
+- id: relu
+  ten: ReLU
+  tenTiengAnh: rectified linear unit
+  giaiThich: ReLU giữ nguyên số dương và biến số âm thành 0, tức max(0, z). Đơn giản, tính nhanh, đạo hàm bằng 1 ở vùng dương nên không làm gradient co lại như sigmoid. Là hàm kích hoạt mặc định của mạng sâu.
+  hocKy: ai-engineer/ch23-no-ron-mang-nhieu-lop
+- id: mlp
+  ten: Mạng nhiều lớp
+  tenTiengAnh: multilayer perceptron
+  giaiThich: Mạng nhiều lớp (MLP) xếp nhiều lớp nơ-ron nối tiếp, đầu ra của lớp này là đầu vào của lớp sau. Các lớp giữa gọi là lớp ẩn. Đủ nơ-ron thì xấp xỉ được gần như mọi hàm liên tục.
+  hocKy: ai-engineer/ch23-no-ron-mang-nhieu-lop

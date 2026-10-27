@@ -49,7 +49,7 @@ const BANG: [number, string, string, string, XuatBan?][] = [
 	[20, 'phan-2', 'Giảm chiều', 'giam-chieu', { trangThai: 'xong', notebook: 'ch20_giam_chieu.ipynb' }],
 	[21, 'phan-2', 'Feature engineering', 'feature-engineering', { trangThai: 'xong', notebook: 'ch21_feature_engineering.ipynb' }],
 	[22, 'phan-2', 'Dự án Phần II', 'du-an-phan-2', { trangThai: 'xong', notebook: 'ch22_du_an_phan_2.ipynb' }],
-	[23, 'phan-3', 'Nơ-ron và mạng nhiều lớp', 'no-ron-mang-nhieu-lop'],
+	[23, 'phan-3', 'Nơ-ron và mạng nhiều lớp', 'no-ron-mang-nhieu-lop', { trangThai: 'xong', notebook: 'ch23_no_ron_mang_nhieu_lop.ipynb' }],
 	[24, 'phan-3', 'Backpropagation tự cài', 'backpropagation'],
 	[25, 'phan-3', 'PyTorch căn bản', 'pytorch-can-ban'],
 	[26, 'phan-3', 'Huấn luyện mạng sâu', 'huan-luyen-mang-sau'],

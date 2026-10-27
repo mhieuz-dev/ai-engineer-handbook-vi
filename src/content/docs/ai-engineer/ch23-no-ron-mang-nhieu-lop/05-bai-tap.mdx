@@ -1,0 +1,96 @@
+---
+title: Bài tập
+description: Ba bài tập mạng nơ-ron có đáp án chi tiết (tính tay một nơ-ron ba đầu vào, đếm tham số của mạng phân loại chữ số 784-128-64-10, bỏ ReLU khỏi mạng XOR để thấy nó hỏng) và câu hỏi phỏng vấn.
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Tính tay trước, rồi chạy code trong notebook để kiểm tra.
+
+<BaiTap so="23.1">
+**Một nơ-ron ba đầu vào.** $\mathbf w = (0{,}3;\ 0{,}8;\ -0{,}5)$, $b = 0{,}4$, $\mathbf x = (1;\ 0;\ 2)$. Tính $z$, đầu ra ReLU và đầu ra sigmoid.
+
+<Fragment slot="dap-an">
+
+$z = 0{,}3 \times 1 + 0{,}8 \times 0 + (-0{,}5) \times 2 + 0{,}4 = 0{,}3 - 1 + 0{,}4 = -0{,}3$.
+
+ReLU: $\max(0, -0{,}3) = 0$. Sigmoid: $1/(1 + e^{0{,}3}) \approx 0{,}4256$.
+
+```python
+x3 = np.array([1.0, 0.0, 2.0])
+w3 = np.array([0.3, 0.8, -0.5])
+z3 = w3 @ x3 + 0.4
+print(round(float(z3), 4), float(relu(z3)), round(float(sig(z3)), 4))
+```
+
+```text title="Output"
+-0.3 0.0 0.4256
+```
+
+Trọng số 0,8 lớn nhất nhưng không đóng góp gì vì $x_2 = 0$. Một trọng số chỉ có tác dụng khi đầu vào tương ứng khác 0: đó là lý do ảnh đen (điểm ảnh bằng 0) không kích hoạt được nơ-ron nào ở lớp đầu.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="23.2">
+**Đếm tham số.** Một mạng phân loại chữ số viết tay ảnh 28 nhân 28 (784 điểm ảnh) có hai lớp ẩn 128 và 64 nơ-ron, lớp ra 10 nơ-ron (một cho mỗi chữ số). Tổng có bao nhiêu tham số? Lớp nào chiếm nhiều nhất?
+
+<Fragment slot="dap-an">
+
+- Lớp ẩn 1: $784 \times 128 + 128 = 100\,480$.
+- Lớp ẩn 2: $128 \times 64 + 64 = 8\,256$.
+- Lớp ra: $64 \times 10 + 10 = 650$.
+
+```python
+print(784 * 128 + 128 + 128 * 64 + 64 + 64 * 10 + 10)
+```
+
+```text title="Output"
+109386
+```
+
+Tổng 109 386 tham số; lớp đầu chiếm 92%. Lớp đầu luôn đắt nhất khi đầu vào nhiều chiều. Chương 27 sẽ thấy lớp tích chập giải quyết chuyện này bằng cách cho mọi vùng của ảnh **dùng chung** một bộ trọng số nhỏ.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="23.3">
+**Bỏ ReLU.** Trong mạng XOR ở trang 3, thay ReLU bằng hàm đồng nhất (lớp ẩn chỉ là $XW_1 + \mathbf b_1$). Tính tay bốn đầu ra. Còn giải được XOR không?
+
+<Fragment slot="dap-an">
+
+Không có ReLU, $h_2 = x_1 + x_2 - 1$ không còn bị chặn ở 0: tại $(0, 0)$ nó bằng $-1$.
+
+```python
+print((X @ W1 + b1) @ w2 + b2)
+```
+
+```text title="Output"
+[2. 1. 1. 0.]
+```
+
+Đầu ra $2, 1, 1, 0$: điểm $(0, 0)$ bị đoán 2 thay vì 0. Gộp lại, mạng thành $\hat y = (x_1 + x_2) - 2(x_1 + x_2 - 1) = 2 - x_1 - x_2$: một hàm **tuyến tính** duy nhất, đúng như trang 2 nói. Không hàm tuyến tính nào cho đúng cả bốn điểm XOR. Chính phép "cắt về 0" của ReLU, biến $h_2 = -1$ thành 0 ở điểm $(0, 0)$, là thứ làm mạng giải được.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Vì sao mạng nơ-ron cần hàm kích hoạt phi tuyến?**
+
+<p lang="en"><em>Why do neural networks need non-linear activation functions?</em></p>
+
+*Gợi ý:* xếp các lớp tuyến tính chỉ ra một phép biến đổi tuyến tính ($W_1 W_2$); không có phi tuyến thì mạng sâu bằng hồi quy tuyến tính. Phi tuyến cho phép chia không gian thành nhiều vùng và xấp xỉ hàm phức tạp.
+
+**2. Vì sao ReLU phổ biến hơn sigmoid cho lớp ẩn?**
+
+<p lang="en"><em>Why is ReLU more popular than sigmoid for hidden layers?</em></p>
+
+*Gợi ý:* đạo hàm bằng 1 ở vùng dương nên gradient không co lại qua nhiều lớp; tính rẻ; tạo kích hoạt thưa. Nhược điểm: nơ-ron "chết" khi luôn ở vùng âm (đạo hàm 0), các biến thể như Leaky ReLU, GELU xử lý chuyện này.
+
+**3. Đếm số tham số của một lớp dày đặc.**
+
+<p lang="en"><em>How many parameters does a fully connected layer have?</em></p>
+
+*Gợi ý:* số đầu vào nhân số đầu ra cộng số đầu ra (hệ số chặn). Số tham số tăng theo tích kích thước hai lớp liền kề, nên lớp đầu với đầu vào nhiều chiều thường đắt nhất.
+</Khung>

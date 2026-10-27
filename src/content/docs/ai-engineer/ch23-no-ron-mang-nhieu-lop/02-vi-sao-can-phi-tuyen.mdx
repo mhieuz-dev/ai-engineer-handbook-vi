@@ -1,0 +1,59 @@
+---
+title: Vì sao cần phi tuyến
+description: Xếp hai lớp tuyến tính chồng lên nhau chỉ ra một lớp tuyến tính, kiểm bằng nhân hai ma trận. Hàm kích hoạt là thứ duy nhất làm mạng sâu mạnh hơn hồi quy.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Xếp tầng tuyến tính
+
+Một **lớp** gồm nhiều nơ-ron cùng nhận một đầu vào. Với $m$ nơ-ron, gom $m$ vector trọng số thành ma trận $W$ (mỗi cột một nơ-ron) và $m$ hệ số chặn thành vector $\mathbf b$: cả lớp là $\mathbf x \mapsto \mathbf x W + \mathbf b$.
+
+Xếp hai lớp **không** có hàm kích hoạt: lớp 1 với $W_1$, lớp 2 với $W_2$:
+
+$$
+(\mathbf x W_1 + \mathbf b_1) W_2 + \mathbf b_2 = \mathbf x\, (W_1 W_2) + (\mathbf b_1 W_2 + \mathbf b_2)
+$$
+
+Vế phải là **một** lớp tuyến tính với trọng số $W_1 W_2$ và hệ số chặn $\mathbf b_1 W_2 + \mathbf b_2$. Hai lớp tuyến tính gộp lại vẫn chỉ là một lớp tuyến tính. Mười lớp cũng vậy. Chương 5 đã nói điều này bằng hình học: ghép hai phép biến đổi tuyến tính là nhân hai ma trận, ra một phép biến đổi tuyến tính.
+
+```python
+A = np.array([[1.0, 2.0], [3.0, 4.0]])    # lớp thứ nhất
+B = np.array([[0.5, 0.0], [1.0, 1.0]])    # lớp thứ hai
+v = np.array([1.0, -1.0])
+print(v @ A @ B, v @ (A @ B))             # đi qua hai lớp, hay đi qua một lớp gộp
+```
+
+```text title="Output"
+[-3. -2.] [-3. -2.]
+```
+
+Đi qua hai lớp hay đi qua lớp gộp $AB$ cho cùng kết quả. Một mạng 100 lớp không có hàm kích hoạt không mạnh hơn hồi quy tuyến tính chút nào.
+
+## Hàm kích hoạt phá vỡ điều đó
+
+Chèn một hàm phi tuyến $f$ giữa hai lớp: $f(\mathbf x W_1 + \mathbf b_1)\, W_2 + \mathbf b_2$. Không còn gộp được, vì $f(\mathbf u + \mathbf v) \ne f(\mathbf u) + f(\mathbf v)$. Mỗi lớp giờ có thể uốn cong không gian một chút, và chồng nhiều lớp là chồng nhiều lần uốn.
+
+Với ReLU, mỗi nơ-ron chia không gian đầu vào thành hai nửa bằng một siêu phẳng ($\mathbf w \cdot \mathbf x + b = 0$): một nửa "tắt", một nửa đi theo đường thẳng. Nhiều nơ-ron là nhiều siêu phẳng, chia không gian thành nhiều mảnh, mỗi mảnh một hàm tuyến tính riêng. Đủ mảnh nhỏ là xấp xỉ được một đường cong bất kỳ, như ghép những đoạn thẳng ngắn thành một vòng tròn.
+
+<Khung loai="vi-sao" tieuDe="ĐỊNH LÝ XẤP XỈ PHỔ QUÁT">
+Một mạng có **một** lớp ẩn, đủ nhiều nơ-ron và hàm kích hoạt phi tuyến, xấp xỉ được bất kỳ hàm liên tục nào trên một miền giới hạn, với độ chính xác tùy ý. Đây là định lý xấp xỉ phổ quát (Cybenko 1989, Hornik 1991).
+
+Định lý nói một mạng như vậy **tồn tại**, không nói tìm được nó bằng gradient descent, không nói cần bao nhiêu nơ-ron, không nói nó tổng quát hóa tốt. Trong thực tế, mạng **sâu** (nhiều lớp, mỗi lớp vừa phải) thường cần ít tham số hơn hẳn mạng **rộng** (một lớp, rất nhiều nơ-ron) để đạt cùng độ chính xác. Đó là lý do có chữ "deep".
+</Khung>
+
+<TuKiemTra
+	cauHoi="Một mạng có 5 lớp, mỗi lớp 100 nơ-ron, nhưng tất cả hàm kích hoạt đều là hàm đồng nhất (a = z). Mạng này vẽ được ranh giới quyết định dạng gì?"
+	luaChon={['Đường cong tùy ý', 'Đường thẳng (siêu phẳng), như hồi quy logistic', 'Hình bậc thang như cây quyết định', 'Phụ thuộc số nơ-ron']}
+	dapAn={1}
+	giaiThich="Không có phi tuyến thì 5 lớp gộp thành một phép biến đổi tuyến tính duy nhất. Thêm sigmoid ở lớp ra thì mạng chính là hồi quy logistic, ranh giới là một siêu phẳng."
+/>
+
+<Khung loai="loi">
+**Quên hàm kích hoạt khi tự xây mạng.** Trong PyTorch (Chương 25), `nn.Linear` chỉ là phép tuyến tính. Xếp `nn.Linear` liên tiếp mà không chèn `nn.ReLU()` là một lỗi rất hay gặp: mạng vẫn chạy, chỉ không học được gì hơn hồi quy.
+
+**Dùng sigmoid cho mọi lớp ẩn.** Mạng sâu với sigmoid học rất chậm vì gradient co lại qua mỗi lớp (đạo hàm tối đa 0,25, Chương 6). Dùng ReLU cho lớp ẩn; sigmoid hay softmax chỉ ở lớp ra khi cần xác suất.
+</Khung>

@@ -1,0 +1,77 @@
+---
+title: MLP trong scikit-learn
+description: MLPClassifier trên hai vầng trăng - 2 nơ-ron ẩn chỉ 82%, hai lớp 32 nơ-ron lên 94%, ngang SVM RBF. Đếm số tham số từ shape các lớp, và vì sao từ chương sau ta chuyển sang PyTorch.
+---
+
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Để máy tự tìm trọng số
+
+Đặt trọng số bằng tay chỉ làm được với bài nhỏ như XOR. `MLPClassifier` của scikit-learn học trọng số bằng gradient descent (thuật toán Adam của Chương 8, mặc định) trên cross-entropy (Chương 11). Cách nó tính gradient qua nhiều lớp là chủ đề của Chương 24.
+
+```python
+from sklearn.datasets import make_moons
+from sklearn.model_selection import train_test_split
+from sklearn.neural_network import MLPClassifier
+from sklearn.linear_model import LogisticRegression
+Xm, ym = make_moons(300, noise=0.3, random_state=0)
+a, b_, c, e = train_test_split(Xm, ym, test_size=0.3, random_state=0)       # như Chương 14, 16, 18
+print(round(LogisticRegression().fit(a, c).score(b_, e), 4))
+for h in [(2,), (8,), (32,), (32, 32)]:
+    m = MLPClassifier(h, max_iter=3000, random_state=0).fit(a, c)
+    so_tham_so = sum(W.size for W in m.coefs_) + sum(v.size for v in m.intercepts_)
+    print(h, round(m.score(a, c), 4), round(m.score(b_, e), 4), so_tham_so)
+```
+
+```text title="Output"
+0.8444
+(2,) 0.8381 0.8222 9
+(8,) 0.819 0.8444 33
+(32,) 0.8429 0.8333 129
+(32, 32) 0.9333 0.9444 1185
+```
+
+Tham số đầu tiên của `MLPClassifier` là kích thước các lớp ẩn: `(32, 32)` là hai lớp ẩn, mỗi lớp 32 nơ-ron.
+
+**Bảng 23.2.** MLP trên hai vầng trăng (90 điểm test).
+
+| Mô hình | Số tham số | Test |
+|:---|:---:|:---:|
+| Hồi quy logistic | 3 | 84,4% |
+| 1 lớp ẩn, 2 nơ-ron | 9 | 82,2% |
+| 1 lớp ẩn, 8 nơ-ron | 33 | 84,4% |
+| 1 lớp ẩn, 32 nơ-ron | 129 | 83,3% |
+| 2 lớp ẩn, 32 nơ-ron mỗi lớp | 1185 | **94,4%** |
+
+<HinhKetQua src="/hinh/ch23/h3_mlp_moons.svg" alt="Hai khung trên hai vầng trăng. Trái, 1 lớp ẩn 2 nơ-ron: ranh giới gần như một đường thẳng chéo, test 82%. Phải, 2 lớp ẩn 32 nơ-ron: ranh giới cong theo hình hai vầng trăng, test 94%." so="23.3" chuThich="Ranh giới quyết định của MLP với 2 nơ-ron ẩn (trái) và hai lớp ẩn 32 nơ-ron (phải).">
+**Trái.** Hai nơ-ron ReLU chỉ tạo được vài mảnh tuyến tính, và ở đây gradient descent tìm ra một ranh giới gần như thẳng: không hơn hồi quy logistic.
+
+**Phải.** Hai lớp 32 nơ-ron có đủ mảnh để uốn theo hai vầng trăng. 94,4% bằng SVM RBF tốt nhất (Chương 16) và hơn random forest (93,3%, Chương 18).
+
+**Một lớp 32 nơ-ron lại kém hơn.** Về lý thuyết nó đủ mạnh (định lý xấp xỉ phổ quát), nhưng với cấu hình mặc định, tối ưu không tìm ra lời giải tốt. Độ sâu giúp không chỉ ở sức mạnh biểu diễn mà còn ở chỗ dễ huấn luyện hơn; chi tiết ở Chương 26.
+</HinhKetQua>
+
+## Đếm tham số
+
+Mỗi lớp có ma trận trọng số shape `(số đầu vào, số nơ-ron)` và một vector hệ số chặn `(số nơ-ron,)`. Với mạng 2 đầu vào, hai lớp ẩn 32, một đầu ra:
+
+- Lớp ẩn 1: $2 \times 32 + 32 = 96$.
+- Lớp ẩn 2: $32 \times 32 + 32 = 1056$.
+- Lớp ra: $32 \times 1 + 1 = 33$.
+
+Tổng $96 + 1056 + 33 = 1185$, khớp output. Lớp giữa chiếm gần hết: số tham số tăng theo **tích** kích thước hai lớp liền kề. Một mô hình ngôn ngữ có lớp ẩn 4096 nơ-ron thì một ma trận đã là 16,8 triệu tham số.
+
+<Khung loai="vi-sao" tieuDe="CHUYỂN SANG PYTORCH">
+`MLPClassifier` tiện cho bài toán nhỏ, nhưng có ba giới hạn: không chạy được trên GPU, chỉ có lớp "dày đặc" (mọi nơ-ron nối mọi đầu vào), và không cho tự định nghĩa kiến trúc hay hàm loss.
+
+Ảnh (Chương 27) cần lớp tích chập, chuỗi (Chương 29) cần lớp hồi quy, văn bản (Chương 44) cần attention, và tất cả cần GPU. Chương 24 tự cài lượt truyền ngược bằng NumPy để hiểu nó; Chương 25 chuyển sang PyTorch, nơi lượt truyền ngược được tính tự động.
+</Khung>
+
+<Khung loai="loi">
+**Quên chuẩn hóa đầu vào.** MLP học bằng gradient descent, nên mắc đúng vấn đề bát dẹt của Chương 8. Hai vầng trăng có hai đặc trưng cùng thang đo nên không sao; với dữ liệu thật, đặt `StandardScaler` trước MLP trong Pipeline.
+
+**Gặp `ConvergenceWarning` rồi bỏ qua.** Mặc định `max_iter=200` thường chưa đủ. Ở đây đặt 3000. Cảnh báo nghĩa là tối ưu chưa xong, kết quả có thể kém hơn khả năng thật của mạng.
+</Khung>

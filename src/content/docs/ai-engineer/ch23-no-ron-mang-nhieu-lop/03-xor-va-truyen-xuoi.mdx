@@ -1,0 +1,75 @@
+---
+title: Giải XOR và lượt truyền xuôi
+description: Hai nơ-ron ẩn với ReLU giải được bài XOR mà hồi quy logistic chỉ đúng 48%. Tự đặt trọng số, tính tay bốn điểm, rồi viết lượt truyền xuôi cho cả lô bằng phép nhân ma trận và đọc shape từng bước.
+---
+
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Bài XOR
+
+Chương 21 thấy hồi quy logistic chỉ đúng 48% trên dữ liệu kiểu XOR, và phải tự tay thêm cột $x_1 x_2$ mới giải được. Bản gọn nhất của XOR có bốn điểm:
+
+**Bảng 23.1.** XOR: đầu ra là 1 khi đúng một trong hai đầu vào bằng 1.
+
+| $x_1$ | $x_2$ | $y$ |
+|:---:|:---:|:---:|
+| 0 | 0 | 0 |
+| 0 | 1 | 1 |
+| 1 | 0 | 1 |
+| 1 | 1 | 0 |
+
+Không đường thẳng nào tách được hai điểm $y = 1$ khỏi hai điểm $y = 0$. Một <Term id="mlp">mạng nhiều lớp</Term> với một lớp ẩn hai nơ-ron thì làm được, và ta có thể tự đặt trọng số cho nó.
+
+<HinhKetQua src="/hinh/ch23/h2_mang_xor.svg" alt="Sơ đồ mạng ba lớp. Lớp vào hai nút x1 và x2. Lớp ẩn hai nút h1 và h2, mỗi nút nhận cả x1 và x2 với trọng số 1; h1 có hệ số chặn 0, h2 có hệ số chặn -1, cả hai dùng ReLU. Lớp ra một nút y mũ nhận h1 với trọng số 1 và h2 với trọng số -2, hệ số chặn 0." so="23.2" chuThich="Mạng 2-2-1 giải XOR với trọng số đặt tay. Số trên mỗi mũi tên là trọng số.">
+**Lớp ẩn.** Cả hai nơ-ron ẩn tính $x_1 + x_2$, chỉ khác hệ số chặn. $h_1 = \text{ReLU}(x_1 + x_2)$ đếm có bao nhiêu đầu vào bằng 1. $h_2 = \text{ReLU}(x_1 + x_2 - 1)$ chỉ bật khi **cả hai** bằng 1.
+
+**Lớp ra.** $\hat y = h_1 - 2h_2$: lấy số đầu vào bằng 1, trừ đi gấp đôi trường hợp cả hai cùng bằng 1.
+</HinhKetQua>
+
+Tính tay điểm $(1, 1)$: $h_1 = \text{ReLU}(2) = 2$, $h_2 = \text{ReLU}(1) = 1$, $\hat y = 2 - 2 = 0$. Đúng.
+
+## Truyền xuôi cho cả lô
+
+Thay vì tính từng điểm, đặt bốn điểm thành một ma trận $X$ shape `(4, 2)` và tính cả lô một lần:
+
+$$
+H = \text{ReLU}(X W_1 + \mathbf b_1), \qquad \hat{\mathbf y} = H \mathbf w_2 + b_2 \tag{23.2}
+$$
+
+```python
+X = np.array([[0, 0], [0, 1], [1, 0], [1, 1]], dtype=float)   # shape (4, 2): 4 mẫu, 2 đặc trưng
+W1 = np.array([[1, 1], [1, 1]], dtype=float)                   # shape (2, 2): 2 đầu vào, 2 nơ-ron ẩn
+b1 = np.array([0, -1.0])                                       # shape (2,): một hệ số chặn mỗi nơ-ron
+w2 = np.array([1, -2.0])                                       # shape (2,): 2 nơ-ron ẩn vào 1 đầu ra
+b2 = 0.0
+H = relu(X @ W1 + b1)                                          # (4, 2) @ (2, 2) + (2,) -> (4, 2)
+print(H)
+print(H @ w2 + b2)                                             # (4, 2) @ (2,) -> (4,)
+```
+
+```text title="Output"
+[[0. 0.]
+ [1. 0.]
+ [1. 0.]
+ [2. 1.]]
+[0. 1. 1. 0.]
+```
+
+Bốn đầu ra $0, 1, 1, 0$: đúng cả bảng XOR.
+
+Đọc shape của (23.2): $X$ là `(4, 2)`, $W_1$ là `(2, 2)`, tích là `(4, 2)`: mỗi hàng là một mẫu, mỗi cột là một nơ-ron ẩn. Cộng $\mathbf b_1$ shape `(2,)` là broadcasting (Chương 3): mỗi nơ-ron cộng hệ số chặn của nó vào mọi mẫu. Luật nhân ma trận `(m, k) @ (k, n) -> (m, n)` của Chương 3 là tất cả những gì cần để đọc mọi mạng nơ-ron.
+
+<Khung loai="truc-giac">
+Lớp ẩn đã làm điều Chương 21 phải làm bằng tay: **tạo đặc trưng mới**. Cột $h_2$ của $H$ bằng 1 đúng ở điểm $(1, 1)$: nó chính là $x_1 x_2$ trên bốn điểm này. Lớp ra chỉ cần một tổ hợp tuyến tính của các đặc trưng mới đó.
+
+Đây là ý tưởng trung tâm của deep learning: các lớp ẩn **tự học** đặc trưng, thay cho feature engineering bằng tay. Ở đây ta đặt trọng số bằng tay để thấy điều đó; Chương 24 sẽ để gradient descent tự tìm.
+</Khung>
+
+<Khung loai="loi">
+**Lẫn thứ tự nhân.** Sách khác hay viết $W\mathbf x$ với $\mathbf x$ là vector cột, $W$ shape `(số nơ-ron, số đầu vào)`. Giáo trình này (và PyTorch) đặt mỗi mẫu là một **hàng**, nên viết $XW$ với $W$ shape `(số đầu vào, số nơ-ron)`. `nn.Linear` của PyTorch lưu trọng số shape `(out, in)` và tính $XW^\top$. Khi chép công thức từ nơi này sang nơi khác, kiểm tra shape trước.
+
+**Quên broadcasting của hệ số chặn.** $\mathbf b_1$ có shape `(2,)`, không phải `(4, 2)`. Mọi mẫu dùng chung hệ số chặn. Viết nhầm thành mỗi mẫu một hệ số chặn là thêm tham số vô nghĩa.
+</Khung>
