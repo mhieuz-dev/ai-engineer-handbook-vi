@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 const TRANG_DAU = '/ai-engineer/ch10-hoi-quy-tuyen-tinh/01-truc-giac/';
 
-test('trang chủ: tiêu đề, hai thẻ nhánh, nút Bắt đầu học', async ({ page }) => {
+test('trang chủ: tiêu đề, hai thẻ nhánh, nút Chọn sách để học', async ({ page }) => {
 	await page.goto('/');
 	await expect(page.locator('h1')).toHaveText('AI & Robotics');
 	await expect(page.getByText('Giáo trình tiếng Việt miễn phí: hiểu tận gốc AI, từ Python cơ bản đến mô hình ngôn ngữ lớn.')).toBeVisible();
@@ -11,7 +11,7 @@ test('trang chủ: tiêu đề, hai thẻ nhánh, nút Bắt đầu học', asyn
 	await expect(ai).toBeVisible();
 	await expect(ai).toContainText('Đang viết');
 	await expect(robot).toContainText('Sắp có');
-	await expect(page.getByRole('link', { name: 'Bắt đầu học' })).toHaveAttribute('href', TRANG_DAU);
+	await expect(page.getByRole('link', { name: /Chọn sách để học/ })).toHaveAttribute('href', '#ke-sach');
 	await expect(page.getByText('Cách học trên trang này')).toBeVisible();
 });
 

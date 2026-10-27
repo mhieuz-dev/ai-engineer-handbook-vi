@@ -11,6 +11,9 @@ function ghiRequest(page: Page): string[] {
 }
 
 const theAi = (page: Page) => page.locator('#ke-sach').getByRole('link', { name: /AI Engineer/ });
+const bang = (page: Page) => page.locator('#ke-sach [role="dialog"]');
+const nutBatDau = (page: Page) => bang(page).getByRole('link', { name: 'Bắt đầu học' });
+const nutQuayLai = (page: Page) => bang(page).getByRole('button', { name: '← Quay lại kệ sách' });
 const theRobotics = (page: Page) => page.locator('#ke-sach').getByRole('button', { name: /Robotics/ });
 
 test('mobile: kệ sách sau hero, không tải three, thẻ chọn hoạt động', async ({ page, isMobile }) => {
@@ -19,7 +22,7 @@ test('mobile: kệ sách sau hero, không tải three, thẻ chọn hoạt độ
 	await page.goto('/');
 	const ke = page.locator('#ke-sach');
 	await expect(ke).toBeVisible();
-	const yNut = (await page.getByRole('link', { name: 'Bắt đầu học' }).boundingBox())!.y;
+	const yNut = (await page.getByRole('link', { name: /Chọn sách để học/ }).boundingBox())!.y;
 	const yKe = (await ke.boundingBox())!.y;
 	expect(yKe).toBeGreaterThan(yNut);
 	await ke.scrollIntoViewIfNeeded();
@@ -31,13 +34,23 @@ test('mobile: kệ sách sau hero, không tải three, thẻ chọn hoạt độ
 	await expect(theAi(page)).toContainText('65 chương');
 	await expect(theAi(page)).toContainText('đã viết 1');
 	await theRobotics(page).tap();
-	await expect(page.getByText('Nhánh Robotics đang được soạn')).toBeVisible();
+	await expect(bang(page)).toContainText('Nhánh này đang được soạn');
+	await expect(nutBatDau(page)).toHaveCount(0);
+	await expect(nutQuayLai(page)).toBeFocused();
+	await expect(page).toHaveURL(/\/$/);
+	await nutQuayLai(page).tap();
+	await expect(bang(page)).toBeHidden();
 	await expect(page).toHaveURL(/\/$/);
 	await theAi(page).tap();
+	await expect(page).toHaveURL(/\/$/);
+	await expect(bang(page)).toContainText('65 chương · đã viết 1');
+	await expect(nutBatDau(page)).toBeFocused();
+	expect((await nutBatDau(page).boundingBox())!.height).toBeGreaterThanOrEqual(44);
+	await nutBatDau(page).tap();
 	await expect(page).toHaveURL(new RegExp(`${TRANG_DAU}$`));
 });
 
-test('desktop, giảm chuyển động: không canvas, không three, thẻ AI Engineer chuyển trang', async ({ page, isMobile }) => {
+test('desktop, giảm chuyển động: không canvas, không three, thẻ AI Engineer mở bảng rồi mới chuyển trang', async ({ page, isMobile }) => {
 	test.skip(!!isMobile);
 	await page.emulateMedia({ reducedMotion: 'reduce' });
 	const req = ghiRequest(page);
@@ -47,6 +60,13 @@ test('desktop, giảm chuyển động: không canvas, không three, thẻ AI En
 	await expect(page.locator('#ke-sach canvas')).toHaveCount(0);
 	expect(req.filter((u) => LA_CHUNK_3D.test(u))).toEqual([]);
 	await theAi(page).click();
+	await expect(page).toHaveURL(/\/$/);
+	await expect(nutBatDau(page)).toBeFocused();
+	await page.keyboard.press('Escape');
+	await expect(bang(page)).toBeHidden();
+	await expect(theAi(page)).toBeFocused();
+	await theAi(page).click();
+	await nutBatDau(page).click();
 	await expect(page).toHaveURL(new RegExp(`${TRANG_DAU}$`));
 });
 
@@ -97,20 +117,55 @@ test('desktop: three chỉ tải khi tới gần kệ, đứng yên không vẽ 
 	const sau = Number(await sanKhau.getAttribute('data-frames'));
 	expect(sau - truoc).toBeLessThanOrEqual(3);
 
-	const t0 = Date.now();
 	await theAi(page).click();
-	await expect(page).toHaveURL(new RegExp(`${TRANG_DAU}$`), { timeout: 2000 });
-	expect(Date.now() - t0).toBeLessThanOrEqual(2000);
+	await expect(page).toHaveURL(/\/$/);
+	await expect(bang(page)).toBeVisible();
+	await expect(nutBatDau(page)).toBeFocused();
+	await expect(nutBatDau(page)).toHaveAttribute('href', TRANG_DAU);
+	// Quay lại: bảng ẩn, URL giữ nguyên, sách trượt về kệ rồi đứng yên (≤ 3 khung trong 2 giây).
+	await nutQuayLai(page).click();
+	await expect(bang(page)).toBeHidden();
+	await expect(page).toHaveURL(/\/$/);
+	await expect(theAi(page)).toBeFocused();
+	await page.mouse.move(5, 5);
+	await page.waitForTimeout(1200);
+	const t1 = Number(await sanKhau.getAttribute('data-frames'));
+	await page.waitForTimeout(2000);
+	expect(Number(await sanKhau.getAttribute('data-frames')) - t1).toBeLessThanOrEqual(3);
+	// Bấm thẻ lần nữa rồi chuyển trang bằng nút Bắt đầu học.
+	await theAi(page).click();
+	await nutBatDau(page).click();
+	await expect(page).toHaveURL(new RegExp(`${TRANG_DAU}$`));
 });
 
-test('desktop: bàn phím Tab tới thẻ Robotics, Enter hiện thông báo', async ({ page, isMobile }) => {
+test('desktop: Robotics mở bảng không có nút Bắt đầu học, Escape đóng', async ({ page, isMobile }) => {
+	test.skip(!!isMobile);
+	await page.goto('/');
+	await expect(page.locator('#ke-sach [data-frames]')).toHaveAttribute('data-trang-thai', 'san-sang', { timeout: 5000 });
+	await theRobotics(page).click();
+	await expect(bang(page)).toBeVisible();
+	await expect(bang(page)).toContainText('Nhánh này đang được soạn');
+	await expect(bang(page)).toContainText('Sắp có');
+	await expect(nutBatDau(page)).toHaveCount(0);
+	await expect(nutQuayLai(page)).toBeFocused();
+	await page.keyboard.press('Escape');
+	await expect(bang(page)).toBeHidden();
+	await expect(page).toHaveURL(/\/$/);
+});
+
+test('trang chủ: nút hero "Chọn sách để học" trỏ tới #ke-sach', async ({ page }) => {
+	await page.goto('/');
+	await expect(page.getByRole('link', { name: /Chọn sách để học/ })).toHaveAttribute('href', '#ke-sach');
+});
+
+test('desktop: bàn phím Tab tới thẻ Robotics, Enter mở bảng thông tin', async ({ page, isMobile }) => {
 	test.skip(!!isMobile);
 	await page.goto('/');
 	await theAi(page).focus();
 	await page.keyboard.press('Tab');
 	await expect(theRobotics(page)).toBeFocused();
 	await page.keyboard.press('Enter');
-	await expect(page.locator('#ke-sach [aria-live]')).toContainText('Nhánh Robotics đang được soạn');
+	await expect(bang(page)).toContainText('Nhánh này đang được soạn');
 	await expect(page).toHaveURL(/\/$/);
 });
 

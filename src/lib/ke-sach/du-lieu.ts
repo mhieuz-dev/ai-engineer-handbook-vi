@@ -6,6 +6,8 @@ export interface CuonSach {
 	id: Nhanh['id'];
 	ten: string;
 	phuDe: string;
+	/** Một câu giới thiệu hiện trong bảng thông tin khi chọn sách. */
+	moTa: string;
 	/** null khi nhánh chưa có danh mục chương. */
 	tongChuong: number | null;
 	daViet: number;
@@ -20,9 +22,9 @@ export interface CuonSach {
 	anhBiaNho?: string;
 }
 
-const GIAO_DIEN: Record<Nhanh['id'], Pick<CuonSach, 'phuDe' | 'mauBia' | 'mauChu' | 'anhBia' | 'anhBiaNho'>> = {
-	'ai-engineer': { phuDe: 'Từ Python đến mô hình ngôn ngữ lớn', mauBia: '#0E2233', mauChu: '#FBF8F1', anhBia: '/hinh/bia/ai-engineer.svg', anhBiaNho: '/hinh/bia/ai-engineer.webp' },
-	robotics: { phuDe: 'Nhánh thứ hai, đang được soạn', mauBia: '#DCDFE2', mauChu: '#1F2A33', anhBia: '/hinh/bia/robotics.svg', anhBiaNho: '/hinh/bia/robotics.webp' },
+const GIAO_DIEN: Record<Nhanh['id'], Pick<CuonSach, 'phuDe' | 'moTa' | 'mauBia' | 'mauChu' | 'anhBia' | 'anhBiaNho'>> = {
+	'ai-engineer': { phuDe: 'Từ Python đến mô hình ngôn ngữ lớn', moTa: 'Từ Python cơ bản đến Machine Learning, Deep Learning và mô hình ngôn ngữ lớn, hiểu tận gốc từng thuật toán.', mauBia: '#0E2233', mauChu: '#FBF8F1', anhBia: '/hinh/bia/ai-engineer.svg', anhBiaNho: '/hinh/bia/ai-engineer.webp' },
+	robotics: { phuDe: 'Nhánh thứ hai, đang được soạn', moTa: 'Toán robot, điều khiển, phần cứng, ROS 2 và sim-to-real. Nhánh này đang được soạn.', mauBia: '#DCDFE2', mauChu: '#1F2A33', anhBia: '/hinh/bia/robotics.svg', anhBiaNho: '/hinh/bia/robotics.webp' },
 };
 
 /**

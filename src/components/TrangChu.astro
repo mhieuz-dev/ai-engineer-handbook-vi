@@ -2,10 +2,8 @@
 import ThemeSelect from './overrides/ThemeSelect.astro';
 import { MENU_CHUNG } from '../data/menu-chung';
 import { CHUONG, chuongDaXuatBan } from '../data/chuong';
-import { trangBatDauHoc } from '../lib/trang-dau';
 import KeSach from './KeSach.astro';
 
-const batDau = (await trangBatDauHoc()) ?? '/lo-trinh/';
 const daCo = chuongDaXuatBan().map((c) => `Chương ${c.so}, ${c.ten}`).join('; ');
 const buoc = ['Trực giác', 'Toán', 'Tính tay', 'Code', 'Đọc kết quả'];
 const tinhNang = [
@@ -21,7 +19,7 @@ const tinhNang = [
 <div class="trang-chu">
 	<section class="hero">
 		<p class="gioi-thieu">Giáo trình tiếng Việt miễn phí: hiểu tận gốc AI, từ Python cơ bản đến mô hình ngôn ngữ lớn.</p>
-		<p><a class="nut-chinh" href={batDau}>Bắt đầu học</a></p>
+		<p><a class="nut-chinh" href="#ke-sach" id="nut-chon-sach">Chọn sách để học ↓</a></p>
 		<p class="trung-thuc">Trang đang được viết dần. {daCo && `Đã viết xong: ${daCo}. `}Còn lại {CHUONG.length - chuongDaXuatBan().length} chương sắp có.</p>
 		<nav class="nav-chung-mobile" aria-label="Liên kết nhanh">
 			{MENU_CHUNG.map((m) => <a href={m.href}>{m.nhan}</a>)}
@@ -50,6 +48,7 @@ const tinhNang = [
 	:global(main h1#_top) { font-size: clamp(2.2rem, 8vw, 3.5rem); font-weight: 800; color: var(--pri); text-align: center; line-height: 1.1; margin-top: 1.5rem; }
 	.gioi-thieu { font-size: 1.15rem; max-width: 36rem; margin: 1rem auto; color: var(--tx); }
 	.nut-chinh { display: inline-block; background: var(--acc); color: #1a1208; font-weight: 600; padding: 0.7rem 1.6rem; border-radius: 6px; text-decoration: none; }
+	@media (prefers-reduced-motion: no-preference) { :global(html) { scroll-behavior: smooth; } }
 	.nut-chinh:hover { filter: brightness(1.08); }
 	.trung-thuc { color: var(--mut); font-size: 0.9rem; }
 	.nav-chung-mobile { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem 1.2rem; margin-top: 1rem; }

@@ -40,6 +40,16 @@ const moTaThe = (s: (typeof sach)[number]) => (s.sapCo ? 'Sắp có' : `${s.tong
 				</div>
 				<div class="van-ke"></div>
 			</div>
+			<div class="bang" id="ke-sach-bang" role="dialog" aria-labelledby="bang-ten" hidden>
+				<p class="bang-nhan">Nhánh đã chọn</p>
+				<h3 id="bang-ten" class="bang-ten"></h3>
+				<p class="bang-mo-ta"></p>
+				<p class="bang-so"></p>
+				<div class="bang-nut">
+					<a class="bang-bat-dau" href="#ke-sach">Bắt đầu học</a>
+					<button type="button" class="bang-quay-lai">← Quay lại kệ sách</button>
+				</div>
+			</div>
 		</div>
 		<div class="hang-the">
 			{
@@ -61,7 +71,6 @@ const moTaThe = (s: (typeof sach)[number]) => (s.sapCo ? 'Sắp có' : `${s.tong
 			}
 		</div>
 	</div>
-	<p class="thong-bao" role="status" aria-live="polite"></p>
 </section>
 
 <script>
@@ -72,32 +81,47 @@ const moTaThe = (s: (typeof sach)[number]) => (s.sapCo ? 'Sắp có' : `${s.tong
 	const goc = document.getElementById('ke-sach');
 	if (goc) {
 		const sanKhau = goc.querySelector<HTMLElement>('.san-khau')!;
-		const thongBao = goc.querySelector<HTMLElement>('.thong-bao')!;
+		const bang = goc.querySelector<HTMLElement>('.bang')!;
+		const nutBatDau = bang.querySelector<HTMLAnchorElement>('.bang-bat-dau')!;
+		const nutQuayLai = bang.querySelector<HTMLButtonElement>('.bang-quay-lai')!;
 		const sach: CuonSach[] = JSON.parse(goc.dataset.ds ?? '[]');
 		let ke: KeSach3D | null = null;
+		let nguoiMo: HTMLElement | null = null;
 
-		const khiChon = (s: CuonSach) => {
-			if (s.href) {
-				location.href = s.href;
-				return;
-			}
-			thongBao.textContent = '';
-			requestAnimationFrame(() => {
-				thongBao.textContent = `Nhánh ${s.ten} đang được soạn. Trong lúc chờ, bạn có thể bắt đầu với AI Engineer.`;
-			});
+		const moBang = (s: CuonSach, opener: HTMLElement | null) => {
+			nguoiMo = opener;
+			bang.querySelector('.bang-ten')!.textContent = s.ten;
+			bang.querySelector('.bang-mo-ta')!.textContent = s.moTa;
+			bang.querySelector('.bang-so')!.textContent = s.sapCo ? 'Sắp có' : `${s.tongChuong} chương · đã viết ${s.daViet}`;
+			nutBatDau.hidden = !s.href;
+			if (s.href) nutBatDau.href = s.href;
+			bang.hidden = false;
+			(s.href ? nutBatDau : nutQuayLai).focus({ preventScroll: true });
 		};
+		const dongBang = () => {
+			if (bang.hidden) return;
+			bang.hidden = true;
+			ke?.dong();
+			nguoiMo?.focus({ preventScroll: true });
+			nguoiMo = null;
+		};
+		const khiChon = (s: CuonSach) => moBang(s, goc.querySelector<HTMLElement>(`.the-chon[data-cuon="${s.id}"]`));
+		nutQuayLai.addEventListener('click', dongBang);
+		document.addEventListener('keydown', (e) => {
+			if (e.key === 'Escape') dongBang();
+		});
 
+		const nguoiMoId = () => (bang.hidden ? null : nguoiMo?.dataset.cuon);
 		goc.addEventListener('click', (e) => {
 			const el = (e.target as HTMLElement).closest<HTMLElement>('[data-cuon]');
 			if (!el || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
 			const s = sach.find((x) => x.id === el.dataset.cuon);
 			if (!s) return;
-			// Cảnh 3D đã sẵn sàng thì để cuốn sách trên kệ diễn hiệu ứng trước khi chuyển trang.
-			if (ke?.chon(s.id)) {
-				e.preventDefault();
-				return;
-			}
-			if (!s.href) khiChon(s);
+			// Không chuyển trang: mở bảng thông tin; cảnh 3D (nếu có) rút cuốn sách ra và mở bìa.
+			e.preventDefault();
+			if (s.id === nguoiMoId()) return;
+			ke?.chon(s.id);
+			khiChon(s);
 		});
 		for (const loai of ['pointerover', 'focusin'] as const) {
 			goc.addEventListener(loai, (e) => {
@@ -276,16 +300,35 @@ const moTaThe = (s: (typeof sach)[number]) => (s.sapCo ? 'Sắp có' : `${s.tong
 	.the-ten { font-size: 1rem; font-weight: 700; color: var(--tx); }
 	.the-mo-ta { font-size: 0.82rem; color: var(--pri); white-space: nowrap; }
 	.the-sap-co .the-mo-ta { color: var(--acc); }
-	.thong-bao { min-height: 1.5em; margin: 0.6rem 0 0; text-align: center; font-size: 0.9rem; color: var(--tx); }
+
+	/* Bảng thông tin: hiện sau khi chọn sách. Điện thoại nằm dưới kệ; từ 50rem nổi bên phải sân khấu. */
+	.bang { margin: 0.9rem 0 0; padding: 1rem 1.1rem; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--tx); box-shadow: 0 14px 30px -18px rgba(40, 25, 10, 0.5); animation: bang-vao 0.28s ease-out; }
+	.bang[hidden] { display: none; }
+	@keyframes bang-vao { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+	.bang-nhan { margin: 0; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--mut); }
+	.bang-ten { margin: 0.2rem 0 0.4rem; font-size: 1.5rem; font-weight: 800; line-height: 1.2; border: 0; color: var(--tx); }
+	.bang-mo-ta { margin: 0 0 0.6rem; font-size: 0.95rem; line-height: 1.55; color: var(--tx); }
+	.bang-so { display: inline-block; margin: 0 0 1rem; padding: 0.15rem 0.6rem; border-radius: 99px; background: var(--accbg); color: var(--tx); font-size: 0.82rem; font-weight: 600; }
+	.bang-nut { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+	.bang-bat-dau, .bang-quay-lai { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 1.2rem; border-radius: 8px; font: inherit; font-weight: 600; text-decoration: none; cursor: pointer; }
+	.bang-bat-dau { background: var(--acc); color: #1a1208; border: 1px solid transparent; }
+	.bang-bat-dau:hover { filter: brightness(1.08); }
+	.bang-bat-dau[hidden] { display: none; }
+	.bang-quay-lai { background: transparent; color: var(--tx); border: 1px solid var(--line); }
+	.bang-quay-lai:hover { border-color: var(--pri); }
+	.bang-bat-dau:focus-visible, .bang-quay-lai:focus-visible { outline: 2px solid var(--pri); outline-offset: 2px; }
 
 	@media (min-width: 50rem) {
 		/* Giữ đúng chiều cao cho cả bản phẳng lẫn canvas để không nhảy bố cục khi 3D hiện. */
 		.san-khau { aspect-ratio: 16 / 9; padding: 0; display: flex; align-items: center; }
 		.ke-phang { width: 40%; max-width: none; }
+		.bang { position: absolute; z-index: 2; top: 50%; right: 4%; width: min(21rem, 38%); margin: 0; transform: translateY(-50%); animation-name: bang-vao-ngang; }
+		@keyframes bang-vao-ngang { from { opacity: 0; transform: translate(12px, -50%); } to { opacity: 1; transform: translateY(-50%); } }
 		.hang-the { display: flex; justify-content: center; gap: 0.75rem; }
 		.the-chon { display: flex; flex-direction: column; align-items: flex-start; gap: 0.1rem; min-width: 13rem; }
 	}
 	@media (prefers-reduced-motion: reduce) {
+		.bang { animation: none; }
 		.the-chon { transition: none; }
 		.the-chon:hover { transform: none; }
 	}

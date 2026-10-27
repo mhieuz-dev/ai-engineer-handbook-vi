@@ -31,8 +31,10 @@ import type { CuonSach } from './du-lieu';
 
 export interface KeSach3D {
 	huy(): void;
-	/** Phát hiệu ứng chọn sách rồi gọi `khiChon`. Trả về false nếu cảnh chưa sẵn sàng. */
+	/** Rút sách ra, mở bìa và giữ nguyên đó. Trả về false nếu cảnh chưa sẵn sàng. */
 	chon(id: CuonSach['id']): boolean;
+	/** Đóng bìa và đẩy cuốn đang mở về kệ. */
+	dong(): void;
 	/** Làm nổi một cuốn (rê chuột hoặc focus vào thẻ chọn); null để bỏ. */
 	danhDau(id: CuonSach['id'] | null): void;
 }
@@ -42,7 +44,6 @@ const GOC_XOAY = (25 * Math.PI) / 180;
 const NHO_RA = 0.15;
 const RUT_RA = 0.62;
 const MO_BIA = -1.95;
-const THOI_GIAN_CHON = 550; // ms, hiệu ứng rút sách và mở bìa
 
 // Kích thước (đơn vị cảnh): một ngăn kệ đủ cho hai cuốn.
 const KE = { rong: 3.55, cao: 2.3, sau: 1.0, van: 0.1, hong: 0.11, chan: 0.28 };
@@ -468,34 +469,31 @@ export function dungKe(goc: HTMLElement, sach: CuonSach[], khiChon: (s: CuonSach
 		if (doi) yeuCauVe();
 	}
 
+	let dangMo: Cuon | null = null;
+
 	function chon(id: CuonSach['id']): boolean {
-		if (!sanSang || dangChon) return false;
+		if (!sanSang) return false;
 		const c = cuon.find((x) => x.s.id === id);
 		if (!c) return false;
-		if (c.s.sapCo) {
-			c.lac = performance.now();
-			yeuCauVe();
-			khiChon(c.s);
-			return true;
-		}
+		if (dangMo && dangMo !== c) dong();
+		dangMo = c;
 		dangChon = true;
 		c.nhoDich = RUT_RA;
 		c.moDich = MO_BIA;
 		xoayDich = 0;
 		yeuCauVe();
-		window.setTimeout(() => {
-			khiChon(c.s);
-			// Trang không chuyển (vd mở tab mới): đóng sách lại.
-			window.setTimeout(() => {
-				if (daHuy) return;
-				dangChon = false;
-				c.moDich = 0;
-				c.nhoDich = 0;
-				capNhatNho();
-				yeuCauVe();
-			}, 1500);
-		}, THOI_GIAN_CHON);
 		return true;
+	}
+
+	function dong() {
+		const c = dangMo;
+		if (!c) return;
+		dangMo = null;
+		dangChon = false;
+		c.moDich = 0;
+		c.nhoDich = 0;
+		capNhatNho();
+		yeuCauVe();
 	}
 
 	function danhDau(id: CuonSach['id'] | null) {
@@ -730,7 +728,7 @@ export function dungKe(goc: HTMLElement, sach: CuonSach[], khiChon: (s: CuonSach
 				return;
 			}
 			const c = trungSach(e);
-			if (c) chon(c.s.id);
+			if (c && chon(c.s.id)) khiChon(c.s);
 		};
 		const roi = () => {
 			if (keo?.da) return;
@@ -762,5 +760,5 @@ export function dungKe(goc: HTMLElement, sach: CuonSach[], khiChon: (s: CuonSach
 		huy();
 	});
 
-	return { huy, chon, danhDau };
+	return { huy, chon, dong, danhDau };
 }

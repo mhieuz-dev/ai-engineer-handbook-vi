@@ -20,6 +20,11 @@ describe('kệ sách: dữ liệu hai cuốn', () => {
 		expect(ai.href).toBe('/ai-engineer/ch10-hoi-quy-tuyen-tinh/01-truc-giac/');
 		expect(ai.sapCo).toBe(false);
 	});
+	it('mỗi cuốn có moTa một câu cho bảng thông tin', () => {
+		const [ai, rb] = dsCuonSach();
+		expect(ai.moTa).toBe('Từ Python cơ bản đến Machine Learning, Deep Learning và mô hình ngôn ngữ lớn, hiểu tận gốc từng thuật toán.');
+		expect(rb.moTa).toBe('Toán robot, điều khiển, phần cứng, ROS 2 và sim-to-real. Nhánh này đang được soạn.');
+	});
 	it('Robotics là sách sắp có, không có link', () => {
 		const [, rb] = dsCuonSach();
 		expect(rb.ten).toBe('Robotics');
