@@ -450,6 +450,7 @@ export function dungKe(goc: HTMLElement, sach: CuonSach[], khiChon: (s: CuonSach
 			}
 		}
 		renderer.render(scene, camera);
+		goc.dataset.nho = Math.max(...cuon.map((c) => c.nho)).toFixed(2);
 		goc.dataset.frames = String(++soKhung);
 		if (conDong) yeuCauVe();
 		else tLan = 0;
@@ -470,9 +471,13 @@ export function dungKe(goc: HTMLElement, sach: CuonSach[], khiChon: (s: CuonSach
 	}
 
 	let dangMo: Cuon | null = null;
+	let choId: CuonSach['id'] | null = null;
 
 	function chon(id: CuonSach['id']): boolean {
-		if (!sanSang) return false;
+		if (!sanSang) {
+			choId = id; // cảnh chưa dựng xong: rút sách ngay khi sẵn sàng
+			return false;
+		}
 		const c = cuon.find((x) => x.s.id === id);
 		if (!c) return false;
 		if (dangMo && dangMo !== c) dong();
@@ -486,6 +491,7 @@ export function dungKe(goc: HTMLElement, sach: CuonSach[], khiChon: (s: CuonSach
 	}
 
 	function dong() {
+		choId = null;
 		const c = dangMo;
 		if (!c) return;
 		dangMo = null;
@@ -753,6 +759,7 @@ export function dungKe(goc: HTMLElement, sach: CuonSach[], khiChon: (s: CuonSach
 		veMotKhung(performance.now());
 		sanSang = true;
 		goc.dataset.trangThai = 'san-sang';
+		if (choId) chon(choId);
 	}
 
 	khoiDong().catch(() => {

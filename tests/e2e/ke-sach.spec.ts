@@ -153,6 +153,63 @@ test('desktop: Robotics mở bảng không có nút Bắt đầu học, Escape �
 	await expect(page).toHaveURL(/\/$/);
 });
 
+test('desktop: mở bảng trước khi cảnh 3D sẵn sàng thì sách vẫn được rút ra khi cảnh dựng xong', async ({ page, isMobile }) => {
+	test.skip(!!isMobile);
+	await page.setViewportSize({ width: 1280, height: 240 });
+	await page.goto('/');
+	const sanKhau = page.locator('#ke-sach [data-frames]');
+	await expect(sanKhau).toHaveAttribute('data-trang-thai', 'phang');
+	await theAi(page).dispatchEvent('click');
+	await expect(bang(page)).toBeVisible();
+	await page.setViewportSize({ width: 1280, height: 800 });
+	await page.locator('#ke-sach').scrollIntoViewIfNeeded();
+	await expect(sanKhau).toHaveAttribute('data-trang-thai', 'san-sang', { timeout: 5000 });
+	await expect.poll(async () => Number(await sanKhau.getAttribute('data-nho'))).toBeGreaterThan(0.5);
+	await expect(page.locator('#ke-sach')).toHaveAttribute('data-sach-mo', 'ai-engineer');
+});
+
+test('desktop: đóng bảng thì sách trượt về sát kệ, đứng yên; mở thì khung hình nghỉ ≤ 3; Escape trả focus', async ({ page, isMobile }) => {
+	test.skip(!!isMobile);
+	await page.goto('/');
+	const sanKhau = page.locator('#ke-sach [data-frames]');
+	await expect(sanKhau).toHaveAttribute('data-trang-thai', 'san-sang', { timeout: 5000 });
+	await theAi(page).click();
+	await expect.poll(async () => Number(await sanKhau.getAttribute('data-nho'))).toBeGreaterThan(0.5);
+	await page.mouse.move(5, 5);
+	await page.waitForTimeout(1200);
+	const a = Number(await sanKhau.getAttribute('data-frames'));
+	await page.waitForTimeout(2000);
+	expect(Number(await sanKhau.getAttribute('data-frames')) - a).toBeLessThanOrEqual(3);
+	await page.keyboard.press('Escape');
+	await expect(theAi(page)).toBeFocused();
+	await expect.poll(async () => await sanKhau.getAttribute('data-nho')).toBe('0.00');
+	await expect(page.locator('#ke-sach')).not.toHaveAttribute('data-sach-mo', /.+/);
+});
+
+test('desktop: bấm cuốn khác khi một cuốn đang mở thì đóng cuốn trước, mở cuốn sau', async ({ page, isMobile }) => {
+	test.skip(!!isMobile);
+	await page.goto('/');
+	await expect(page.locator('#ke-sach [data-frames]')).toHaveAttribute('data-trang-thai', 'san-sang', { timeout: 5000 });
+	await theAi(page).click();
+	await expect(nutBatDau(page)).toBeVisible();
+	await theRobotics(page).click();
+	await expect(bang(page)).toContainText('Robotics');
+	await expect(nutBatDau(page)).toHaveCount(0);
+	await expect(page.locator('#ke-sach')).toHaveAttribute('data-sach-mo', 'robotics');
+});
+
+test('mobile: bấm cuốn khác khi một cuốn đang mở thì bảng đổi sang cuốn sau', async ({ page, isMobile }) => {
+	test.skip(!isMobile);
+	await page.goto('/');
+	await theAi(page).tap();
+	await expect(nutBatDau(page)).toBeVisible();
+	await theRobotics(page).tap();
+	await expect(bang(page)).toContainText('Robotics');
+	await expect(nutBatDau(page)).toHaveCount(0);
+	await theAi(page).tap();
+	await expect(nutBatDau(page)).toBeVisible();
+});
+
 test('trang chủ: nút hero "Chọn sách để học" trỏ tới #ke-sach', async ({ page }) => {
 	await page.goto('/');
 	await expect(page.getByRole('link', { name: /Chọn sách để học/ })).toHaveAttribute('href', '#ke-sach');

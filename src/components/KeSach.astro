@@ -87,6 +87,7 @@ const moTaThe = (s: (typeof sach)[number]) => (s.sapCo ? 'Sắp có' : `${s.tong
 		const sach: CuonSach[] = JSON.parse(goc.dataset.ds ?? '[]');
 		let ke: KeSach3D | null = null;
 		let nguoiMo: HTMLElement | null = null;
+		let khoiPhuc = false;
 
 		const moBang = (s: CuonSach, opener: HTMLElement | null) => {
 			nguoiMo = opener;
@@ -96,19 +97,24 @@ const moTaThe = (s: (typeof sach)[number]) => (s.sapCo ? 'Sắp có' : `${s.tong
 			nutBatDau.hidden = !s.href;
 			if (s.href) nutBatDau.href = s.href;
 			bang.hidden = false;
+			goc.dataset.sachMo = s.id;
 			(s.href ? nutBatDau : nutQuayLai).focus({ preventScroll: true });
 		};
 		const dongBang = () => {
 			if (bang.hidden) return;
 			bang.hidden = true;
+			delete goc.dataset.sachMo;
 			ke?.dong();
+			// Trả focus bằng code: không làm cuốn sách nhích ra như khi người dùng tab tới.
+			khoiPhuc = true;
 			nguoiMo?.focus({ preventScroll: true });
+			khoiPhuc = false;
 			nguoiMo = null;
 		};
 		const khiChon = (s: CuonSach) => moBang(s, goc.querySelector<HTMLElement>(`.the-chon[data-cuon="${s.id}"]`));
 		nutQuayLai.addEventListener('click', dongBang);
 		document.addEventListener('keydown', (e) => {
-			if (e.key === 'Escape') dongBang();
+			if (e.key === 'Escape' && !e.defaultPrevented && !bang.hidden && !document.querySelector('dialog[open]')) dongBang();
 		});
 
 		const nguoiMoId = () => (bang.hidden ? null : nguoiMo?.dataset.cuon);
@@ -119,14 +125,13 @@ const moTaThe = (s: (typeof sach)[number]) => (s.sapCo ? 'Sắp có' : `${s.tong
 			if (!s) return;
 			// Không chuyển trang: mở bảng thông tin; cảnh 3D (nếu có) rút cuốn sách ra và mở bìa.
 			e.preventDefault();
-			if (s.id === nguoiMoId()) return;
 			ke?.chon(s.id);
-			khiChon(s);
+			if (s.id !== nguoiMoId()) khiChon(s);
 		});
 		for (const loai of ['pointerover', 'focusin'] as const) {
 			goc.addEventListener(loai, (e) => {
 				const el = (e.target as HTMLElement).closest<HTMLElement>('.the-chon');
-				if (el) ke?.danhDau(el.dataset.cuon as CuonSach['id']);
+				if (el && !khoiPhuc) ke?.danhDau(el.dataset.cuon as CuonSach['id']);
 			});
 		}
 		for (const loai of ['pointerout', 'focusout'] as const) {
@@ -161,7 +166,12 @@ const moTaThe = (s: (typeof sach)[number]) => (s.sapCo ? 'Sắp có' : `${s.tong
 				const { dungKe } = await import('../lib/ke-sach/canh-3d');
 				dangTai = false;
 				// Điều kiện có thể đã đổi trong lúc tải chunk.
-				if (!ke && dieuKien(true)) ke = dungKe(sanKhau, sach, khiChon);
+				if (!ke && dieuKien(true)) {
+					ke = dungKe(sanKhau, sach, khiChon);
+					// Bảng đang mở trước khi cảnh dựng xong: rút cuốn tương ứng ra cho khớp.
+					const dangMoId = nguoiMoId();
+					if (dangMoId) ke.chon(dangMoId as CuonSach['id']);
+				}
 			};
 			const io = new IntersectionObserver(
 				(e) => {
