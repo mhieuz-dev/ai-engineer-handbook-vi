@@ -1,0 +1,98 @@
+---
+title: Chuỗi, tuple và set
+description: Tách và làm sạch một dòng dữ liệu bằng các hàm của chuỗi, gói nhiều giá trị bằng tuple, lọc giá trị trùng bằng set. Output in trong bài là output thật.
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+<CanBietTruoc>
+Biến, vòng lặp, hàm, list và dict (Chương 1).
+
+<Fragment slot="sau-chuong">
+Tự đọc được một file CSV thành list số, bỏ qua dòng lỗi mà chương trình không dừng. Dùng được thư viện chuẩn để tính trung bình, độ lệch chuẩn, sinh số ngẫu nhiên lặp lại được. Viết được một lớp mô hình nhỏ có hàm du_doan, đúng khuôn mà scikit-learn và PyTorch dùng.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch02_python_cho_du_lieu.ipynb" />
+
+Chương 1 gõ dữ liệu thẳng vào code: `gio = [1, 2, 3, 4]`. Ngoài đời, dữ liệu nằm trong file, mỗi dòng là một chuỗi chữ, có khi lẫn dấu cách thừa hay ô bị lỗi. Chương này dạy cách biến những dòng chữ đó thành con số dùng được.
+
+## Làm sạch một dòng chữ
+
+Giả sử một dòng trong file trông thế này, có cả dấu cách thừa ở hai đầu:
+
+```python
+dong = "  An,3,5.5  "          # một dòng dữ liệu thô: tên, giờ học, điểm
+sach = dong.strip()            # strip bỏ khoảng trắng ở hai đầu chuỗi
+print(repr(sach))              # repr in kèm dấu nháy để thấy rõ đã hết dấu cách
+cot = sach.split(",")          # split cắt chuỗi tại mỗi dấu phẩy, trả về list
+print(cot)
+print(cot[0].upper(), float(cot[2]) + 1)  # upper viết hoa; float đổi chuỗi "5.5" thành số
+print(", ".join(["A", "B", "C"]))         # join làm ngược split: nối list thành chuỗi
+```
+
+```text title="Output"
+'An,3,5.5'
+['An', '3', '5.5']
+AN 6.5
+A, B, C
+```
+
+Chú ý dòng thứ hai: sau `split`, `'3'` và `'5.5'` **vẫn là chuỗi**, không phải số. Phải đổi bằng `int(...)` hoặc `float(...)` thì mới cộng trừ được. Viết `cot[2] + 1` sẽ báo `TypeError`, vì Python không cộng chữ với số.
+
+Bốn hàm `strip`, `split`, `join`, `float` là đủ để đọc phần lớn file dữ liệu dạng chữ. Ở Chương 38, khi tiền xử lý văn bản tiếng Việt, bạn sẽ gặp lại `lower` và `split` ở bước tách từ.
+
+## Tuple: gói cố định
+
+Tuple giống list nhưng **không sửa được** sau khi tạo. Viết bằng ngoặc tròn:
+
+```python
+diem_A = (1, 2)       # tọa độ của bạn A: (giờ học, điểm)
+x, y = diem_A         # mở gói: gán từng phần tử cho từng biến
+print(x, y, len(diem_A))
+```
+
+```text title="Output"
+1 2 2
+```
+
+Dòng `x, y = diem_A` gọi là mở gói <En>unpacking</En>. Bạn đã dùng nó ở Chương 1 mà không để ý: `for g, d in zip(gio, diem)` chính là mở gói từng tuple `(g, d)` mà `zip` sinh ra.
+
+Khi nào dùng tuple thay list? Khi các giá trị **đi chung một cụm và không được đổi**: một tọa độ, một cặp (tên, điểm), hình dạng của một mảng. Ở Chương 3, `a.shape` của NumPy trả về đúng một tuple như `(4, 1)`.
+
+## Set: lọc trùng
+
+Set là tập hợp không thứ tự, mỗi giá trị chỉ xuất hiện một lần:
+
+```python
+nhan = ["meo", "cho", "meo", "ga", "cho", "meo"]  # nhãn của 6 bức ảnh
+print(sorted(set(nhan)), len(set(nhan)))            # set bỏ trùng; sorted xếp lại cho dễ đọc
+```
+
+```text title="Output"
+['cho', 'ga', 'meo'] 3
+```
+
+Sáu bức ảnh nhưng chỉ có 3 loại nhãn. Trong bài toán phân loại, đây là cách nhanh nhất để biết dữ liệu có bao nhiêu lớp.
+
+Set không có thứ tự, nên in ra có thể lộn xộn và mỗi máy có thể khác. Vì vậy mình bọc thêm `sorted` để output cố định. Kiểm tra một giá trị có trong set hay không (`"ga" in set(nhan)`) nhanh gần như tức thì, kể cả khi set có hàng triệu phần tử.
+
+<TuKiemTra
+	cauHoi='Sau cot = "7,8,9".split(","), biểu thức cot[0] + cot[1] cho ra gì?'
+	luaChon={['15', '"78"', 'Báo lỗi TypeError', '[7, 8]']}
+	dapAn={1}
+	giaiThich='Sau split, mỗi phần tử vẫn là chuỗi. Cộng hai chuỗi là nối chúng lại, nên "7" + "8" ra "78". Muốn ra 15 thì phải viết int(cot[0]) + int(cot[1]).'
+/>
+
+<Khung loai="loi">
+**Quên đổi chuỗi thành số.** Số đọc từ file luôn là chuỗi. Cộng hai chuỗi không báo lỗi mà nối chúng lại: `"7" + "8"` ra `"78"`. Lỗi này im lặng nên rất khó phát hiện.
+
+**Tuple một phần tử thiếu dấu phẩy.** `(5)` chỉ là số 5 trong ngoặc. Tuple một phần tử phải viết `(5,)`.
+
+**Trông vào thứ tự của set.** Set không giữ thứ tự thêm vào. Cần thứ tự thì `sorted(set(...))` hoặc dùng list.
+</Khung>

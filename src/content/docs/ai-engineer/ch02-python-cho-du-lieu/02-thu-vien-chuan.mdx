@@ -1,0 +1,89 @@
+---
+title: Thư viện chuẩn
+description: Dùng import để mượn code có sẵn; math cho căn và logarit, random với seed để kết quả lặp lại được, statistics cho trung bình và độ lệch chuẩn (và vì sao stdev chia n - 1).
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## import: mượn code có sẵn
+
+Python cài sẵn hàng trăm <Term id="module">module</Term>, gọi chung là thư viện chuẩn <En>standard library</En>. Muốn dùng, gõ `import` tên module, rồi gọi hàm bằng `tên_module.tên_hàm`.
+
+```python
+import math                       # các hàm toán học
+print(math.sqrt(16), math.log(math.e), round(math.pi, 4))  # căn bậc hai, logarit tự nhiên, số pi
+```
+
+```text title="Output"
+4.0 1.0 3.1416
+```
+
+`math.log` là logarit tự nhiên (cơ số $e$), nên $\ln e = 1$. Đây là logarit mà mọi công thức ML dùng, ví dụ hàm mất mát cross-entropy ở Chương 11.
+
+Sau này bạn sẽ gặp kiểu `import numpy as np`: chữ `as np` đặt tên ngắn cho module để gõ đỡ dài. Đó chỉ là quy ước, nhưng cả cộng đồng đều theo nên bạn cũng nên theo.
+
+## random và seed
+
+ML dùng số ngẫu nhiên khắp nơi: khởi tạo trọng số, xáo trộn dữ liệu, chia tập train và test. Nhưng khi gỡ lỗi, ta muốn **chạy lại ra đúng kết quả cũ**. Cách làm là đặt seed:
+
+```python
+import random
+random.seed(42)            # đặt "hạt giống" cho bộ sinh số ngẫu nhiên
+print(random.random())     # một số thực ngẫu nhiên trong khoảng [0, 1)
+random.seed(42)            # đặt lại đúng hạt giống cũ
+print(random.random())     # ra lại đúng số vừa rồi
+```
+
+```text title="Output"
+0.6394267984578837
+0.6394267984578837
+```
+
+<Khung loai="truc-giac">
+Bộ sinh số ngẫu nhiên của máy tính không thật sự ngẫu nhiên. Nó là một công thức tính ra dãy số trông có vẻ lộn xộn, xuất phát từ một con số ban đầu gọi là seed.
+
+Cùng seed thì cùng dãy số, như cùng một bộ bài đã xáo sẵn theo cùng một cách. Vì thế, mọi notebook trong giáo trình này đều đặt seed ở đầu, để output trên máy bạn khớp với output in trong bài.
+</Khung>
+
+Số 42 không có gì đặc biệt, chỉ là con số cộng đồng hay chọn. Seed nào cũng được, miễn là cố định.
+
+## statistics: trung bình và độ lệch chuẩn
+
+```python
+import statistics
+diem = [2, 4, 5, 7]                           # điểm của bốn bạn A, B, C, D
+print(statistics.mean(diem))                  # trung bình
+print(statistics.median(diem))                # trung vị: giá trị đứng giữa sau khi xếp
+print(round(statistics.stdev(diem), 4))       # độ lệch chuẩn mẫu: chia cho n - 1
+print(round(statistics.pstdev(diem), 4))      # độ lệch chuẩn tổng thể: chia cho n
+```
+
+```text title="Output"
+4.5
+4.5
+2.0817
+1.8028
+```
+
+Trung bình là $(2 + 4 + 5 + 7)/4 = 4{,}5$. Trung vị là trung bình của hai số giữa 4 và 5, cũng ra $4{,}5$.
+
+Độ lệch chuẩn đo dữ liệu **tản ra** quanh trung bình bao xa. Tính tay: độ lệch so với 4,5 là $-2{,}5;\ -0{,}5;\ 0{,}5;\ 2{,}5$. Bình phương rồi cộng lại được $6{,}25 + 0{,}25 + 0{,}25 + 6{,}25 = 13$.
+
+- Chia cho $n = 4$ rồi lấy căn: $\sqrt{13/4} = \sqrt{3{,}25} \approx 1{,}8028$. Đó là `pstdev`.
+- Chia cho $n - 1 = 3$ rồi lấy căn: $\sqrt{13/3} \approx 2{,}0817$. Đó là `stdev`.
+
+<Khung loai="vi-sao" tieuDe="CHIA CHO N - 1">
+Khi chỉ có một **mẫu** nhỏ lấy từ một tổng thể lớn hơn, trung bình của mẫu luôn nằm sát chính các điểm trong mẫu hơn là trung bình thật của tổng thể. Vì vậy độ lệch tính quanh trung bình mẫu bị **nhỏ đi** một chút so với thực tế.
+
+Chia cho $n - 1$ thay vì $n$ bù lại phần bị thiếu đó. Cách chỉnh này gọi là hiệu chỉnh Bessel, Chương 7 sẽ chứng minh.
+
+Điều cần nhớ ngay bây giờ: thư viện khác nhau chọn mặc định khác nhau. `statistics.stdev` và pandas chia $n - 1$; NumPy `np.std` mặc định chia $n$. Cùng một dữ liệu mà hai thư viện ra hai số là chuyện thường gặp, và thủ phạm thường là cái mẫu số này.
+</Khung>
+
+<Khung loai="loi">
+**Đặt tên file trùng tên module.** Lưu code của bạn thành `random.py` hay `math.py` là `import random` sẽ nạp **file của bạn** thay cho thư viện chuẩn, và báo những lỗi rất khó hiểu.
+
+**Đặt seed một lần rồi tưởng mọi thứ cố định.** Seed chỉ cố định dãy số từ chỗ đặt trở đi. Chạy thêm một ô code gọi `random` ở giữa là các số phía sau đổi hết. Muốn chắc ăn, chạy lại notebook từ đầu.
+</Khung>

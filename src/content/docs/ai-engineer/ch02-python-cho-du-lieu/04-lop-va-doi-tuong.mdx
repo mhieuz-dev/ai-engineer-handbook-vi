@@ -1,0 +1,75 @@
+---
+title: Lớp và đối tượng
+description: Gói dữ liệu và hàm vào một lớp, __init__ và self nghĩa là gì, tạo nhiều đối tượng từ một khuôn. Đây là khuôn mà mọi mô hình của scikit-learn và PyTorch đều theo.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Vì sao cần lớp
+
+Ở Chương 1, hàm `du_doan(x, w, b)` cần được đưa $w$ và $b$ mỗi lần gọi. Một mô hình thật có hàng triệu tham số, không thể truyền tay như vậy.
+
+Cách làm là **gói tham số cùng với các hàm dùng chúng** vào một chỗ. Chỗ đó là một đối tượng <En>object</En>, được tạo ra từ một <Term id="lop">lớp</Term>.
+
+```python
+class MoHinhTuyenTinh:                     # định nghĩa một lớp, tên lớp viết hoa chữ cái đầu mỗi từ
+    def __init__(self, w=0.0, b=0.0):      # __init__ chạy tự động mỗi khi tạo đối tượng mới
+        self.w = w                          # gắn tham số w vào chính đối tượng này
+        self.b = b
+
+    def du_doan(self, x):                   # một hàm của lớp, gọi là phương thức
+        return [self.w * xi + self.b for xi in x]  # dùng w, b đã cất trong đối tượng
+
+mh = MoHinhTuyenTinh(w=1.6, b=0.5)          # tạo một đối tượng từ khuôn
+print(mh.w, mh.b)                           # đọc tham số đang cất bên trong
+print([round(v, 2) for v in mh.du_doan([1, 2, 3, 4])])  # gọi phương thức, không cần truyền w, b
+
+mh2 = MoHinhTuyenTinh()                      # đối tượng thứ hai, dùng giá trị mặc định
+print(mh2.du_doan([1, 2]))
+```
+
+```text title="Output"
+1.6 0.5
+[2.1, 3.7, 5.3, 6.9]
+[0.0, 0.0]
+```
+
+Hai đối tượng `mh` và `mh2` tạo từ **cùng một lớp** nhưng giữ tham số riêng. `mh` đoán ra 2,1; 3,7; 5,3; 6,9, giống Chương 1. `mh2` còn $w = b = 0$ nên đoán toàn 0.
+
+<Khung loai="truc-giac">
+Lớp là bản vẽ một chiếc xe. Đối tượng là từng chiếc xe làm ra theo bản vẽ đó.
+
+Mọi chiếc có cùng các nút bấm (phương thức `du_doan`), nhưng mỗi chiếc có đồng hồ km riêng (thuộc tính `w`, `b`). Bấm nút trên xe này không làm đổi số km của xe kia.
+</Khung>
+
+## self là gì
+
+`self` là **chính đối tượng đang được dùng**. Khi bạn gọi `mh.du_doan([1, 2])`, Python ngầm chuyển thành `MoHinhTuyenTinh.du_doan(mh, [1, 2])`: `mh` được đưa vào chỗ `self`.
+
+Vì vậy bên trong phương thức, `self.w` nghĩa là "cái `w` của đối tượng đang gọi". Với `mh` đó là 1,6, với `mh2` đó là 0.
+
+Mọi phương thức đều phải có `self` làm tham số đầu tiên, dù lúc gọi bạn không truyền nó.
+
+## Khuôn mà thư viện ML dùng
+
+Lớp ta vừa viết có cùng hình dạng với mô hình của các thư viện lớn:
+
+**Bảng 2.1.** Cùng một khuôn: tạo đối tượng, học, dự đoán.
+
+| Bước | Lớp của ta | scikit-learn (Chương 10) | PyTorch (Chương 25) |
+|:---|:---|:---|:---|
+| Tạo mô hình | `MoHinhTuyenTinh()` | `LinearRegression()` | `nn.Linear(1, 1)` |
+| Tham số cất ở đâu | `mh.w`, `mh.b` | `coef_`, `intercept_` | `weight`, `bias` |
+| Dự đoán | `mh.du_doan(x)` | `mo_hinh.predict(X)` | `mo_hinh(X)` |
+
+Lớp của ta còn thiếu phương thức "học" (`fit` trong scikit-learn). Bạn sẽ viết nó ở Chương 10, bằng đúng vòng lặp gradient descent.
+
+<Khung loai="loi">
+**Quên self khi định nghĩa phương thức.** Viết `def du_doan(x):` rồi gọi `mh.du_doan([1, 2])` sẽ báo `TypeError: MoHinhTuyenTinh.du_doan() takes 1 positional argument but 2 were given`. Con số "2" khó hiểu đó là vì Python đã ngầm truyền thêm `mh`.
+
+**Quên self khi dùng thuộc tính.** Bên trong phương thức, viết `w` thay vì `self.w` là Python đi tìm một biến `w` bên ngoài, không phải tham số của mô hình.
+
+**Gọi lớp mà quên ngoặc.** `mh = MoHinhTuyenTinh` (thiếu `()`) không tạo đối tượng nào, chỉ dán thêm nhãn `mh` lên chính cái khuôn.
+</Khung>

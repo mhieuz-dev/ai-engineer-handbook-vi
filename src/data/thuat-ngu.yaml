@@ -173,3 +173,23 @@
   tenTiengAnh: dictionary
   giaiThich: Dict lưu các cặp khóa và giá trị, tra theo khóa thay vì theo số thứ tự. Giống một cuốn danh bạ, tra tên ra số điện thoại.
   hocKy: ai-engineer/ch01-python-tu-dau
+- id: module
+  ten: Module
+  tenTiengAnh: module
+  giaiThich: Module là một file code Python người khác đã viết sẵn, gồm nhiều hàm và biến. Gõ import tên module là mượn được toàn bộ những thứ trong đó. NumPy, pandas, PyTorch đều là module.
+  hocKy: ai-engineer/ch02-python-cho-du-lieu
+- id: csv
+  ten: CSV
+  tenTiengAnh: comma-separated values
+  giaiThich: CSV là file chữ lưu một bảng, mỗi dòng là một hàng, các ô cách nhau bằng dấu phẩy. Mở được bằng Excel lẫn bằng code, nên là định dạng dữ liệu phổ biến nhất khi bắt đầu một dự án ML.
+  hocKy: ai-engineer/ch02-python-cho-du-lieu
+- id: ngoai-le
+  ten: Ngoại lệ
+  tenTiengAnh: exception
+  giaiThich: Ngoại lệ là tín hiệu Python phát ra khi gặp chuyện không làm được, ví dụ đổi chữ abc thành số. Không bắt thì chương trình dừng. Bắt bằng try và except thì chương trình xử lý rồi chạy tiếp.
+  hocKy: ai-engineer/ch02-python-cho-du-lieu
+- id: lop
+  ten: Lớp
+  tenTiengAnh: class
+  giaiThich: Lớp là khuôn để tạo ra các đối tượng cùng loại, mỗi đối tượng giữ dữ liệu riêng và có chung các hàm. Mọi mô hình trong scikit-learn và PyTorch đều là một lớp.
+  hocKy: ai-engineer/ch02-python-cho-du-lieu

@@ -1,0 +1,145 @@
+---
+title: Bài tập
+description: Ba bài tập có đáp án chi tiết (đọc CSV có ô hỏng, lớp đếm từ, tự tính độ lệch chuẩn hai cách) và câu hỏi phỏng vấn.
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Tự viết code trong notebook trước, chạy thử, rồi mới mở đáp án.
+
+<BaiTap so="2.1">
+**Đọc file có ô hỏng.** Tạo file `diem_lop.csv` với nội dung sau, rồi đọc cột `diem` thành list số thực. Dòng nào không đổi được thành số thì bỏ qua, nhưng **ghi lại tên** bạn bị bỏ. Cuối cùng in trung bình điểm hợp lệ, làm tròn 4 chữ số.
+
+```text
+ten,diem
+A,8
+B,
+C,6.5
+D,abc
+E,9
+```
+
+<Fragment slot="dap-an">
+
+```python
+import csv
+noi_dung = "ten,diem\nA,8\nB,\nC,6.5\nD,abc\nE,9\n"
+with open("diem_lop.csv", "w", encoding="utf-8") as f:
+    f.write(noi_dung)
+
+hop_le, bo_qua = [], []
+with open("diem_lop.csv", encoding="utf-8") as f:
+    for hang in csv.DictReader(f):
+        try:
+            hop_le.append(float(hang["diem"]))   # ô rỗng và "abc" đều báo ValueError
+        except ValueError:
+            bo_qua.append(hang["ten"])           # ghi lại ai bị bỏ
+print(hop_le, bo_qua)
+print(round(sum(hop_le) / len(hop_le), 4))
+```
+
+```text title="Output"
+[8.0, 6.5, 9.0] ['B', 'D']
+7.8333
+```
+
+Bạn B có ô điểm rỗng, `float("")` báo `ValueError` giống hệt `float("abc")`. Trung bình là $(8 + 6{,}5 + 9)/3 = 23{,}5/3 \approx 7{,}8333$.
+
+Để ý: chia cho 3 (số điểm hợp lệ), không chia cho 5. Nếu thay ô hỏng bằng 0 thay vì bỏ qua, trung bình sẽ tụt xuống $23{,}5/5 = 4{,}7$, sai lệch rất xa. Chọn cách xử lý ô thiếu là một quyết định quan trọng, Chương 21 sẽ bàn kỹ.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="2.2">
+**Lớp đếm từ.** Viết lớp `DemTu` có:
+
+- thuộc tính `dem`, một dict rỗng lúc tạo;
+- phương thức `them(cau)`: đổi câu sang chữ thường, tách theo khoảng trắng, cộng số lần xuất hiện của mỗi từ vào `dem`;
+- phương thức `pho_bien(k)`: trả về `k` cặp (từ, số lần) xuất hiện nhiều nhất.
+
+Gọi `them("Học máy học sâu")` rồi `them("học tăng cường")`, in `dem` và `pho_bien(2)`.
+
+<Fragment slot="dap-an">
+
+```python
+class DemTu:
+    def __init__(self):
+        self.dem = {}                                  # mỗi đối tượng một dict riêng
+
+    def them(self, cau):
+        for tu in cau.lower().split():                 # chữ thường rồi tách theo khoảng trắng
+            self.dem[tu] = self.dem.get(tu, 0) + 1     # mẫu đếm của Bài tập 1.2
+
+    def pho_bien(self, k):
+        cap = sorted(self.dem.items(), key=lambda t: t[1], reverse=True)  # xếp theo số lần, giảm dần
+        return cap[:k]                                  # lấy k cặp đầu
+
+d = DemTu()
+d.them("Học máy học sâu")
+d.them("học tăng cường")
+print(d.dem)
+print(d.pho_bien(2))
+```
+
+```text title="Output"
+{'học': 3, 'máy': 1, 'sâu': 1, 'tăng': 1, 'cường': 1}
+[('học', 3), ('máy', 1)]
+```
+
+Nhờ `lower()`, "Học" và "học" được tính là một từ, nên "học" có 3 lần. Bỏ `lower()` thì sẽ có `'Học': 1` và `'học': 2` riêng.
+
+`key=lambda t: t[1]` bảo `sorted` xếp theo phần tử thứ hai của mỗi cặp, tức số lần. `lambda` là cách viết nhanh một hàm một dòng không cần tên. Bốn từ cùng xuất hiện 1 lần, `sorted` giữ nguyên thứ tự gặp trước, nên "máy" đứng thứ hai.
+
+Lớp này là phiên bản thu nhỏ của bước đếm từ trong mô hình túi từ ở Chương 39.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="2.3">
+**Độ lệch chuẩn tự tính.** Không dùng `statistics`, tự tính độ lệch chuẩn của `[2, 4, 5, 7]` theo cả hai cách: chia $n$ và chia $n - 1$. Đối chiếu với `pstdev` và `stdev` ở trang Thư viện chuẩn.
+
+<Fragment slot="dap-an">
+
+```python
+import math
+diem = [2, 4, 5, 7]
+tb = sum(diem) / len(diem)                       # trung bình 4.5
+tong = sum((v - tb) ** 2 for v in diem)          # tổng bình phương độ lệch
+print(tb, tong)
+print(round(math.sqrt(tong / len(diem)), 4))       # chia n: khớp pstdev
+print(round(math.sqrt(tong / (len(diem) - 1)), 4)) # chia n - 1: khớp stdev
+```
+
+```text title="Output"
+4.5 13.0
+1.8028
+2.0817
+```
+
+Khớp đúng hai con số của `statistics.pstdev` (1,8028) và `statistics.stdev` (2,0817).
+
+Biểu thức `sum((v - tb) ** 2 for v in diem)` giống list comprehension nhưng không có ngoặc vuông. Nó tính từng số rồi cộng luôn, không cần tạo list trung gian.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Vì sao phải đặt random seed khi làm ML?**
+
+<p lang="en"><em>Why do we set a random seed in machine learning?</em></p>
+
+*Gợi ý:* để thí nghiệm lặp lại được: cùng code, cùng dữ liệu cho cùng kết quả, nhờ vậy so sánh hai mô hình mới công bằng và gỡ lỗi mới được. Lưu ý mỗi thư viện có bộ sinh số riêng (random, NumPy, PyTorch), phải đặt seed cho từng cái; trên GPU một số phép tính vẫn có thể không hoàn toàn tất định.
+
+**2. List và tuple khác nhau ở đâu?**
+
+<p lang="en"><em>What is the difference between a list and a tuple?</em></p>
+
+*Gợi ý:* list sửa được, tuple không sửa được. Vì không đổi, tuple dùng được làm khóa của dict còn list thì không. Dùng tuple cho một cụm giá trị cố định như tọa độ hay hình dạng mảng.
+
+**3. Khi đọc dữ liệu gặp dòng hỏng, bạn xử lý thế nào?**
+
+<p lang="en"><em>How do you handle malformed rows when loading data?</em></p>
+
+*Gợi ý:* bắt đúng loại ngoại lệ, không nuốt mọi lỗi. Đếm và ghi lại số dòng bị bỏ; nếu tỷ lệ lớn thì dừng lại tìm nguyên nhân thay vì lặng lẽ bỏ. Cân nhắc giữa bỏ dòng và điền giá trị thay thế, vì mỗi cách làm lệch dữ liệu theo một kiểu.
+</Khung>

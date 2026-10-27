@@ -1,0 +1,80 @@
+---
+title: Đọc file CSV và xử lý lỗi
+description: Ghi và đọc file bằng with open, đọc bảng CSV bằng module csv, bắt ngoại lệ bằng try và except để dòng dữ liệu hỏng không làm dừng chương trình.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Ghi và đọc file
+
+Đầu tiên, tạo một file <Term id="csv">CSV</Term> chứa dữ liệu bốn bạn. Dòng đầu là tên cột, gọi là dòng tiêu đề <En>header</En>:
+
+```python
+noi_dung = "ten,gio,diem\nA,1,2\nB,2,4\nC,3,5\nD,4,7\n"  # \n là ký tự xuống dòng
+with open("lop.csv", "w", encoding="utf-8") as f:   # "w": mở để ghi, tạo file mới nếu chưa có
+    f.write(noi_dung)                                 # ghi cả chuỗi vào file
+```
+
+Trong Colab, file vừa tạo nằm ở thư mục làm việc, bấm biểu tượng thư mục ở thanh bên trái là thấy `lop.csv`.
+
+Cấu trúc `with open(...) as f:` mở file, cho bạn dùng qua tên `f`, rồi **tự đóng file** khi ra khỏi khối thụt lề, kể cả khi có lỗi giữa chừng. Luôn dùng `with` khi làm việc với file.
+
+`encoding="utf-8"` báo cho Python cách mã hóa chữ. Thiếu nó, chữ tiếng Việt có dấu có thể bị lỗi font khi chạy trên Windows.
+
+## Đọc CSV thành các list số
+
+```python
+import csv
+gio, diem = [], []                                 # hai list rỗng để gom dữ liệu
+with open("lop.csv", encoding="utf-8") as f:        # mặc định là "r": mở để đọc
+    for hang in csv.DictReader(f):                  # mỗi hàng là một dict: {"ten": "A", "gio": "1", ...}
+        gio.append(float(hang["gio"]))              # đổi chuỗi thành số rồi thêm vào list
+        diem.append(float(hang["diem"]))
+print(gio)
+print(diem)
+```
+
+```text title="Output"
+[1.0, 2.0, 3.0, 4.0]
+[2.0, 4.0, 5.0, 7.0]
+```
+
+`csv.DictReader` tự đọc dòng tiêu đề, rồi biến mỗi dòng sau thành một dict lấy tên cột làm khóa. Nhờ vậy bạn viết `hang["diem"]` thay vì phải nhớ điểm nằm ở cột thứ mấy.
+
+Sao không tự `split(",")` như trang trước? Vì CSV thật có những chỗ rắc rối: ô chứa dấu phẩy được bọc trong dấu nháy (`"Hà Nội, Việt Nam"`), ô có xuống dòng bên trong. Module `csv` lo hết những trường hợp đó.
+
+Đến Chương 4, pandas làm toàn bộ đoạn code trên chỉ bằng một dòng `pd.read_csv("lop.csv")`. Nhưng hiểu cách làm tay giúp bạn biết pandas đang làm gì, và sửa được khi nó đọc sai.
+
+## Khi dữ liệu có ô hỏng
+
+Dữ liệu thật hiếm khi sạch. Thử đổi ba chuỗi thành số, trong đó có một chuỗi không phải số:
+
+```python
+for s in ["5.5", "abc", "7"]:
+    try:                         # thử chạy khối này
+        print(float(s))
+    except ValueError:           # nếu float báo lỗi ValueError thì chạy khối này thay vào
+        print("Bỏ qua:", s)
+```
+
+```text title="Output"
+5.5
+Bỏ qua: abc
+7.0
+```
+
+Không có `try`, `float("abc")` phát ra một <Term id="ngoai-le">ngoại lệ</Term> `ValueError` và chương trình **dừng hẳn**, hai giá trị kia cũng mất. Có `try` và `except`, Python bắt lấy ngoại lệ, chạy khối xử lý, rồi đi tiếp sang `"7"`.
+
+<Khung loai="truc-giac">
+`try` giống như đi trên dây có lưới bảo hiểm. Bạn vẫn đi như bình thường. Lỡ trượt chân ở đâu thì rơi xuống lưới `except`, xử lý xong rồi leo lên đi tiếp, thay vì rơi thẳng xuống đất là chương trình dừng.
+</Khung>
+
+<Khung loai="loi">
+**Bắt mọi lỗi bằng except trơn.** Viết `except:` không ghi tên lỗi sẽ nuốt **cả** những lỗi bạn không lường trước, kể cả lỗi gõ sai tên biến. Chương trình chạy "êm" mà kết quả sai. Luôn ghi rõ loại lỗi muốn bắt, ví dụ `except ValueError:`.
+
+**Bỏ qua dòng hỏng mà không ghi lại.** Lặng lẽ bỏ 30% dữ liệu là một lỗi nghiêm trọng hơn cả chương trình dừng. Hãy đếm hoặc lưu lại các dòng bị bỏ, như Bài tập 2.1 sẽ làm.
+
+**Quên đổi kiểu.** `csv` trả mọi ô dưới dạng chuỗi. Nhớ `float(...)` hoặc `int(...)` trước khi tính.
+</Khung>
