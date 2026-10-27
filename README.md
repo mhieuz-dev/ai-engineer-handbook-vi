@@ -20,6 +20,20 @@ Môi trường Python cho notebook nằm trong `.venv` (tạo bằng `uv venv .v
 |---|---|---|
 | 10. Hồi quy tuyến tính | `notebooks/ch10_hoi_quy_tuyen_tinh.ipynb` | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/mhieuz-dev/ai-engineer-handbook-vi/blob/main/notebooks/ch10_hoi_quy_tuyen_tinh.ipynb) |
 
+## Làm lại ảnh
+
+Bìa sách (SVG cho cảnh 3D, WebP cho kệ phẳng): `node scripts/bia/ve-bia.mjs`. Hình minh hoạ chương 10: `.venv/bin/python scripts/hinh/ch10_hoi_quy.py`.
+
+## Thư viện bên thứ ba
+
+Site dùng các thư viện và phông chữ mã nguồn mở sau, mỗi cái theo giấy phép riêng của nó.
+
+| Thành phần | Giấy phép | Ghi chú |
+|---|---|---|
+| three.js | MIT, Copyright © 2010-2026 three.js authors | Dựng kệ sách 3D trên máy tính. Toàn văn giấy phép: `node_modules/three/LICENSE`; dòng bản quyền cũng được giữ lại trong chunk `canh-3d` của bản build. |
+| KaTeX | MIT | Dựng công thức toán. |
+| Be Vietnam Pro, Lora, JetBrains Mono, Patrick Hand | SIL Open Font License 1.1 (OFL) | Phông chữ, cài qua gói `@fontsource`. |
+
 ## Giấy phép
 
 MIT, xem file `LICENSE`.

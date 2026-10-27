@@ -13,6 +13,8 @@ export default defineConfig({
 	markdown: {
 		processor: unified({ remarkPlugins: [remarkMath], rehypePlugins: [rehypeKatex] }),
 	},
+	// Vite 8 dùng rolldown: giữ chú thích @license (three.js MIT) ở đầu chunk JS đã nén.
+	vite: { build: { rolldownOptions: { output: { comments: { legal: true } } } } },
 	integrations: [
 		// Tự khai báo sitemap (Starlight sẽ bỏ qua bản của nó) để loại trang in PDF và trang mẫu cho e2e.
 		sitemap({ filter: (url) => !/^\/(in|kiem-thu)\//.test(new URL(url).pathname) }),
