@@ -1,0 +1,77 @@
+---
+title: Gaussian Naive Bayes và cái giá của giả định
+description: Với đặc trưng là số thực, thay bảng đếm bằng phân phối chuẩn cho từng đặc trưng. Thử trên ung thư vú, nơi bán kính và chu vi tương quan 0,998, và thấy Naive Bayes đoán quá tự tin.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Đặc trưng số
+
+Đếm từ hợp với văn bản. Với đặc trưng là **số thực** (giờ học, bán kính khối u), Gaussian Naive Bayes giả định mỗi đặc trưng, trong mỗi lớp, có <Term id="phan-phoi-chuan">phân phối chuẩn</Term> riêng. Học là tính trung bình và phương sai của từng đặc trưng trong từng lớp; dự đoán là nhân các mật độ (7.3) lại.
+
+Với 10 bạn đỗ trượt của Chương 11, một đặc trưng duy nhất là giờ học:
+
+```python
+from sklearn.naive_bayes import GaussianNB
+gio = np.array([1, 2, 2, 3, 3, 4, 4, 5, 6, 7.0])
+do = np.array([0, 0, 1, 0, 0, 1, 0, 1, 1, 1])
+g = GaussianNB().fit(gio[:, None], do)
+print(g.theta_.ravel(), g.var_.ravel().round(4), g.predict_proba([[3.5]]).round(4))   # trung bình, phương sai từng lớp; xác suất ở 3,5 giờ
+```
+
+```text title="Output"
+[2.6 4.8] [1.04 2.96] [[0.6033 0.3967]]
+```
+
+Năm bạn trượt học trung bình 2,6 giờ (phương sai 1,04); năm bạn đỗ học trung bình 4,8 giờ (phương sai 2,96). Ở 3,5 giờ, mật độ của lớp trượt là 0,265, của lớp đỗ là 0,174. Với tỷ lệ nền bằng nhau, xác suất đỗ là $0{,}174/(0{,}265 + 0{,}174) \approx 0{,}397$.
+
+Hồi quy logistic ở Chương 11 cho 0,475 tại cùng điểm. Hai mô hình trả lời khác nhau vì giả định khác nhau: Gaussian NB tin rằng giờ học của mỗi nhóm có hình chuông, nhóm đỗ trải rộng hơn; hồi quy logistic không giả định gì về phân phối của giờ học.
+
+## Trên ung thư vú
+
+```python
+from sklearn.datasets import load_breast_cancer
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+dd = load_breast_cancer()
+Xb, yb = dd.data, 1 - dd.target
+a, b, c, e = train_test_split(Xb, yb, test_size=0.25, random_state=0, stratify=yb)   # cách chia của Chương 12
+gb = GaussianNB().fit(a, c)
+print(round(gb.score(b, e), 4))
+print(round(np.corrcoef(Xb[:, 0], Xb[:, 2])[0, 1], 4), dd.feature_names[[0, 2]])
+pg = gb.predict_proba(b)[:, 1]
+pl = make_pipeline(StandardScaler(), LogisticRegression()).fit(a, c).predict_proba(b)[:, 1]
+print(round(float(np.mean((pg > 0.01) & (pg < 0.99))), 4), round(float(np.mean((pl > 0.01) & (pl < 0.99))), 4))
+```
+
+```text title="Output"
+0.9161
+0.9979 ['mean radius' 'mean perimeter']
+0.0629 0.3007
+```
+
+Độ chính xác 91,6%, thấp hơn 98,6% của hồi quy logistic ở Chương 12. Nguyên nhân nằm ở dòng thứ hai: bán kính trung bình và chu vi trung bình tương quan **0,9979**. Chúng gần như là một đặc trưng đo hai lần (chu vi xấp xỉ $2\pi$ nhân bán kính). Bộ dữ liệu còn có diện tích, và các phiên bản "sai số" và "lớn nhất" của cả ba.
+
+Giả định độc lập coi mỗi đặc trưng là một bằng chứng **riêng**. Khi bán kính lớn gợi ý ác tính, Naive Bayes nhân bằng chứng đó vào, rồi nhân thêm bằng chứng gần như giống hệt từ chu vi, rồi từ diện tích, rồi từ bán kính lớn nhất... Cùng một bằng chứng bị đếm nhiều lần.
+
+## Quá tự tin
+
+Hậu quả rõ nhất nằm ở dòng cuối: chỉ **6,3%** số ca test được Naive Bayes chấm xác suất nằm giữa 0,01 và 0,99. Hơn 93% còn lại bị đẩy sát 0 hoặc sát 1. Hồi quy logistic, cùng dữ liệu, để 30% số ca ở vùng giữa.
+
+Mô hình nói "chắc chắn 99,9%" quá thường xuyên. Khi nó sai, nó sai một cách tự tin. Xác suất như vậy gọi là **không hiệu chỉnh** <En>poorly calibrated</En>: con số 0,999 không có nghĩa là 999 trên 1000 ca như vậy thật sự ác tính.
+
+<Khung loai="vi-sao" tieuDe="VẪN DÙNG NAIVE BAYES">
+Với văn bản, độ chính xác của Naive Bayes thường chỉ kém hồi quy logistic một chút, trong khi nó học nhanh hơn nhiều, cần ít dữ liệu hơn, và không cần chọn learning rate. Khi có ít dữ liệu gán nhãn, nó hay **thắng**: ước lượng bằng đếm ổn định hơn tối ưu nhiều tham số.
+
+Quy tắc thực dụng: dùng Naive Bayes làm baseline nhanh cho phân loại văn bản. Dùng nhãn của nó, đừng tin con số xác suất của nó. Nếu cần xác suất đáng tin, hiệu chỉnh lại bằng `CalibratedClassifierCV` của scikit-learn hoặc chuyển sang hồi quy logistic.
+</Khung>
+
+<Khung loai="loi">
+**Dùng `MultinomialNB` cho số thực âm.** Multinomial giả định đặc trưng là số đếm, không âm. Dữ liệu đã chuẩn hóa (có số âm) sẽ báo lỗi. Với số thực, dùng `GaussianNB`; với đặc trưng nhị phân có hay không, dùng `BernoulliNB`.
+
+**Đưa cả những đặc trưng trùng lặp vào Naive Bayes.** Với mô hình khác, đặc trưng trùng chỉ thừa. Với Naive Bayes, chúng làm méo xác suất. Loại bớt đặc trưng tương quan cao trước (Chương 21).
+</Khung>

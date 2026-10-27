@@ -1,0 +1,83 @@
+---
+title: Tính bằng log và đọc mô hình
+description: Tích của 200 xác suất nhỏ tràn về đúng 0, nên Naive Bayes cộng log thay vì nhân. Đọc feature_log_prob_ để biết từ nào đặc trưng cho tin rác, và vì sao hai lớp đếm hòa nhau mà rác vẫn thắng.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Tích của nhiều số nhỏ
+
+Một email thật có vài trăm từ. Mỗi xác suất $P(\text{từ} \mid \text{lớp})$ cỡ vài phần trăm. Nhân 200 số như vậy:
+
+```python
+print((1 / 52) ** 200, 200 * np.log(1 / 52))       # tích trực tiếp, và tổng các log
+```
+
+```text title="Output"
+0.0 -790.2487437162854
+```
+
+Tích trực tiếp **tràn dưới** thành 0: số thực 64 bit không biểu diễn được gì nhỏ hơn khoảng $10^{-308}$, còn $(1/52)^{200} \approx 10^{-343}$. Cả hai lớp đều thành 0, không còn gì để so.
+
+Lấy log biến tích thành tổng, như log-likelihood ở Chương 7:
+
+$$
+\log P(\text{lớp} \mid \text{tin}) = \log P(\text{lớp}) + \sum_{\text{từ}} \log P(\text{từ} \mid \text{lớp}) + \text{hằng số} \tag{15.4}
+$$
+
+Tổng $-790$ là một số bình thường, không tràn. Lớp nào có tổng lớn hơn thì thắng. Mọi thư viện đều tính Naive Bayes theo cách này.
+
+## Đọc mô hình
+
+`MultinomialNB` lưu sẵn log xác suất của mỗi từ trong mỗi lớp:
+
+```python
+m = MultinomialNB(alpha=1.0).fit(Xt, nhan)
+v = cv.get_feature_names_out()                           # 32 từ của từ vựng
+lp = m.feature_log_prob_                                 # shape (2, 32): log P(từ | lớp)
+print(np.exp(m.class_log_prior_).round(4), lp[1][list(v).index("thưởng")].round(4), round(float(np.log(4 / 52)), 4))
+chenh = lp[1] - lp[0]                                    # log P(từ | rác) - log P(từ | thường)
+o = np.argsort(chenh)
+print([(v[i], float(chenh[i].round(4))) for i in o[-3:]])     # 3 từ nghiêng về rác nhất
+print([(v[i], float(chenh[i].round(4))) for i in o[:3]])      # 3 từ nghiêng về thường nhất
+```
+
+```text title="Output"
+[0.5 0.5] -2.5649 -2.5649
+[('nhận', 1.1364), ('trúng', 1.1364), ('thưởng', 1.424)]
+[('gửi', -1.0609), ('mai', -1.0609), ('liệu', -1.0609)]
+```
+
+Dòng đầu: tỷ lệ nền 0,5 mỗi lớp, và $\log P(\text{thưởng} \mid \text{rác}) = \log(4/52) \approx -2{,}5649$, đúng công thức (15.3).
+
+Hiệu log giữa hai lớp cho biết mỗi từ là bằng chứng mạnh tới đâu. "Thưởng" có hiệu 1,424: mỗi lần xuất hiện, nó nhân tỷ số rác trên thường lên $e^{1{,}424} \approx 4{,}15$ lần. "Gửi", "mai", "liệu" kéo về phía thường. Đây là cách đọc mô hình Naive Bayes, giống cách đọc hệ số hồi quy logistic qua tỷ lệ cược ở Chương 11.
+
+## Hai lớp đếm hòa nhau
+
+Tin "miễn phí tài liệu": "miễn" và "phí" mỗi từ xuất hiện 2 lần trong rác, 0 trong thường; "tài" và "liệu" mỗi từ 2 lần trong thường, 0 trong rác. Số đếm **đối xứng hoàn toàn**.
+
+```python
+print(m.predict_proba(cv.transform(["miễn phí tài liệu"])).round(4))
+```
+
+```text title="Output"
+[[0.4623 0.5377]]
+```
+
+Không phải 50-50. Tính tay: lớp rác cho $\frac{3 \cdot 3 \cdot 1 \cdot 1}{52^4}$, lớp thường cho $\frac{1 \cdot 1 \cdot 3 \cdot 3}{54^4}$. Tử số bằng nhau; mẫu số của rác **nhỏ hơn** vì tin rác có ít từ hơn (20 so với 22). Tỷ số $(54/52)^4 \approx 1{,}163$, nên $P(\text{rác}) = 1{,}163/2{,}163 \approx 0{,}5377$.
+
+Đây là một đặc điểm ít ai để ý: lớp có ít từ hơn (văn bản ngắn hơn) được lợi một chút ở mỗi từ, vì làm trơn chia ra ít hơn.
+
+<Khung loai="vi-sao" tieuDe="NAIVE BAYES LÀ MÔ HÌNH TUYẾN TÍNH">
+Viết lại (15.4) cho hai lớp, lấy hiệu: $\log\frac{P(\text{rác} \mid \text{tin})}{P(\text{thường} \mid \text{tin})} = \log\frac{P(\text{rác})}{P(\text{thường})} + \sum_j x_j \cdot \text{chênh}_j$, với $x_j$ là số lần từ thứ $j$ xuất hiện.
+
+Đó là **tổ hợp tuyến tính** của các số đếm, cộng một hệ số chặn, đúng dạng $\mathbf w \cdot \mathbf x + b$ của hồi quy logistic. Hai mô hình chỉ khác cách **tìm** trọng số: Naive Bayes đếm thẳng từ dữ liệu theo giả định độc lập, hồi quy logistic tối ưu cross-entropy bằng gradient descent. Chương 41 sẽ so hai cách trên bài toán phân loại văn bản tiếng Việt thật.
+</Khung>
+
+<Khung loai="loi">
+**Tách từ tiếng Việt theo khoảng trắng.** "Tài liệu" là **một** từ nhưng bị tách thành "tài" và "liệu", hai đặc trưng gần như luôn đi cùng nhau, càng vi phạm giả định độc lập. Chương 38 dùng thư viện `underthesea` để tách từ tiếng Việt đúng hơn.
+
+**`CountVectorizer` bỏ từ một ký tự.** Mặc định nó chỉ giữ từ có ít nhất 2 ký tự (mẫu `\b\w\w+\b`). Với tiếng Việt, những từ như "ở", "đi" cần chú ý: "đi" có 2 ký tự nên được giữ, "ở" thì bị bỏ. Đổi bằng tham số `token_pattern`.
+</Khung>

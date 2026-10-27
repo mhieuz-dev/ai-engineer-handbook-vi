@@ -388,3 +388,13 @@
   tenTiengAnh: curse of dimensionality
   giaiThich: Khi số chiều tăng, các điểm dữ liệu trở nên xa nhau và xa đều nhau, điểm gần nhất cũng gần như xa bằng điểm xa nhất. Các phương pháp dựa trên khoảng cách như KNN mất dần tác dụng.
   hocKy: ai-engineer/ch14-knn
+- id: naive-bayes
+  ten: Naive Bayes
+  tenTiengAnh: naive Bayes
+  giaiThich: Naive Bayes là bộ phân loại dùng định lý Bayes với một giả định ngây thơ - các đặc trưng độc lập với nhau khi đã biết lớp. Nhờ giả định đó, xác suất của cả mẫu chỉ là tích xác suất của từng đặc trưng, học bằng cách đếm.
+  hocKy: ai-engineer/ch15-naive-bayes
+- id: laplace-smoothing
+  ten: Làm trơn Laplace
+  tenTiengAnh: Laplace smoothing
+  giaiThich: Làm trơn Laplace cộng thêm 1 vào mọi số đếm trước khi tính xác suất, để một từ chưa từng gặp trong một lớp không làm xác suất của cả câu bằng đúng 0.
+  hocKy: ai-engineer/ch15-naive-bayes

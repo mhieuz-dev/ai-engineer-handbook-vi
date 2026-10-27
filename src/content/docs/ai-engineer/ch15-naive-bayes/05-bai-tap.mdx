@@ -1,0 +1,104 @@
+---
+title: Bài tập
+description: Ba bài tập Naive Bayes có đáp án chi tiết (tính tay một tin có số đếm hòa nhau, đổi tỷ lệ nền thành 10% tin rác, tự tính Gaussian NB một chiều từ trung bình và phương sai) và câu hỏi phỏng vấn.
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Ba bài dùng 8 tin nhắn, `cv`, `Xt`, `nhan` ở trang 2 và mô hình `m` ở trang 3.
+
+<BaiTap so="15.1">
+**Một tin rõ ràng.** Tính tay xác suất tin "nhận thưởng miễn phí" là rác, với làm trơn Laplace. Trong lớp rác, "nhận" xuất hiện 2 lần, "thưởng" 3 lần, "miễn" 2 lần, "phí" 2 lần; trong lớp thường, cả bốn từ đều 0 lần.
+
+<Fragment slot="dap-an">
+
+Lớp rác: $\frac{3 \cdot 4 \cdot 3 \cdot 3}{52^4} = \frac{108}{52^4}$. Lớp thường: $\frac{1 \cdot 1 \cdot 1 \cdot 1}{54^4} = \frac{1}{54^4}$.
+
+Tỷ số: $108 \times (54/52)^4 \approx 108 \times 1{,}163 \approx 125{,}6$. Xác suất rác $\approx 125{,}6/126{,}6 \approx 0{,}9921$.
+
+```python
+print(m.predict_proba(cv.transform(["nhận thưởng miễn phí"])).round(4))
+```
+
+```text title="Output"
+[[0.0079 0.9921]]
+```
+
+Bốn từ đều là bằng chứng của rác, nhân dồn lại thành 99%. Đây là lúc giả định độc lập phóng đại: "miễn" và "phí" gần như luôn đi cùng nhau, nên thật ra chỉ là **một** bằng chứng, mà bị đếm hai lần.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="15.2">
+**Tỷ lệ nền thật.** Trong 8 tin huấn luyện, nửa là rác. Ngoài đời, giả sử chỉ 10% tin nhắn là rác. Tính lại xác suất "nhận thưởng họp" là rác với $P(\text{rác}) = 0{,}1$. Kiểm bằng tham số `class_prior`.
+
+<Fragment slot="dap-an">
+
+Trang 2 tính được tỷ số khả năng (không kể tỷ lệ nền) là $6{,}719$. Nhân với tỷ số tỷ lệ nền $0{,}1/0{,}9$:
+
+$$
+6{,}7195 \times \frac{0{,}1}{0{,}9} \approx 0{,}7466, \qquad P(\text{rác} \mid \text{tin}) = \frac{0{,}7466}{1{,}7466} \approx 0{,}4275
+$$
+
+```python
+m10 = MultinomialNB(alpha=1.0, class_prior=[0.9, 0.1]).fit(Xt, nhan)      # thứ tự lớp: 0 (thường), 1 (rác)
+print(m10.predict_proba(cv.transform(["nhận thưởng họp"])).round(4))
+```
+
+```text title="Output"
+[[0.5725 0.4275]]
+```
+
+Từ 87% xuống 43%: kết luận **đảo ngược**, tin này giờ được đoán là thường. Đúng bài học xét nghiệm của Chương 7: bằng chứng như nhau, nhưng khi thứ ta tìm hiếm hơn, cùng bằng chứng đó kém thuyết phục hơn. Tỷ lệ nền trong dữ liệu huấn luyện phải phản ánh đúng thực tế, hoặc phải chỉnh lại như thế này.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="15.3">
+**Gaussian NB tự tính.** Từ trung bình và phương sai ở trang 4 (lớp trượt: 2,6 và 1,04; lớp đỗ: 4,8 và 2,96), tính tay mật độ (7.3) của mỗi lớp tại 3,5 giờ, rồi xác suất đỗ.
+
+<Fragment slot="dap-an">
+
+Lớp trượt: $\frac{1}{\sqrt{2\pi \times 1{,}04}} \exp\left(-\frac{(3{,}5 - 2{,}6)^2}{2 \times 1{,}04}\right) = \frac{1}{2{,}556} e^{-0{,}389} \approx 0{,}391 \times 0{,}678 \approx 0{,}265$.
+
+Lớp đỗ: $\frac{1}{\sqrt{2\pi \times 2{,}96}} \exp\left(-\frac{(3{,}5 - 4{,}8)^2}{2 \times 2{,}96}\right) = \frac{1}{4{,}313} e^{-0{,}285} \approx 0{,}232 \times 0{,}752 \approx 0{,}174$.
+
+Xác suất đỗ $= 0{,}174/(0{,}265 + 0{,}174) \approx 0{,}397$.
+
+```python
+for cl in [0, 1]:
+    xg = gio[do == cl]
+    mu, var = xg.mean(), xg.var()                        # chia n, đúng như GaussianNB
+    print(cl, mu, round(var, 4), round(np.exp(-(3.5 - mu) ** 2 / (2 * var)) / np.sqrt(2 * np.pi * var), 4))
+```
+
+```text title="Output"
+0 2.6 1.04 0.265
+1 4.8 2.96 0.1743
+```
+
+Khớp 0,3967 của `GaussianNB`. 3,5 giờ gần trung bình của lớp trượt (cách 0,9) hơn lớp đỗ (cách 1,3), nên lớp trượt thắng, dù lớp đỗ trải rộng hơn làm đuôi của nó dày hơn.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Vì sao Naive Bayes được gọi là "naive"?**
+
+<p lang="en"><em>Why is Naive Bayes called "naive"?</em></p>
+
+*Gợi ý:* giả định các đặc trưng độc lập có điều kiện khi biết lớp. Gần như luôn sai nhưng vẫn cho thứ hạng lớp tốt; cái giá là xác suất quá tự tin.
+
+**2. Laplace smoothing để làm gì?**
+
+<p lang="en"><em>What is Laplace smoothing for?</em></p>
+
+*Gợi ý:* tránh xác suất bằng 0 cho đặc trưng chưa thấy trong một lớp, vì một số 0 phủ quyết cả tích. Cộng $\alpha$ vào mọi số đếm, $\alpha$ là siêu tham số.
+
+**3. Khi nào bạn chọn Naive Bayes thay vì hồi quy logistic?**
+
+<p lang="en"><em>When would you choose Naive Bayes over logistic regression?</em></p>
+
+*Gợi ý:* dữ liệu ít, nhiều đặc trưng thưa như văn bản, cần huấn luyện cực nhanh hoặc cập nhật liên tục, cần baseline nhanh. Hồi quy logistic khi có đủ dữ liệu, đặc trưng tương quan, hoặc cần xác suất hiệu chỉnh tốt.
+</Khung>

@@ -1,0 +1,108 @@
+---
+title: Đếm từ và làm trơn Laplace
+description: Đếm từ trong 4 tin rác và 4 tin thường, tính tay xác suất "nhận thưởng họp" là rác ra 0,8705, và thấy một từ chưa gặp đẩy xác suất về đúng 0 nếu không làm trơn.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Bảng đếm
+
+Tách 8 tin thành từ (tách theo khoảng trắng) và đếm:
+
+- 4 tin rác có tổng cộng **20** từ. 4 tin thường có **22** từ.
+- Cả 8 tin dùng **32** từ khác nhau: đó là bộ từ vựng, kích thước $V = 32$.
+
+Ba từ của tin mới xuất hiện bao nhiêu lần trong mỗi lớp:
+
+**Bảng 15.2.** Số lần xuất hiện của ba từ trong tin mới.
+
+| Từ | Trong tin rác | Trong tin thường |
+|:---:|:---:|:---:|
+| nhận | 2 | 0 |
+| thưởng | 3 | 0 |
+| họp | 0 | 1 |
+
+## Thử tính thẳng: con số 0
+
+Ước lượng đơn giản nhất: $P(\text{từ} \mid \text{lớp}) = \frac{\text{số lần từ đó xuất hiện trong lớp}}{\text{tổng số từ của lớp}}$.
+
+$$
+P(\text{họp} \mid \text{rác}) = \frac{0}{20} = 0
+$$
+
+"Họp" chưa từng xuất hiện trong tin rác nào, nên xác suất bằng 0. Nhân vào tích (15.2), **cả câu** có xác suất là rác bằng đúng 0, bất kể "nhận" và "thưởng" mang đậm mùi rác tới đâu. Ngược lại, "nhận" và "thưởng" chưa từng có trong tin thường, nên $P(\text{tin} \mid \text{thường}) = 0$ luôn.
+
+Một từ duy nhất chưa thấy là đủ phủ quyết mọi bằng chứng khác. Với 8 tin huấn luyện, gần như mọi tin mới đều có một từ như vậy.
+
+## Làm trơn Laplace
+
+Cách sửa: cộng thêm 1 vào **mọi** số đếm, như thể mỗi từ trong bộ từ vựng đã được thấy thêm một lần ở mỗi lớp. Mẫu số phải cộng thêm $V$ để các xác suất vẫn cộng lại bằng 1:
+
+$$
+P(\text{từ} \mid \text{lớp}) = \frac{\text{số lần} + 1}{\text{tổng số từ của lớp} + V} \tag{15.3}
+$$
+
+Đây là <Term id="laplace-smoothing">làm trơn Laplace</Term>. Với lớp rác, mẫu số là $20 + 32 = 52$; với lớp thường, $22 + 32 = 54$.
+
+**Lớp rác.**
+
+$$
+P(\text{rác}) \cdot \frac{2 + 1}{52} \cdot \frac{3 + 1}{52} \cdot \frac{0 + 1}{52} = 0{,}5 \times \frac{3 \times 4 \times 1}{52^3} = 0{,}5 \times \frac{12}{52^3}
+$$
+
+**Lớp thường.**
+
+$$
+P(\text{thường}) \cdot \frac{0 + 1}{54} \cdot \frac{0 + 1}{54} \cdot \frac{1 + 1}{54} = 0{,}5 \times \frac{2}{54^3}
+$$
+
+Chia cho tổng để ra xác suất. Tỷ số giữa hai lớp:
+
+$$
+\frac{12 / 52^3}{2 / 54^3} = 6 \times \left(\frac{54}{52}\right)^3 \approx 6 \times 1{,}1199 \approx 6{,}719
+$$
+
+Vậy $P(\text{rác} \mid \text{tin}) = \frac{6{,}719}{6{,}719 + 1} \approx 0{,}8705$.
+
+Kiểm bằng scikit-learn, có và không có làm trơn:
+
+```python
+import numpy as np
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.naive_bayes import MultinomialNB
+tin = ["trúng thưởng iphone miễn phí", "nhận quà miễn phí ngay", "khuyến mãi trúng thưởng lớn", "bấm link nhận tiền thưởng",
+       "hẹn gặp lúc ba giờ", "gửi tài liệu họp ngày mai", "mai đi ăn trưa không", "tài liệu môn học đã gửi"]
+nhan = np.array([1, 1, 1, 1, 0, 0, 0, 0])              # 1 là rác
+cv = CountVectorizer()                                 # tách từ và đếm
+Xt = cv.fit_transform(tin)                             # ma trận 8 tin nhân 32 từ
+print(Xt.shape, Xt[nhan == 1].sum(), Xt[nhan == 0].sum())
+for a in [1e-10, 1.0]:                                 # gần như không làm trơn, và làm trơn Laplace
+    m = MultinomialNB(alpha=a, force_alpha=True).fit(Xt, nhan)
+    print(a, m.predict_proba(cv.transform(["nhận thưởng họp"])).round(4))   # [P(thường), P(rác)]
+```
+
+```text title="Output"
+(8, 32) 20 22
+1e-10 [[0. 1.]]
+1.0 [[0.1295 0.8705]]
+```
+
+Không làm trơn: mô hình **chắc chắn 100%** là rác, vì xác suất lớp thường bằng 0. Có làm trơn: 87%, vẫn nghiêng hẳn về rác nhưng biết mình có thể sai. Con số 0,8705 khớp với tính tay.
+
+`alpha` là lượng cộng thêm; `alpha=1` là Laplace. `force_alpha=True` để scikit-learn chấp nhận giá trị rất nhỏ thay vì tự nâng lên.
+
+<TuKiemTra
+	cauHoi="Một tin mới gồm toàn những từ chưa từng có trong 8 tin huấn luyện, ví dụ 'xin chào bạn'. Naive Bayes có làm trơn Laplace sẽ đoán xác suất rác bao nhiêu?"
+	luaChon={['0', '0,5', '1', 'Báo lỗi']}
+	dapAn={1}
+	giaiThich="CountVectorizer bỏ qua mọi từ không có trong từ vựng, nên tin mới thành một vector toàn số 0. Không có bằng chứng nào, chỉ còn tỷ lệ nền 4/8 = 0,5."
+/>
+
+<Khung loai="loi">
+**Dùng `fit_transform` cho tin mới.** `cv.fit_transform(["nhận thưởng họp"])` xây một từ vựng **mới** chỉ có 3 từ, không khớp với 32 cột mà mô hình đã học. Với dữ liệu mới, luôn dùng `cv.transform`. Đây là cùng nguyên tắc với `StandardScaler` ở Chương 9: chỉ `fit` trên train.
+
+**Đặt `alpha` quá lớn.** Cộng 100 vào mọi số đếm thì mọi từ trở nên gần như đồng đều trong mọi lớp, mô hình không phân biệt được gì. `alpha` là một siêu tham số, chọn bằng cross-validation như $\alpha$ của ridge ở Chương 13.
+</Khung>

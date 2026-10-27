@@ -1,0 +1,77 @@
+---
+title: Bayes cho phân loại
+description: Dùng định lý Bayes của Chương 7 để phân loại tin nhắn rác, và giả định ngây thơ biến một xác suất không thể đếm thành tích của những xác suất đếm được.
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+<CanBietTruoc>
+Định lý Bayes và bài toán xét nghiệm (Chương 7). Phân loại, `predict_proba` (Chương 11). Ma trận nhầm lẫn (Chương 12).
+
+<Fragment slot="sau-chuong">
+Phân loại một tin nhắn bằng Naive Bayes tính tay từ bảng đếm từ. Giải thích vì sao cần làm trơn Laplace và vì sao tính bằng log. Dùng `CountVectorizer` với `MultinomialNB` cho văn bản và `GaussianNB` cho dữ liệu số. Biết giả định độc lập sai ở đâu và hậu quả của nó.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch15_naive_bayes.ipynb" />
+
+## Tám tin nhắn
+
+Bộ dữ liệu nhỏ nhất có thể để tính tay: 8 tin nhắn, 4 tin rác (spam), 4 tin thường (ham).
+
+**Bảng 15.1.** Tám tin nhắn huấn luyện.
+
+| Tin nhắn | Nhãn |
+|:---|:---:|
+| trúng thưởng iphone miễn phí | rác |
+| nhận quà miễn phí ngay | rác |
+| khuyến mãi trúng thưởng lớn | rác |
+| bấm link nhận tiền thưởng | rác |
+| hẹn gặp lúc ba giờ | thường |
+| gửi tài liệu họp ngày mai | thường |
+| mai đi ăn trưa không | thường |
+| tài liệu môn học đã gửi | thường |
+
+Một tin mới đến: "nhận thưởng họp". Rác hay thường?
+
+## Định lý Bayes, lần nữa
+
+Chương 7 tính xác suất có bệnh khi xét nghiệm dương tính. Ở đây là xác suất tin là rác khi biết nội dung:
+
+$$
+P(\text{rác} \mid \text{tin}) = \frac{P(\text{tin} \mid \text{rác})\, P(\text{rác})}{P(\text{tin})} \tag{15.1}
+$$
+
+- $P(\text{rác})$ là tỷ lệ nền: 4 trên 8 tin là rác, nên 0,5.
+- $P(\text{tin})$ ở mẫu số giống nhau cho cả hai lớp. Khi chỉ cần so lớp nào lớn hơn, bỏ được nó, rồi chuẩn hóa ở cuối.
+- $P(\text{tin} \mid \text{rác})$: xác suất một tin rác có **đúng** nội dung "nhận thưởng họp". Đây là chỗ khó.
+
+## Không đếm được cả câu
+
+Muốn ước lượng $P(\text{"nhận thưởng họp"} \mid \text{rác})$ bằng cách đếm, ta cần đếm xem bao nhiêu tin rác có đúng câu đó. Trong 4 tin rác, không tin nào. Trong một triệu tin rác thật, có lẽ cũng không. Số câu có thể viết ra nhiều vô hạn; gần như mọi câu mới đều chưa từng xuất hiện.
+
+Giải pháp: giả định rằng, khi đã biết tin là rác, **các từ xuất hiện độc lập với nhau**. Khi đó xác suất cả câu là tích xác suất từng từ:
+
+$$
+P(\text{nhận, thưởng, họp} \mid \text{rác}) \approx P(\text{nhận} \mid \text{rác}) \cdot P(\text{thưởng} \mid \text{rác}) \cdot P(\text{họp} \mid \text{rác}) \tag{15.2}
+$$
+
+Mỗi thừa số đếm được dễ dàng: trong các tin rác, từ "nhận" chiếm bao nhiêu phần số từ.
+
+Bộ phân loại dựa trên giả định này là <Term id="naive-bayes">Naive Bayes</Term>. "Naive" là ngây thơ, vì giả định độc lập gần như **luôn sai**: trong tin rác, "miễn" và "phí" gần như luôn đi cùng nhau, chẳng độc lập chút nào.
+
+<Khung loai="vi-sao" tieuDe="GIẢ ĐỊNH SAI MÀ VẪN CHẠY">
+Để phân loại, ta không cần xác suất **đúng**, chỉ cần biết lớp nào có xác suất **lớn hơn**. Giả định độc lập làm cả hai lớp lệch theo cùng một kiểu (cùng nhân dồn những từ đi cặp với nhau), nên thứ tự giữa hai lớp thường vẫn đúng dù con số tuyệt đối sai.
+
+Đổi lại, Naive Bayes cực kỳ nhanh (học chỉ là đếm), cần rất ít dữ liệu, và xử lý tự nhiên hàng chục nghìn từ vựng. Trong nhiều năm, nó là bộ lọc thư rác tiêu chuẩn. Trang 4 sẽ cho thấy cái giá của giả định sai: xác suất quá tự tin.
+</Khung>
+
+<Khung loai="loi">
+**Nhầm $P(\text{từ} \mid \text{rác})$ với $P(\text{rác} \mid \text{từ})$.** "Trong tin rác, 'thưởng' chiếm 15% số từ" khác hẳn "tin có chữ 'thưởng' thì 15% là rác". Bayes chính là công cụ để đổi chiều từ cái thứ nhất sang cái thứ hai, như Chương 7.
+
+**Quên tỷ lệ nền.** Nếu ngoài đời 90% tin là thường, $P(\text{rác}) = 0{,}1$ chứ không phải 0,5 như trong 8 tin này. Tỷ lệ nền sai làm lệch mọi dự đoán.
+</Khung>
