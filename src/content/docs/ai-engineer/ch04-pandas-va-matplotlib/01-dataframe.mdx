@@ -42,7 +42,26 @@ Bốn bạn đầu vẫn là A, B, C, D quen thuộc, cùng giờ học và cùn
 
 ## Đọc bảng bằng một dòng
 
-Chương 2 cần cả chục dòng với `csv.DictReader` để đọc một file. pandas làm việc đó bằng một dòng, và trả về một <Term id="dataframe">DataFrame</Term>:
+Trước hết, ghi Bảng 4.1 ra file `lop10.csv` như Chương 2 đã làm (ô của bạn F để trống):
+
+```python
+noi_dung = """ten,lop,gio,ngu,diem
+A,L1,1,7,2
+B,L1,2,6,4
+C,L1,3,8,5
+D,L1,4,7,7
+E,L2,5,6,6
+F,L2,2,,3.5
+G,L2,6,8,8.5
+H,L2,3,5,4
+I,L1,7,7,9
+K,L2,4,6,6.5
+"""
+with open("lop10.csv", "w", encoding="utf-8") as f:
+    f.write(noi_dung)
+```
+
+Chương 2 cần cả chục dòng với `csv.DictReader` để đọc một file như vậy. pandas làm việc đó bằng một dòng, và trả về một <Term id="dataframe">DataFrame</Term>:
 
 ```python
 import pandas as pd                        # quy ước: đặt tên ngắn là pd
@@ -58,8 +77,6 @@ print(df.shape)                            # (số hàng, số cột), giống s
 2   C  L1    3  8.0   5.0
 (10, 5)
 ```
-
-Notebook của chương có sẵn ô tạo file `lop10.csv` đúng như Bảng 4.1, bạn chỉ cần chạy.
 
 Cột số 0, 1, 2 bên trái không có trong file. Đó là **chỉ mục** <En>index</En>, nhãn hàng pandas tự gắn. `read_csv` cũng tự đổi chữ thành số, khác với `csv` của Chương 2 trả mọi thứ dưới dạng chuỗi.
 
