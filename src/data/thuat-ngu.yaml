@@ -458,3 +458,13 @@
   tenTiengAnh: DBSCAN
   giaiThich: DBSCAN gom các điểm nằm trong vùng dày đặc thành cụm, nối những điểm có đủ hàng xóm trong một bán kính cho trước. Tìm được cụm hình dạng bất kỳ và tự đánh dấu điểm nhiễu, không cần biết trước số cụm.
   hocKy: ai-engineer/ch19-phan-cum
+- id: pca
+  ten: PCA
+  tenTiengAnh: principal component analysis
+  giaiThich: PCA tìm những hướng mà dữ liệu trải rộng nhất, gọi là thành phần chính, rồi chiếu dữ liệu lên vài hướng đầu để giảm số chiều mà giữ lại nhiều thông tin nhất. Các hướng đó là vector riêng của ma trận hiệp phương sai.
+  hocKy: ai-engineer/ch20-giam-chieu
+- id: tsne
+  ten: t-SNE
+  tenTiengAnh: t-distributed stochastic neighbor embedding
+  giaiThich: t-SNE đặt dữ liệu nhiều chiều xuống 2 hoặc 3 chiều sao cho những điểm gần nhau vẫn gần nhau, để nhìn bằng mắt. Giữ tốt hàng xóm gần nhưng không giữ khoảng cách xa, nên chỉ dùng để trực quan hóa.
+  hocKy: ai-engineer/ch20-giam-chieu

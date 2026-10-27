@@ -1,0 +1,50 @@
+---
+title: Vì sao giảm chiều
+description: Ba lý do để bớt số đặc trưng - nhìn được dữ liệu, chạy nhanh hơn, và tránh lời nguyền số chiều. Hai cách làm, chọn bớt đặc trưng hay tạo đặc trưng mới.
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+<CanBietTruoc>
+Trị riêng, vector riêng và ma trận hiệp phương sai (Chương 5). Lời nguyền số chiều (Chương 14). Chuẩn hóa và Pipeline (Chương 9).
+
+<Fragment slot="sau-chuong">
+Tính tay PCA trên 4 điểm: thành phần chính, hình chiếu, tái tạo. Đọc tỷ lệ phương sai giải thích để chọn số chiều. Dùng PCA trong Pipeline để rút 30 đặc trưng xuống 10 mà không mất độ chính xác. Dùng t-SNE để nhìn dữ liệu 64 chiều, và biết những gì không được đọc từ hình t-SNE.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch20_giam_chieu.ipynb" />
+
+## Ba lý do
+
+Bộ ung thư vú có 30 đặc trưng. Một bức ảnh chữ số 8 nhân 8 điểm ảnh có 64. Một câu văn đi qua mô hình ngôn ngữ thành vector 768 chiều. Có ba lý do để muốn ít chiều hơn:
+
+**Để nhìn.** Mắt người chỉ thấy được 2 hoặc 3 chiều. Muốn biết các lớp có tách nhau không, có cụm nào lạ không, phải đưa dữ liệu xuống 2 chiều.
+
+**Để chạy nhanh và nhẹ.** Ít đặc trưng thì huấn luyện nhanh hơn, mô hình nhỏ hơn, tốn ít bộ nhớ hơn.
+
+**Để tránh lời nguyền số chiều.** Chương 14 đã đo: ở 1000 chiều, điểm gần nhất xa gần bằng điểm xa nhất. Các mô hình dựa trên khoảng cách (KNN, SVM RBF, k-means) hoạt động tốt hơn khi số chiều thấp.
+
+Và một lý do ngầm: nhiều đặc trưng **trùng lặp**. Chương 15 thấy bán kính và chu vi khối u tương quan 0,998. Ba mươi đặc trưng có thể chỉ mang lượng thông tin của mười.
+
+## Hai cách
+
+**Chọn bớt đặc trưng.** Giữ lại một số đặc trưng gốc, bỏ phần còn lại. Lasso ở Chương 13 làm việc này. Ưu điểm: các đặc trưng giữ lại vẫn có nghĩa ("BMI", "huyết áp"). Chương 21 sẽ bàn thêm.
+
+**Tạo đặc trưng mới.** Kết hợp các đặc trưng gốc thành ít đặc trưng mới hơn, mỗi cái là một hỗn hợp. <Term id="pca">PCA</Term> là cách phổ biến nhất: mỗi đặc trưng mới là một tổ hợp tuyến tính của các đặc trưng gốc, chọn sao cho giữ được nhiều **phương sai** nhất. Nhược điểm: "thành phần chính thứ nhất" là một hỗn hợp, không còn tên dễ hiểu.
+
+<Khung loai="truc-giac">
+Chụp ảnh một cái ấm trà là chiếu một vật 3 chiều xuống 2 chiều. Chụp từ trên xuống, chỉ thấy một hình tròn: mất gần hết thông tin. Chụp ngang, thấy vòi, quai, nắp: giữ được nhiều nhất.
+
+PCA tìm **góc chụp** giữ được nhiều nhất hình dạng của dữ liệu. "Nhiều nhất" ở đây đo bằng độ trải rộng (phương sai) của bức ảnh: bức ảnh mà các điểm trải xa nhau nhất là bức ít bị chồng lấn nhất.
+</Khung>
+
+<Khung loai="loi">
+**Giảm chiều trước khi chia train và test.** PCA học từ dữ liệu (trung bình, hướng chính). Học trên cả bộ là rò rỉ kiểu 2 của Chương 9. Đặt PCA trong Pipeline.
+
+**Giảm chiều khi không cần.** Với 30 đặc trưng và vài trăm mẫu, phần lớn mô hình chạy tốt mà không cần giảm. Giảm chiều thường làm độ chính xác giảm một chút; chỉ làm khi có lý do rõ ràng.
+</Khung>

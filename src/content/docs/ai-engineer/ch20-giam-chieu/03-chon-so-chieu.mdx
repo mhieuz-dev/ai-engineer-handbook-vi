@@ -1,0 +1,79 @@
+---
+title: Chọn số chiều và PCA trong Pipeline
+description: Mười thành phần chính giữ 95% phương sai của 30 đặc trưng ung thư vú, và hồi quy logistic trên 10 chiều đạt cross-validation 0,981, ngang 30 chiều. Chữ số 8 nhân 8 cần 21 thành phần để giữ 90%.
+---
+
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Phương sai giải thích
+
+```python
+from sklearn.datasets import load_breast_cancer, load_digits
+from sklearn.preprocessing import StandardScaler
+dd = load_breast_cancer()
+Xb, yb = dd.data, 1 - dd.target
+pc = PCA().fit(StandardScaler().fit_transform(Xb))               # giữ đủ 30 thành phần
+tich_luy = np.cumsum(pc.explained_variance_ratio_)
+print(pc.explained_variance_ratio_[:3].round(4), tich_luy[[0, 1, 2, 4, 9]].round(4), int(np.argmax(tich_luy >= 0.95)) + 1)
+dg = load_digits()
+cd = np.cumsum(PCA().fit(dg.data).explained_variance_ratio_)
+print(dg.data.shape, cd[[1, 9, 19, 39]].round(4), int(np.argmax(cd >= 0.9)) + 1)
+```
+
+```text title="Output"
+[0.4427 0.1897 0.0939] [0.4427 0.6324 0.7264 0.8473 0.9516] 10
+(1797, 64) [0.2851 0.7382 0.8943 0.9882] 21
+```
+
+Trên ung thư vú, thành phần chính thứ nhất một mình giữ 44% phương sai của cả 30 đặc trưng; hai thành phần đầu 63%; mười thành phần đầu **95%**.
+
+Bộ chữ số viết tay (`load_digits`) có 1797 ảnh, mỗi ảnh 8 nhân 8 = 64 điểm ảnh. Cần 21 thành phần để giữ 90%, 40 thành phần giữ 98,8%.
+
+<HinhKetQua src="/hinh/ch20/h2_phuong_sai.svg" alt="Hai đường tỷ lệ phương sai tích lũy theo số thành phần. Đường đỏ ung thư vú tăng rất nhanh, chạm 0,95 ở khoảng 10 thành phần và gần 1 ở 15. Đường xanh chữ số viết tay tăng chậm hơn, chạm 0,9 ở khoảng 21 và gần 1 ở khoảng 45. Hai đường chấm ngang ở 0,9 và 0,95." so="20.2" chuThich="Tỷ lệ phương sai tích lũy theo số thành phần chính, trên ung thư vú (đã chuẩn hóa) và chữ số viết tay.">
+**Trục.** Ngang là số thành phần giữ lại, dọc là tổng tỷ lệ phương sai chúng giữ được.
+
+**Điều cần thấy.** Đường đỏ cong gắt: 30 đặc trưng ung thư vú rất trùng lặp (bán kính, chu vi, diện tích và các phiên bản của chúng), nên vài hướng là đủ mô tả. Đường xanh thoải hơn: 64 điểm ảnh mang nhiều thông tin độc lập hơn, dù vẫn rút gọn được mạnh (21 trên 64 cho 90%).
+
+**Chọn số chiều.** Ngưỡng phổ biến là giữ 90% hoặc 95% phương sai. Đó chỉ là quy ước; con số đúng là con số cho kết quả tốt trên validation.
+</HinhKetQua>
+
+## PCA trong Pipeline
+
+PCA là một bước biến đổi như `StandardScaler`, nên đặt được vào Pipeline. Chọn số thành phần bằng cross-validation:
+
+```python
+from sklearn.pipeline import make_pipeline
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split, cross_val_score
+Xtr, Xte, ytr, yte = train_test_split(Xb, yb, test_size=0.25, random_state=0, stratify=yb)
+for k in [1, 2, 5, 10, 30]:
+    pl = make_pipeline(StandardScaler(), PCA(k), LogisticRegression(max_iter=1000))
+    print(k, round(cross_val_score(pl, Xtr, ytr, cv=5).mean(), 4), round(pl.fit(Xtr, ytr).score(Xte, yte), 4))
+```
+
+```text title="Output"
+1 0.9249 0.8951
+2 0.9531 0.9371
+5 0.9718 0.9441
+10 0.9812 0.965
+30 0.9812 0.986
+```
+
+Một thành phần chính đã cho 92,5% cross-validation. Mười thành phần cho **0,981, đúng bằng** 30 thành phần. Trên test (đo một lần, chỉ để xem), 30 chiều vẫn nhỉnh hơn (98,6% so với 96,5%, chênh 3 ca trên 143). Với 30 đặc trưng thì giảm chiều không đáng; với 3000 đặc trưng, rút xuống một phần ba mà không mất gì trên cross-validation là món lời lớn.
+
+## Tái tạo ảnh
+
+<HinhKetQua src="/hinh/ch20/h4_tai_tao.svg" alt="Bốn ảnh 8 nhân 8 điểm ảnh của chữ số 0. Ảnh gốc rõ nét. Ảnh tái tạo từ 2 thành phần mờ, chỉ thấy một vòng loang lổ. Từ 10 thành phần đã nhận ra số 0. Từ 40 thành phần gần như giống hệt ảnh gốc." so="20.3" chuThich="Ảnh đầu tiên của load_digits (chữ số 0) và ảnh tái tạo từ 2, 10, 40 thành phần chính.">
+**Đọc hình.** Mỗi ảnh tái tạo là `inverse_transform` của ảnh gốc sau khi nén xuống $k$ con số.
+
+**Điều cần thấy.** 2 con số chỉ giữ được dáng tròn mờ. 10 con số đã đọc ra được số 0. 40 con số gần như y nguyên ảnh gốc 64 số. Sai số tái tạo bình phương trung bình trên cả bộ là 13,4 với 2 thành phần, 4,9 với 10, chỉ 0,22 với 40 (điểm ảnh có giá trị từ 0 tới 16).
+</HinhKetQua>
+
+<Khung loai="loi">
+**`fit` PCA trên dữ liệu test.** Giống mọi bước học từ dữ liệu: chỉ `fit` trên train, Pipeline lo việc đó.
+
+**Đọc thành phần chính như đặc trưng có nghĩa.** Thành phần chính thứ nhất của ung thư vú là một hỗn hợp có trọng số dương của gần như mọi đặc trưng "kích thước". Có thể đặt tên là "độ lớn khối u", nhưng đó là diễn giải của người đọc, PCA không đảm bảo các thành phần có ý nghĩa.
+</Khung>

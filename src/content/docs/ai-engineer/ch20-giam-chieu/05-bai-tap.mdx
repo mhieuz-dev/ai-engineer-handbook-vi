@@ -1,0 +1,96 @@
+---
+title: Bài tập
+description: Ba bài tập giảm chiều có đáp án chi tiết (tọa độ của bốn điểm trên hai thành phần chính, sai số tái tạo bằng đúng phương sai bị bỏ, số thành phần để giữ 99% phương sai) và câu hỏi phỏng vấn.
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Bài 20.1 và 20.2 dùng bốn điểm `D` ở trang 2.
+
+<BaiTap so="20.1">
+**Tọa độ mới.** Thành phần chính thứ hai là $(-0{,}7071;\ 0{,}7071)$ (vuông góc với thứ nhất). Tính tay tọa độ của bạn A $(1; 2)$ trên cả hai thành phần chính. Vì sao bốn điểm có cùng độ lớn tọa độ?
+
+<Fragment slot="dap-an">
+
+A trừ trung bình: $(-1{,}5;\ -0{,}5)$.
+
+- Thành phần 1: $(-1{,}5 - 0{,}5) \times 0{,}7071 \approx -1{,}4142$.
+- Thành phần 2: $(1{,}5 - 0{,}5) \times 0{,}7071 \approx 0{,}7071$.
+
+```python
+print(np.abs(PCA(2).fit(D).transform(D)).round(4))
+```
+
+```text title="Output"
+[[1.4142 0.7071]
+ [1.4142 0.7071]
+ [1.4142 0.7071]
+ [1.4142 0.7071]]
+```
+
+Bốn điểm nằm đối xứng quanh trung bình: chúng là bốn đỉnh của một hình chữ nhật có cạnh dọc theo hai thành phần chính. Trong hệ tọa độ mới, mỗi điểm là $(\pm 1{,}414;\ \pm 0{,}707)$. PCA chỉ **xoay** hệ trục cho thẳng hàng với hình chữ nhật đó.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="20.2">
+**Sai số tái tạo.** Chỉ giữ thành phần thứ nhất rồi tái tạo, tính tay bình phương khoảng cách giữa mỗi điểm gốc và điểm tái tạo. Liên hệ với trị riêng bị bỏ đi (0,5 khi chia $n$).
+
+<Fragment slot="dap-an">
+
+Phần bị mất của mỗi điểm chính là tọa độ của nó trên thành phần thứ hai: $\pm 0{,}7071$. Bình phương: $0{,}5$.
+
+```python
+p1 = PCA(1).fit(D)
+R = p1.inverse_transform(p1.transform(D))
+print(((D - R) ** 2).sum(axis=1), float(((D - R) ** 2).sum(axis=1).mean()))
+```
+
+```text title="Output"
+[0.5 0.5 0.5 0.5] 0.5
+```
+
+Trung bình bình phương sai số tái tạo là 0,5, **đúng bằng** trị riêng bị bỏ (chia $n$, như Chương 5). Đây không phải trùng hợp: sai số tái tạo của PCA luôn bằng tổng các trị riêng bị bỏ đi. Giữ những thành phần có trị riêng lớn nhất là cách làm sai số tái tạo nhỏ nhất.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="20.3">
+**99% phương sai.** Trên ung thư vú đã chuẩn hóa, cần bao nhiêu thành phần chính để giữ ít nhất 99% phương sai? So với 10 thành phần cho 95%.
+
+<Fragment slot="dap-an">
+
+```python
+c = np.cumsum(PCA().fit(StandardScaler().fit_transform(Xb)).explained_variance_ratio_)
+print(int(np.argmax(c >= 0.99)) + 1, round(float(c[16]), 4))
+```
+
+```text title="Output"
+17 0.9911
+```
+
+17 thành phần, giữ 99,1%. Đi từ 95% lên 99% (thêm 4 điểm phần trăm) cần thêm 7 thành phần; đi từ 0 lên 95% chỉ cần 10. Những thành phần cuối mang rất ít phương sai, phần lớn là nhiễu đo đạc. Bỏ chúng đi đôi khi còn **giúp** mô hình, vì bỏ đi một phần nhiễu.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. PCA hoạt động thế nào?**
+
+<p lang="en"><em>How does PCA work?</em></p>
+
+*Gợi ý:* trừ trung bình, (thường) chuẩn hóa, tìm vector riêng của ma trận hiệp phương sai (hoặc dùng SVD), xếp theo trị riêng, chiếu lên $k$ vector đầu. Tỷ lệ trị riêng là phương sai giải thích; sai số tái tạo bằng tổng trị riêng bị bỏ.
+
+**2. Khi nào không nên dùng PCA?**
+
+<p lang="en"><em>When should you not use PCA?</em></p>
+
+*Gợi ý:* khi cần giữ ý nghĩa của từng đặc trưng; khi cấu trúc quan trọng là phi tuyến; khi hướng có phương sai nhỏ lại là hướng phân biệt các lớp (PCA không nhìn nhãn).
+
+**3. PCA và t-SNE khác nhau thế nào?**
+
+<p lang="en"><em>What is the difference between PCA and t-SNE?</em></p>
+
+*Gợi ý:* PCA tuyến tính, giữ phương sai toàn cục, có transform cho dữ liệu mới, dùng làm tiền xử lý. t-SNE phi tuyến, giữ hàng xóm cục bộ, chỉ để trực quan hóa; kích thước và khoảng cách giữa các cụm trên hình không có nghĩa.
+</Khung>

@@ -1,0 +1,75 @@
+---
+title: PCA tính tay
+description: Bốn điểm của Chương 3 và 5. Thành phần chính thứ nhất là hướng đường chéo, giữ 80% phương sai. Chiếu xuống 1 chiều rồi tái tạo lại, và vì sao scikit-learn ra 2,67 thay vì 2.
+---
+
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Bốn bước
+
+PCA trên $n$ mẫu, $d$ đặc trưng:
+
+1. Trừ trung bình từng cột, để dữ liệu nằm quanh gốc tọa độ.
+2. Tính ma trận hiệp phương sai $d \times d$.
+3. Tìm trị riêng và vector riêng của nó (Chương 5). Vector riêng là các **thành phần chính**, xếp theo trị riêng giảm dần.
+4. Giữ $k$ thành phần đầu, chiếu dữ liệu lên chúng: được $k$ đặc trưng mới.
+
+Chương 5 đã làm bước 1 tới 3 trên bảng `X` của Chương 3: bốn bạn A, B, C, D với giờ học và giờ ngủ (1; 2), (2; 1), (3; 4), (4; 3). Trị riêng là 2 và 0,5, vector riêng ứng với 2 là hướng đường chéo $(0{,}707;\ 0{,}707)$. Thành phần chính thứ nhất giữ $2/(2 + 0{,}5) = 80\%$ phương sai.
+
+## Chiếu xuống một chiều
+
+Trung bình là (2,5; 2,5). Bạn A sau khi trừ trung bình là $(-1{,}5;\ -0{,}5)$. Chiếu lên thành phần chính thứ nhất là lấy tích vô hướng:
+
+$$
+z_A = (-1{,}5) \times 0{,}7071 + (-0{,}5) \times 0{,}7071 = -2 \times 0{,}7071 \approx -1{,}4142
+$$
+
+Mỗi bạn giờ chỉ còn **một** con số. Muốn quay lại 2 chiều, đi ngược: nhân $z$ với vector thành phần chính rồi cộng trung bình:
+
+$$
+\hat{\mathbf x}_A = (2{,}5;\ 2{,}5) + (-1{,}4142) \times (0{,}7071;\ 0{,}7071) = (1{,}5;\ 1{,}5)
+$$
+
+```python
+import numpy as np
+from sklearn.decomposition import PCA
+D = np.array([[1, 2], [2, 1], [3, 4], [4, 3]], dtype=float)
+p2 = PCA(2).fit(D)
+print(p2.mean_, p2.explained_variance_.round(4), p2.explained_variance_ratio_.round(4))
+p1 = PCA(1).fit(D)
+z = p1.transform(D)                               # chiếu xuống 1 chiều
+print(np.abs(z.ravel()).round(4))                 # dấu của thành phần chính là tùy ý, xem độ lớn
+print(p1.inverse_transform(z).round(4))           # tái tạo lại 2 chiều
+```
+
+```text title="Output"
+[2.5 2.5] [2.6667 0.6667] [0.8 0.2]
+[1.4142 1.4142 1.4142 1.4142]
+[[1.5 1.5]
+ [1.5 1.5]
+ [3.5 3.5]
+ [3.5 3.5]]
+```
+
+<HinhKetQua src="/hinh/ch20/h1_chieu.svg" alt="Bốn điểm cam A (1; 2), B (2; 1), C (3; 4), D (4; 3) và đường chéo xanh qua gốc. Dấu cộng đen ở trung bình (2,5; 2,5). Từ mỗi điểm có đoạn đứt nét đỏ vuông góc xuống đường chéo, tới hình chiếu tròn trắng. A và B cùng chiếu về (1,5; 1,5), C và D cùng chiếu về (3,5; 3,5)." so="20.1" chuThich="Bốn điểm (cam), thành phần chính thứ nhất (đường xanh) và hình chiếu của chúng (tròn trắng). Đoạn đứt nét là phần thông tin bị mất khi giữ 1 chiều.">
+**Đọc hình.** Đường xanh là thành phần chính thứ nhất, đi qua trung bình (dấu cộng). Mỗi điểm được chiếu vuông góc xuống đường đó.
+
+**Điều cần thấy.** A và B có cùng hình chiếu (1,5; 1,5); C và D cùng (3,5; 3,5). Thông tin giữ lại là "bạn này ở nhóm học-và-ngủ-ít hay nhóm học-và-ngủ-nhiều". Thông tin bị mất (đoạn đứt nét) là chênh lệch giữa học và ngủ của từng bạn: A ngủ nhiều hơn học, B ngược lại, nhưng một chiều không phân biệt được.
+
+**Vì sao đường chéo.** Trên đường chéo, bốn điểm trải từ $-1{,}41$ tới $+1{,}41$. Chiếu lên bất kỳ hướng nào khác, chúng chụm lại gần nhau hơn. PCA chọn hướng làm hình chiếu trải rộng nhất, đồng thời cũng là hướng làm tổng bình phương các đoạn đứt nét nhỏ nhất.
+</HinhKetQua>
+
+<Khung loai="vi-sao" tieuDe="SCIKIT-LEARN RA 2,67 MÀ KHÔNG PHẢI 2">
+Chương 5 chia tổng bình phương cho $n = 4$ khi tính hiệp phương sai, ra trị riêng 2 và 0,5. `PCA.explained_variance_` chia cho $n - 1 = 3$ (phương sai mẫu, Chương 7), ra $2 \times 4/3 \approx 2{,}6667$ và $0{,}5 \times 4/3 \approx 0{,}6667$.
+
+Tỷ lệ thì không đổi: $2{,}6667/(2{,}6667 + 0{,}6667) = 0{,}8$. Vì vậy người ta thường đọc `explained_variance_ratio_` thay vì số tuyệt đối.
+</Khung>
+
+<Khung loai="loi">
+**So dấu của thành phần chính.** $(0{,}707;\ 0{,}707)$ và $(-0{,}707;\ -0{,}707)$ là cùng một hướng. Phiên bản thư viện khác có thể trả về dấu ngược, làm mọi $z$ đổi dấu. Kết quả vẫn đúng.
+
+**Quên chuẩn hóa khi thang đo khác nhau.** PCA tìm hướng có phương sai lớn nhất; đặc trưng có số lớn (diện tích khối u, cỡ hàng trăm) luôn có phương sai lớn, tự nhiên chiếm thành phần chính thứ nhất. Chuẩn hóa trước, trừ khi mọi đặc trưng cùng đơn vị (như điểm ảnh).
+</Khung>

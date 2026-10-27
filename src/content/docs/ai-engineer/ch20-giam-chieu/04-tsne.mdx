@@ -1,0 +1,72 @@
+---
+title: t-SNE để nhìn dữ liệu
+description: PCA hai chiều trộn lẫn các chữ số, KNN trên đó chỉ đúng 60%. t-SNE tách 10 chữ số thành 10 đám rõ ràng, KNN đúng 98%. Nhưng kích thước và khoảng cách giữa các đám trên hình t-SNE không có nghĩa.
+---
+
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## PCA là phép chiếu thẳng
+
+PCA chỉ xoay rồi chiếu: hình chiếu là một bức "ảnh chụp" phẳng của dữ liệu. Nếu dữ liệu nằm trên một mặt cong phức tạp trong 64 chiều, không góc chụp phẳng nào tách được hết các lớp.
+
+<Term id="tsne">t-SNE</Term> làm khác: nó không tìm phép chiếu, mà **đặt** từng điểm xuống mặt phẳng sao cho những điểm là hàng xóm gần trong 64 chiều thì vẫn là hàng xóm gần trên mặt phẳng. Nó tối ưu vị trí của từng điểm bằng gradient descent (Chương 8).
+
+```python
+from sklearn.manifold import TSNE
+from sklearn.neighbors import KNeighborsClassifier
+P2 = PCA(2).fit_transform(dg.data)
+E2 = TSNE(2, random_state=0, init="pca", perplexity=30).fit_transform(dg.data)
+for ten, Z in [("PCA", P2), ("t-SNE", E2)]:
+    print(ten, round(cross_val_score(KNeighborsClassifier(5), Z, dg.target, cv=5).mean(), 4))
+```
+
+```text title="Output"
+PCA 0.6032
+t-SNE 0.9755
+```
+
+Dùng độ chính xác của KNN trên 2 chiều làm thước đo "các lớp tách nhau tới đâu": trên PCA 2 chiều chỉ 60%; trên t-SNE 2 chiều, **97,6%**.
+
+<HinhKetQua src="/hinh/ch20/h3_pca_tsne.svg" alt="Hai khung chữ số viết tay trong 2 chiều, mỗi chữ số một màu, có nhãn số ở giữa đám. Trái, PCA: các màu chồng lên nhau thành một đám tròn lớn, chỉ 0, 4, 6 và 3 tách ra một phần ở rìa. Phải, t-SNE: mười đám nhỏ gọn tách hẳn nhau, mỗi đám một chữ số, vài điểm lạc nằm ở đám khác." so="20.4" chuThich="1797 ảnh chữ số viết tay, mỗi ảnh 64 chiều, đưa xuống 2 chiều bằng PCA (trái) và t-SNE (phải). Màu là chữ số thật, chỉ dùng để tô, cả hai phương pháp đều không được thấy nhãn.">
+**PCA.** Hai thành phần đầu chỉ giữ 28,5% phương sai. Các chữ số dồn thành một khối, nhiều cặp (1 và 7, 5 và 8 và 9) chồng lên nhau.
+
+**t-SNE.** Mười đám tách bạch, mỗi đám gần như chỉ một màu. Vài điểm nằm lạc trong đám của một chữ số khác; đó thường là những ảnh viết khó đọc, đáng mở ra xem bằng mắt.
+
+**Chú ý.** Cả hai phương pháp đều **không** dùng nhãn. Việc t-SNE tách được mười chữ số cho thấy thông tin phân biệt chúng đã nằm sẵn trong 64 điểm ảnh; đó là tin tốt cho bất kỳ bộ phân loại nào ta xây sau đó.
+</HinhKetQua>
+
+## Những gì không được đọc từ t-SNE
+
+<Khung loai="vi-sao" tieuDe="CHỈ DÙNG T-SNE ĐỂ NHÌN">
+t-SNE giữ đúng **hàng xóm gần**, và chỉ thế. Ba điều nó không giữ:
+
+**Kích thước đám.** Một đám to trên hình không có nghĩa lớp đó đa dạng hơn. t-SNE có xu hướng làm các đám trông cỡ tương đương.
+
+**Khoảng cách giữa các đám.** Đám 0 nằm xa đám 4 trên hình không có nghĩa chữ 0 "khác" chữ 4 hơn so với chữ 7.
+
+**Kết quả ổn định.** Đổi `random_state` hay `perplexity` (cỡ vùng hàng xóm, thường 5 tới 50) là hình đổi: đám đổi chỗ, đổi hình dạng. Kết quả cũng có thể khác giữa các phiên bản scikit-learn.
+
+Vì vậy t-SNE là công cụ **trực quan hóa**, không phải bước tiền xử lý. Nó không có `transform` cho điểm mới, nên không đặt được vào Pipeline. Đừng huấn luyện mô hình trên đầu ra của t-SNE; con số 97,6% ở trên chỉ để đo độ tách, không phải một mô hình dùng được.
+</Khung>
+
+**Bảng 20.1.** PCA và t-SNE.
+
+| | PCA | t-SNE |
+|:---|:---|:---|
+| Kiểu biến đổi | tuyến tính, xoay rồi chiếu | phi tuyến, tối ưu vị trí từng điểm |
+| Giữ được | phương sai, khoảng cách toàn cục | hàng xóm gần |
+| Áp cho điểm mới | có (`transform`) | không |
+| Dùng trong Pipeline | có | không |
+| Tốc độ | rất nhanh | chậm hơn nhiều với dữ liệu lớn |
+| Dùng để | nén, tiền xử lý, khử nhiễu | nhìn |
+
+UMAP là một phương pháp cùng họ với t-SNE, nhanh hơn và giữ cấu trúc toàn cục tốt hơn một chút, có trong thư viện `umap-learn`. Bạn sẽ gặp nó khi nhìn embedding của văn bản ở Chương 40.
+
+<Khung loai="loi">
+**Kết luận "hai lớp không tách được" từ hình PCA 2 chiều.** Hình PCA trái trông lẫn lộn, nhưng 64 chiều đầy đủ thì tách được (t-SNE và cả KNN trên 64 chiều đều cho thấy vậy). Hai chiều đầu của PCA chỉ là 28,5% câu chuyện.
+
+**Chạy t-SNE trên dữ liệu chưa chuẩn hóa hoặc quá nhiều chiều.** t-SNE dựa trên khoảng cách. Với dữ liệu hàng trăm chiều, người ta thường giảm xuống khoảng 50 chiều bằng PCA trước, rồi mới chạy t-SNE.
+</Khung>
