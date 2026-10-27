@@ -14,13 +14,13 @@ export interface CuonSach {
 	sapCo: boolean;
 	mauBia: string;
 	mauChu: string;
-	/** Ảnh bìa trong public/ (vd `/hinh/bia/ai-engineer.webp`). Không có thì bìa được vẽ bằng canvas. */
+	/** Ảnh bìa vẽ tay trong public/ (sinh bằng `scripts/bia/ve-bia.mjs`). Không có thì bìa được vẽ bằng canvas. */
 	anhBia?: string;
 }
 
 const GIAO_DIEN: Record<Nhanh['id'], Pick<CuonSach, 'phuDe' | 'mauBia' | 'mauChu' | 'anhBia'>> = {
-	'ai-engineer': { phuDe: 'Từ Python đến mô hình ngôn ngữ lớn', mauBia: '#0E2233', mauChu: '#FBF8F1', anhBia: undefined },
-	robotics: { phuDe: 'Nhánh thứ hai, đang được soạn', mauBia: '#DCDFE2', mauChu: '#1F2A33', anhBia: undefined },
+	'ai-engineer': { phuDe: 'Từ Python đến mô hình ngôn ngữ lớn', mauBia: '#0E2233', mauChu: '#FBF8F1', anhBia: '/hinh/bia/ai-engineer.svg' },
+	robotics: { phuDe: 'Nhánh thứ hai, đang được soạn', mauBia: '#DCDFE2', mauChu: '#1F2A33', anhBia: '/hinh/bia/robotics.svg' },
 };
 
 /**

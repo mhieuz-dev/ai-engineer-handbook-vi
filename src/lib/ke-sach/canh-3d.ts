@@ -19,7 +19,6 @@ import {
 	RepeatWrapping,
 	Scene,
 	SRGBColorSpace,
-	TextureLoader,
 	Vector2,
 	WebGLRenderer,
 	type BufferGeometry,
@@ -47,7 +46,7 @@ const THOI_GIAN_CHON = 550; // ms, hiệu ứng rút sách và mở bìa
 
 // Kích thước (đơn vị cảnh): một ngăn kệ đủ cho hai cuốn.
 const KE = { rong: 3.55, cao: 2.3, sau: 1.0, van: 0.1, hong: 0.11, chan: 0.28 };
-const SACH = { rong: 1.3, cao: 1.86 };
+const SACH = { rong: 1.24, cao: 1.86 }; // đúng tỉ lệ 2:3 của ảnh bìa SVG
 
 /* ---------- Kết cấu vẽ bằng canvas ---------- */
 
@@ -56,6 +55,20 @@ function taoCanvas(w: number, h: number): [HTMLCanvasElement, CanvasRenderingCon
 	cv.width = w;
 	cv.height = h;
 	return [cv, cv.getContext('2d')!];
+}
+
+/** Ảnh bìa SVG vẽ lại lên canvas 1024x1536: dùng SVG làm texture trực tiếp chỉ có 600x900 điểm ảnh, bị nhòe. */
+function taiBia(url: string): Promise<HTMLCanvasElement | null> {
+	return new Promise((xong) => {
+		const anh = new Image();
+		anh.onload = () => {
+			const [cv, g] = taoCanvas(1024, 1536);
+			g.drawImage(anh, 0, 0, cv.width, cv.height);
+			xong(cv);
+		};
+		anh.onerror = () => xong(null);
+		anh.src = url;
+	});
 }
 
 function kieuSRGB(t: Texture, anisotropy: number): Texture {
@@ -520,6 +533,8 @@ export function dungKe(goc: HTMLElement, sach: CuonSach[], khiChon: (s: CuonSach
 	}
 
 	async function khoiDong() {
+		// Ảnh bìa tải song song với font; lỗi thì dùng bìa vẽ bằng canvas.
+		const choBia = Promise.all(sach.map((s) => (s.anhBia ? taiBia(s.anhBia) : null)));
 		// Chữ trên bìa cần Be Vietnam Pro đã tải (kể cả bộ ký tự có dấu) trước khi vẽ canvas.
 		try {
 			await Promise.all([
@@ -531,6 +546,7 @@ export function dungKe(goc: HTMLElement, sach: CuonSach[], khiChon: (s: CuonSach
 		} catch {
 			/* vẫn vẽ bằng font dự phòng */
 		}
+		const biaSvg = await choBia;
 		if (daHuy) return;
 
 		const r = new WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'low-power' });
@@ -588,7 +604,6 @@ export function dungKe(goc: HTMLElement, sach: CuonSach[], khiChon: (s: CuonSach
 		const giay = new MeshStandardMaterial({ map: tGiay, roughness: 0.9 });
 		const giayTren = new MeshStandardMaterial({ map: tGiayTren, roughness: 0.9 });
 		const giayTrang = new MeshStandardMaterial({ color: 0xf2ead8, roughness: 0.9 });
-		const loader = new TextureLoader();
 
 		const viTri = [
 			{ x: -0.8, quay: 0.06, day: 0.34 },
@@ -605,19 +620,8 @@ export function dungKe(goc: HTMLElement, sach: CuonSach[], khiChon: (s: CuonSach
 			nhom.position.set(vt.x, 0, z0);
 			nhom.rotation.y = vt.quay;
 
-			const veBia = s.id === 'robotics' ? biaRobotics(s) : biaAiEngineer(s);
-			const tBia = kieuSRGB(new CanvasTexture(veBia), aniso);
-			const matBia = new MeshStandardMaterial({ map: tBia, roughness: 0.42 });
-			if (s.anhBia) {
-				loader.load(s.anhBia, (t) => {
-					if (daHuy) return t.dispose();
-					kieuSRGB(t, aniso);
-					tBia.dispose();
-					matBia.map = t;
-					matBia.needsUpdate = true;
-					yeuCauVe();
-				});
-			}
+			const veBia = biaSvg[i] ?? (s.id === 'robotics' ? biaRobotics(s) : biaAiEngineer(s));
+			const matBia = new MeshStandardMaterial({ map: kieuSRGB(new CanvasTexture(veBia), aniso), roughness: 0.42 });
 			const vo = new MeshStandardMaterial({ color: s.mauBia, roughness: 0.5 });
 
 			// Chỉ sách mở được mới cần vẽ trang đầu.

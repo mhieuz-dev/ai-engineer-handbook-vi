@@ -1,4 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
+import { readFileSync, statSync } from 'node:fs';
+import { gzipSync } from 'node:zlib';
 import { dsCuonSach } from '../../src/lib/ke-sach/du-lieu';
 import { du3D } from '../../src/lib/ke-sach/cong-3d';
 import { NHANH, PHAN, CHUONG, chuongDaXuatBan, cauHinhSidebar } from '../../src/data/chuong';
@@ -25,11 +27,8 @@ describe('kệ sách: dữ liệu hai cuốn', () => {
 		expect(rb.tongChuong).toBeNull();
 		expect(rb.daViet).toBe(0);
 	});
-	it('ảnh bìa tùy chọn: hiện chưa có ảnh nào, bìa vẽ bằng canvas', () => {
-		for (const s of dsCuonSach()) {
-			expect(s).toHaveProperty('anhBia');
-			expect(s.anhBia).toBeUndefined();
-		}
+	it('ảnh bìa vẽ tay: mỗi cuốn trỏ đúng file SVG trong public/', () => {
+		expect(dsCuonSach().map((s) => s.anhBia)).toEqual(['/hinh/bia/ai-engineer.svg', '/hinh/bia/robotics.svg']);
 	});
 	it('màu bìa và chữ là mã hex', () => {
 		for (const s of dsCuonSach()) {
@@ -47,6 +46,25 @@ describe('Robotics trong catalog không đổi sidebar', () => {
 	it('cấu hình sidebar vẫn chỉ một nhánh AI Engineer', () => {
 		expect(cauHinhSidebar().map((n) => n.label)).toEqual(['AI Engineer']);
 	});
+});
+
+describe('bìa SVG tĩnh trong public/hinh/bia', () => {
+	for (const ten of ['ai-engineer', 'robotics']) {
+		const duongDan = `public/hinh/bia/${ten}.svg`;
+		it(`${ten}.svg: tồn tại, ≤ 120 KB, khung 600x900, không phụ thuộc gì bên ngoài`, () => {
+			const kichThuoc = statSync(duongDan).size;
+			expect(kichThuoc).toBeGreaterThan(5_000);
+			expect(kichThuoc).toBeLessThanOrEqual(120 * 1024);
+			const svg = readFileSync(duongDan, 'utf8');
+			expect(gzipSync(svg).length).toBeLessThan(kichThuoc);
+			expect(svg).toMatch(/^<svg [^>]*viewBox="0 0 600 900"/);
+			expect(svg).toContain('xmlns="http://www.w3.org/2000/svg"');
+			// Ngoài namespace bắt buộc của SVG, không có URL nào: không ảnh ngoài, không font web.
+			expect(svg.replace('xmlns="http://www.w3.org/2000/svg"', '')).not.toMatch(/http/i);
+			expect(svg).not.toMatch(/<image|<text|@font-face|<script|<!--|<metadata/);
+			expect(svg).not.toContain('NaN');
+		});
+	}
 });
 
 describe('cổng tải kệ 3D', () => {

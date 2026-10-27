@@ -132,6 +132,31 @@ test('desktop tối: chụp kệ sách, thẻ chọn đủ tương phản', asyn
 	}
 });
 
+test('mobile: hai bìa vẽ tay tải được dạng ảnh, vẫn không tải three', async ({ page, isMobile }) => {
+	test.skip(!isMobile);
+	const req = ghiRequest(page);
+	await page.goto('/');
+	await page.locator('#ke-sach').scrollIntoViewIfNeeded();
+	const anh = page.locator('#ke-sach img.anh-bia');
+	await expect(anh).toHaveCount(2);
+	for (const [i, ten] of ['ai-engineer', 'robotics'].entries()) {
+		await expect(anh.nth(i)).toHaveAttribute('src', `/hinh/bia/${ten}.svg`);
+		await expect(anh.nth(i)).toHaveAttribute('loading', 'lazy');
+		await expect.poll(() => anh.nth(i).evaluate((e: HTMLImageElement) => e.complete && e.naturalWidth)).toBeGreaterThan(0);
+	}
+	expect(req.filter((u) => LA_CHUNK_3D.test(u))).toEqual([]);
+});
+
+test('desktop: cảnh 3D dùng bìa SVG làm texture', async ({ page, isMobile }) => {
+	test.skip(!!isMobile);
+	const req = ghiRequest(page);
+	await page.goto('/');
+	await page.locator('#ke-sach').scrollIntoViewIfNeeded();
+	await expect(page.locator('#ke-sach [data-frames]')).toHaveAttribute('data-trang-thai', 'san-sang', { timeout: 5000 });
+	expect(req.some((u) => u.endsWith('/hinh/bia/ai-engineer.svg'))).toBe(true);
+	expect(req.some((u) => u.endsWith('/hinh/bia/robotics.svg'))).toBe(true);
+});
+
 test('desktop: bật giảm chuyển động khi kệ 3D đang chạy thì gỡ cảnh, về kệ phẳng', async ({ page, isMobile }) => {
 	test.skip(!!isMobile);
 	await page.goto('/');
