@@ -1,0 +1,123 @@
+---
+title: DataFrame đầu tiên
+description: Đọc file CSV thành DataFrame bằng một dòng, xem nhanh bảng bằng head, shape, dtypes, và tóm tắt cả bảng bằng describe. Output in trong bài là output thật.
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+<CanBietTruoc>
+Đọc CSV bằng module csv (Chương 2). Mảng, lọc bằng điều kiện, tính theo trục (Chương 3).
+
+<Fragment slot="sau-chuong">
+Đọc, xem nhanh và tóm tắt một bảng dữ liệu. Chọn cột, lọc hàng, tạo cột mới, xử lý giá trị thiếu. Gộp nhóm để so sánh các lớp. Vẽ và đọc được biểu đồ chấm, histogram, biểu đồ cột: ba biểu đồ bạn sẽ vẽ đầu tiên với mọi bộ dữ liệu mới.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch04_pandas_va_matplotlib.ipynb" />
+
+## Một lớp lớn hơn
+
+Bốn bạn A, B, C, D đã giúp ta đi qua ba chương. Giờ lớp đông hơn: 10 bạn, chia làm hai lớp L1 và L2. Ngoài giờ tự học và điểm thi, ta có thêm số giờ ngủ mỗi đêm.
+
+**Bảng 4.1.** Dữ liệu 10 sinh viên, dùng xuyên suốt chương. Bạn F quên khai số giờ ngủ.
+
+| ten | lop | gio | ngu | diem |
+|:---:|:---:|:---:|:---:|:---:|
+| A | L1 | 1 | 7 | 2 |
+| B | L1 | 2 | 6 | 4 |
+| C | L1 | 3 | 8 | 5 |
+| D | L1 | 4 | 7 | 7 |
+| E | L2 | 5 | 6 | 6 |
+| F | L2 | 2 | | 3,5 |
+| G | L2 | 6 | 8 | 8,5 |
+| H | L2 | 3 | 5 | 4 |
+| I | L1 | 7 | 7 | 9 |
+| K | L2 | 4 | 6 | 6,5 |
+
+Bốn bạn đầu vẫn là A, B, C, D quen thuộc, cùng giờ học và cùng điểm như trước.
+
+## Đọc bảng bằng một dòng
+
+Chương 2 cần cả chục dòng với `csv.DictReader` để đọc một file. pandas làm việc đó bằng một dòng, và trả về một <Term id="dataframe">DataFrame</Term>:
+
+```python
+import pandas as pd                        # quy ước: đặt tên ngắn là pd
+df = pd.read_csv("lop10.csv")              # đọc cả file thành một bảng
+print(df.head(3))                          # xem 3 hàng đầu
+print(df.shape)                            # (số hàng, số cột), giống shape của NumPy
+```
+
+```text title="Output"
+  ten lop  gio  ngu  diem
+0   A  L1    1  7.0   2.0
+1   B  L1    2  6.0   4.0
+2   C  L1    3  8.0   5.0
+(10, 5)
+```
+
+Notebook của chương có sẵn ô tạo file `lop10.csv` đúng như Bảng 4.1, bạn chỉ cần chạy.
+
+Cột số 0, 1, 2 bên trái không có trong file. Đó là **chỉ mục** <En>index</En>, nhãn hàng pandas tự gắn. `read_csv` cũng tự đổi chữ thành số, khác với `csv` của Chương 2 trả mọi thứ dưới dạng chuỗi.
+
+## Kiểu của từng cột
+
+```python
+print(df.dtypes)              # kiểu dữ liệu của từng cột
+```
+
+```text title="Output"
+ten         str
+lop         str
+gio       int64
+ngu     float64
+diem    float64
+dtype: object
+```
+
+Cột `gio` toàn số nguyên nên là `int64`. Cột `diem` có 3,5 và 8,5 nên là `float64`.
+
+Còn cột `ngu` toàn số nguyên mà lại thành `float64`: vì ô của bạn F bị trống. pandas ghi ô trống là `NaN` (not a number), và `NaN` chỉ tồn tại trong kiểu số thực, nên cả cột bị đổi thành số thực. Thấy một cột số nguyên bỗng thành `float64` là dấu hiệu nên kiểm tra <Term id="gia-tri-thieu">giá trị thiếu</Term>.
+
+Cột chữ hiện là `str` vì output chạy với pandas 3.1. Bản pandas 2 (có thể là bản đang cài trên Colab của bạn) ghi là `object`. Hai cách ghi cùng nghĩa: cột này chứa chuỗi.
+
+## Tóm tắt cả bảng
+
+```python
+print(df.describe().round(2))   # thống kê cho mọi cột số, làm tròn 2 chữ số
+```
+
+```text title="Output"
+         gio   ngu   diem
+count  10.00  9.00  10.00
+mean    3.70  6.67   5.55
+std     1.89  1.00   2.25
+min     1.00  5.00   2.00
+25%     2.25  6.00   4.00
+50%     3.50  7.00   5.50
+75%     4.75  7.00   6.88
+max     7.00  8.00   9.00
+```
+
+Một lệnh cho tám con số của mỗi cột số:
+
+- `count` là số ô **có dữ liệu**. Cột `ngu` chỉ có 9, lộ ngay ô thiếu của F.
+- `mean` và `std` là trung bình và độ lệch chuẩn. pandas chia $n - 1$, như `statistics.stdev` ở Chương 2.
+- `min`, `max` và ba mốc `25%`, `50%`, `75%` là các phân vị. `50%` chính là trung vị: một nửa số bạn có điểm dưới 5,5.
+
+<Khung loai="vi-sao" tieuDe="DESCRIBE TRƯỚC TIÊN">
+Khi mở một bộ dữ liệu mới, việc đầu tiên nên làm là `describe`. Mười giây đọc bảng này bắt được những lỗi có thể làm hỏng cả dự án.
+
+`count` thấp hơn số hàng là có ô thiếu. `min` âm ở cột tuổi hay `max` bằng 999 ở cột điểm là có lỗi nhập liệu. `mean` cách xa `50%` là dữ liệu lệch về một phía. Chương 9 sẽ đưa bước này vào quy trình chuẩn của một dự án ML.
+</Khung>
+
+<Khung loai="loi">
+**In cả bảng lớn.** `print(df)` với một triệu dòng làm treo notebook. Dùng `df.head()`, `df.tail()` hoặc `df.sample(5)`.
+
+**Đọc sai dấu phân cách.** File CSV kiểu Excel tiếng Việt hay dùng dấu chấm phẩy. Khi đó `read_csv` đọc cả dòng thành **một cột**. Kiểm tra `df.shape` ngay sau khi đọc, rồi thêm `sep=";"` nếu cần.
+
+**Số thập phân kiểu Việt.** File ghi `5,5` thay vì `5.5` sẽ bị đọc thành chuỗi. Thêm `decimal=","` cho `read_csv`.
+</Khung>

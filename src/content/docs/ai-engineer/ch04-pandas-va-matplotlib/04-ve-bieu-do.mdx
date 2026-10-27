@@ -1,0 +1,84 @@
+---
+title: Vẽ biểu đồ với Matplotlib
+description: "Ba biểu đồ nên vẽ đầu tiên với mọi bộ dữ liệu: biểu đồ chấm để thấy quan hệ hai cột, histogram để thấy phân bố, biểu đồ cột để so sánh nhóm. Kèm cách đọc từng hình."
+---
+
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+Con số tóm tắt dễ đánh lừa. Hai bộ dữ liệu có thể cùng trung bình, cùng độ lệch chuẩn, cùng hệ số tương quan mà hình dạng khác hẳn nhau. Vì vậy, trước khi xây mô hình, hãy **nhìn** dữ liệu.
+
+Matplotlib là thư viện vẽ đồ thị phổ biến nhất của Python. Mọi biểu đồ đều theo cùng một khuôn:
+
+```python
+import matplotlib.pyplot as plt          # quy ước: đặt tên ngắn là plt
+fig, ax = plt.subplots(figsize=(6, 4))   # fig là cả tấm hình, ax là khung vẽ bên trong (rộng 6, cao 4 inch)
+# ... vẽ lên ax ...
+ax.set_xlabel("Tên trục ngang")           # luôn ghi tên trục
+ax.set_ylabel("Tên trục dọc")
+plt.show()                                # hiện hình trong notebook
+```
+
+Ba hình dưới đây vẽ bằng đúng khuôn này. Code đầy đủ của từng hình có trong notebook của chương.
+
+## Biểu đồ chấm: hai cột có quan hệ gì
+
+```python
+for lop, mau in [("L1", "#1F5F8B"), ("L2", "#E07A1F")]:   # vẽ từng lớp một màu
+    d = df[df["lop"] == lop]                                # lọc ra các bạn của lớp này
+    ax.scatter(d["gio"], d["diem"], color=mau, label=f"Lớp {lop}")  # mỗi bạn một chấm
+ax.legend()                                                 # chú giải màu
+```
+
+<HinhKetQua src="/hinh/ch04/h1_scatter.svg" alt="Biểu đồ chấm 10 sinh viên, trục ngang là giờ tự học từ 1 tới 7, trục dọc là điểm thi từ 2 tới 9. Chấm xanh là lớp L1, chấm cam là lớp L2. Các chấm đi lên từ trái sang phải, bám quanh một đường đứt nét." so="4.1" chuThich="Điểm thi theo giờ tự học của 10 sinh viên. Đường đứt nét là đường hồi quy tính trên cả 10 bạn.">
+**Trục.** Ngang là giờ tự học mỗi tuần, dọc là điểm thi. Mỗi chấm là một bạn, chữ cái bên cạnh là tên. Xanh là lớp L1, cam là lớp L2.
+
+**Điều cần thấy.** Các chấm đi lên từ trái sang phải và bám khá sát một đường thẳng, khớp với hệ số tương quan 0,9566 ở trang trước. Hai lớp trộn lẫn dọc theo cùng một đường, không lớp nào nằm hẳn phía trên. Điều này gợi ý chênh lệch 0,3 điểm trung bình giữa hai lớp phần lớn đến từ chuyện L2 học nhiều giờ hơn.
+
+**Chấm đáng chú ý.** Bạn E học 5 giờ nhưng chỉ được 6 điểm, nằm thấp hơn đường đứt nét rõ nhất. Ở Chương 10, khoảng cách từ chấm tới đường chính là phần dư.
+</HinhKetQua>
+
+## Histogram: dữ liệu phân bố ra sao
+
+```python
+ax.hist(df["diem"], bins=[2, 4, 6, 8, 10])   # chia điểm thành 4 khoảng, đếm số bạn mỗi khoảng
+```
+
+<HinhKetQua src="/hinh/ch04/h2_histogram.svg" alt="Histogram điểm thi với bốn cột: khoảng 2 tới 4 có 2 bạn, 4 tới 6 có 3 bạn, 6 tới 8 có 3 bạn, 8 tới 10 có 2 bạn." so="4.2" chuThich="Histogram điểm thi của 10 sinh viên, chia thành bốn khoảng rộng 2 điểm.">
+**Trục.** Ngang là điểm thi, chia thành bốn khoảng: 2 tới 4, 4 tới 6, 6 tới 8, 8 tới 10. Dọc là số bạn rơi vào mỗi khoảng.
+
+**Cách đếm.** Mỗi khoảng lấy đầu trái, không lấy đầu phải (trừ khoảng cuối lấy cả hai đầu). Bạn B được đúng 4 điểm nên rơi vào khoảng 4 tới 6, không phải 2 tới 4. Khoảng đầu chỉ có A (2 điểm) và F (3,5 điểm).
+
+**Điều cần thấy.** Bốn cột cao 2, 3, 3, 2: điểm dồn ở giữa, thưa dần về hai đầu, khá cân đối. Đối chiếu với `describe`: trung bình 5,55 và trung vị 5,5 rất gần nhau, đúng như một phân bố không lệch.
+</HinhKetQua>
+
+<Khung loai="vi-sao" tieuDe="CHỌN SỐ KHOẢNG">
+Với chỉ 10 điểm dữ liệu, chia thành 4 khoảng là vừa. Chia 20 khoảng thì phần lớn cột cao 0 hoặc 1, nhìn không ra hình dạng gì. Chia 2 khoảng thì mất hết chi tiết.
+
+Với dữ liệu lớn hơn, cứ để Matplotlib tự chọn (`bins="auto"`) rồi thử tăng giảm. Cùng một dữ liệu mà đổi số khoảng thì hình có thể trông khác hẳn, nên đừng kết luận từ một histogram duy nhất.
+</Khung>
+
+## Biểu đồ cột: so sánh các nhóm
+
+```python
+tb = df.groupby("lop")["diem"].mean()   # trung bình điểm mỗi lớp (trang trước)
+ax.bar(tb.index, tb.values)             # mỗi lớp một cột, chiều cao là điểm trung bình
+```
+
+<HinhKetQua src="/hinh/ch04/h3_trung_binh_lop.svg" alt="Biểu đồ cột hai lớp: L1 cao 5,4, L2 cao 5,7, trục dọc bắt đầu từ 0." so="4.3" chuThich="Điểm trung bình của hai lớp. Trục dọc bắt đầu từ 0.">
+**Trục.** Ngang là hai lớp, dọc là điểm trung bình. Con số trên đầu mỗi cột là giá trị chính xác.
+
+**Điều cần thấy.** Hai cột gần bằng nhau: 5,4 và 5,7. Chênh lệch 0,3 điểm là nhỏ so với độ lệch chuẩn 2,25 của cả lớp.
+
+**Vì sao trục dọc bắt đầu từ 0.** Nếu trục dọc chỉ chạy từ 5,3 tới 5,8, cột L2 sẽ trông cao gấp mấy lần cột L1, gây cảm giác chênh lệch lớn. Biểu đồ cột luôn nên bắt đầu từ 0, vì mắt người so **chiều cao** của cột.
+</HinhKetQua>
+
+<Khung loai="loi">
+**Không ghi tên trục.** Một biểu đồ không có tên trục thì người xem (kể cả chính bạn ba tháng sau) không biết đang nhìn gì. Luôn `set_xlabel`, `set_ylabel`, và ghi đơn vị nếu có.
+
+**Cắt trục dọc của biểu đồ cột.** Như hình 4.3 đã nói: phóng đại chênh lệch nhỏ thành lớn. Biểu đồ chấm và biểu đồ đường thì không bắt buộc bắt đầu từ 0.
+
+**Vẽ chồng lên hình cũ.** Trong notebook, mỗi lần gọi `plt.subplots()` là một hình mới. Gọi `ax.scatter` nhiều lần trên cùng `ax` là vẽ chồng, đúng ý khi muốn nhiều lớp trên một hình (như hình 4.1), sai ý khi quên tạo hình mới.
+</Khung>

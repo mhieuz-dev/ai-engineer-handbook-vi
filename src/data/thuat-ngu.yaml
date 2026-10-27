@@ -213,3 +213,18 @@
   tenTiengAnh: axis
   giaiThich: Trục là một chiều của mảng. Với bảng hai chiều, trục 0 đi dọc theo các hàng, trục 1 đi ngang theo các cột. Tính tổng theo trục nào thì trục đó bị gộp lại và biến mất.
   hocKy: ai-engineer/ch03-numpy
+- id: dataframe
+  ten: DataFrame
+  tenTiengAnh: DataFrame
+  giaiThich: DataFrame là bảng dữ liệu của pandas, mỗi cột có tên và có kiểu riêng, mỗi hàng có một nhãn. Giống một trang tính Excel nhưng điều khiển bằng code, nên lọc, gộp, tính toán trên hàng triệu dòng chỉ cần vài lệnh.
+  hocKy: ai-engineer/ch04-pandas-va-matplotlib
+- id: gia-tri-thieu
+  ten: Giá trị thiếu
+  tenTiengAnh: missing value
+  giaiThich: Giá trị thiếu là ô không có dữ liệu, pandas ghi là NaN. Phần lớn mô hình không chạy được khi còn NaN, nên phải bỏ dòng đó hoặc điền một giá trị thay thế như trung vị của cột.
+  hocKy: ai-engineer/ch04-pandas-va-matplotlib
+- id: histogram
+  ten: Histogram
+  tenTiengAnh: histogram
+  giaiThich: Histogram chia trục giá trị thành các khoảng bằng nhau rồi đếm có bao nhiêu điểm dữ liệu rơi vào mỗi khoảng, vẽ thành các cột. Nhìn vào là biết dữ liệu tập trung ở đâu, lệch về bên nào.
+  hocKy: ai-engineer/ch04-pandas-va-matplotlib

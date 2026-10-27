@@ -1,0 +1,103 @@
+---
+title: Bài tập
+description: Ba bài tập pandas có đáp án chi tiết (cột điểm trên mỗi giờ học, hồi quy trên 10 bạn bằng nghiệm đóng, đếm histogram bằng tay) và câu hỏi phỏng vấn.
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Ba bài dùng bảng `df` đã điền giá trị thiếu ở trang Chọn, lọc và tạo cột. Tự viết code trong notebook trước, rồi mới mở đáp án.
+
+<BaiTap so="4.1">
+**Ai học hiệu quả nhất?** Tạo cột `diem_moi_gio` bằng điểm chia giờ học, làm tròn 2 chữ số. In 3 bạn có `diem_moi_gio` cao nhất kèm giờ học và điểm.
+
+Trước khi chạy, đoán xem: bạn I (9 điểm, cao nhất lớp) có nằm trong top 3 không?
+
+<Fragment slot="dap-an">
+
+```python
+d2 = df.copy()                                            # bản sao, để không đổi df
+d2["diem_moi_gio"] = (d2["diem"] / d2["gio"]).round(2)    # chia từng hàng, không vòng lặp
+print(d2.sort_values("diem_moi_gio", ascending=False, kind="stable").head(3)[["ten", "gio", "diem", "diem_moi_gio"]])
+```
+
+```text title="Output"
+  ten  gio  diem  diem_moi_gio
+0   A    1   2.0          2.00
+1   B    2   4.0          2.00
+3   D    4   7.0          1.75
+```
+
+A và B bằng nhau ở 2,00; `kind="stable"` giữ thứ tự gốc khi bằng nhau để output luôn cố định. Bạn I **không** có mặt: $9/7 \approx 1{,}29$ điểm mỗi giờ. Người học ít lại đứng đầu: A được 2 điểm với 1 giờ.
+
+Lý do: tỷ số này ngầm giả định điểm tỷ lệ thuận với giờ học, tức là 0 giờ thì 0 điểm. Nhưng đường hồi quy ở bài sau có hệ số chặn dương, nghĩa là có một mức điểm nền không phụ thuộc giờ học. Chia thẳng cho giờ học thì mức nền đó được "chia" cho rất ít giờ ở người học ít, làm tỷ số của họ phình to. Một cột mới trông hợp lý vẫn có thể kể một câu chuyện sai.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="4.2">
+**Hồi quy trên cả lớp.** Lấy cột `gio` và `diem` ra thành hai mảng NumPy bằng `to_numpy()`. Tính độ dốc và hệ số chặn của đường hồi quy bằng nghiệm đóng:
+
+$$
+w = \frac{\sum (x_i - \bar x)(y_i - \bar y)}{\sum (x_i - \bar x)^2}, \qquad b = \bar y - w \bar x
+$$
+
+So độ dốc với con số 1,6 của bốn bạn A, B, C, D.
+
+<Fragment slot="dap-an">
+
+```python
+x = df["gio"].to_numpy(dtype=float)        # Series thành mảng số thực
+y = df["diem"].to_numpy()
+w = ((x - x.mean()) * (y - y.mean())).sum() / ((x - x.mean()) ** 2).sum()
+b = y.mean() - w * x.mean()
+print(round(w, 4), round(b, 4))
+```
+
+```text title="Output"
+1.1417 1.3255
+```
+
+Độ dốc giảm từ 1,6 xuống khoảng 1,14: trên cả lớp, mỗi giờ học thêm ứng với khoảng 1,14 điểm. Những bạn mới như E (5 giờ, 6 điểm) và K (4 giờ, 6,5 điểm) nằm dưới đường dốc 1,6 của bốn bạn đầu, kéo đường thẳng thoải ra. Đây là đường đứt nét trong hình 4.1.
+
+Công thức này là nghiệm đóng của hồi quy tuyến tính, Chương 10 sẽ dẫn ra từng bước. Ở đây bạn chỉ cần thấy: tính toán trên DataFrame và trên mảng NumPy chuyển qua lại bằng một lệnh.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="4.3">
+**Đếm histogram bằng tay.** Không chạy code, liệt kê bạn nào rơi vào từng khoảng của hình 4.2 (2 tới 4, 4 tới 6, 6 tới 8, 8 tới 10). Rồi kiểm tra bằng ô code cuối của notebook, dùng `pd.cut(df["diem"], bins=[2, 4, 6, 8, 10], right=False)` để gán mỗi bạn vào một khoảng.
+
+<Fragment slot="dap-an">
+
+| Khoảng | Bạn | Số bạn |
+|:---:|:---:|:---:|
+| 2 tới dưới 4 | A (2), F (3,5) | 2 |
+| 4 tới dưới 6 | B (4), C (5), H (4) | 3 |
+| 6 tới dưới 8 | D (7), E (6), K (6,5) | 3 |
+| 8 tới 10 | G (8,5), I (9) | 2 |
+
+Cộng lại 10 bạn, khớp bốn cột cao 2, 3, 3, 2. Chỗ dễ sai là B và H được đúng 4 điểm: nằm ngay ranh giới, thuộc khoảng **bên phải** vì mỗi khoảng lấy đầu trái. E được đúng 6 cũng vậy.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Bạn xử lý giá trị thiếu thế nào?**
+
+<p lang="en"><em>How do you handle missing values?</em></p>
+
+*Gợi ý:* trước hết tìm hiểu vì sao thiếu (ngẫu nhiên hay có lý do). Lựa chọn: bỏ hàng khi ít ô thiếu, điền trung bình hoặc trung vị (trung vị bền với giá trị cực đoan), điền bằng mô hình, hoặc thêm cột đánh dấu "đã bị thiếu". Thống kê dùng để điền phải tính trên tập train để tránh rò rỉ dữ liệu.
+
+**2. Giải thích groupby trong pandas.**
+
+<p lang="en"><em>Explain how groupby works in pandas.</em></p>
+
+*Gợi ý:* split-apply-combine: chia bảng theo khóa, áp hàm tổng hợp lên từng nhóm, gộp kết quả lại với khóa làm chỉ mục. Nêu `agg` với nhiều hàm và đặt tên cột kết quả.
+
+**3. Tương quan cao có nghĩa là nhân quả không?**
+
+<p lang="en"><em>Does high correlation imply causation?</em></p>
+
+*Gợi ý:* không. Có thể có biến gây nhiễu tác động lên cả hai, có thể quan hệ ngược chiều, có thể chỉ là ngẫu nhiên khi mẫu nhỏ. Muốn nói tới nhân quả cần thí nghiệm có đối chứng (A/B test) hoặc phương pháp suy luận nhân quả.
+</Khung>

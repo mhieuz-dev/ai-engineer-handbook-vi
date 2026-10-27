@@ -1,0 +1,98 @@
+---
+title: Gộp nhóm, sắp xếp và tương quan
+description: So sánh các nhóm bằng groupby và agg, tìm hàng lớn nhất bằng sort_values, đo mức đi cùng nhau của hai cột bằng hệ số tương quan.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+Trang này dùng tiếp bảng `df` của trang trước, đã điền giờ ngủ cho bạn F và có thêm cột `dat`.
+
+## Lớp nào học tốt hơn?
+
+```python
+print(df.groupby("lop")["diem"].mean())   # chia bảng theo lớp, tính trung bình điểm mỗi nhóm
+```
+
+```text title="Output"
+lop
+L1    5.4
+L2    5.7
+Name: diem, dtype: float64
+```
+
+`groupby` làm ba việc liền nhau, thường gọi là chia, áp, gộp <En>split-apply-combine</En>:
+
+1. **Chia** bảng thành các nhóm theo giá trị của cột `lop`: nhóm L1 có A, B, C, D, I; nhóm L2 có E, F, G, H, K.
+2. **Áp** một phép tính lên cột `diem` của từng nhóm: L1 là $(2 + 4 + 5 + 7 + 9)/5 = 5{,}4$; L2 là $(6 + 3{,}5 + 8{,}5 + 4 + 6{,}5)/5 = 5{,}7$.
+3. **Gộp** kết quả lại thành một Series, nhãn hàng là tên nhóm.
+
+Muốn nhiều con số cùng lúc, dùng `agg` và đặt tên cho từng cột kết quả:
+
+```python
+bang = df.groupby("lop").agg(
+    so_ban=("ten", "count"),      # cột mới so_ban: đếm số tên trong nhóm
+    diem_tb=("diem", "mean"),     # cột mới diem_tb: trung bình điểm
+    gio_tb=("gio", "mean"),       # cột mới gio_tb: trung bình giờ học
+)
+print(bang.round(2))
+```
+
+```text title="Output"
+     so_ban  diem_tb  gio_tb
+lop                         
+L1        5      5.4     3.4
+L2        5      5.7     4.0
+```
+
+L2 điểm trung bình cao hơn 0,3, nhưng cũng học nhiều hơn trung bình 0,6 giờ mỗi tuần. Vậy L2 "giỏi hơn", hay chỉ là "chăm hơn"? Một con số trung bình chưa trả lời được. Đây là kiểu câu hỏi mà mô hình ở Chương 10 giúp tách bạch: điểm tăng bao nhiêu **cho mỗi giờ học**.
+
+## Sắp xếp
+
+```python
+print(df.sort_values("diem", ascending=False).head(3)[["ten", "diem"]])  # 3 bạn điểm cao nhất
+```
+
+```text title="Output"
+  ten  diem
+8   I   9.0
+6   G   8.5
+3   D   7.0
+```
+
+`ascending=False` là xếp giảm dần. Chỉ mục vẫn đi theo từng hàng, nên 8, 6, 3 cho biết vị trí gốc của I, G, D.
+
+## Hai cột có đi cùng nhau không?
+
+```python
+print(round(df["gio"].corr(df["diem"]), 4))   # tương quan giữa giờ học và điểm
+print(round(df["ngu"].corr(df["diem"]), 4))   # tương quan giữa giờ ngủ và điểm
+print(df["dat"].mean())                       # trung bình của cột đúng sai: tỷ lệ True
+```
+
+```text title="Output"
+0.9566
+0.2936
+0.6
+```
+
+`corr` tính hệ số <Term id="tuong-quan">tương quan</Term> Pearson, một số từ $-1$ tới $1$:
+
+- Gần $1$: cột này lớn thì cột kia cũng lớn, theo một đường gần thẳng. Giờ học và điểm có $0{,}9566$, rất chặt.
+- Gần $0$: hai cột gần như không đi cùng nhau theo đường thẳng. Giờ ngủ và điểm chỉ có $0{,}2936$.
+- Gần $-1$: cột này lớn thì cột kia nhỏ.
+
+Dòng cuối là một mẹo hay: `True` được tính là 1, `False` là 0, nên trung bình cột `dat` chính là **tỷ lệ** bạn đạt: 6 trên 10 bạn, tức 60%.
+
+<Khung loai="vi-sao" tieuDe="TƯƠNG QUAN KHÔNG PHẢI NHÂN QUẢ">
+Tương quan 0,96 không chứng minh học nhiều **gây ra** điểm cao. Có thể có một yếu tố thứ ba đứng sau cả hai: bạn nào thích môn này thì vừa học nhiều vừa làm bài tốt.
+
+Với 10 bạn, con số còn rất bấp bênh: thêm hay bớt một bạn là hệ số có thể đổi đáng kể. Chương 7 sẽ cho công cụ đo xem một hệ số tương quan đáng tin tới đâu.
+</Khung>
+
+<Khung loai="loi">
+**Quên chọn cột trước khi tính.** `df.groupby("lop").mean()` tính trung bình **mọi** cột, và với cột chữ như `ten` thì báo lỗi `TypeError` ở pandas mới. Chọn rõ cột: `df.groupby("lop")["diem"].mean()`.
+
+**Tưởng sort_values sửa bảng gốc.** Nó trả về bảng mới đã xếp, `df` vẫn giữ thứ tự cũ. Muốn giữ kết quả thì gán: `df = df.sort_values("diem")`.
+</Khung>

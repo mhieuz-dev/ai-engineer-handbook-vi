@@ -1,0 +1,112 @@
+---
+title: Chọn, lọc và tạo cột
+description: Lấy một cột thành Series, lấy nhiều cột, lọc hàng bằng điều kiện với loc, tìm và điền giá trị thiếu, tạo cột mới từ cột cũ.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Một cột và nhiều cột
+
+```python
+print(df["diem"].mean(), type(df["diem"]).__name__)   # một cột: tính trung bình, xem kiểu
+print(df[["ten", "diem"]].head(2))                    # nhiều cột: truyền một LIST tên cột
+```
+
+```text title="Output"
+5.55 Series
+  ten  diem
+0   A   2.0
+1   B   4.0
+```
+
+Một cột của DataFrame là một **Series**: một mảng NumPy có kèm nhãn hàng. Mọi thứ bạn học ở Chương 3 (`mean`, `std`, phép tính từng phần tử, broadcasting) đều dùng được trên Series.
+
+Chú ý hai cặp ngoặc vuông ở dòng thứ hai. Ngoặc ngoài là phép chọn, ngoặc trong là một list tên cột. Một cặp ngoặc với một tên cho ra Series; hai cặp với một list cho ra DataFrame nhỏ hơn.
+
+## Lọc hàng với loc
+
+```python
+print(df.loc[df["diem"] >= 6, ["ten", "lop", "diem"]])   # hàng có điểm từ 6, chỉ lấy 3 cột
+```
+
+```text title="Output"
+  ten lop  diem
+3   D  L1   7.0
+4   E  L2   6.0
+6   G  L2   8.5
+8   I  L1   9.0
+9   K  L2   6.5
+```
+
+`df.loc[hàng, cột]` giống `A[hàng, cột]` của NumPy. Chỗ hàng nhận một **Series đúng sai**: `df["diem"] >= 6` so từng bạn, rồi chỉ giữ các hàng `True`. Đây chính là cách lọc bằng điều kiện của Chương 3, áp lên cả bảng.
+
+Chỉ mục 3, 4, 6, 8, 9 được giữ nguyên: bạn biết ngay mỗi hàng là hàng thứ mấy trong bảng gốc. Đó là lợi ích của việc có nhãn hàng.
+
+## Tìm và điền giá trị thiếu
+
+```python
+print(df.isna().sum())     # isna: True ở ô thiếu; sum đếm số True của từng cột
+```
+
+```text title="Output"
+ten     0
+lop     0
+gio     0
+ngu     1
+diem    0
+dtype: int64
+```
+
+Chỉ cột `ngu` thiếu một ô. Có hai cách xử lý: bỏ hàng đó (`df.dropna()`), hoặc điền một giá trị thay thế. Với 10 bạn, bỏ một hàng là mất 10% dữ liệu, nên ta điền bằng **trung vị** của cột:
+
+```python
+df["ngu"] = df["ngu"].fillna(df["ngu"].median())   # điền ô thiếu bằng trung vị 9 ô còn lại
+print(df.loc[5])                                   # xem lại hàng của bạn F (chỉ mục 5)
+```
+
+```text title="Output"
+ten       F
+lop      L2
+gio       2
+ngu     7.0
+diem    3.5
+Name: 5, dtype: object
+```
+
+Trung vị của 9 ô có dữ liệu (5, 6, 6, 6, 7, 7, 7, 8, 8) là số đứng thứ năm: 7. Bạn F được điền 7 giờ ngủ.
+
+Vì sao trung vị mà không phải trung bình? Trung vị không bị kéo lệch bởi vài giá trị cực đoan. Một bạn khai nhầm ngủ 70 giờ sẽ kéo trung bình lên vọt, nhưng trung vị gần như không đổi. Chương 21 sẽ bàn sâu các cách điền khác.
+
+## Tạo cột mới
+
+```python
+df["dat"] = df["diem"] >= 5               # cột mới: đạt hay không, tính cho cả 10 bạn cùng lúc
+print(df[["ten", "diem", "dat"]].tail(3)) # xem 3 hàng cuối
+```
+
+```text title="Output"
+  ten  diem    dat
+7   H   4.0  False
+8   I   9.0   True
+9   K   6.5   True
+```
+
+Gán vào một tên cột chưa có là tạo cột mới. Phép tính bên phải chạy từng phần tử, không cần vòng lặp.
+
+<TuKiemTra
+	cauHoi='df.loc[df["lop"] == "L1", "gio"] cho ra gì?'
+	luaChon={['Một DataFrame chỉ có lớp L1', 'Một Series giờ học của 5 bạn lớp L1', 'Số giờ học của bạn đầu tiên lớp L1', 'Báo lỗi vì thiếu ngoặc']}
+	dapAn={1}
+	giaiThich='Chỗ hàng lọc ra 5 bạn lớp L1 (A, B, C, D, I). Chỗ cột là một tên duy nhất, không phải list, nên kết quả là một Series. Cộng lại được 1 + 2 + 3 + 4 + 7 = 17.'
+/>
+
+<Khung loai="loi">
+**Dùng `and`, `or` để ghép điều kiện.** Giống NumPy, phải dùng `&`, `|` và bọc ngoặc: `df[(df["lop"] == "L1") & (df["diem"] > 5)]`.
+
+**Sửa một bảng đã lọc rồi tưởng bảng gốc đổi.** `l1 = df[df["lop"] == "L1"]` rồi gán `l1["diem"] = 0`: với pandas 3, `df` **không** đổi, vì bảng lọc ra luôn là một bản riêng. Với pandas 2, bạn nhận thêm cảnh báo `SettingWithCopyWarning`. Muốn sửa bảng gốc, viết thẳng `df.loc[df["lop"] == "L1", "diem"] = 0`.
+
+**Điền giá trị thiếu bằng số tính từ cả dữ liệu test.** Ở dự án thật, trung vị dùng để điền phải tính **chỉ trên dữ liệu huấn luyện**. Tính trên cả bảng là để thông tin của tập test lọt vào mô hình. Chương 9 gọi lỗi này là rò rỉ dữ liệu.
+</Khung>
