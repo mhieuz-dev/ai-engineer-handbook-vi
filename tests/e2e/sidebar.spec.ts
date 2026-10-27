@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readdirSync } from 'node:fs';
-import { CHUONG, chuongDaXuatBan } from '../../src/data/chuong';
+import { CHUONG, PHAN, chuongDaXuatBan } from '../../src/data/chuong';
 
 async function moSidebar(page: import('@playwright/test').Page) {
 	// trên điện thoại sidebar nằm trong menu thu gọn
@@ -8,17 +8,20 @@ async function moSidebar(page: import('@playwright/test').Page) {
 	if (await nutMenu.isVisible()) await nutMenu.click();
 }
 
-// Chương chưa viết đầu tiên của Phần II và chương đã viết lớn nhất: tự lấy từ dữ liệu, không ghi cứng số chương.
-const chuaViet = CHUONG.find((c) => c.phan === 'phan-2' && c.trangThai === 'sap-co')!;
+// Chương chưa viết đầu tiên (bất kể Phần nào) và chương đã viết lớn nhất: tự lấy từ dữ liệu, không ghi cứng số chương.
+const chuaViet = CHUONG.find((c) => c.trangThai === 'sap-co')!;
+const phanChuaViet = PHAN.find((p) => p.id === chuaViet.phan)!;
 const cuoiCung = [...chuongDaXuatBan()].sort((a, b) => b.so - a.so)[0];
 const trangCuoi = readdirSync(`src/content/docs/${cuoiCung.slug}`).filter((f) => f.endsWith('.mdx')).sort().at(-1)!.replace(/\.mdx$/, '');
 const soHai = (c: { so: number }) => `ch${String(c.so).padStart(2, '0')}`;
 
-test('sidebar có Phần II và chương chưa viết chỉ là nhãn Sắp có', async ({ page }) => {
+test('sidebar: chương chưa viết chỉ là nhãn Sắp có', async ({ page }) => {
 	await page.goto('/ai-engineer/ch10-hoi-quy-tuyen-tinh/01-truc-giac/');
 	await moSidebar(page);
 	const sb = page.locator('nav.sidebar, #starlight__sidebar').first();
 	await expect(sb.getByText('Phần II. Machine Learning cổ điển')).toBeVisible();
+	const phan = sb.locator('summary', { hasText: phanChuaViet.ten }).locator('xpath=..');   // thẻ details của đúng Phần đó
+	if (!(await phan.evaluate((d) => (d as HTMLDetailsElement).open))) await phan.locator('summary').first().click();   // Phần chỉ có chương Sắp có thì thu gọn sẵn
 	const nhan = `${chuaViet.so}. ${chuaViet.ten}`; // kèm số chương: "Dự án Phần II" là chuỗi con của "Dự án Phần III"
 	const muc = sb.locator('[aria-disabled="true"]', { hasText: nhan });
 	await expect(muc).toBeVisible();
