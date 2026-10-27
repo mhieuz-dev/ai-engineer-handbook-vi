@@ -193,3 +193,23 @@
   tenTiengAnh: class
   giaiThich: Lớp là khuôn để tạo ra các đối tượng cùng loại, mỗi đối tượng giữ dữ liệu riêng và có chung các hàm. Mọi mô hình trong scikit-learn và PyTorch đều là một lớp.
   hocKy: ai-engineer/ch02-python-cho-du-lieu
+- id: mang
+  ten: Mảng NumPy
+  tenTiengAnh: array
+  giaiThich: Mảng NumPy là một khối số cùng kiểu xếp theo hàng và cột, có thể một chiều, hai chiều hay nhiều chiều hơn. Phép tính trên mảng chạy cho mọi phần tử cùng lúc, nhanh hơn vòng lặp Python hàng chục lần.
+  hocKy: ai-engineer/ch03-numpy
+- id: shape
+  ten: Shape
+  tenTiengAnh: shape
+  giaiThich: Shape là hình dạng của mảng, viết thành một tuple số phần tử theo từng chiều. Mảng 4 hàng 2 cột có shape (4, 2). Phần lớn lỗi khi viết code ML là lỗi shape không khớp.
+  hocKy: ai-engineer/ch03-numpy
+- id: broadcasting
+  ten: Broadcasting
+  tenTiengAnh: broadcasting
+  giaiThich: Broadcasting là luật NumPy tự kéo giãn mảng nhỏ cho bằng mảng lớn khi tính, mà không chép dữ liệu ra thật. Nhờ nó, cộng một số hay một hàng vào cả bảng chỉ cần một phép tính.
+  hocKy: ai-engineer/ch03-numpy
+- id: truc
+  ten: Trục
+  tenTiengAnh: axis
+  giaiThich: Trục là một chiều của mảng. Với bảng hai chiều, trục 0 đi dọc theo các hàng, trục 1 đi ngang theo các cột. Tính tổng theo trục nào thì trục đó bị gộp lại và biến mất.
+  hocKy: ai-engineer/ch03-numpy

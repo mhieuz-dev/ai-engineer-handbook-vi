@@ -1,0 +1,99 @@
+---
+title: Mảng và shape
+description: Mảng NumPy là gì, vì sao nhanh hơn list hàng chục lần, đọc shape và số chiều, các cách tạo mảng nhanh. Output in trong bài là output thật.
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+<CanBietTruoc>
+List, list comprehension và cái bẫy hai nhãn một hộp (Chương 1). Tuple (Chương 2).
+
+<Fragment slot="sau-chuong">
+Tạo và đọc shape của mảng một chiều, hai chiều. Viết phép tính cho cả mảng không cần vòng lặp, dự đoán được shape kết quả khi broadcasting. Lọc dữ liệu bằng điều kiện, tính tổng và trung bình theo trục, nhân ma trận bằng @. Chuẩn hóa một bảng dữ liệu trong ba dòng code.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch03_numpy.ipynb" />
+
+## Vì sao cần NumPy
+
+Chương 1 kết thúc bằng một hạn chế: `[1, 2] * 2` ra `[1, 2, 1, 2]`, không phải `[2, 4]`. List của Python được làm để chứa **bất cứ thứ gì**, không được làm để tính toán.
+
+NumPy giải quyết đúng chỗ đó. Nó cung cấp <Term id="mang">mảng</Term>: một khối số **cùng kiểu**, nằm liền nhau trong bộ nhớ, và mọi phép tính chạy bằng mã đã biên dịch sẵn.
+
+Chênh lệch tốc độ lớn cỡ nào? Mình đo trên laptop: nhân đôi 1 triệu số bằng list comprehension `[v * 2 for v in lst]` mất khoảng 26 ms; với mảng NumPy `arr * 2` mất khoảng 0,4 ms. Nhanh hơn chừng **60 lần**. Con số cụ thể sẽ khác trên máy bạn, nhưng khoảng cách hàng chục lần thì luôn có.
+
+Mọi thư viện ML (pandas, scikit-learn, PyTorch) đều xây trên ý tưởng mảng này. Học NumPy kỹ là học cách nghĩ chung của cả hệ sinh thái.
+
+## Mảng đầu tiên
+
+```python
+import numpy as np                        # quy ước của cả cộng đồng: đặt tên ngắn là np
+x = np.array([1, 2, 3, 4])                # đổi list thành mảng: giờ học của bốn bạn
+print(x, x.dtype, x.shape, x.ndim)        # giá trị, kiểu, hình dạng, số chiều
+```
+
+```text title="Output"
+[1 2 3 4] int64 (4,) 1
+```
+
+Mảng in ra **không có dấu phẩy**, đó là cách nhận ra nhanh nó không phải list.
+
+- `dtype` là kiểu chung của mọi phần tử. `int64` là số nguyên 64 bit. Có một số thực trong list ban đầu là cả mảng thành `float64`.
+- `shape` là <Term id="shape">shape</Term>, hình dạng của mảng. `(4,)` là một tuple một phần tử: mảng có 4 phần tử theo một chiều duy nhất.
+- `ndim` là số chiều, cũng bằng độ dài của `shape`.
+
+## Bảng hai chiều
+
+Dữ liệu ML thường là một **bảng**: mỗi hàng một mẫu, mỗi cột một đặc trưng. Giả sử ngoài giờ tự học, ta biết thêm số giờ ngủ trung bình của mỗi bạn:
+
+```python
+X = np.array([[1, 2],      # bạn A: 1 giờ học, 2 (đơn vị) ngủ
+              [2, 1],      # bạn B
+              [3, 4],      # bạn C
+              [4, 3]])     # bạn D
+print(X.shape, X.ndim)     # 4 hàng, 2 cột; hai chiều
+```
+
+```text title="Output"
+(4, 2) 2
+```
+
+`(4, 2)` đọc là "4 hàng, 2 cột": 4 mẫu, 2 đặc trưng. Quy ước viết hoa `X` cho bảng đặc trưng và viết thường `y` cho vector nhãn có ở khắp sách và thư viện ML, giáo trình này cũng theo.
+
+<Khung loai="truc-giac">
+Hình dung shape như kích thước một khay trứng. `(4,)` là một hàng 4 ô. `(4, 2)` là khay 4 hàng, mỗi hàng 2 ô. Một lô ảnh màu trong Chương 27 có shape kiểu `(32, 3, 224, 224)`: 32 ảnh, mỗi ảnh 3 kênh màu, mỗi kênh 224 nhân 224 điểm ảnh.
+
+Số chiều có thể nhiều, nhưng cách đọc luôn giống nhau: mỗi số trong tuple là độ dài của một chiều.
+</Khung>
+
+## Tạo mảng nhanh
+
+```python
+print(np.zeros(3))                 # 3 số 0
+print(np.ones((2, 2)))             # bảng 2 x 2 toàn số 1; chú ý shape truyền vào là một tuple
+print(np.arange(0, 1, 0.25))       # như range nhưng nhận bước nhảy thực, vẫn dừng TRƯỚC 1
+print(np.linspace(0, 1, 5))        # 5 số cách đều từ 0 tới 1, LẤY CẢ 1
+```
+
+```text title="Output"
+[0. 0. 0.]
+[[1. 1.]
+ [1. 1.]]
+[0.   0.25 0.5  0.75]
+[0.   0.25 0.5  0.75 1.  ]
+```
+
+`arange` theo quy tắc của `range`: lấy đầu, không lấy cuối. `linspace` thì lấy cả hai đầu và tự chia đều. Khi vẽ đồ thị một hàm ở Chương 4, bạn sẽ dùng `linspace` để có các điểm trên trục ngang.
+
+<Khung loai="loi">
+**Quên cặp ngoặc của shape.** `np.ones(2, 2)` báo `TypeError` vì tham số thứ hai là `dtype`, và 2 không phải một kiểu dữ liệu. Viết `np.ones((2, 2))`.
+
+**Hàng dài ngắn khác nhau.** `np.array([[1, 2], [3]])` không tạo được bảng, vì mỗi hàng phải cùng số cột. NumPy mới báo `ValueError`.
+
+**Nhầm (4,) với (4, 1).** `(4,)` là một dãy 4 số. `(4, 1)` là bảng 4 hàng 1 cột. Hai thứ này in khác nhau và tính khác nhau. scikit-learn đòi `X` hai chiều, nên ở Chương 10 ta phải `reshape(-1, 1)`.
+</Khung>

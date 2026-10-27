@@ -1,0 +1,115 @@
+---
+title: Trục, ma trận và số ngẫu nhiên
+description: Tính tổng và trung bình theo trục, nhân ma trận bằng @, đổi hình bằng reshape và chuyển vị, sinh số ngẫu nhiên lặp lại được bằng default_rng.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Tổng theo trục
+
+Các ví dụ trên trang này dùng tiếp ba mảng của trang trước: `x = [1, 2, 3, 4]`, `y = [2, 4, 5, 7]` và `A = [[1, 2, 3], [4, 5, 6]]`. Trong notebook, chạy các ô theo thứ tự là có sẵn.
+
+```python
+print(A.sum())             # tổng mọi phần tử
+print(A.sum(axis=0))       # gộp theo trục 0 (dọc xuống): tổng từng CỘT
+print(A.sum(axis=1))       # gộp theo trục 1 (ngang qua): tổng từng HÀNG
+print(A.mean(axis=0))      # trung bình từng cột
+```
+
+```text title="Output"
+21
+[5 7 9]
+[ 6 15]
+[2.5 3.5 4.5]
+```
+
+<Khung loai="truc-giac">
+Chữ `axis` gây rối cho hầu hết người mới, vì `axis=0` lại cho ra tổng từng **cột**. Cách nhớ: <Term id="truc">trục</Term> bạn ghi vào là trục **bị gộp lại và biến mất**.
+
+`A` có shape `(2, 3)`. `sum(axis=0)` gộp mất chiều 2 (hai hàng ép xuống làm một), còn lại shape `(3,)`: ba con số, mỗi cột một số. `sum(axis=1)` gộp mất chiều 3, còn lại shape `(2,)`: mỗi hàng một số.
+
+Với bảng dữ liệu (hàng là mẫu, cột là đặc trưng), `axis=0` là phép bạn dùng nhiều nhất: trung bình, độ lệch chuẩn **của từng đặc trưng** qua mọi mẫu.
+</Khung>
+
+Mảng một chiều cũng có sẵn các hàm thống kê:
+
+```python
+print(y.mean(), y.std(), y.std(ddof=1))   # trung bình; độ lệch chuẩn chia n; chia n - 1
+```
+
+```text title="Output"
+4.5 1.8027756377319946 2.0816659994661326
+```
+
+Khớp với Chương 2: `np.std` mặc định chia $n$, ra 1,8028 như `statistics.pstdev`. Thêm `ddof=1` (delta degrees of freedom, số bậc tự do trừ bớt) thì chia $n - 1$, ra 2,0817 như `statistics.stdev`.
+
+## Nhân ma trận với @
+
+```python
+W = np.array([[1, 0],
+              [0, 2],
+              [1, 1]])       # shape (3, 2)
+print(A @ W)                 # (2, 3) @ (3, 2)
+print((A @ W).shape)
+```
+
+```text title="Output"
+[[ 4  7]
+ [10 16]]
+(2, 2)
+```
+
+Tính tay ô góc trên trái: hàng 0 của `A` là `[1, 2, 3]`, cột 0 của `W` là `[1, 0, 1]`. Nhân từng cặp rồi cộng: $1 \times 1 + 2 \times 0 + 3 \times 1 = 4$. Mỗi ô của kết quả là một phép "nhân từng cặp rồi cộng" như vậy giữa một hàng và một cột.
+
+Luật shape: `(m, k) @ (k, n)` ra `(m, n)`. Hai số **ở giữa** phải bằng nhau (ở đây là 3), và chúng biến mất trong kết quả. Chương 5 sẽ giải thích vì sao phép nhân ma trận được định nghĩa như vậy và nó có nghĩa gì về hình học.
+
+Vì sao phép này quan trọng? Một lớp nơ-ron (Chương 23) nhận cả lô dữ liệu `X` shape `(số mẫu, số đặc trưng vào)`, nhân với ma trận trọng số `W` shape `(số đặc trưng vào, số đặc trưng ra)`. Đó chính là `X @ W`. Cả deep learning, xét về tính toán, phần lớn là những phép `@` rất lớn chạy trên GPU.
+
+## Đổi hình
+
+```python
+print(A.T.shape)              # chuyển vị: đổi hàng thành cột, (2, 3) thành (3, 2)
+print(A.reshape(3, 2))        # xếp lại 6 số thành 3 hàng 2 cột, theo thứ tự đọc từng hàng
+print(x.reshape(-1, 1).shape) # -1: tự tính; mảng 4 số thành một cột (4, 1)
+```
+
+```text title="Output"
+(3, 2)
+[[1 2]
+ [3 4]
+ [5 6]]
+(4, 1)
+```
+
+`reshape` không đổi dữ liệu, chỉ đổi cách xếp. Tổng số phần tử phải giữ nguyên: 6 số xếp được thành `(3, 2)` hay `(6, 1)`, không xếp được thành `(4, 2)`. Chuyển vị `A.T` thì khác: nó đổi vai trò hàng và cột, `A.T[i, j]` bằng `A[j, i]`.
+
+## Số ngẫu nhiên
+
+NumPy có bộ sinh số ngẫu nhiên riêng, không dùng chung với module `random` của Chương 2. Cách viết hiện đại là tạo một bộ sinh với seed:
+
+```python
+rng = np.random.default_rng(42)     # bộ sinh số ngẫu nhiên riêng, seed 42
+print(rng.random(3))                # 3 số thực trong [0, 1)
+print(rng.integers(1, 7, size=5))   # 5 lần tung xúc xắc: số nguyên từ 1 tới TRƯỚC 7
+print(rng.normal(0, 1, size=2))     # 2 số theo phân phối chuẩn trung bình 0, độ lệch chuẩn 1
+```
+
+```text title="Output"
+[0.77395605 0.43887844 0.85859792]
+[1 5 2 1 4]
+[ 0.1278404  -0.31624259]
+```
+
+Output trên chạy với NumPy 2.5. NumPy không cam kết giữ nguyên dãy số giữa mọi phiên bản, nên nếu Colab của bạn cài bản khác mà số lệch, đó không phải lỗi của bạn. Cùng một máy, cùng phiên bản, cùng seed thì luôn ra đúng dãy này.
+
+Phân phối chuẩn (hình chuông) sẽ được giải thích ở Chương 7. Bạn sẽ dùng nó để khởi tạo trọng số mạng nơ-ron ở Chương 26.
+
+<Khung loai="loi">
+**Nhầm `axis`.** Muốn trung bình từng đặc trưng (cột) thì `axis=0`. Kiểm tra bằng shape: kết quả phải có số phần tử bằng số cột.
+
+**Dùng `*` khi cần `@`.** `A * W` với `A` shape `(2, 3)` và `W` shape `(3, 2)` báo lỗi broadcasting. Nếu hai mảng tình cờ cùng shape vuông thì `*` không báo lỗi mà cho kết quả sai, khó phát hiện hơn nhiều.
+
+**Dùng `np.random.seed` kiểu cũ.** Code cũ trên mạng hay viết `np.random.seed(42)` rồi `np.random.rand(...)`. Vẫn chạy, nhưng NumPy khuyên dùng `default_rng` vì mỗi bộ sinh độc lập, không bị phần code khác vô tình làm lệch dãy số.
+</Khung>

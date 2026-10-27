@@ -1,0 +1,89 @@
+---
+title: Chỉ số, lát cắt và lọc
+description: Lấy phần tử, hàng, cột của mảng; lọc bằng mảng đúng sai; và vì sao lát cắt của NumPy là một cửa sổ nhìn vào mảng gốc chứ không phải bản sao.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Lấy phần tử, hàng, cột
+
+Các ví dụ trên trang này dùng tiếp ba mảng của trang trước: `x = [1, 2, 3, 4]`, `y = [2, 4, 5, 7]` và `A = [[1, 2, 3], [4, 5, 6]]`. Trong notebook, chạy các ô theo thứ tự là có sẵn.
+
+Mảng một chiều dùng chỉ số y như list. Mảng hai chiều nhận **hai** chỉ số, cách nhau dấu phẩy: hàng trước, cột sau.
+
+```python
+print(x[0], x[-1], x[1:3])          # phần tử đầu, cuối, lát cắt: y như list
+print(A[1, 2], A[:, 0], A[0])       # hàng 1 cột 2; mọi hàng của cột 0; cả hàng 0
+```
+
+```text title="Output"
+1 4 [2 3]
+6 [1 4] [1 2 3]
+```
+
+Với `A = [[1, 2, 3], [4, 5, 6]]`:
+
+- `A[1, 2]` là hàng thứ hai, cột thứ ba (đếm từ 0): số 6.
+- `A[:, 0]` là "mọi hàng, cột 0": cả cột đầu `[1, 4]`. Dấu `:` đứng một mình nghĩa là lấy hết theo chiều đó.
+- `A[0]` thiếu chỉ số cột, NumPy hiểu là lấy hết các cột: cả hàng đầu.
+
+Cách viết `A[:, 0]` là thao tác bạn dùng hằng ngày: lấy riêng một đặc trưng (một cột) ra khỏi bảng dữ liệu.
+
+## Lọc bằng điều kiện
+
+So sánh một mảng với một số cho ra **mảng đúng sai**, cùng shape. Đưa mảng đó vào trong ngoặc vuông là lọc lấy những phần tử ứng với `True`:
+
+```python
+print(x > 2)                 # so từng phần tử với 2
+print(x[x > 2])              # chỉ giữ phần tử nào > 2
+print(y[x % 2 == 0])         # điểm của những bạn có số giờ học chẵn
+```
+
+```text title="Output"
+[False False  True  True]
+[3 4]
+[4 7]
+```
+
+Dòng cuối đáng chú ý: điều kiện tính trên `x`, nhưng lọc lại là `y`. Vì hai mảng cùng thứ tự các bạn, mảng đúng sai của `x` chọn ra đúng các bạn B và D (học 2 và 4 giờ), rồi lấy điểm của họ là 4 và 7.
+
+Cách lọc này gọi là boolean indexing. pandas ở Chương 4 dùng y hệt cú pháp này để lọc hàng của bảng, ví dụ `df[df["diem"] >= 5]`.
+
+Ghép nhiều điều kiện dùng `&` (và), `|` (hoặc), `~` (phủ định), mỗi điều kiện phải bọc ngoặc: `x[(x > 1) & (x < 4)]`. Dùng `and`, `or` của Python ở đây sẽ báo lỗi.
+
+## Lát cắt là cửa sổ, không phải bản sao
+
+<Khung loai="dao-sau" tieuDe="VIEW VÀ COPY">
+Chương 1 có cái bẫy "hai nhãn, một hộp" với list. NumPy có một phiên bản còn khó thấy hơn:
+
+```python
+a = np.array([1, 2, 3])
+c2 = a[:2]          # lát cắt của NumPy là một VIEW: cửa sổ nhìn vào chính mảng a
+c2[0] = 99          # sửa qua cửa sổ
+print(a)            # a cũng đổi
+d = a.copy()        # muốn bản sao thật thì gọi copy
+d[1] = -1
+print(a, d)         # sửa d không đụng tới a
+```
+
+```text title="Output"
+[99  2  3]
+[99  2  3] [99 -1  3]
+```
+
+Với list, `a[:2]` tạo list mới. Với mảng NumPy, `a[:2]` **không chép dữ liệu**: nó chỉ là một cửa sổ nhìn vào cùng vùng nhớ. Sửa qua cửa sổ là sửa mảng gốc.
+
+NumPy làm vậy vì tốc độ: cắt một mảng hàng gigabyte mà phải chép ra thì vừa chậm vừa tốn bộ nhớ. Cái giá là bạn phải nhớ gọi `.copy()` khi định sửa một phần dữ liệu mà vẫn muốn giữ bản gốc.
+
+Lọc bằng điều kiện (`x[x > 2]`) thì luôn tạo bản sao, không có bẫy này.
+</Khung>
+
+<Khung loai="loi">
+**Viết `A[1][2]` thay cho `A[1, 2]`.** Kết quả giống nhau, nhưng `A[1][2]` lấy cả hàng 1 ra trước rồi mới lấy phần tử 2: chậm hơn, và với lát cắt kiểu `A[:][0]` thì cho ra hàng 0 chứ **không** phải cột 0.
+
+**Dùng `and` để ghép điều kiện.** `x[(x > 1) and (x < 4)]` báo `ValueError: The truth value of an array with more than one element is ambiguous`. Dùng `&` và bọc ngoặc từng điều kiện.
+
+**Sửa lát cắt rồi ngạc nhiên vì dữ liệu gốc đổi.** Xem khung bên trên. Khi nghi ngờ, gọi `.copy()`.
+</Khung>

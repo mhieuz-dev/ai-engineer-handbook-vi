@@ -1,0 +1,102 @@
+---
+title: Bài tập
+description: Ba bài tập NumPy có đáp án chi tiết (MSE vector hóa, chuẩn hóa một bảng bằng broadcasting, đoán shape trước khi chạy) và câu hỏi phỏng vấn.
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Tự viết code trong notebook trước, chạy thử, rồi mới mở đáp án.
+
+<BaiTap so="3.1">
+**MSE không vòng lặp.** Bài tập 1.1 tính MSE bằng `for` và `zip`. Viết lại bằng NumPy trong **một dòng tính toán**, không có vòng lặp nào. In mảng phần dư và MSE cho $w = 1{,}6,\ b = 0{,}5$.
+
+<Fragment slot="dap-an">
+
+```python
+x = np.array([1, 2, 3, 4], dtype=float)
+y = np.array([2, 4, 5, 7], dtype=float)
+w, b = 1.6, 0.5
+e = y - (w * x + b)          # phần dư của cả bốn bạn cùng lúc
+print(e, np.mean(e ** 2))    # MSE: bình phương từng phần tử rồi lấy trung bình
+```
+
+```text title="Output"
+[-0.1  0.3 -0.3  0.1] 0.050000000000000065
+```
+
+Ra đúng 0,05 như Bài tập 1.1, kể cả phần đuôi sai số dấu phẩy động `...065`. Chương 10 viết đúng dòng `loss = np.mean(e ** 2)` này ở mỗi bước huấn luyện.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="3.2">
+**Chuẩn hóa một bảng.** Với bảng `X` shape `(4, 2)` ở trang Mảng và shape, chuẩn hóa từng cột: trừ trung bình của cột rồi chia cho độ lệch chuẩn của cột (chia $n$). Chỉ dùng ba dòng tính toán. Kiểm tra lại: sau chuẩn hóa, mỗi cột phải có trung bình 0 và độ lệch chuẩn 1.
+
+<Fragment slot="dap-an">
+
+```python
+X = np.array([[1, 2], [2, 1], [3, 4], [4, 3]], dtype=float)
+mu = X.mean(axis=0)            # trung bình từng cột, shape (2,)
+sd = X.std(axis=0)             # độ lệch chuẩn từng cột, shape (2,)
+Z = (X - mu) / sd              # broadcasting: (4, 2) với (2,) áp vào từng hàng
+print(mu, sd)
+print(np.round(Z, 4))
+print(np.round(Z.mean(axis=0), 10), Z.std(axis=0))
+```
+
+```text title="Output"
+[2.5 2.5] [1.11803399 1.11803399]
+[[-1.3416 -0.4472]
+ [-0.4472 -1.3416]
+ [ 0.4472  1.3416]
+ [ 1.3416  0.4472]]
+[0. 0.] [1. 1.]
+```
+
+Cả hai cột đều gồm các số 1, 2, 3, 4 (chỉ khác thứ tự), nên cùng trung bình 2,5 và cùng độ lệch chuẩn $\sqrt{1{,}25} \approx 1{,}118$. Ô đầu tiên: $(1 - 2{,}5)/1{,}118 \approx -1{,}3416$.
+
+Dòng `X - mu` là broadcasting: shape `(4, 2)` trừ shape `(2,)`, so từ phải 2 và 2 khớp, nên `mu` được trừ vào từng hàng. Phép chuẩn hóa này có tên riêng là <span lang="en">standardization</span>. Chương 10 dùng nó để gradient descent hội tụ nhanh hơn, và scikit-learn đóng gói nó thành `StandardScaler`.
+
+Dòng cuối có `np.round(..., 10)` vì trung bình thật ra là những số cỡ $10^{-17}$, không đúng bằng 0, lại là sai số dấu phẩy động.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="3.3">
+**Đoán shape trước khi chạy.** Viết ra giấy shape của kết quả, hoặc ghi "lỗi". Rồi mới chạy để kiểm tra.
+
+1. `np.ones((4, 3)) @ np.ones((3, 2))`
+2. `np.ones((4, 1)) + np.ones((3,))`
+3. `np.ones((2, 3)) + np.ones((3, 2))`
+
+<Fragment slot="dap-an">
+
+1. **`(4, 2)`.** Nhân ma trận `(4, 3) @ (3, 2)`: hai số giữa đều là 3 nên khớp, kết quả lấy hai số ngoài.
+2. **`(4, 3)`.** Broadcasting, so từ phải: 1 và 3 khớp (kéo thành 3); chiều kế 4 và thiếu khớp (kéo thành 4).
+3. **Lỗi.** So từ phải: 3 và 2 khác nhau, không cái nào bằng 1. NumPy báo `ValueError: operands could not be broadcast together with shapes (2,3) (3,2)`. Muốn cộng được, phải chuyển vị một trong hai: `np.ones((2, 3)) + np.ones((3, 2)).T`.
+
+Câu 2 và câu 3 đều là phép cộng của hai mảng khác shape, nhưng một câu chạy, một câu lỗi. Thuộc luật "so từ phải, bằng nhau hoặc bằng 1" là đoán được ngay.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Vì sao NumPy nhanh hơn list của Python?**
+
+<p lang="en"><em>Why is NumPy faster than Python lists?</em></p>
+
+*Gợi ý:* mảng lưu các số cùng kiểu, liền nhau trong bộ nhớ, còn list lưu các con trỏ tới từng đối tượng riêng lẻ. Phép tính trên mảng chạy bằng vòng lặp C đã biên dịch, không phải thông dịch từng phần tử, và tận dụng được lệnh SIMD của CPU.
+
+**2. Giải thích broadcasting và cho một ví dụ nó gây lỗi âm thầm.**
+
+<p lang="en"><em>Explain broadcasting, and give an example where it causes a silent bug.</em></p>
+
+*Gợi ý:* nêu luật so shape từ phải sang trái. Ví dụ kinh điển: trừ `y` shape `(n,)` cho dự đoán shape `(n, 1)` ra bảng `(n, n)`, MSE tính ra sai mà không có lỗi nào. Cách phòng: kiểm tra shape bằng assert ở các chỗ quan trọng.
+
+**3. View và copy trong NumPy khác nhau thế nào?**
+
+<p lang="en"><em>What is the difference between a view and a copy in NumPy?</em></p>
+
+*Gợi ý:* lát cắt cơ bản trả về view dùng chung bộ nhớ với mảng gốc, sửa view là sửa gốc. Lọc bằng mảng đúng sai hoặc danh sách chỉ số trả về copy. Có thể kiểm tra bằng `np.shares_memory(a, b)`.
+</Khung>

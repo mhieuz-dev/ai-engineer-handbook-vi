@@ -1,0 +1,94 @@
+---
+title: Phép tính và broadcasting
+description: Phép tính từng phần tử trên cả mảng không cần vòng lặp, và luật broadcasting quyết định khi nào hai mảng khác shape tính được với nhau.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Tính cho cả mảng một lần
+
+```python
+x = np.array([1, 2, 3, 4])      # giờ học
+y = np.array([2, 4, 5, 7])      # điểm thi
+print(x * 2, x + y, x * y, x ** 2)  # nhân số, cộng hai mảng, nhân từng cặp, bình phương
+print(1.6 * x + 0.5)            # dự đoán của đường thẳng cho cả bốn bạn
+print([1, 2, 3, 4] * 2)         # so sánh: với list, * 2 là lặp lại list
+```
+
+```text title="Output"
+[2 4 6 8] [ 3  6  8 11] [ 2  8 15 28] [ 1  4  9 16]
+[2.1 3.7 5.3 6.9]
+[1, 2, 3, 4, 1, 2, 3, 4]
+```
+
+Mọi phép tính số học trên mảng đều chạy **từng phần tử**: phần tử thứ nhất với phần tử thứ nhất, thứ hai với thứ hai. `x * y` ra `[2, 8, 15, 28]`, chính là các tích $x_i y_i$.
+
+Dòng thứ hai làm trong một phép tính việc mà Chương 1 cần cả list comprehension. Lại còn không bị lỗi `5.300000000000001` khi in, vì NumPy làm tròn **lúc in** cho gọn (giá trị bên trong vẫn y như cũ).
+
+Viết phép tính cho cả mảng thay vì lặp từng phần tử như vậy gọi là <Term id="vector-hoa">vector hóa</Term>.
+
+## Broadcasting
+
+`x * 2` nhân một mảng 4 phần tử với **một số**. NumPy làm như thể số 2 được nhân bản thành `[2, 2, 2, 2]` rồi nhân từng cặp. Cơ chế kéo giãn này gọi là <Term id="broadcasting">broadcasting</Term>, và nó không chỉ áp dụng cho một số:
+
+```python
+A = np.array([[1, 2, 3],
+              [4, 5, 6]])          # shape (2, 3)
+v = np.array([10, 20, 30])          # shape (3,): một hàng
+print(A + v)                        # v được cộng vào TỪNG HÀNG của A
+c = np.array([[100], [200]])        # shape (2, 1): một cột
+print(A + c)                        # c được cộng vào TỪNG CỘT của A
+```
+
+```text title="Output"
+[[11 22 33]
+ [14 25 36]]
+[[101 102 103]
+ [204 205 206]]
+```
+
+<Khung loai="dao-sau" tieuDe="LUẬT BROADCASTING">
+NumPy so shape của hai mảng **từ phải sang trái**, từng chiều một. Hai chiều khớp nhau khi chúng bằng nhau, hoặc một trong hai bằng 1. Chiều bằng 1 (hoặc chiều thiếu) được kéo giãn cho bằng bên kia.
+
+| | A | v | Kết quả |
+|:---|:---:|:---:|:---:|
+| shape | (2, 3) | (3,) | |
+| chiều phải nhất | 3 | 3 | khớp, 3 |
+| chiều kế | 2 | thiếu, coi là 1 | kéo giãn thành 2 |
+| **kết quả** | | | **(2, 3)** |
+
+Với `c` shape `(2, 1)`: chiều phải 3 và 1 khớp (kéo 1 thành 3), chiều kế 2 và 2 khớp. Kết quả `(2, 3)`.
+</Khung>
+
+Còn khi cộng `A` với một mảng shape `(2,)` thì sao?
+
+```python
+try:
+    A + np.array([1, 2])            # shape (2, 3) cộng shape (2,)
+except ValueError as e:
+    print("ValueError:", e)
+```
+
+```text title="Output"
+ValueError: operands could not be broadcast together with shapes (2,3) (2,) 
+```
+
+So từ phải: 3 và 2 khác nhau, không cái nào bằng 1, nên không tính được. Muốn cộng `[1, 2]` vào từng **cột**, phải đổi nó thành cột shape `(2, 1)` như mảng `c` ở trên.
+
+Chương 3 giới thiệu broadcasting sớm vì nó có mặt trong gần như mọi dòng code ML. Trừ trung bình của từng cột khỏi cả bảng, cộng hệ số chặn $b$ vào mọi dự đoán, chuẩn hóa ảnh theo từng kênh màu: tất cả đều là broadcasting.
+
+<TuKiemTra
+	cauHoi="Mảng shape (5, 1) cộng với mảng shape (3,) cho kết quả shape gì?"
+	luaChon={['Báo lỗi', '(5, 3)', '(5, 1)', '(3, 5)']}
+	dapAn={1}
+	giaiThich="So từ phải: 1 và 3 khớp (kéo 1 thành 3). Chiều kế: 5 và thiếu (coi là 1) khớp, kéo thành 5. Kết quả (5, 3). Đây là cách nhanh tạo một bảng mọi cặp tổng."
+/>
+
+<Khung loai="loi">
+**Broadcasting im lặng ra shape bạn không muốn.** Trừ `y` shape `(4,)` cho dự đoán shape `(4, 1)` không báo lỗi mà ra bảng `(4, 4)` gồm mọi cặp hiệu. Tính MSE trên bảng đó cho một con số sai hoàn toàn. Khi kết quả lạ, in `.shape` của từng mảng trước tiên.
+
+**Nghĩ rằng `*` là nhân ma trận.** Với mảng, `*` luôn nhân từng phần tử. Nhân ma trận là `@`, trang 4 sẽ nói.
+</Khung>
