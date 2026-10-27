@@ -90,3 +90,60 @@ test('trang Thuật ngữ: "Xuất hiện ở" của Đạo hàm trỏ tới tra
 	const muc = page.locator('#dao-ham');
 	await expect(muc.locator(`.xuat-hien a[href^="${C10}/"]`).first()).toBeVisible();
 });
+
+for (const scheme of ['light', 'dark'] as const) {
+	test(`trang 04, theme ${scheme === 'light' ? 'sáng' : 'tối'}: khối code và OUTPUT ${scheme === 'light' ? 'nền trắng' : 'giữ nền tối'}, chữ đủ tương phản`, async ({ page }) => {
+		await page.emulateMedia({ colorScheme: scheme });
+		await page.goto(`${C10}/04-code/`);
+		await expect(page.locator('html')).toHaveAttribute('data-theme', scheme);
+		const code = page.locator('.expressive-code pre[data-language="python"]').first();
+		const output = page.locator('.expressive-code .frame.has-title:has(pre[data-language="text"])').first();
+		await expect(output.locator('.title')).toHaveText('Output');
+		await expect(output.locator('.title')).toHaveCSS('text-transform', 'uppercase');
+		const nen = await Promise.all([code, output.locator('pre')].map((l) => l.evaluate((e) => getComputedStyle(e).backgroundColor)));
+		for (const n of nen) {
+			if (scheme === 'light') expect(n).toBe('rgb(255, 255, 255)');
+			else expect(n).not.toBe('rgb(255, 255, 255)');
+		}
+		// Tương phản WCAG của chữ output, nhãn OUTPUT và mọi token màu trong khối code so với nền khối.
+		const tuongPhan = await page.evaluate(() => {
+			// Màu tính ra có thể là rgb(0..255) hoặc color(srgb 0..1) khi CSS dùng color-mix.
+			const rgb = (s: string) => {
+				const so = s.match(/[\d.]+/g)!.slice(0, 3).map(Number);
+				return s.startsWith('color(srgb') ? so.map((v) => v * 255) : so;
+			};
+			const L = (c: number[]) => {
+				const [r, g, b] = c.map((v) => ((v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+				return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+			};
+			const ct = (a: string, b: string) => {
+				const [x, y] = [L(rgb(a)), L(rgb(b))].sort((m, n) => n - m);
+				return (x + 0.05) / (y + 0.05);
+			};
+			const kq: Record<string, number> = { output: 99, nhan: 99, code: 99 };
+			for (const fr of document.querySelectorAll('.expressive-code .frame')) {
+				const pre = fr.querySelector('pre')!;
+				const nen = getComputedStyle(pre).backgroundColor;
+				const loai = pre.dataset.language === 'text' ? 'output' : 'code';
+				for (const s of fr.querySelectorAll<HTMLElement>('.ec-line .code span')) {
+					if (s.textContent!.trim()) kq[loai] = Math.min(kq[loai], ct(getComputedStyle(s).color, nen));
+				}
+				const t = fr.querySelector<HTMLElement>('.title');
+				if (t) kq.nhan = Math.min(kq.nhan, ct(getComputedStyle(t).color, getComputedStyle(t).backgroundColor));
+			}
+			return kq;
+		});
+		expect(tuongPhan.output).toBeGreaterThanOrEqual(4.5);
+		expect(tuongPhan.nhan).toBeGreaterThanOrEqual(4.5);
+		expect(tuongPhan.code).toBeGreaterThanOrEqual(4.5);
+	});
+}
+
+test('trang 04 khi in ở theme tối: khối code và OUTPUT vẫn nền trắng', async ({ page }) => {
+	await page.emulateMedia({ colorScheme: 'dark', media: 'print' });
+	await page.goto(`${C10}/04-code/`);
+	await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+	for (const l of [page.locator('.expressive-code pre[data-language="python"]').first(), page.locator('.expressive-code pre[data-language="text"]').first()]) {
+		expect(await l.evaluate((e) => getComputedStyle(e).backgroundColor)).toBe('rgb(255, 255, 255)');
+	}
+});

@@ -210,6 +210,32 @@ pre,
 	color: var(--pri);
 }
 
+/* Khối code và khối output (Expressive Code): theme sáng và bản in dùng nền trắng, viền --line, chữ --tx.
+   Màu cú pháp là bảng màu sáng của Expressive Code, đã được nâng tương phản >= 5,5:1 trên nền #f6f7f9,
+   nên trên nền trắng còn cao hơn. Theme tối giữ khối tối như cũ. */
+:root:not([data-theme='dark']) .expressive-code {
+	--ec-codeBg: #fff;
+	--ec-codeFg: var(--tx);
+	--ec-brdCol: var(--line);
+	--ec-frm-edBg: #fff;
+	--ec-frm-trmBg: #fff;
+	--ec-frm-edActTabBg: #fff;
+	--ec-frm-edTabBarBg: #fff;
+	--ec-frm-edTabBarBrdBtmCol: var(--line);
+	--ec-frm-trmTtbBg: #fff;
+}
+/* Khối output (```text title="Output"```): giữ nhãn OUTPUT nhỏ màu --mut và vạch trái để khác khối code. */
+.expressive-code .frame.has-title:has(pre[data-language='text']) .title {
+	font-size: 0.72rem;
+	font-weight: 600;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	/* --mut trộn thêm chút --tx: chữ nhỏ vẫn đạt >= 4,5:1 trên nền trắng (--mut thuần chỉ 3,9:1). */
+	color: color-mix(in srgb, var(--mut), var(--tx) 35%);
+}
+.expressive-code .frame.has-title:has(pre[data-language='text']) pre { border-left: 3px solid var(--mut); }
+:root:not([data-theme='dark']) .expressive-code .frame:has(pre[data-language='text']) .ec-line .code span { color: var(--tx); }
+
 /* Mục lục bên phải: nhãn in hoa như bản mẫu. */
 #starlight__on-this-page { text-transform: uppercase; letter-spacing: 0.04em; }
 
@@ -238,6 +264,21 @@ pre,
 	.in-chuong { max-width: none; padding: 0; }
 	.in-muc { break-before: page; }
 	.in-muc:first-of-type { break-before: auto; }
+	/* Code khi in: nền trắng cả khi đang ở theme tối, chữ dùng màu cú pháp của bảng sáng (biến --1). */
+	.expressive-code {
+		--ec-codeBg: #fff;
+		--ec-codeFg: #1a1a1a;
+		--ec-brdCol: #e6decd;
+		--ec-frm-edBg: #fff;
+		--ec-frm-trmBg: #fff;
+		--ec-frm-edActTabBg: #fff;
+		--ec-frm-edActTabFg: #1a1a1a;
+		--ec-frm-edTabBarBg: #fff;
+		--ec-frm-edTabBarBrdBtmCol: #e6decd;
+		--ec-frm-trmTtbBg: #fff;
+	}
+	.expressive-code .ec-line :where(span[style^='--']:not([class])) { color: var(--1, inherit); }
+	.expressive-code .frame:has(pre[data-language='text']) .ec-line .code span { color: #1a1a1a; }
 }
 
 /* .main-pane của Starlight là một stacking context z auto nằm trước .right-sidebar (position: fixed) trong DOM, nên cột phải vẽ đè lên khung giải thích Term. Nâng .main-pane lên z 1 để khung nổi trên cột phải; header và menu mobile có z-index cao hơn nên không bị ảnh hưởng. */
