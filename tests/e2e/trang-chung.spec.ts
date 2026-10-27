@@ -43,7 +43,7 @@ test('notebook: bảng chương đã xuất bản có nút Colab và link GitHub
 	await page.goto('/notebook/');
 	const coNotebook = CHUONG.filter((c) => c.notebook);
 	await expect(page.locator('table tbody tr')).toHaveCount(coNotebook.length);
-	await expect(page.locator('table tbody tr').first()).toContainText('ch01_python_tu_dau.ipynb');
+	await expect(page.locator('table tbody tr').first()).toContainText(coNotebook[0].notebook!);
 	const hang = page.locator('table tbody tr').nth(coNotebook.findIndex((c) => c.so === 10));
 	await expect(hang).toContainText('ch10_hoi_quy_tuyen_tinh.ipynb');
 	await expect(hang.locator('a.colab-nut')).toHaveAttribute('href', /colab\.research\.google\.com\/github\/mhieuz-dev\/ai-engineer-handbook-vi\/blob\/main\/notebooks\/ch10_hoi_quy_tuyen_tinh\.ipynb$/);

@@ -1,0 +1,78 @@
+---
+title: Lộ trình AI Engineer
+description: Giáo trình gồm 65 chương chia thành 9 phần, đi từ Python tới đưa mô hình ngôn ngữ lớn vào sản xuất. Mỗi chương học thế nào, mỗi trang gồm những gì, và nên đi đường nào nếu thời gian có hạn.
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+<CanBietTruoc>
+Không cần gì. Đây là chương đầu tiên.
+
+<Fragment slot="sau-chuong">
+Biết giáo trình đi qua những phần nào và vì sao theo thứ tự đó. Biết cách đọc một chương: các loại khung màu, thuật ngữ có gạch chấm, bài tập có đáp án ẩn. Mở được notebook trên Google Colab, chạy ô code, đổi sang GPU khi cần, và lưu bản của riêng mình.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch00_lo_trinh_va_colab.ipynb" />
+
+## AI Engineer làm gì
+
+Một AI Engineer biến mô hình máy học thành sản phẩm chạy được: chọn và huấn luyện mô hình, đánh giá nó trung thực, rồi đóng gói, triển khai, theo dõi nó khi có người dùng thật. Công việc nằm giữa nhà nghiên cứu (phát minh mô hình mới) và kỹ sư phần mềm (xây hệ thống).
+
+Vì vậy giáo trình này đòi hỏi cả hai thứ: hiểu **vì sao** mô hình hoạt động (toán, bằng ví dụ nhỏ tính tay được), và **làm được** (code chạy thật, output in trong bài là output thật).
+
+## Chín phần
+
+**Bảng 0.1.** Cấu trúc của nhánh AI Engineer.
+
+| Phần | Chương | Nội dung | Ra khỏi phần này bạn làm được |
+|:---|:---:|:---|:---|
+| 0. Bắt đầu | 0 | lộ trình, Colab | chạy notebook đầu tiên |
+| I. Nền tảng | 1 tới 8 | Python, NumPy, pandas, đại số, giải tích, xác suất, tối ưu | đọc và tự viết code tính toán của mọi chương sau |
+| II. ML cổ điển | 9 tới 22 | hồi quy, phân loại, cây, ensemble, phân cụm, giảm chiều | giải trọn một bài toán dữ liệu bảng bằng scikit-learn |
+| III. Deep Learning | 23 tới 32 | mạng nơ-ron, backprop, PyTorch, CNN, RNN, VAE, GAN, diffusion | huấn luyện mạng sâu trên ảnh và chuỗi |
+| III-B. RL | 33 tới 37 | Q-learning, DQN, policy gradient, PPO | huấn luyện tác tử trong môi trường mô phỏng |
+| IV. NLP | 38 tới 46 | tiền xử lý tiếng Việt, embedding, Transformer, PhoBERT | fine-tune mô hình ngôn ngữ cho tiếng Việt |
+| V. LLM | 47 tới 55 | prompt, fine-tune LLM, RLHF, RAG, agent, đánh giá | xây ứng dụng trên mô hình ngôn ngữ lớn |
+| VI. Sản xuất | 56 tới 61 | FastAPI, serving, Docker, MLOps, giám sát | triển khai và theo dõi mô hình miễn phí |
+| VII. Lên senior | 62 tới 64 | thiết kế hệ thống, đọc paper, phỏng vấn | trình bày và bảo vệ một hệ thống ML |
+
+Danh sách đầy đủ 65 chương có ở trang [Lộ trình](/lo-trinh/). Chương nào chưa viết có nhãn "Sắp có".
+
+## Vì sao theo thứ tự này
+
+Mỗi phần dùng công cụ của phần trước. Một ví dụ đi xuyên suốt cho thấy rõ điều đó: bốn sinh viên A, B, C, D với giờ học $(1, 2, 3, 4)$ và điểm $(2, 4, 5, 7)$.
+
+- Chương 1 tính MSE của đường thẳng $1{,}6x + 0{,}5$ bằng vòng lặp: ra 0,05.
+- Chương 3 tính lại bằng NumPy trong một dòng.
+- Chương 5 tìm ra $w = 1{,}6$, $b = 0{,}5$ bằng phương trình chuẩn.
+- Chương 6 tính gradient tại $(0, 0)$: $(-26{,}5;\ -9)$.
+- Chương 8 giải thích vì sao learning rate phải dưới 0,12.
+- Chương 10 ghép tất cả lại: hồi quy tuyến tính bằng gradient descent tự viết.
+
+Đến Chương 23, mỗi nơ-ron của một mạng sâu làm đúng phép $wx + b$ đó.
+
+<Khung loai="vi-sao" tieuDe="TOÁN TRƯỚC KHI CODE">
+Có thể học ML theo kiểu "chỉ cần gọi thư viện", và làm được khá nhiều. Nhưng khi mô hình cho kết quả lạ (loss thành NaN, độ chính xác cao bất thường, mô hình chạy tốt trên máy rồi hỏng khi triển khai), người chỉ biết gọi thư viện không có chỗ nào để bắt đầu tìm lỗi.
+
+Phần I không dạy toán để thi. Nó dạy đúng phần toán cần để **gỡ lỗi**: đạo hàm để kiểm tra gradient, phân phối để biết khi nào con số đáng tin, đại số tuyến tính để đọc shape. Mỗi khái niệm đi kèm một chỗ dùng cụ thể ở các chương sau.
+</Khung>
+
+## Cách đọc một chương
+
+Mỗi chương gồm 4 tới 6 trang và một notebook. Trang cuối luôn là bài tập. Trong bài bạn sẽ gặp:
+
+- **Chữ có gạch chấm** bên dưới là thuật ngữ, ví dụ <Term id="gradient">gradient</Term>: rê chuột hoặc chạm vào để xem giải thích ngắn. Tất cả nằm ở trang [Thuật ngữ](/thuat-ngu/).
+- **Khung màu**: Trực giác (hình ảnh đời thường), Vì sao lại là (lý do của một lựa chọn), Đào sâu (phần chi tiết, có thể bỏ qua lần đầu), Đọc biểu đồ, Lỗi hay gặp, Câu hỏi phỏng vấn.
+- **Tự kiểm tra**: câu hỏi trắc nghiệm nhỏ giữa bài, bấm để xem đáp án.
+- **Khối Output** ngay dưới mỗi đoạn code là kết quả chạy thật, có ghi phiên bản thư viện khi kết quả có thể khác giữa các phiên bản.
+
+<Khung loai="loi">
+**Đọc lướt rồi mở đáp án.** Bài tập có đáp án ẩn chính là để bạn **đoán trước**. Chỗ đoán sai là chỗ đáng học nhất; mở đáp án ngay là bỏ mất chỗ đó.
+
+**Bỏ qua Phần I vì "đã biết Python".** Phần I còn dạy NumPy, broadcasting, gradient, phân phối: những thứ dùng ở mọi trang sau. Ít nhất hãy làm bài tập của từng chương; làm được hết thì đi tiếp.
+</Khung>

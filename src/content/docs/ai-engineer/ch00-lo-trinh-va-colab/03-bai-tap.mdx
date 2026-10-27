@@ -1,0 +1,79 @@
+---
+title: Bài tập
+description: Ba bài tập khởi động trên Colab (chạy ô và đọc output, gây ra rồi sửa một lỗi NameError, chạy lại từ đầu để thấy thứ tự ô quan trọng thế nào) và câu hỏi phỏng vấn.
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Ba bài làm trực tiếp trong notebook của chương. Chưa cần biết Python: mục đích là quen tay với Colab.
+
+<BaiTap so="0.1">
+**Ô code đầu tiên.** Chạy ô sau và đoán từng dòng output trước khi xem.
+
+```python
+print(sum(range(1, 101)))
+print(2 ** 10, 7 // 2, round(22 / 7, 4))
+```
+
+<Fragment slot="dap-an">
+
+```text title="Output"
+5050
+1024 3 3.1429
+```
+
+Dòng đầu cộng các số từ 1 tới 100: $1 + 2 + \dots + 100 = \frac{100 \times 101}{2} = 5050$, bài toán nổi tiếng mà Gauss được cho là giải lúc còn nhỏ. Chương 1 sẽ giải thích `range(1, 101)` dừng **trước** 101.
+
+Dòng hai: $2^{10} = 1024$, phép chia lấy phần nguyên $7 // 2 = 3$, và $22/7 \approx 3{,}1429$, một xấp xỉ cổ của $\pi$. Python dùng dấu chấm cho phần thập phân.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="0.2">
+**Gây lỗi rồi sửa.** Trong notebook, vào menu **Runtime > Restart session** để xóa mọi biến. Rồi chạy **riêng** ô cuối cùng của notebook, ô in `f"Chào {ten}"` (bỏ qua ô tạo biến `ten` ngay trước nó). Đọc thông báo lỗi. Sửa thế nào?
+
+<Fragment slot="dap-an">
+
+Python báo:
+
+```text title="Output"
+NameError: name 'ten' is not defined
+```
+
+Biến `ten` được tạo ở ô phía trên, mà sau khi restart thì ô đó chưa chạy. Sửa: chạy ô tạo `ten` trước, hoặc dùng **Runtime > Run all**.
+
+Tập đọc dòng cuối cùng của thông báo lỗi trước tiên: tên lỗi (`NameError`) và mô tả (`name 'ten' is not defined`) thường đã nói gần hết. Phần dài phía trên (traceback) chỉ ra dòng nào gây lỗi.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="0.3">
+**Thứ tự ô.** Ô thứ nhất gán `ten = "An"`, ô thứ hai in `f"Chào {ten}"`. Chạy cả hai. Rồi sửa ô thứ nhất thành `ten = "Bình"`, **không** chạy lại nó, và chạy lại ô thứ hai. Đoán output trước.
+
+<Fragment slot="dap-an">
+
+```text title="Output"
+Chào An
+```
+
+Vẫn là "An". Sửa chữ trong ô không thay đổi gì cho tới khi ô đó được **chạy**. Biến `ten` trong bộ nhớ vẫn mang giá trị của lần chạy trước.
+
+Đây là nguồn gốc của rất nhiều lỗi khó hiểu trong notebook: những gì bạn **thấy** trên màn hình không phải lúc nào cũng là những gì Python đang **nhớ**. Khi nghi ngờ, Restart session and run all.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Notebook có những điểm yếu gì khi làm dự án thật?**
+
+<p lang="en"><em>What are the weaknesses of notebooks for real projects?</em></p>
+
+*Gợi ý:* trạng thái ẩn do chạy ô không theo thứ tự, khó tái hiện, khó kiểm thử và review trên git. Notebook hợp để khám phá và trình bày; code dùng lại nên chuyển sang file `.py` có test. Chương 59 sẽ bàn cách quản lý thí nghiệm cho tái hiện được.
+
+**2. Bạn làm gì để một kết quả có thể tái hiện được?**
+
+<p lang="en"><em>How do you make a result reproducible?</em></p>
+
+*Gợi ý:* cố định seed, ghi phiên bản thư viện, chạy lại từ đầu trong môi trường sạch, lưu dữ liệu và cấu hình cùng phiên bản code.
+</Khung>

@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { chuongDaXuatBan } from '../../src/data/chuong';
 
-const TRANG_DAU = '/ai-engineer/ch01-python-tu-dau/01-bien-va-kieu/';
+const TRANG_DAU = '/ai-engineer/ch00-lo-trinh-va-colab/01-lo-trinh/';
 /** Chunk của cảnh 3D: three được gộp vào chunk canh-3d hoặc tách riêng tên three. */
 const LA_CHUNK_3D = /three|canh-3d/i;
 

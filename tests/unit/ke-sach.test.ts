@@ -16,7 +16,7 @@ describe('kệ sách: dữ liệu hai cuốn', () => {
 		expect(ai.tongChuong).toBe(65);
 		expect(ai.tongChuong).toBe(CHUONG.length);
 		expect(ai.daViet).toBe(chuongDaXuatBan().length);
-		expect(ai.href).toBe('/ai-engineer/ch01-python-tu-dau/01-bien-va-kieu/');
+		expect(ai.href).toBe('/ai-engineer/ch00-lo-trinh-va-colab/01-lo-trinh/');
 		expect(ai.sapCo).toBe(false);
 	});
 	it('mỗi cuốn có moTa một câu cho bảng thông tin', () => {
