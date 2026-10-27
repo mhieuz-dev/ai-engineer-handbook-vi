@@ -29,6 +29,7 @@ export default defineConfig({
 				Pagination: './src/components/overrides/Pagination.astro',
 				PageTitle: './src/components/overrides/PageTitle.astro',
 				TableOfContents: './src/components/overrides/TableOfContents.astro',
+				ThemeSelect: './src/components/overrides/ThemeSelect.astro',
 			},
 			customCss: [
 				'@fontsource/be-vietnam-pro/400.css',

@@ -1,0 +1,106 @@
+---
+// Nút gạt sáng/tối thay ô chọn 3 lựa chọn của Starlight. Dùng chung khóa `starlight-theme`
+// trong localStorage với ThemeProvider của Starlight, nên trang tải lại vẫn đúng màu, không nháy.
+---
+
+<button type="button" class="nut-sang-toi" role="switch" aria-checked="false" aria-label="Chế độ tối">
+	<span class="ray" aria-hidden="true">
+		<span class="nut-tron">
+			<svg class="mat-troi" viewBox="0 0 24 24" width="14" height="14"><circle cx="12" cy="12" r="4.2" fill="currentColor" /><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6" /></g></svg>
+			<svg class="mat-trang" viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M20.5 14.6A8.5 8.5 0 0 1 9.4 3.5a8.5 8.5 0 1 0 11.1 11.1z" /></svg>
+		</span>
+	</span>
+</button>
+
+<script>
+	const KHOA = 'starlight-theme';
+
+	function laToi(): boolean {
+		return document.documentElement.dataset.theme === 'dark';
+	}
+
+	function capNhatNut(): void {
+		const toi = laToi();
+		document.querySelectorAll<HTMLButtonElement>('button.nut-sang-toi').forEach((nut) => {
+			nut.setAttribute('aria-checked', String(toi));
+		});
+	}
+
+	function datGiaoDien(toi: boolean): void {
+		document.documentElement.dataset.theme = toi ? 'dark' : 'light';
+		try {
+			localStorage.setItem(KHOA, toi ? 'dark' : 'light');
+		} catch {
+			// trình duyệt chặn bộ nhớ: vẫn đổi màu cho lần xem này
+		}
+		capNhatNut();
+	}
+
+	document.querySelectorAll<HTMLButtonElement>('button.nut-sang-toi').forEach((nut) => {
+		nut.addEventListener('click', () => datGiaoDien(!laToi()));
+	});
+
+	// Chưa chọn lần nào thì đi theo hệ điều hành, kể cả khi người dùng đổi giữa chừng.
+	matchMedia('(prefers-color-scheme: light)').addEventListener('change', (e) => {
+		let daChon = '';
+		try {
+			daChon = localStorage.getItem(KHOA) ?? '';
+		} catch {}
+		if (!daChon) {
+			document.documentElement.dataset.theme = e.matches ? 'light' : 'dark';
+			capNhatNut();
+		}
+	});
+
+	capNhatNut();
+</script>
+
+<style>
+	.nut-sang-toi {
+		display: inline-flex;
+		align-items: center;
+		padding: 0;
+		border: 0;
+		background: none;
+		cursor: pointer;
+		/* vùng chạm đủ 44px trên điện thoại */
+		min-height: 2.75rem;
+	}
+	.ray {
+		position: relative;
+		display: block;
+		width: 3.25rem;
+		height: 1.75rem;
+		border-radius: 999px;
+		background: var(--panel);
+		border: 1px solid var(--line);
+		transition: background-color 0.2s ease-out, border-color 0.2s ease-out;
+	}
+	.nut-tron {
+		position: absolute;
+		top: 2px;
+		left: 2px;
+		display: grid;
+		place-items: center;
+		width: calc(1.75rem - 6px);
+		height: calc(1.75rem - 6px);
+		border-radius: 50%;
+		background: var(--acc);
+		color: #fff;
+		box-shadow: 0 1px 2px rgb(0 0 0 / 0.2);
+		transition: transform 0.2s ease-out, background-color 0.2s ease-out;
+	}
+	.mat-trang { display: none; }
+	.nut-sang-toi[aria-checked='true'] .ray { background: var(--line); }
+	.nut-sang-toi[aria-checked='true'] .nut-tron {
+		transform: translateX(1.5rem);
+		background: var(--pri);
+		color: #14171c;
+	}
+	.nut-sang-toi[aria-checked='true'] .mat-troi { display: none; }
+	.nut-sang-toi[aria-checked='true'] .mat-trang { display: block; }
+	.nut-sang-toi:focus-visible .ray { outline: 2px solid var(--pri); outline-offset: 2px; }
+	@media (prefers-reduced-motion: reduce) {
+		.ray, .nut-tron { transition: none; }
+	}
+</style>
