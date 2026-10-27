@@ -19,10 +19,11 @@ test('sidebar có Phần II và chương chưa viết chỉ là nhãn Sắp có'
 	await moSidebar(page);
 	const sb = page.locator('nav.sidebar, #starlight__sidebar').first();
 	await expect(sb.getByText('Phần II. Machine Learning cổ điển')).toBeVisible();
-	const muc = sb.locator('[aria-disabled="true"]', { hasText: chuaViet.ten });
+	const nhan = `${chuaViet.so}. ${chuaViet.ten}`; // kèm số chương: "Dự án Phần II" là chuỗi con của "Dự án Phần III"
+	const muc = sb.locator('[aria-disabled="true"]', { hasText: nhan });
 	await expect(muc).toBeVisible();
 	await expect(muc).toContainText('Sắp có');
-	await expect(sb.locator('a', { hasText: chuaViet.ten })).toHaveCount(0);
+	await expect(sb.locator('a', { hasText: nhan })).toHaveCount(0);
 });
 
 test('trang cuối của chương đã viết lớn nhất không có Tiếp trỏ tới chương chưa viết', async ({ page }) => {
