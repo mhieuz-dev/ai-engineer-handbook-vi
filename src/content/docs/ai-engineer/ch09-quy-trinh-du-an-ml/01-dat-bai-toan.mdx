@@ -1,0 +1,114 @@
+---
+title: Đặt bài toán và nhìn dữ liệu
+description: Một dự án ML bắt đầu bằng câu hỏi, không phải bằng mô hình. Đặt bài toán dự đoán tiến triển bệnh tiểu đường, gọi tên đặc trưng, nhãn, mô hình, tham số, và đọc bảng dữ liệu 442 bệnh nhân.
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+<CanBietTruoc>
+DataFrame và describe (Chương 4). Gradient descent và learning rate (Chương 8). Chuẩn hóa một bảng (Bài tập 3.2).
+
+<Fragment slot="sau-chuong">
+Đi hết một vòng dự án ML: đặt bài toán, chia train, validation, test, dựng baseline, huấn luyện, đánh giá đúng một lần trên test. Dùng Pipeline của scikit-learn để không rò rỉ dữ liệu. Nhận ra ba kiểu rò rỉ phổ biến nhất trước khi chúng làm hỏng kết quả.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch09_quy_trinh_du_an_ml.ipynb" />
+
+## Câu hỏi trước, mô hình sau
+
+Phần I cho bạn công cụ. Chương này ghép chúng lại thành **quy trình** mà mọi dự án ML đều đi qua, dù dự án đó là dự đoán giá nhà hay huấn luyện một mô hình ngôn ngữ:
+
+1. Đặt bài toán: đoán cái gì, từ cái gì, đo thành công bằng gì.
+2. Nhìn dữ liệu.
+3. Chia dữ liệu thành train, validation, test.
+4. Dựng một baseline.
+5. Huấn luyện mô hình, so với baseline trên validation.
+6. Đánh giá **một lần** trên test.
+
+Phần lớn dự án thất bại vì làm sai bước 1, 3 hoặc 6, chứ không phải vì chọn sai mô hình ở bước 5.
+
+## Bộ dữ liệu
+
+scikit-learn có sẵn một bộ dữ liệu y khoa nhỏ: 442 bệnh nhân tiểu đường. Với mỗi người, ta biết 10 chỉ số đo lúc đầu (tuổi, giới tính, chỉ số khối cơ thể, huyết áp, 6 chỉ số máu), và một con số đo **một năm sau**: mức độ tiến triển của bệnh.
+
+```python
+from sklearn.datasets import load_diabetes
+X, y = load_diabetes(return_X_y=True, as_frame=True, scaled=False)   # as_frame: trả về DataFrame; scaled=False: giữ đơn vị gốc
+print(X.shape)
+print(X.head(3))
+```
+
+```text title="Output"
+(442, 10)
+    age  sex   bmi     bp     s1     s2    s3   s4      s5    s6
+0  59.0  2.0  32.1  101.0  157.0   93.2  38.0  4.0  4.8598  87.0
+1  48.0  1.0  21.6   87.0  183.0  103.2  70.0  3.0  3.8918  69.0
+2  72.0  2.0  30.5   93.0  156.0   93.6  41.0  4.0  4.6728  85.0
+```
+
+Bộ dữ liệu có sẵn trong thư viện, không cần tải gì, nên chạy được cả khi không có mạng.
+
+## Gọi đúng tên từng thứ
+
+**Bài toán.** Từ các chỉ số đo hôm nay, đoán mức tiến triển bệnh sau một năm. Đoán ra một **con số** nên đây là bài toán hồi quy, giống Chương 10.
+
+- Mỗi bệnh nhân là một **mẫu**: một hàng của bảng.
+- Mỗi chỉ số đo là một <Term id="dac-trung">đặc trưng</Term>: một cột của `X`. Có 10 đặc trưng.
+- Mức tiến triển là <Term id="nhan">nhãn</Term>: vector `y`.
+- Bộ 442 cặp (đặc trưng, nhãn) mà ta có là dữ liệu. Phần dùng để học là <Term id="du-lieu-huan-luyen">dữ liệu huấn luyện</Term>.
+- <Term id="mo-hinh">Mô hình</Term> là công thức nhận 10 đặc trưng, trả ra một con số đoán.
+- <Term id="tham-so">Tham số</Term> là các con số bên trong mô hình mà máy tự chỉnh khi học. Hồi quy tuyến tính với 10 đặc trưng có 11 tham số: 10 trọng số và một hệ số chặn.
+
+Còn **siêu tham số** <En>hyperparameter</En> là thứ con người chọn trước khi huấn luyện, máy không tự học: learning rate, số bước, kích thước lô. Chọn siêu tham số dùng dữ liệu validation, trang sau sẽ nói.
+
+## Đo thành công bằng gì
+
+Phải chọn thước đo **trước** khi huấn luyện, không phải sau khi thấy kết quả. Với bài này, dùng hai thước đo của Chương 10:
+
+- **MSE** để huấn luyện và so mô hình. Căn bậc hai của nó (RMSE) có cùng đơn vị với nhãn, dễ diễn giải hơn: "đoán lệch trung bình khoảng bao nhiêu điểm tiến triển".
+- **$R^2$** để biết mô hình giải thích được bao nhiêu phần biến động của nhãn: 0 là không hơn đoán trung bình, 1 là hoàn hảo.
+
+## Nhìn dữ liệu
+
+```python
+print(y.describe().round(1))                     # nhãn
+print(X[["age", "bmi", "bp"]].describe().round(2))   # ba đặc trưng dễ hiểu nhất
+```
+
+```text title="Output"
+count    442.0
+mean     152.1
+std       77.1
+min       25.0
+25%       87.0
+50%      140.5
+75%      211.5
+max      346.0
+Name: target, dtype: float64
+          age     bmi      bp
+count  442.00  442.00  442.00
+mean    48.52   26.38   94.65
+std     13.11    4.42   13.83
+min     19.00   18.00   62.00
+25%     38.25   23.20   84.00
+50%     50.00   25.70   93.00
+75%     59.00   29.28  105.00
+max     79.00   42.20  133.00
+```
+
+Ba điều đọc được ngay:
+
+- Không có ô thiếu: `count` đều là 442.
+- Nhãn trải từ 25 tới 346, độ lệch chuẩn 77. Một mô hình đoán lệch trung bình 77 điểm thì chẳng hơn gì đoán bừa quanh trung bình. Đây là cái mốc để so.
+- Các đặc trưng có **thang đo rất khác nhau**: tuổi quanh 48, BMI quanh 26, chỉ số `s5` quanh 4,6. Chương 8 đã cho thấy chuyện này làm gradient descent khổ sở thế nào. Trang 4 sẽ gặp lại.
+
+<Khung loai="loi">
+**Bắt tay vào mô hình trước khi định nghĩa bài toán.** Hỏi trước: mô hình sẽ được dùng lúc nào, với dữ liệu gì có sẵn lúc đó? Ở đây, mô hình dùng lúc bệnh nhân mới đến khám, nên mọi đặc trưng phải là thứ đo được **ngay hôm đó**. Trang 4 cho thấy vi phạm điều này hậu quả ra sao.
+
+**Chọn thước đo sau khi thấy kết quả.** Thử 5 thước đo rồi báo cáo cái đẹp nhất là tự lừa mình. Chốt thước đo ở bước 1.
+</Khung>

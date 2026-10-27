@@ -288,3 +288,23 @@
   tenTiengAnh: Adam
   giaiThich: Adam là thuật toán tối ưu kết hợp momentum với việc chia gradient cho độ lớn trung bình gần đây của chính nó, nên mỗi tham số có bước đi riêng. Đây là lựa chọn mặc định khi huấn luyện mạng nơ-ron.
   hocKy: ai-engineer/ch08-toi-uu-hoa
+- id: tap-kiem-dinh
+  ten: Tập validation
+  tenTiengAnh: validation set
+  giaiThich: Tập validation là phần dữ liệu tách riêng, không dùng để huấn luyện, dùng để so sánh các mô hình và chọn siêu tham số. Tập test được giữ kín tới cuối, chỉ đo đúng một lần để báo cáo kết quả.
+  hocKy: ai-engineer/ch09-quy-trinh-du-an-ml
+- id: baseline
+  ten: Baseline
+  tenTiengAnh: baseline
+  giaiThich: Baseline là mô hình đơn giản nhất có thể, ví dụ luôn đoán giá trị trung bình. Mô hình thật phải tốt hơn baseline thì mới có ý nghĩa; không tốt hơn là dấu hiệu có lỗi.
+  hocKy: ai-engineer/ch09-quy-trinh-du-an-ml
+- id: ro-ri-du-lieu
+  ten: Rò rỉ dữ liệu
+  tenTiengAnh: data leakage
+  giaiThich: Rò rỉ dữ liệu là khi thông tin mà lúc dùng thật mô hình không có được lại lọt vào lúc huấn luyện hay đánh giá. Kết quả đo được đẹp một cách giả tạo, rồi sụp đổ khi đưa vào sản xuất.
+  hocKy: ai-engineer/ch09-quy-trinh-du-an-ml
+- id: cross-validation
+  ten: Cross-validation
+  tenTiengAnh: cross-validation
+  giaiThich: Cross-validation chia dữ liệu huấn luyện thành k phần, lần lượt lấy mỗi phần làm validation và huấn luyện trên phần còn lại, rồi lấy trung bình k kết quả. Cho con số ổn định hơn một lần chia duy nhất.
+  hocKy: ai-engineer/ch09-quy-trinh-du-an-ml

@@ -1,0 +1,104 @@
+---
+title: Bài tập
+description: Ba bài tập quy trình dự án có đáp án chi tiết (baseline trung vị so với trung bình, tự tính R² từ MSE, tìm rò rỉ dữ liệu trong một bản mô tả dự án) và câu hỏi phỏng vấn.
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Ba bài dùng các tập `Xtr2`, `Xva`, `ytr2`, `yva` và hàm `danh_gia` ở trang Baseline và mô hình đầu tiên.
+
+<BaiTap so="9.1">
+**Baseline trung vị.** `DummyRegressor(strategy="median")` luôn đoán **trung vị** của nhãn train thay vì trung bình. Trước khi chạy, đoán: MSE trên validation sẽ tốt hơn hay tệ hơn baseline trung bình (5721,3)? Vì sao?
+
+<Fragment slot="dap-an">
+
+```python
+print(danh_gia(DummyRegressor(strategy="median")))
+print(round(ytr2.mean(), 2), ytr2.median(), round(yva.mean(), 2))
+```
+
+```text title="Output"
+(6342.1, -0.1576)
+149.81 136.0 165.38
+```
+
+**Tệ hơn**: MSE 6342 so với 5721.
+
+Lý do thứ nhất, tổng quát: trong mọi hằng số $c$, giá trị làm $\frac1n\sum(y_i - c)^2$ nhỏ nhất chính là **trung bình** (đạo hàm theo $c$ bằng 0 khi $c = \bar y$, Bài tập 7.3). Trung vị là hằng số tốt nhất cho **MAE**, không phải cho MSE.
+
+Lý do thứ hai, của riêng dữ liệu này: nhãn lệch phải (trung bình 149,8 lớn hơn trung vị 136), mà trung bình của validation lại cao hơn nữa (165,4). Đoán 136 lệch xa hơn đoán 149,8. Thước đo nào thì baseline đó: chọn baseline phải khớp với thước đo đã chốt.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="9.2">
+**Tự tính R².** Công thức của $R^2$ là
+
+$$
+R^2 = 1 - \frac{\text{MSE của mô hình}}{\text{MSE nếu luôn đoán đúng trung bình của tập đang đo}}
+$$
+
+Tính mẫu số trên `yva`, rồi dùng nó kiểm tra hai con số $R^2$ ở Bảng 9.2: mô hình 10 đặc trưng (MSE 2620,8) và baseline (MSE 5721,3).
+
+<Fragment slot="dap-an">
+
+Mẫu số là phương sai (chia $n$) của `yva`:
+
+```python
+v = ((yva - yva.mean()) ** 2).mean()
+print(round(v, 1), round(1 - 2620.8 / v, 4), round(1 - 5721.3 / v, 4))
+```
+
+```text title="Output"
+5478.8 0.5216 -0.0443
+```
+
+Khớp cả hai: 0,5216 và $-0{,}0443$.
+
+Công thức giải thích vì sao baseline có $R^2$ âm. Mẫu số dùng trung bình của **validation** (165,4), còn baseline đoán trung bình của **train** (149,8). Đoán lệch như vậy cho MSE 5721,3, lớn hơn 5478,8 của việc đoán đúng trung bình validation, nên tỷ số vượt 1 và $R^2$ âm. Trên dữ liệu chưa thấy, $R^2$ âm không có gì lạ; nó chỉ có nghĩa là thua cả việc đoán hằng số tốt nhất cho chính tập đó.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="9.3">
+**Tìm rò rỉ.** Một nhóm xây mô hình dự đoán khách hàng nào sẽ **hủy** gói cước điện thoại trong tháng tới. Họ báo độ chính xác 97%. Bản mô tả dự án ghi:
+
+1. Đặc trưng gồm: số tháng đã dùng, số cuộc gọi tháng này, số lần gọi tổng đài, **ngày hủy gói** (để trống nếu chưa hủy).
+2. Chuẩn hóa mọi cột số bằng trung bình và độ lệch chuẩn của cả bộ dữ liệu, rồi chia 80/20.
+3. Thử 40 cấu hình, chọn cấu hình có điểm test cao nhất, báo cáo điểm test đó.
+
+Chỉ ra từng chỗ rò rỉ, thuộc kiểu nào trong ba kiểu ở trang 4, và cách sửa.
+
+<Fragment slot="dap-an">
+
+**Điểm 1, kiểu 1 (đặc trưng chứa đáp án).** "Ngày hủy gói" có giá trị khi và chỉ khi khách đã hủy: nó **là** nhãn, viết dưới dạng khác. Lúc dự đoán cho tháng tới, cột này luôn trống. Gần như chắc chắn đây là nguồn của con số 97%. Sửa: bỏ cột; với mỗi đặc trưng, hỏi "lúc dự đoán có biết giá trị này chưa".
+
+**Điểm 2, kiểu 2 (xử lý trước khi chia).** Trung bình và độ lệch chuẩn tính trên cả bộ, có cả 20% test. Sửa: đặt `StandardScaler` trong Pipeline, `fit` trên train.
+
+**Điểm 3, kiểu 3 (dùng test để chọn).** 40 lần thử trên cùng tập test, rồi báo cáo con số tốt nhất: con số đó lạc quan. Sửa: chọn bằng validation hoặc cross-validation, giữ test cho một lần đo cuối.
+
+Ngoài ra, "độ chính xác 97%" còn đáng ngờ vì một lý do khác: nếu chỉ 3% khách hủy mỗi tháng, mô hình luôn đoán "không hủy" đã đạt 97%. Đây là chuyện baseline của trang 3, và Chương 12 sẽ cho thước đo phù hợp hơn.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Vì sao cần cả validation set lẫn test set?**
+
+<p lang="en"><em>Why do we need both a validation set and a test set?</em></p>
+
+*Gợi ý:* validation để chọn mô hình và siêu tham số, nên bị "dùng mòn" qua nhiều lần chọn; test giữ kín để có một ước lượng không chệch về hiệu năng trên dữ liệu mới. Nêu cross-validation khi dữ liệu ít.
+
+**2. Data leakage là gì? Cho ví dụ.**
+
+<p lang="en"><em>What is data leakage? Give an example.</em></p>
+
+*Gợi ý:* thông tin không có lúc dự đoán thật lọt vào huấn luyện hay đánh giá. Ví dụ: đặc trưng sinh ra sau thời điểm dự đoán, chuẩn hóa trên cả bộ trước khi chia, cùng một người có mặt ở cả train và test. Cách phòng: Pipeline, chia theo thời gian hay theo nhóm, hỏi "lúc dự đoán có biết cái này chưa".
+
+**3. Bạn bắt đầu một dự án ML mới như thế nào?**
+
+<p lang="en"><em>How do you start a new ML project?</em></p>
+
+*Gợi ý:* định nghĩa bài toán và thước đo gắn với mục tiêu kinh doanh, kiểm tra dữ liệu có sẵn lúc dự đoán, nhìn dữ liệu, chia tập, dựng baseline đơn giản, rồi mới tăng độ phức tạp từng bước.
+</Khung>

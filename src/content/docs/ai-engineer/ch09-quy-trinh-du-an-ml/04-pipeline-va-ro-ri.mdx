@@ -1,0 +1,89 @@
+---
+title: Pipeline và rò rỉ dữ liệu
+description: SGD trên dữ liệu chưa chuẩn hóa cho R² âm cỡ -5 nhân 10 mũ 22. Pipeline chuẩn hóa đúng cách chỉ học trên train, và ba kiểu rò rỉ dữ liệu làm kết quả đẹp giả tạo.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Khi thang đo không đều
+
+`LinearRegression` giải bằng nghiệm đóng (Chương 5), không quan tâm thang đo. Nhưng phần lớn mô hình học bằng gradient descent. Thử `SGDRegressor`, hồi quy tuyến tính học bằng SGD của Chương 8:
+
+```python
+from sklearn.linear_model import SGDRegressor
+s = SGDRegressor(random_state=0).fit(Xtr2, ytr2)       # học thẳng trên đơn vị gốc
+print(r2_score(yva, s.predict(Xva)))
+```
+
+```text title="Output"
+-5.0340614999537655e+22
+```
+
+$R^2$ âm cỡ $10^{22}$: mô hình đã **phân kỳ**. Các đặc trưng như `s1` có giá trị quanh 190, trong khi `s5` quanh 4,6. Bát MSE dẹt cực độ, và learning rate mặc định vượt ngưỡng $2/c$ theo hướng dốc nhất, đúng kịch bản trang 2 của Chương 8.
+
+## Chuẩn hóa đúng cách với Pipeline
+
+Cách chữa: chuẩn hóa từng đặc trưng về trung bình 0, độ lệch chuẩn 1 (Bài tập 3.2). Nhưng có một chi tiết quan trọng: trung bình và độ lệch chuẩn phải tính **chỉ trên train**. Pipeline của scikit-learn bảo đảm điều đó:
+
+```python
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+p = make_pipeline(StandardScaler(), SGDRegressor(random_state=0))   # chuẩn hóa rồi mới hồi quy
+p.fit(Xtr2, ytr2)                      # StandardScaler học mu, sigma từ Xtr2; SGD học trên dữ liệu đã chuẩn hóa
+print(round(r2_score(yva, p.predict(Xva)), 4))   # predict: Xva được chuẩn hóa bằng mu, sigma CỦA TRAIN
+```
+
+```text title="Output"
+0.5198
+```
+
+Từ phân kỳ về 0,52, ngang với nghiệm đóng (0,5216 ở trang trước). Một dòng `StandardScaler()` làm cái bát tròn lại.
+
+Pipeline gộp các bước xử lý và mô hình thành **một đối tượng** có `fit` và `predict`, như lớp mô hình ở Chương 2. Khi gọi `fit`, mỗi bước học từ dữ liệu train rồi biến đổi nó cho bước sau. Khi gọi `predict`, dữ liệu mới đi qua đúng các phép biến đổi **đã học từ train**. Dùng `cross_val_score` với một Pipeline thì mỗi phần validation cũng được chuẩn hóa bằng thống kê của phần train tương ứng.
+
+## Rò rỉ dữ liệu
+
+<Term id="ro-ri-du-lieu">Rò rỉ dữ liệu</Term> là khi thông tin mà lúc dùng thật mô hình **không có được** lại lọt vào lúc huấn luyện hay đánh giá. Ba kiểu phổ biến nhất:
+
+### 1. Đặc trưng chứa đáp án
+
+Giả sử bảng dữ liệu có thêm cột "kết quả xét nghiệm sau 6 tháng", gần như trùng với nhãn (trong ví dụ này ta tạo nó bằng nhãn cộng một chút nhiễu):
+
+```python
+import numpy as np
+rng = np.random.default_rng(0)
+Xl = X.copy()
+Xl["xet_nghiem_sau"] = y + rng.normal(0, 10, len(y))   # cột "bí mật" chứa gần như đáp án
+a, b, c, d = train_test_split(Xl, y, test_size=0.2, random_state=42)
+print(round(r2_score(d, LinearRegression().fit(a, c).predict(b)), 4))
+```
+
+```text title="Output"
+0.9826
+```
+
+$R^2 = 0{,}98$ trên test. Tuyệt vời, và hoàn toàn vô dụng: lúc bệnh nhân mới đến khám, chưa ai có kết quả của 6 tháng sau. Đây là lý do trang 1 nhấn mạnh câu hỏi "mô hình được dùng lúc nào, có sẵn dữ liệu gì".
+
+Dấu hiệu nhận biết: một kết quả **tốt bất thường**, nhất là khi một đặc trưng đơn lẻ có trọng số áp đảo. Gặp $R^2 = 0{,}98$ ở một bài toán y khoa khó, phản xạ đúng là nghi ngờ trước, mừng sau.
+
+### 2. Xử lý trên cả bộ dữ liệu trước khi chia
+
+Tính trung bình để chuẩn hóa, tính trung vị để điền ô thiếu (Chương 4), chọn đặc trưng "tốt nhất" theo tương quan với nhãn: làm những việc này trên **cả** 442 người rồi mới chia là để thông tin của test lọt vào train. Hậu quả thường nhỏ hơn kiểu 1, nhưng có thật và rất khó phát hiện. Pipeline ở trên tránh được kiểu này.
+
+### 3. Dùng test để chọn
+
+Trang 2 đã nói: đo test nhiều lần rồi chọn là để test rò vào quyết định của bạn.
+
+<Khung loai="truc-giac">
+Một câu hỏi bắt được cả ba kiểu: **"Ngày mô hình được dùng thật, nó có được nhìn thấy thông tin này không?"**
+
+Kết quả của 6 tháng sau: không. Trung bình của bệnh nhân chưa tới khám: không. Điểm test của chính nó: không. Mỗi lần câu trả lời là "không" mà mô hình vẫn được thấy, là có rò rỉ.
+</Khung>
+
+<Khung loai="loi">
+**Gọi `StandardScaler().fit(X)` trên cả bộ dữ liệu.** Đó là kiểu rò rỉ 2. Luôn đặt bộ chuẩn hóa trong Pipeline, hoặc ít nhất là `fit` trên train rồi `transform` cả ba tập.
+
+**Gọi `fit` của bộ chuẩn hóa trên tập test.** `scaler.fit_transform(Xte)` tính lại trung bình từ test. Với test chỉ được `transform`.
+</Khung>

@@ -1,0 +1,109 @@
+---
+title: Baseline và mô hình đầu tiên
+description: Dựng baseline luôn đoán trung bình, rồi lần lượt hồi quy theo một, hai, ba và mười đặc trưng. So trên validation, chọn mô hình, và đo test đúng một lần ở cuối.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Baseline: mốc tối thiểu
+
+Trước khi huấn luyện bất cứ mô hình nào, hãy hỏi: một cách đoán **ngốc nhất có thể** thì đạt bao nhiêu? Đó là <Term id="baseline">baseline</Term>.
+
+Với hồi quy, baseline ngốc nhất là luôn đoán **trung bình** của nhãn trong tập train, bất kể bệnh nhân là ai. scikit-learn có sẵn `DummyRegressor` làm đúng việc đó:
+
+```python
+from sklearn.dummy import DummyRegressor
+from sklearn.metrics import mean_squared_error, r2_score
+
+def danh_gia(mo_hinh, cot=None):
+    """Huấn luyện trên train, chấm trên validation; cot là danh sách cột dùng, None là dùng hết."""
+    a = Xtr2 if cot is None else Xtr2[cot]
+    b = Xva if cot is None else Xva[cot]
+    mo_hinh.fit(a, ytr2)
+    p = mo_hinh.predict(b)
+    return round(mean_squared_error(yva, p), 1), round(r2_score(yva, p), 4)
+
+print(danh_gia(DummyRegressor()))       # luôn đoán trung bình của ytr2
+```
+
+```text title="Output"
+(5721.3, -0.0443)
+```
+
+MSE 5721, tức RMSE khoảng $\sqrt{5721} \approx 75{,}6$: đoán lệch trung bình 76 điểm tiến triển. $R^2$ hơi **âm**: trung bình của 264 người train không trùng hẳn trung bình của 89 người validation, nên đoán theo nó còn kém hơn chút so với đoán đúng trung bình của validation.
+
+Mọi mô hình sau phải **thắng** con số này. Một mô hình phức tạp mà chỉ ngang baseline nghĩa là nó không học được gì, hoặc có lỗi ở đâu đó.
+
+## Thêm dần đặc trưng
+
+Hồi quy tuyến tính, đặc trưng đầu tiên là chỉ số khối cơ thể (BMI), rồi thêm dần:
+
+```python
+from sklearn.linear_model import LinearRegression
+print(danh_gia(LinearRegression(), ["bmi"]))
+print(danh_gia(LinearRegression(), ["bmi", "bp"]))
+print(danh_gia(LinearRegression(), ["bmi", "bp", "s5"]))
+print(danh_gia(LinearRegression()))                       # cả 10 đặc trưng
+```
+
+```text title="Output"
+(3430.1, 0.3739)
+(2997.2, 0.4529)
+(2713.8, 0.5047)
+(2620.8, 0.5216)
+```
+
+**Bảng 9.2.** Kết quả trên tập validation (89 người).
+
+| Mô hình | MSE | RMSE | $R^2$ |
+|:---|:---:|:---:|:---:|
+| Baseline (đoán trung bình) | 5721,3 | 75,6 | −0,044 |
+| Chỉ BMI | 3430,1 | 58,6 | 0,374 |
+| BMI, huyết áp | 2997,2 | 54,7 | 0,453 |
+| BMI, huyết áp, s5 | 2713,8 | 52,1 | 0,505 |
+| Cả 10 đặc trưng | 2620,8 | 51,2 | 0,522 |
+
+Chỉ riêng BMI đã giải thích 37% biến động: một mô hình **một đặc trưng**, đúng như Chương 10, đã thắng baseline xa. Thêm huyết áp và chỉ số máu `s5` mỗi lần cải thiện thêm khoảng 5 đến 8 điểm phần trăm. Bảy đặc trưng còn lại cộng lại chỉ thêm gần 2 điểm.
+
+Đọc hệ số của mô hình một đặc trưng:
+
+```python
+m = LinearRegression().fit(Xtr2[["bmi"]], ytr2)
+print(round(m.coef_[0], 4), round(m.intercept_, 4))
+```
+
+```text title="Output"
+10.7331 -134.5023
+```
+
+Mỗi đơn vị BMI tăng thêm ứng với mức tiến triển cao hơn khoảng 10,7 điểm. Hệ số chặn $-134{,}5$ không có nghĩa thực tế (BMI bằng 0 là không tồn tại), nó chỉ đặt đường thẳng đúng chỗ trong vùng BMI 18 tới 42 có dữ liệu.
+
+## Chọn mô hình, rồi mới mở test
+
+Dựa trên validation, chọn mô hình 10 đặc trưng. Huấn luyện lại nó trên **cả** train lẫn validation (353 người, nhiều dữ liệu hơn), rồi đo test, đúng một lần:
+
+```python
+mo_hinh = LinearRegression().fit(Xtr, ytr)          # Xtr, ytr: 353 người = train + validation
+p = mo_hinh.predict(Xte)
+print(round(mean_squared_error(yte, p), 1), round(r2_score(yte, p), 4), round(mean_squared_error(yte, p) ** 0.5, 1))
+```
+
+```text title="Output"
+2900.2 0.4526 53.9
+```
+
+Trên 89 người chưa từng thấy, mô hình đạt $R^2 \approx 0{,}45$ và đoán lệch trung bình khoảng 54 điểm tiến triển, so với 76 của baseline. Thấp hơn con số 0,52 trên validation một chút, và nằm gọn trong khoảng $0{,}45 \pm 0{,}14$ mà cross-validation ở trang trước báo trước. Đây là con số trung thực để báo cáo.
+
+<Khung loai="vi-sao" tieuDe="HUẤN LUYỆN LẠI TRÊN TRAIN CỘNG VALIDATION">
+Validation đã xong việc của nó: giúp chọn mô hình. Giờ không còn lựa chọn nào cần làm nữa, nên giữ 89 người đó lại là lãng phí. Huấn luyện trên 353 người thay vì 264 thường cho mô hình tốt hơn một chút.
+
+Điều kiện: không thay đổi **gì** dựa trên kết quả test sau bước này. Thấy 0,45 rồi quay lại thêm bớt đặc trưng là test đã thành validation.
+</Khung>
+
+<Khung loai="loi">
+**Bỏ qua baseline.** Không có baseline thì không biết $R^2 = 0{,}45$ là tốt hay tệ. Ở một bài toán khác, đoán trung bình có thể đã đạt sẵn 0,4.
+
+**Thêm đặc trưng chỉ vì nó làm số validation đẹp hơn một chút.** 7 đặc trưng cuối chỉ thêm 0,017 trên 89 người, nằm gọn trong mức dao động ngẫu nhiên. Mô hình đơn giản hơn dễ giải thích hơn và thường bền hơn. Chương 13 sẽ bàn cách cân nhắc.
+</Khung>

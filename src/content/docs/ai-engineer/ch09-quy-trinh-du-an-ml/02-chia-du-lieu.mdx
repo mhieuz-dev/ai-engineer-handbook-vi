@@ -1,0 +1,80 @@
+---
+title: Chia train, validation, test
+description: Vì sao không được chấm điểm mô hình trên chính dữ liệu nó đã học. Chia 442 bệnh nhân thành ba tập 264, 89, 89, vai trò của từng tập, và cross-validation cho con số ổn định hơn.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Đề thi không được trùng bài tập
+
+Một học sinh học thuộc lòng đáp án 100 bài tập, rồi thi đúng 100 bài đó, được 10 điểm. Điểm 10 đó không nói gì về khả năng giải bài **mới**.
+
+Mô hình cũng vậy. Đo trên chính dữ liệu đã dùng để học thì kết quả luôn đẹp hơn thực tế. Thứ ta quan tâm là mô hình làm tốt tới đâu với **bệnh nhân chưa từng gặp**. Muốn đo điều đó, phải giấu một phần dữ liệu đi, không cho mô hình nhìn thấy lúc học.
+
+## Ba tập dữ liệu
+
+```python
+from sklearn.model_selection import train_test_split
+Xtr, Xte, ytr, yte = train_test_split(X, y, test_size=0.2, random_state=42)        # tách 20% làm test
+Xtr2, Xva, ytr2, yva = train_test_split(Xtr, ytr, test_size=0.25, random_state=42) # tách tiếp 25% của phần còn lại làm validation
+print(len(Xtr2), len(Xva), len(Xte))
+```
+
+```text title="Output"
+264 89 89
+```
+
+$442 \times 0{,}2 \approx 89$ người làm test. Còn 353 người, lấy 25% (89 người) làm validation, còn 264 người để huấn luyện. Tỷ lệ cuối cùng khoảng 60, 20, 20.
+
+`train_test_split` xáo trộn ngẫu nhiên trước khi chia; `random_state=42` là seed để lần nào chạy cũng chia giống nhau.
+
+**Bảng 9.1.** Ba tập dữ liệu và vai trò của chúng.
+
+| Tập | Số người | Dùng để | Được nhìn bao nhiêu lần |
+|:---|:---:|:---|:---|
+| Train | 264 | chỉnh tham số (`fit`) | bao nhiêu cũng được |
+| Validation | 89 | so mô hình, chọn siêu tham số | nhiều lần, nhưng mỗi lần nhìn là "dùng mòn" một chút |
+| Test | 89 | báo cáo kết quả cuối | **đúng một lần**, ở cuối dự án |
+
+<Khung loai="vi-sao" tieuDe="CẦN CẢ VALIDATION LẪN TEST">
+Giả sử chỉ có train và test. Bạn thử 20 mô hình, chọn cái có điểm test cao nhất. Điểm đó bây giờ **không còn** là ước lượng trung thực cho dữ liệu mới, vì bạn đã dùng test để chọn. Trong 20 lần thử, mô hình thắng có thể chỉ gặp may với đúng 89 người đó.
+
+<Term id="tap-kiem-dinh">Tập validation</Term> gánh việc so sánh và chọn lựa, để tập test vẫn "sạch". Đo test một lần ở cuối là ước lượng trung thực duy nhất bạn có. Đo nó lần thứ hai để chỉnh tiếp là đã biến test thành validation.
+</Khung>
+
+## Cross-validation
+
+89 người validation là ít. Chương 7 đã cho thấy với mẫu nhỏ, con số đo được dao động mạnh. Đổi `random_state` là điểm validation có thể đổi đáng kể.
+
+<Term id="cross-validation">Cross-validation</Term> $k$ phần giảm dao động đó: chia 353 người (train cộng validation) thành 5 phần bằng nhau. Lần lượt lấy mỗi phần làm validation, huấn luyện trên 4 phần còn lại. Được 5 con số, lấy trung bình.
+
+```python
+from sklearn.model_selection import cross_val_score
+from sklearn.linear_model import LinearRegression
+diem = cross_val_score(LinearRegression(), Xtr, ytr, cv=5, scoring="r2")   # 5 lần huấn luyện, 5 điểm R²
+print(diem.round(4), round(diem.mean(), 4), round(diem.std(), 4))
+```
+
+```text title="Output"
+[0.5476 0.3612 0.5048 0.6177 0.2149] 0.4493 0.1441
+```
+
+Cùng một mô hình, cùng dữ liệu, chỉ khác cách chia, mà $R^2$ dao động từ **0,21 tới 0,62**. Đó là độ bấp bênh thật của một lần đo trên 70 người. Báo cáo "$R^2 = 0{,}45 \pm 0{,}14$" trung thực hơn nhiều so với báo một con số duy nhất từ một lần chia may mắn.
+
+Cross-validation tốn gấp $k$ lần thời gian huấn luyện. Với dữ liệu nhỏ như bài này, đáng làm. Với mạng nơ-ron huấn luyện mất cả ngày, người ta thường chỉ dùng một tập validation cố định nhưng lớn hơn.
+
+<TuKiemTra
+	cauHoi="Bạn chỉnh learning rate 15 lần, mỗi lần xem điểm trên tập test để chọn giá trị tốt nhất. Điểm test cuối cùng có còn tin được không?"
+	luaChon={['Có, vì mô hình chưa từng huấn luyện trên tập test', 'Không, vì tập test đã được dùng để chọn siêu tham số', 'Có, nếu tập test đủ lớn', 'Không, vì 15 lần là quá ít']}
+	dapAn={1}
+	giaiThich="Mô hình không học từ test, nhưng BẠN đã học từ test khi chọn learning rate. Điểm test giờ lạc quan hơn thực tế. Việc chọn lựa phải làm trên validation hoặc cross-validation."
+/>
+
+<Khung loai="loi">
+**Chia không ngẫu nhiên.** Nếu file dữ liệu xếp theo thời gian hay theo bệnh viện, lấy 20% cuối file làm test là test toàn bệnh nhân mới nhất hoặc toàn một bệnh viện. Đôi khi đó **đúng** là điều bạn muốn (dữ liệu chuỗi thời gian phải chia theo thời gian), nhưng phải là lựa chọn có chủ đích.
+
+**Cùng một người xuất hiện ở cả train và test.** Nếu một bệnh nhân có nhiều lần khám, chia theo lần khám có thể đưa người đó vào cả hai tập; mô hình "nhớ mặt" người đó. Chia theo **người**. scikit-learn có `GroupKFold` cho việc này.
+</Khung>
