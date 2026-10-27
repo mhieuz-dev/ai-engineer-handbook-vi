@@ -1,0 +1,101 @@
+---
+title: Bài tập
+description: Ba bài tập KNN có đáp án chi tiết (tính tay khoảng cách, bỏ phiếu có trọng số theo khoảng cách lật lại kết quả k = 5, KNN hồi quy với k bằng toàn bộ dữ liệu) và câu hỏi phỏng vấn.
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Ba bài dùng 10 bạn `X`, `y` và bạn mới `q = (3,4; 6,3)` ở trang 1.
+
+<BaiTap so="14.1">
+**Khoảng cách tay.** Tính tay khoảng cách Euclid từ bạn mới tới bạn D (4 giờ học, 7 giờ ngủ) và bạn H (3 giờ học, 5 giờ ngủ). Kiểm tra với output ở trang 1.
+
+<Fragment slot="dap-an">
+
+**D.** Hiệu tọa độ: $3{,}4 - 4 = -0{,}6$ và $6{,}3 - 7 = -0{,}7$. Khoảng cách $\sqrt{0{,}36 + 0{,}49} = \sqrt{0{,}85} \approx 0{,}9220$.
+
+**H.** Hiệu: $0{,}4$ và $1{,}3$. Khoảng cách $\sqrt{0{,}16 + 1{,}69} = \sqrt{1{,}85} \approx 1{,}3601$.
+
+```python
+print(np.sqrt(0.6 ** 2 + 0.7 ** 2), np.sqrt(0.4 ** 2 + 1.3 ** 2))
+```
+
+```text title="Output"
+0.9219544457292886 1.3601470508735443
+```
+
+Khớp 0,922 và 1,3601 ở trang 1. Để ý H chênh bạn mới ít hơn D về giờ học (0,4 so với 0,6) nhưng chênh nhiều hơn hẳn về giờ ngủ (1,3 so với 0,7). Bình phương làm chênh lệch lớn chiếm ưu thế, nên H xa hơn D.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="14.2">
+**Phiếu có trọng số.** Với $k = 5$, bỏ phiếu thường cho kết quả "không đạt" (2 phiếu đạt, 3 phiếu không đạt). Giờ cho mỗi láng giềng một phiếu nặng $1/d$, với $d$ là khoảng cách của nó. Tính tay tổng phiếu mỗi bên. Kết quả có đổi không? Kiểm tra bằng `weights="distance"`.
+
+<Fragment slot="dap-an">
+
+Khoảng cách của 5 láng giềng: K 0,6708; D 0,922; H 1,3601; B 1,4318; F 1,5652.
+
+- Đạt (K, D): $1/0{,}6708 + 1/0{,}922 \approx 1{,}491 + 1{,}085 = 2{,}576$.
+- Không đạt (H, B, F): $1/1{,}3601 + 1/1{,}4318 + 1/1{,}5652 \approx 0{,}735 + 0{,}698 + 0{,}639 = 2{,}072$.
+
+Đạt thắng, kết quả **lật lại** thành "đạt". Hai láng giềng đạt ở gần hơn hẳn, nên phiếu của họ nặng hơn ba phiếu ở xa.
+
+```python
+mw = KNeighborsClassifier(5, weights="distance").fit(X, y)
+print(mw.predict([q]), mw.predict_proba([q]).round(4))
+```
+
+```text title="Output"
+[1] [[0.4459 0.5541]]
+```
+
+Xác suất đạt $2{,}576 / (2{,}576 + 2{,}072) \approx 0{,}554$. Với trọng số theo khoảng cách, kết quả ít nhạy với $k$ hơn: thêm láng giềng ở xa chỉ thêm phiếu nhẹ.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="14.3">
+**k bằng cả lớp.** KNN hồi quy dự đoán điểm thi của bạn mới. Tính tay với $k = 3$, rồi với $k = 10$ (cả 10 bạn). Dự đoán với $k = 10$ trùng với mô hình nào đã gặp?
+
+<Fragment slot="dap-an">
+
+$k = 3$: ba láng giềng K, D, H có điểm 6,5; 7; 4, trung bình $17{,}5/3 \approx 5{,}8333$.
+
+$k = 10$: trung bình điểm cả lớp, $55{,}5/10 = 5{,}55$.
+
+```python
+for k in [3, 10]:
+    print(k, KNeighborsRegressor(k).fit(X, np.array([2, 4, 5, 7, 6, 3.5, 8.5, 4, 9, 6.5])).predict([q]).round(4))
+```
+
+```text title="Output"
+3 [5.8333]
+10 [5.55]
+```
+
+Với $k$ bằng số mẫu train, **mọi** bạn mới đều được đoán 5,55, bất kể họ học bao nhiêu giờ. Đó chính là `DummyRegressor` luôn đoán trung bình, baseline của Chương 9. $k$ lớn nhất là mô hình cứng nhất; $k = 1$ là mô hình linh hoạt nhất. Mọi giá trị ở giữa là các điểm trên trục bias-variance.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. KNN học gì trong lúc huấn luyện?**
+
+<p lang="en"><em>What does KNN learn during training?</em></p>
+
+*Gợi ý:* không học tham số nào; nó lưu dữ liệu (lazy learning), có thể xây cấu trúc chỉ mục như cây KD. Mọi tính toán dồn vào lúc dự đoán.
+
+**2. Vì sao phải chuẩn hóa đặc trưng cho KNN?**
+
+<p lang="en"><em>Why must you scale features for KNN?</em></p>
+
+*Gợi ý:* khoảng cách cộng chênh lệch của mọi đặc trưng; đặc trưng có thang đo lớn áp đảo. Chuẩn hóa cho mỗi đặc trưng tiếng nói ngang nhau. Fit bộ chuẩn hóa trên train.
+
+**3. Lời nguyền số chiều ảnh hưởng tới KNN thế nào?**
+
+<p lang="en"><em>How does the curse of dimensionality affect KNN?</em></p>
+
+*Gợi ý:* trong nhiều chiều, khoảng cách tới điểm gần nhất và xa nhất gần bằng nhau, "láng giềng" mất ý nghĩa, và lượng dữ liệu cần để phủ không gian tăng theo hàm mũ. Cách xử lý: chọn đặc trưng, giảm chiều, học không gian embedding phù hợp.
+</Khung>

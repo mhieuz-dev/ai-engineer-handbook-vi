@@ -40,7 +40,7 @@ const BANG: [number, string, string, string, XuatBan?][] = [
 	[11, 'phan-2', 'Hồi quy logistic', 'hoi-quy-logistic', { trangThai: 'xong', notebook: 'ch11_hoi_quy_logistic.ipynb' }],
 	[12, 'phan-2', 'Đánh giá mô hình', 'danh-gia-mo-hinh', { trangThai: 'xong', notebook: 'ch12_danh_gia_mo_hinh.ipynb' }],
 	[13, 'phan-2', 'Overfitting, bias-variance và regularization', 'overfitting-regularization', { trangThai: 'xong', notebook: 'ch13_overfitting_regularization.ipynb' }],
-	[14, 'phan-2', 'KNN và khoảng cách', 'knn'],
+	[14, 'phan-2', 'KNN và khoảng cách', 'knn', { trangThai: 'xong', notebook: 'ch14_knn.ipynb' }],
 	[15, 'phan-2', 'Naive Bayes', 'naive-bayes'],
 	[16, 'phan-2', 'SVM và kernel', 'svm-kernel'],
 	[17, 'phan-2', 'Cây quyết định', 'cay-quyet-dinh'],

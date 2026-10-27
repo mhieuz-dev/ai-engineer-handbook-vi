@@ -1,0 +1,89 @@
+---
+title: Chọn k
+description: k = 1 khớp train 100% mà ranh giới lởm chởm, k = 100 thì ranh giới quá phẳng. k là núm vặn bias-variance của KNN. Chọn k bằng cross-validation trên 426 ca ung thư vú.
+---
+
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Ba giá trị k trên cùng một bộ dữ liệu
+
+scikit-learn có sẵn `make_moons`: hai lớp hình hai nửa vầng trăng lồng vào nhau, cộng nhiễu. Ranh giới thật giữa hai lớp là một đường **cong**, thứ hồi quy logistic của Chương 11 không vẽ được.
+
+```python
+from sklearn.datasets import make_moons
+from sklearn.model_selection import train_test_split
+Xm, ym = make_moons(n_samples=300, noise=0.3, random_state=0)
+a, b, c, e = train_test_split(Xm, ym, test_size=0.3, random_state=0)
+for k in [1, 15, 100]:
+    m = KNeighborsClassifier(k).fit(a, c)
+    print(k, round(m.score(a, c), 4), round(m.score(b, e), 4))    # độ chính xác train, test
+```
+
+```text title="Output"
+1 1.0 0.8889
+15 0.9429 0.9222
+100 0.819 0.8222
+```
+
+<HinhKetQua src="/hinh/ch14/h2_ranh_gioi.svg" alt="Ba khung cạnh nhau cùng các chấm đỏ và xanh của hai nửa vầng trăng. Khung k bằng 1: nền đỏ và xanh chia bởi một ranh giới lởm chởm, có những đảo nhỏ quanh từng chấm lạc. Khung k bằng 15: ranh giới cong mượt uốn theo hai vầng trăng. Khung k bằng 100: ranh giới gần như một đường thẳng chéo." so="14.2" chuThich="Ranh giới quyết định của KNN trên 210 điểm train của make_moons với ba giá trị k. Nền đỏ và xanh là lớp mà mô hình đoán tại mỗi điểm.">
+**Trục.** Hai đặc trưng của `make_moons`. Mỗi chấm là một điểm train, màu là nhãn thật. Màu nền là lớp KNN sẽ đoán nếu đặt một điểm mới ở đó.
+
+**$k = 1$.** Mỗi điểm train tự mình quyết định một vùng nhỏ quanh nó. Ranh giới lởm chởm, có những "hòn đảo" quanh từng chấm nằm lạc giữa lớp kia. Train 100% vì mỗi điểm là láng giềng gần nhất của chính nó. Test 89%: học thuộc nhiễu.
+
+**$k = 15$.** Mỗi vùng được quyết định bởi 15 điểm, nhiễu của từng điểm lẻ bị lấn át. Ranh giới cong mượt theo hai vầng trăng. Test 92%, cao nhất trong ba.
+
+**$k = 100$.** Gần một nửa bộ dữ liệu bỏ phiếu cho mỗi điểm. Ranh giới bị là phẳng thành gần như một đường thẳng, không còn theo được độ cong. Train và test cùng 82%: underfitting.
+</HinhKetQua>
+
+<Khung loai="truc-giac">
+$k$ là núm vặn bias-variance của KNN, giống bậc đa thức ở Chương 13 nhưng **chạy ngược**: $k$ nhỏ là mô hình linh hoạt (variance cao), $k$ lớn là mô hình cứng (bias cao). $k$ bằng đúng số mẫu train thì mọi điểm mới đều được đoán là lớp đông nhất: đó chính là `DummyClassifier` của Chương 12.
+</Khung>
+
+## Chọn k bằng cross-validation
+
+Trên bộ ung thư vú của Chương 12, cùng cách chia (426 ca train), chuẩn hóa trong Pipeline (trang sau sẽ giải thích vì sao bắt buộc):
+
+```python
+from sklearn.datasets import load_breast_cancer
+from sklearn.model_selection import cross_val_score
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+dd = load_breast_cancer()
+Xb, yb = dd.data, 1 - dd.target
+Xtr, Xte, ytr, yte = train_test_split(Xb, yb, test_size=0.25, random_state=0, stratify=yb)
+for k in [1, 3, 5, 11, 21, 51, 151]:
+    pl = make_pipeline(StandardScaler(), KNeighborsClassifier(k))
+    s = cross_val_score(pl, Xtr, ytr, cv=5)                       # 5 lần chia train thành train và validation
+    print(k, round(pl.fit(Xtr, ytr).score(Xtr, ytr), 4), round(s.mean(), 4))
+```
+
+```text title="Output"
+1 1.0 0.9578
+3 0.9859 0.9695
+5 0.9765 0.9672
+11 0.9742 0.9554
+21 0.9554 0.9507
+51 0.9413 0.9343
+151 0.9038 0.8803
+```
+
+**Bảng 14.1.** Độ chính xác train và cross-validation theo $k$.
+
+| $k$ | Train | Cross-validation |
+|:---:|:---:|:---:|
+| 1 | 1,000 | 0,958 |
+| 3 | 0,986 | **0,970** |
+| 5 | 0,977 | 0,967 |
+| 21 | 0,955 | 0,951 |
+| 151 | 0,904 | 0,880 |
+
+$k = 3$ cao nhất, $k = 5$ sát nút. Chênh 0,003 nhỏ hơn nhiều so với độ dao động giữa các lần chia (Chương 9), nên chọn 3 hay 5 đều hợp lý. Từ 21 trở lên, độ chính xác giảm đều, và đường train với đường cross-validation đi sát nhau: dấu hiệu underfitting đã thấy ở Chương 13.
+
+<Khung loai="loi">
+**Chọn $k$ bằng độ chính xác train.** $k = 1$ luôn thắng trên train với 100%, vì mỗi điểm tự tìm thấy chính nó. Luôn chọn trên validation hoặc cross-validation.
+
+**Dùng $k$ lớn hơn số mẫu của lớp hiếm.** Nếu lớp dương chỉ có 20 mẫu mà $k = 51$, mọi phiếu bầu đều bị lớp đông áp đảo. Mô hình không bao giờ đoán ra lớp hiếm.
+</Khung>

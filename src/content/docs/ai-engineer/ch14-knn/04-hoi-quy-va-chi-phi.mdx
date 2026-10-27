@@ -1,0 +1,62 @@
+---
+title: KNN hồi quy và chi phí
+description: Thay bỏ phiếu bằng lấy trung bình là có KNN hồi quy. Trên bộ tiểu đường, k = 1 cho R² chỉ 0,07, k = 50 lên 0,43. Huấn luyện tức thì nhưng dự đoán chậm dần theo lượng dữ liệu, và khi nào nên dùng KNN.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Từ bỏ phiếu tới lấy trung bình
+
+Với hồi quy, thay vì đếm phiếu, KNN lấy **trung bình** nhãn của $k$ láng giềng. Bạn mới ở trang 1 có ba láng giềng gần nhất K, D, H với điểm thi 6,5; 7; 4. KNN hồi quy với $k = 3$ đoán $(6{,}5 + 7 + 4)/3 = 5{,}83$ điểm.
+
+Trên bộ tiểu đường của Chương 9 (cùng cách chia, test 89 người):
+
+```python
+from sklearn.datasets import load_diabetes
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.metrics import r2_score
+Xd, yd = load_diabetes(return_X_y=True, as_frame=True, scaled=False)
+Xdtr, Xdte, ydtr, ydte = train_test_split(Xd, yd, test_size=0.2, random_state=42)
+for k in [1, 5, 20, 50]:
+    md = make_pipeline(StandardScaler(), KNeighborsRegressor(k)).fit(Xdtr, ydtr)
+    print(k, round(r2_score(ydte, md.predict(Xdte)), 4))
+```
+
+```text title="Output"
+1 0.0678
+5 0.4248
+20 0.4246
+50 0.4276
+```
+
+$k = 1$: $R^2$ chỉ 0,068, gần như không hơn đoán trung bình. Mỗi dự đoán là điểm của **đúng một** bệnh nhân giống nhất, mang theo toàn bộ nhiễu của người đó. Từ $k = 5$, $R^2$ lên khoảng 0,42 và gần như đi ngang.
+
+So với hồi quy tuyến tính ở Chương 9 ($R^2 = 0{,}4526$ trên cùng tập test), KNN hơi kém hơn. Với bộ dữ liệu này, quan hệ giữa đặc trưng và nhãn khá gần tuyến tính, nên một đường thẳng (siêu phẳng) đơn giản đã nắm được gần hết. KNN tỏa sáng khi quan hệ **cong**, như hai vầng trăng ở trang 2.
+
+## Chi phí: học nhanh, đoán chậm
+
+**Bảng 14.2.** So sánh chi phí với $n$ mẫu train, $d$ đặc trưng.
+
+| | Hồi quy tuyến tính, logistic | KNN |
+|:---|:---|:---|
+| Huấn luyện | lặp hoặc giải hệ, tốn thời gian | gần như tức thì: chỉ lưu dữ liệu |
+| Dung lượng mô hình | $d + 1$ số | cả $n \times d$ số của dữ liệu train |
+| Một lần dự đoán | $d$ phép nhân | đo $n$ khoảng cách, mỗi cái $d$ phép tính |
+
+Mô hình học tham số thì đắt lúc học, rẻ lúc dùng. KNN ngược lại. Với một ứng dụng phải trả lời hàng nghìn yêu cầu mỗi giây trên một triệu mẫu, KNN thuần túy quá chậm.
+
+scikit-learn tăng tốc bằng cấu trúc dữ liệu như cây KD (chia không gian thành các ô để không phải đo khoảng cách tới mọi điểm), nhưng cây đó cũng mất tác dụng khi số chiều cao, lại là lời nguyền số chiều.
+
+<Khung loai="vi-sao" tieuDe="KNN VẪN ĐÁNG HỌC">
+Trong thực tế, KNN ít khi là mô hình cuối cùng. Nhưng **ý tưởng** của nó có mặt khắp nơi.
+
+Hệ thống gợi ý "người mua món này cũng mua" là tìm láng giềng gần nhất. Tìm kiếm ảnh tương tự, tìm câu văn cùng nghĩa, và bước truy xuất của RAG ở Chương 52 đều là tìm láng giềng gần nhất trong không gian vector, chỉ là dùng cosine (Chương 5) và các thuật toán tìm **xấp xỉ** cực nhanh trong cơ sở dữ liệu vector (Chương 51). KNN là phiên bản đơn giản nhất để hiểu tất cả những thứ đó.
+</Khung>
+
+<Khung loai="loi">
+**Dùng KNN cho dữ liệu lớn mà không nghĩ tới thời gian dự đoán.** Đo trên tập test nhỏ thì nhanh; lên sản xuất với hàng triệu mẫu thì chậm hẳn. Đo thời gian `predict` trên dữ liệu cỡ thật trước khi chọn.
+
+**Quên KNN không ngoại suy được.** Dự đoán của KNN hồi quy luôn là trung bình của các nhãn đã thấy, nên không bao giờ vượt quá nhãn lớn nhất trong train. Hỏi về một bệnh nhân khác hẳn mọi người trong dữ liệu, KNN vẫn trả lời bằng trung bình của vài người "gần nhất", dù họ chẳng gần chút nào.
+</Khung>

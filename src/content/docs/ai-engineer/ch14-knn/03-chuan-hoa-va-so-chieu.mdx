@@ -1,0 +1,88 @@
+---
+title: Chuẩn hóa và lời nguyền số chiều
+description: Một đặc trưng có độ lệch chuẩn 351 nuốt chửng đặc trưng có độ lệch chuẩn 0,007 khi đo khoảng cách. Chuẩn hóa sửa được chuyện đó; còn khi số chiều lên tới 1000, điểm gần nhất xa gần bằng điểm xa nhất và KNN mất phương hướng.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Thang đo quyết định ai là hàng xóm
+
+Bộ ung thư vú có 30 đặc trưng với thang đo rất khác nhau:
+
+```python
+print(Xb[:, [0, 3, 9]].std(axis=0).round(3))      # bán kính trung bình, diện tích trung bình, chiều fractal trung bình
+```
+
+```text title="Output"
+[3.52100e+00 3.51605e+02 7.00000e-03]
+```
+
+Diện tích khối u có độ lệch chuẩn khoảng 352; chiều fractal chỉ 0,007, nhỏ hơn 50 000 lần. Khi đo khoảng cách Euclid, một chênh lệch bình thường về diện tích (cỡ 350) đóng góp $350^2 \approx 122\,500$ vào tổng bình phương, còn một chênh lệch bình thường về chiều fractal đóng góp $0{,}007^2 \approx 0{,}00005$. Chiều fractal gần như **không tồn tại** đối với KNN, dù nó có thể là đặc trưng quan trọng.
+
+```python
+k5 = KNeighborsClassifier(5)
+print(round(k5.fit(Xtr, ytr).score(Xte, yte), 4))                                          # không chuẩn hóa
+print(round(make_pipeline(StandardScaler(), KNeighborsClassifier(5)).fit(Xtr, ytr).score(Xte, yte), 4))   # có chuẩn hóa
+```
+
+```text title="Output"
+0.9231
+0.9371
+```
+
+Không chuẩn hóa: 92,3%, gần như chỉ dựa vào vài đặc trưng có số lớn. Có chuẩn hóa: 93,7%, mọi đặc trưng có tiếng nói ngang nhau. Chênh lệch ở đây khoảng 2 ca trên 143; với những bộ dữ liệu có đặc trưng quan trọng mà số nhỏ, chênh lệch có thể lớn hơn nhiều.
+
+<Khung loai="vi-sao" tieuDe="KNN NHẠY HƠN HỒI QUY">
+Hồi quy tuyến tính bằng nghiệm đóng không quan tâm thang đo (Chương 9): đổi đơn vị một đặc trưng thì trọng số của nó tự co giãn bù lại. KNN không có trọng số nào để bù. Khoảng cách **là** mô hình, nên thang đo trực tiếp quyết định kết quả.
+
+Vì vậy với KNN, chuẩn hóa không phải một mẹo tăng tốc như với gradient descent ở Chương 8, mà là một phần của định nghĩa mô hình. Chọn cách chuẩn hóa là chọn xem đặc trưng nào "quan trọng" bao nhiêu.
+</Khung>
+
+## Lời nguyền số chiều
+
+Một vấn đề sâu hơn không chuẩn hóa nào sửa được. Rải 1000 điểm ngẫu nhiên đều trong một hình lập phương $d$ chiều, rồi đo khoảng cách từ một điểm mới tới điểm gần nhất và điểm xa nhất:
+
+```python
+rng = np.random.default_rng(0)
+for dim in [2, 10, 100, 1000]:
+    P = rng.uniform(0, 1, (1000, dim))                 # 1000 điểm trong hình lập phương dim chiều
+    qq = rng.uniform(0, 1, dim)                        # một điểm mới
+    dd_ = np.sqrt(((P - qq) ** 2).sum(axis=1))
+    print(dim, round(dd_.min(), 3), round(dd_.max(), 3), round(dd_.min() / dd_.max(), 3))
+```
+
+```text title="Output"
+2 0.01 1.334 0.007
+10 0.471 2.111 0.223
+100 3.349 4.653 0.72
+1000 12.166 13.553 0.898
+```
+
+Cột cuối là tỷ lệ giữa khoảng cách gần nhất và xa nhất:
+
+- 2 chiều: 0,007. Láng giềng gần nhất gần hơn điểm xa nhất **140 lần**. "Gần" có nghĩa rõ ràng.
+- 1000 chiều: 0,898. Láng giềng gần nhất chỉ gần hơn điểm xa nhất khoảng 10%. **Mọi điểm đều xa gần bằng nhau.**
+
+Khi mọi người đều là "hàng xóm xa như nhau", hỏi hàng xóm chẳng còn ý nghĩa gì. Hiện tượng này là <Term id="loi-nguyen-chieu">lời nguyền số chiều</Term>.
+
+<Khung loai="truc-giac">
+Trên một đoạn thẳng dài 1 mét, 10 điểm rải đều cách nhau 10 cm: khá dày. Trong một hình vuông 1 mét, muốn dày như vậy cần 100 điểm. Trong hình lập phương cần 1000. Trong 100 chiều cần $10^{100}$ điểm, nhiều hơn số nguyên tử trong vũ trụ quan sát được.
+
+Với lượng dữ liệu có hạn, không gian nhiều chiều gần như **trống rỗng**, mọi điểm dữ liệu cô lập ở những góc riêng. Đó là lý do KNN hợp với dữ liệu ít chiều, và là lý do Chương 20 dạy cách giảm chiều.
+</Khung>
+
+<TuKiemTra
+	cauHoi="Bạn dùng KNN trên dữ liệu có hai đặc trưng: thu nhập (triệu đồng/tháng, từ 5 tới 100) và số con (0 tới 4). Không chuẩn hóa thì điều gì xảy ra?"
+	luaChon={['Hai đặc trưng có ảnh hưởng ngang nhau', 'Khoảng cách gần như chỉ phụ thuộc thu nhập', 'Khoảng cách gần như chỉ phụ thuộc số con', 'KNN báo lỗi']}
+	dapAn={1}
+	giaiThich="Chênh lệch thu nhập có thể tới 95, chênh lệch số con tối đa 4. Bình phương lên, thu nhập đóng góp tới 9025 so với tối đa 16. Hai người cùng thu nhập nhưng khác hẳn số con vẫn bị coi là hàng xóm sát nhau."
+/>
+
+<Khung loai="loi">
+**Chuẩn hóa trên cả bộ dữ liệu trước khi chia.** Rò rỉ dữ liệu kiểu 2 của Chương 9. Đặt `StandardScaler` trong Pipeline.
+
+**Thêm thật nhiều đặc trưng "cho chắc".** Với KNN, đặc trưng vô ích không chỉ vô ích mà còn **có hại**: nó thêm nhiễu vào mọi khoảng cách và đẩy dữ liệu về phía lời nguyền số chiều. Chọn đặc trưng (Chương 21) quan trọng với KNN hơn với hầu hết mô hình khác.
+</Khung>

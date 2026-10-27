@@ -373,3 +373,18 @@
   tenTiengAnh: regularization
   giaiThich: Regularization là thêm vào hàm mất mát một khoản phạt cho trọng số lớn, để mô hình ưu tiên lời giải đơn giản hơn. Ridge phạt tổng bình phương trọng số, lasso phạt tổng trị tuyệt đối và có thể đẩy trọng số về đúng 0.
   hocKy: ai-engineer/ch13-overfitting-regularization
+- id: knn
+  ten: KNN
+  tenTiengAnh: k-nearest neighbors
+  giaiThich: KNN đoán nhãn của một mẫu mới bằng cách tìm k mẫu gần nó nhất trong dữ liệu huấn luyện rồi lấy nhãn chiếm đa số (hoặc trung bình, với hồi quy). Không học tham số nào, chỉ nhớ toàn bộ dữ liệu.
+  hocKy: ai-engineer/ch14-knn
+- id: khoang-cach-euclid
+  ten: Khoảng cách Euclid
+  tenTiengAnh: Euclidean distance
+  giaiThich: Khoảng cách Euclid là độ dài đoạn thẳng nối hai điểm, tính bằng căn bậc hai của tổng bình phương hiệu từng tọa độ, như định lý Pythago mở rộng ra nhiều chiều.
+  hocKy: ai-engineer/ch14-knn
+- id: loi-nguyen-chieu
+  ten: Lời nguyền số chiều
+  tenTiengAnh: curse of dimensionality
+  giaiThich: Khi số chiều tăng, các điểm dữ liệu trở nên xa nhau và xa đều nhau, điểm gần nhất cũng gần như xa bằng điểm xa nhất. Các phương pháp dựa trên khoảng cách như KNN mất dần tác dụng.
+  hocKy: ai-engineer/ch14-knn
