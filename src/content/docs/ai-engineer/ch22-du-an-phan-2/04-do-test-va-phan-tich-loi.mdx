@@ -1,0 +1,76 @@
+---
+title: Đo test và phân tích lỗi
+description: Mô hình đã chọn đạt MAE 0,289 trên 4 128 khu test, tức lệch trung bình 28 900 USD, R² 0,849. Những khu bị chặn giá 500 000 USD có lỗi gấp đôi phần còn lại. Vĩ độ, kinh độ và thu nhập là ba đặc trưng mô hình dựa vào nhiều nhất.
+---
+
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Một lần duy nhất
+
+```python
+from sklearn.metrics import mean_absolute_error, r2_score, mean_squared_error
+p = gs.predict(Xte)                     # gs đã tự huấn luyện lại mô hình tốt nhất trên cả Xtr
+print(round(mean_absolute_error(yte, p), 4), round(r2_score(yte, p), 4), round(mean_squared_error(yte, p) ** 0.5, 4))
+```
+
+```text title="Output"
+0.2887 0.8494 0.4443
+```
+
+Trên 4 128 khu chưa từng thấy: MAE 0,289, tức **lệch trung bình khoảng 28 900 USD**. $R^2 = 0{,}849$: mô hình giải thích 85% biến động của giá. Con số test hơi tốt hơn cross-validation (0,302), nằm trong dao động bình thường giữa hai cách lấy mẫu dữ liệu.
+
+RMSE 0,444 lớn hơn MAE 0,289 khá nhiều. Chương 12 đã giải thích: khoảng cách đó báo có những khu bị đoán **sai rất nhiều**.
+
+## Lỗi nằm ở đâu
+
+<HinhKetQua src="/hinh/ch22/h2_du_doan.svg" alt="Biểu đồ chấm giá trị dự đoán theo giá trị thật trên 4128 khu test. Phần lớn chấm bám quanh đường chéo đỏ đứt nét. Ở cột dọc tại giá trị thật 5,0 có một dải chấm trải từ khoảng 2 tới 5,2, phần lớn nằm dưới đường chéo." so="22.2" chuThich="Giá dự đoán theo giá thật trên tập test. Đường đứt nét đỏ là dự đoán hoàn hảo; đường chấm dọc là trần 5,0.">
+**Đọc hình.** Mỗi chấm là một khu test. Chấm trên đường chéo đỏ là đoán đúng. Chấm dưới đường chéo là đoán thấp.
+
+**Điều cần thấy.** Phần lớn chấm bám sát đường chéo, nhất là ở vùng giá 0,5 tới 3. Bất thường lớn nhất là **cột dọc** ở giá thật 5,0: những khu bị chặn giá có dự đoán trải từ khoảng 2 tới 5, phần lớn dưới đường chéo. Với nhiều khu trong số đó, giá thật còn cao hơn 5,0 rất nhiều, nhưng dữ liệu không ghi lại.
+</HinhKetQua>
+
+```python
+loi = (yte - p).abs()
+chan = yte >= 5.0
+print(int(chan.sum()), round(float(loi[chan].mean()), 4), round(float(loi[~chan].mean()), 4))
+```
+
+```text title="Output"
+184 0.592 0.2745
+```
+
+184 khu test bị chặn giá có MAE **0,592**, gấp hơn hai lần 0,275 của phần còn lại. Chúng chỉ chiếm 4,5% tập test nhưng góp khoảng 9% tổng lỗi.
+
+Đây là thông tin quan trọng hơn con số MAE tổng: nếu ứng dụng chủ yếu dùng cho nhà giá dưới 500 000 USD, lỗi thực tế là khoảng 27 000 USD. Nếu ứng dụng cần định giá nhà cao cấp, bộ dữ liệu này **không đủ**, và không mô hình nào sửa được điều đó.
+
+## Mô hình dựa vào đâu
+
+```python
+from sklearn.inspection import permutation_importance
+pi = permutation_importance(gs.best_estimator_, Xte, yte, n_repeats=5, random_state=0, scoring="neg_mean_absolute_error")
+o = np.argsort(pi.importances_mean)[::-1]
+print([(c, round(float(v), 4)) for c, v in zip(X.columns[o], pi.importances_mean[o])])
+```
+
+```text title="Output"
+[('Latitude', 0.6319), ('Longitude', 0.5714), ('MedInc', 0.31), ('AveOccup', 0.1449), ('AveRooms', 0.0863), ('HouseAge', 0.0434), ('AveBedrms', 0.0107), ('Population', 0.0085)]
+```
+
+Xáo vĩ độ trên tập test, MAE tăng thêm 0,63: gấp đôi lỗi hiện tại. Vị trí (vĩ độ, kinh độ) là hai đặc trưng quan trọng nhất, rồi tới thu nhập. Dân số gần như không đóng góp gì. Điều này khớp với bản đồ: biết khu nằm ở đâu là biết phần lớn câu chuyện.
+
+Vĩ độ và kinh độ quan trọng **cùng nhau**: một mình vĩ độ không nói được khu nằm ở bờ biển hay trong sa mạc. Permutation importance của từng cột riêng lẻ vẫn cao vì xáo một cột là phá vỡ vị trí thật.
+
+<Khung loai="vi-sao" tieuDe="PHÂN TÍCH LỖI QUAN TRỌNG HƠN THÊM MÔ HÌNH">
+Từ đây có thể thử thêm vài mô hình, chỉnh thêm siêu tham số, và có lẽ hạ MAE thêm 2 tới 3%. Nhưng phân tích lỗi cho thấy phần lỗi lớn nhất đến từ **dữ liệu** (giá bị chặn), không phải từ mô hình. Bước hợp lý tiếp theo là quyết định về bài toán: loại các khu bị chặn khỏi phạm vi dự đoán, tìm thêm dữ liệu về nhà cao cấp, hoặc đổi sang dự đoán "dưới hay trên 500 000 USD" cho những khu đó.
+
+Một dự án ML tốt kết thúc bằng câu "mô hình đúng tới đâu, sai ở đâu, và vì sao", chứ không chỉ một con số.
+</Khung>
+
+<Khung loai="loi">
+**Báo cáo mỗi MAE tổng.** Lỗi gấp đôi trên nhóm giá cao là điều người dùng cần biết. Luôn chia lỗi theo các nhóm có ý nghĩa: theo khoảng giá, theo vùng, theo thời gian.
+
+**Chỉnh mô hình sau khi đo test.** Thấy lỗi ở các khu bị chặn rồi quay lại thêm đặc trưng, đo test lần nữa là test đã thành validation (Chương 9). Muốn thử tiếp, chia lại một tập test mới, hoặc báo cáo rõ đây là con số đã bị "nhìn".
+</Khung>

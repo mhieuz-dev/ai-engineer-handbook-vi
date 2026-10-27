@@ -1,0 +1,68 @@
+---
+title: Mô hình cây và chọn siêu tham số
+description: Random forest đưa MAE xuống 0,335, HistGradientBoosting 0,315. GridSearchCV trên 8 tổ hợp chọn learning rate 0,05, 600 vòng, 63 lá, cross-validation 0,302. Đặc trưng tự tạo không còn giúp nhiều cho mô hình cây.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Hai ensemble
+
+```python
+from sklearn.ensemble import RandomForestRegressor, HistGradientBoostingRegressor
+print(mae_cv(RandomForestRegressor(100, random_state=0, n_jobs=-1)))
+print(mae_cv(HistGradientBoostingRegressor(random_state=0)))
+print(mae_cv(make_pipeline(fe, HistGradientBoostingRegressor(random_state=0))))
+```
+
+```text title="Output"
+0.3349
+0.3154
+0.3128
+```
+
+**Bảng 22.2.** MAE cross-validation 5 phần trên 16 512 khu train.
+
+| Mô hình | MAE | So với baseline |
+|:---|:---:|:---:|
+| Đoán trung bình | 0,914 | |
+| Hồi quy tuyến tính | 0,529 | giảm 42% |
+| Hồi quy tuyến tính + 4 đặc trưng | 0,482 | giảm 47% |
+| Random forest 100 cây | 0,335 | giảm 63% |
+| HistGradientBoosting mặc định | 0,315 | giảm 65% |
+| HistGradientBoosting + 4 đặc trưng | 0,313 | giảm 66% |
+
+Mô hình cây thắng mô hình tuyến tính tốt nhất một khoảng lớn: 0,315 so với 0,482. Đây đúng là điều bản đồ ở trang 1 báo trước: giá phụ thuộc vị trí theo cách phi tuyến, và cây chia mặt phẳng kinh độ, vĩ độ thành từng vùng nhỏ, mỗi vùng một mức giá.
+
+Khác với Chương 18, ở đây gradient boosting thắng rõ. Hai bộ dữ liệu của Chương 18 nhỏ và gần tuyến tính; bộ này lớn (16 nghìn mẫu) và có quan hệ phi tuyến rõ: đúng loại dữ liệu mà boosting mạnh nhất.
+
+Bốn đặc trưng tự tạo chỉ cải thiện boosting thêm 0,003. Mô hình cây tự tìm được phần lớn những gì các tỷ số và log mang lại (log không đổi thứ tự, nên với cây nó gần như vô tác dụng, Chương 21). Để Pipeline đơn giản, từ đây ta bỏ chúng.
+
+## Chọn siêu tham số
+
+```python
+from sklearn.model_selection import GridSearchCV
+luoi = {"learning_rate": [0.05, 0.1], "max_iter": [300, 600], "max_leaf_nodes": [31, 63]}   # 8 tổ hợp
+gs = GridSearchCV(HistGradientBoostingRegressor(random_state=0), luoi, cv=5,
+                  scoring="neg_mean_absolute_error", n_jobs=-1).fit(Xtr, ytr)              # 8 x 5 = 40 lần huấn luyện
+print(gs.best_params_, round(-gs.best_score_, 4))
+```
+
+```text title="Output"
+{'learning_rate': 0.05, 'max_iter': 600, 'max_leaf_nodes': 63} 0.3024
+```
+
+Tổ hợp tốt nhất: learning rate nhỏ hơn mặc định (0,05 so với 0,1), nhiều vòng hơn (600 so với 100), cây to hơn (63 lá so với 31). MAE cross-validation 0,302, tốt hơn mặc định khoảng 4%.
+
+Để ý cả ba giá trị tốt nhất đều nằm ở **mép** lưới. Khung "Lỗi hay gặp" của Chương 16 dặn: khi đó nên mở rộng lưới (thử 1000 vòng, 127 lá). Ở đây ta dừng vì lợi ích còn lại nhỏ so với thời gian huấn luyện, nhưng đó là một lựa chọn có ý thức, nên ghi lại trong báo cáo.
+
+<Khung loai="vi-sao" tieuDe="CHỈ 8 TỔ HỢP">
+Mỗi lần huấn luyện boosting trên 13 nghìn dòng mất vài giây; 40 lần là vài phút. Lưới lớn hơn tốn thời gian theo cấp số nhân. Trong dự án thật, người ta bắt đầu bằng lưới thưa quanh mặc định như ở đây, xem hướng nào cải thiện, rồi mới mở rộng theo hướng đó. Hoặc dùng `RandomizedSearchCV` thử ngẫu nhiên một số tổ hợp trong không gian rộng.
+</Khung>
+
+<Khung loai="loi">
+**So các mô hình bằng những cách chia khác nhau.** Mọi con số ở Bảng 22.2 dùng cùng `Xtr` và cùng `cv=5` (cùng cách chia, vì `KFold` mặc định không xáo). Đổi cách chia giữa các mô hình là so táo với cam.
+
+**Đo test sau mỗi bước thử.** Bảng 22.2 không có cột test. Test được đo **một lần**, ở trang sau, cho đúng một mô hình đã chọn.
+</Khung>

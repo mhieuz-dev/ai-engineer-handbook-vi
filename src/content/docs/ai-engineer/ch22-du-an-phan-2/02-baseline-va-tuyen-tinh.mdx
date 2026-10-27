@@ -1,0 +1,86 @@
+---
+title: Baseline và mô hình tuyến tính
+description: Chia 16 512 khu train và 4 128 khu test. Baseline đoán trung bình lệch 0,914; hồi quy tuyến tính 0,529; thêm bốn đặc trưng mới (tỷ số phòng mỗi người, log dân số) còn 0,482.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Chia dữ liệu và baseline
+
+```python
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.dummy import DummyRegressor
+Xtr, Xte, ytr, yte = train_test_split(X, y, test_size=0.2, random_state=42)
+print(len(Xtr), len(Xte))
+
+def mae_cv(m, XX=Xtr):
+    """MAE trung bình qua 5 phần cross-validation, chỉ trên train."""
+    return round(-cross_val_score(m, XX, ytr, cv=5, scoring="neg_mean_absolute_error").mean(), 4)
+
+print(mae_cv(DummyRegressor()))
+```
+
+```text title="Output"
+16512 4128
+0.9139
+```
+
+Đoán mọi khu bằng giá trung bình của train: lệch trung bình 0,914, tức **91 400 USD**. Mọi mô hình sau phải thắng con số này.
+
+scikit-learn quy ước "điểm càng cao càng tốt", nên MAE được trả về dưới dạng **âm** (`neg_mean_absolute_error`). Hàm `mae_cv` đổi dấu lại cho dễ đọc.
+
+## Hồi quy tuyến tính
+
+```python
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler, FunctionTransformer
+from sklearn.linear_model import LinearRegression
+print(mae_cv(make_pipeline(StandardScaler(), LinearRegression())))
+```
+
+```text title="Output"
+0.5291
+```
+
+Từ 0,914 xuống 0,529: chỉ một đường thẳng (siêu phẳng) đã giảm lỗi gần một nửa.
+
+## Feature engineering
+
+Ba điều lạ ở trang 1 gợi ý những đặc trưng mới cho mô hình tuyến tính:
+
+- `AveOccup` và `Population` lệch phải cực mạnh: lấy log (Chương 21).
+- Số phòng mỗi **người** (`AveRooms / AveOccup`) nói về độ rộng rãi rõ hơn số phòng mỗi hộ.
+- Tỷ lệ phòng ngủ trên tổng số phòng (`AveBedrms / AveRooms`): nhà nhiều phòng ngủ so với phòng khách, phòng ăn thường là nhà nhỏ chia nhiều buồng.
+
+```python
+def them_cot(D):
+    D = D.copy()
+    D["RoomsPerPerson"] = D["AveRooms"] / D["AveOccup"]
+    D["BedrmRatio"] = D["AveBedrms"] / D["AveRooms"]
+    D["LogPop"] = np.log(D["Population"])
+    D["LogOccup"] = np.log(D["AveOccup"])
+    return D
+
+fe = FunctionTransformer(them_cot)                       # bọc hàm thành một bước của Pipeline
+print(mae_cv(make_pipeline(fe, StandardScaler(), LinearRegression())))
+```
+
+```text title="Output"
+0.4815
+```
+
+Bốn cột mới đưa MAE từ 0,529 xuống 0,482, tốt hơn 9%. Khác hẳn bộ tiểu đường ở Chương 21, nơi đặc trưng mới vô ích: ở đây mỗi cột mới đến từ một quan sát cụ thể về dữ liệu.
+
+`FunctionTransformer` biến một hàm thường thành một bước Pipeline. Hàm này không học gì từ dữ liệu (chỉ chia và lấy log từng hàng), nên không có rủi ro rò rỉ; nếu nó cần học (ví dụ trừ trung bình), phải viết thành lớp có `fit` riêng.
+
+<Khung loai="vi-sao" tieuDe="MÔ HÌNH TUYẾN TÍNH VẪN ĐÁNG CÓ">
+Trang sau mô hình cây sẽ thắng xa. Nhưng mô hình tuyến tính 0,48 có hai giá trị: nó là **mốc** cho biết mô hình phức tạp hơn đáng được bao nhiêu, và nó **giải thích được**: mỗi hệ số nói "tăng một độ lệch chuẩn của cột này, giá đổi bao nhiêu". Nếu bộ phận định giá cần lý do cho từng con số, đó có thể là mô hình được chọn.
+</Khung>
+
+<Khung loai="loi">
+**Chia `D["AveBedrms"] / D["AveRooms"]` khi có số 0.** Ở bộ dữ liệu này không khu nào có 0 phòng, nhưng với dữ liệu khác, phép chia cho 0 ra vô cực và làm hỏng chuẩn hóa. Kiểm tra trước, hoặc cộng một số nhỏ vào mẫu số.
+
+**Tạo đặc trưng bằng `X_full` trước khi chia.** Ở đây không sao vì hàm không học gì. Nhưng tạo thói quen đặt mọi biến đổi trong Pipeline là cách chắc chắn nhất để không bao giờ rò rỉ.
+</Khung>

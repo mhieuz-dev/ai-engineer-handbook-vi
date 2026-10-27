@@ -1,0 +1,95 @@
+---
+title: Bài tập
+description: Ba bài tập mở rộng dự án có đáp án chi tiết (đổi MAE về đô la, huấn luyện lại không có các khu bị chặn giá, chia lỗi theo nhóm thu nhập để thấy lỗi tuyệt đối và lỗi tương đối kể hai câu chuyện khác nhau) và câu hỏi phỏng vấn.
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Ba bài dùng `Xtr`, `Xte`, `ytr`, `yte`, dự đoán `p` và mô hình `gs` ở các trang trước.
+
+<BaiTap so="22.1">
+**Báo cáo bằng đô la.** Đổi MAE của baseline (0,9139) và của mô hình cuối (0,2887) ra đô la Mỹ. Mô hình giảm lỗi bao nhiêu phần trăm so với baseline?
+
+<Fragment slot="dap-an">
+
+Nhãn tính bằng 100 000 USD:
+
+```python
+print(round(0.2887 * 100000), round(0.9139 * 100000))
+```
+
+```text title="Output"
+28870 91390
+```
+
+Baseline lệch trung bình khoảng **91 400 USD**, mô hình khoảng **28 900 USD**: giảm $1 - 0{,}2887/0{,}9139 \approx 68\%$. Một câu báo cáo tốt: "Mô hình dự đoán giá nhà trung vị của một khu dân cư với sai số trung bình khoảng 29 000 USD, so với 91 000 USD nếu chỉ dùng giá trung bình của bang." Không cần nói tới MAE, $R^2$ hay boosting.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="22.2">
+**Bỏ các khu bị chặn.** Huấn luyện lại mô hình (cùng siêu tham số tốt nhất) chỉ trên các khu train có giá dưới 5,0, rồi đo MAE trên các khu test có giá dưới 5,0. So với mô hình gốc trên cùng nhóm khu test đó. Trước khi chạy, đoán: tốt hơn, tệ hơn, hay như nhau?
+
+<Fragment slot="dap-an">
+
+```python
+tot = dict(learning_rate=0.05, max_iter=600, max_leaf_nodes=63, random_state=0)
+k, kt = ytr < 5, yte < 5
+m2 = HistGradientBoostingRegressor(**tot).fit(Xtr[k], ytr[k])
+print(round(mean_absolute_error(yte[kt], p[kt]), 4), round(mean_absolute_error(yte[kt], m2.predict(Xte[kt])), 4))
+```
+
+```text title="Output"
+0.2745 0.269
+```
+
+Tốt hơn một chút: 0,269 so với 0,2745. Các khu bị chặn là những mẫu có nhãn **sai** (giá thật cao hơn ghi nhận); bỏ chúng khỏi train giúp mô hình học quan hệ đúng hơn cho phần còn lại.
+
+Nhưng mô hình mới **không biết gì** về nhà trên 500 000 USD. Nếu đưa vào ứng dụng, phải kèm một quy tắc: khu nào được đoán gần 5,0 thì báo "giá có thể vượt 500 000 USD, mô hình không đủ thông tin". Chọn phạm vi cho mô hình là một quyết định về sản phẩm, không chỉ về kỹ thuật.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="22.3">
+**Lỗi theo thu nhập.** Chia 4 128 khu test thành 4 nhóm bằng nhau theo thu nhập trung vị (`pd.qcut`), tính MAE và giá trung bình của từng nhóm. Nhóm nào bị đoán sai nhiều nhất? Tính lỗi tương đối (MAE chia giá trung bình).
+
+<Fragment slot="dap-an">
+
+```python
+q = pd.qcut(Xte["MedInc"], 4, labels=["thấp", "vừa thấp", "vừa cao", "cao"])
+print(pd.Series(np.abs(yte - p)).groupby(q, observed=True).mean().round(4).to_dict())
+print(pd.Series(yte).groupby(q, observed=True).mean().round(4).to_dict())
+```
+
+```text title="Output"
+{'thấp': 0.2364, 'vừa thấp': 0.2765, 'vừa cao': 0.3006, 'cao': 0.3415}
+{'thấp': 1.2147, 'vừa thấp': 1.7267, 'vừa cao': 2.161, 'cao': 3.1205}
+```
+
+Lỗi **tuyệt đối** tăng theo thu nhập: 0,236 ở nhóm thấp, 0,342 ở nhóm cao. Nhưng lỗi **tương đối** đi ngược lại: $0{,}236/1{,}215 \approx 19\%$ ở nhóm thấp, $0{,}342/3{,}121 \approx 11\%$ ở nhóm cao.
+
+Với một gia đình thu nhập thấp, sai 23 600 USD trên một căn nhà 121 000 USD là sai gần một phần năm giá trị. Nếu mô hình dùng để xét cho vay, nhóm này chịu thiệt nhiều nhất. Cùng một bảng số, hai cách đọc kể hai câu chuyện khác nhau; chọn cách đọc nào phụ thuộc mô hình được dùng để làm gì. Chương 61 sẽ quay lại câu hỏi công bằng này.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Kể lại một dự án ML từ đầu tới cuối.**
+
+<p lang="en"><em>Walk me through an end-to-end ML project.</em></p>
+
+*Gợi ý:* bài toán và thước đo, khám phá dữ liệu (phát hiện giá bị chặn, cột lệch), chia dữ liệu, baseline, mô hình tuyến tính có feature engineering, ensemble, chọn siêu tham số bằng cross-validation, đo test một lần, phân tích lỗi theo nhóm, giới hạn của mô hình. Nêu con số ở mỗi bước.
+
+**2. Mô hình của bạn đạt R² 0,85. Bạn có tự tin đưa vào sản xuất không?**
+
+<p lang="en"><em>Your model has an R² of 0.85. Are you confident putting it into production?</em></p>
+
+*Gợi ý:* chưa đủ: cần biết lỗi theo nhóm (nhóm giá cao lỗi gấp đôi), dữ liệu có còn đại diện không (dữ liệu 1990), rò rỉ, độ trễ và chi phí suy luận, cách giám sát khi dữ liệu thay đổi (Chương 60).
+
+**3. Khi nào bạn dừng cải thiện mô hình?**
+
+<p lang="en"><em>When do you stop improving a model?</em></p>
+
+*Gợi ý:* khi lỗi còn lại chủ yếu đến từ dữ liệu (nhiễu, nhãn bị chặn) chứ không phải mô hình; khi cải thiện nhỏ hơn dao động của đánh giá; khi đã đạt mức đủ dùng cho mục tiêu sản phẩm; khi chi phí phức tạp thêm lớn hơn lợi ích.
+</Khung>
