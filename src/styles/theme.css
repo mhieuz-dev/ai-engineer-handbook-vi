@@ -277,8 +277,10 @@ pre,
 		--ec-frm-edTabBarBrdBtmCol: #e6decd;
 		--ec-frm-trmTtbBg: #fff;
 	}
-	.expressive-code .ec-line :where(span[style^='--']:not([class])) { color: var(--1, inherit); }
-	.expressive-code .frame:has(pre[data-language='text']) .ec-line .code span { color: #1a1a1a; }
+	/* :root[data-theme] nâng độ ưu tiên lên trên luật bảng tối của Expressive Code (.expressive-code .ec-line ...),
+	   không phụ thuộc thứ tự nạp stylesheet. */
+	:root[data-theme] .expressive-code .ec-line :where(span[style^='--']:not([class])) { color: var(--1, inherit); }
+	:root[data-theme] .expressive-code .frame:has(pre[data-language='text']) .ec-line .code span { color: #1a1a1a; }
 }
 
 /* .main-pane của Starlight là một stacking context z auto nằm trước .right-sidebar (position: fixed) trong DOM, nên cột phải vẽ đè lên khung giải thích Term. Nâng .main-pane lên z 1 để khung nổi trên cột phải; header và menu mobile có z-index cao hơn nên không bị ảnh hưởng. */
