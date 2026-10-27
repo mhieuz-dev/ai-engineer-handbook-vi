@@ -1,4 +1,6 @@
 import { test, expect } from '@playwright/test';
+import { readdirSync } from 'node:fs';
+import { CHUONG, chuongDaXuatBan } from '../../src/data/chuong';
 
 async function moSidebar(page: import('@playwright/test').Page) {
 	// trên điện thoại sidebar nằm trong menu thu gọn
@@ -6,20 +8,26 @@ async function moSidebar(page: import('@playwright/test').Page) {
 	if (await nutMenu.isVisible()) await nutMenu.click();
 }
 
-test('sidebar có Phần II và chương 11 chỉ là nhãn Sắp có', async ({ page }) => {
+// Chương chưa viết đầu tiên của Phần II và chương đã viết lớn nhất: tự lấy từ dữ liệu, không ghi cứng số chương.
+const chuaViet = CHUONG.find((c) => c.phan === 'phan-2' && c.trangThai === 'sap-co')!;
+const cuoiCung = [...chuongDaXuatBan()].sort((a, b) => b.so - a.so)[0];
+const trangCuoi = readdirSync(`src/content/docs/${cuoiCung.slug}`).filter((f) => f.endsWith('.mdx')).sort().at(-1)!.replace(/\.mdx$/, '');
+const soHai = (c: { so: number }) => `ch${String(c.so).padStart(2, '0')}`;
+
+test('sidebar có Phần II và chương chưa viết chỉ là nhãn Sắp có', async ({ page }) => {
 	await page.goto('/ai-engineer/ch10-hoi-quy-tuyen-tinh/01-truc-giac/');
 	await moSidebar(page);
 	const sb = page.locator('nav.sidebar, #starlight__sidebar').first();
 	await expect(sb.getByText('Phần II. Machine Learning cổ điển')).toBeVisible();
-	const muc = sb.locator('[aria-disabled="true"]', { hasText: 'Hồi quy logistic' });
+	const muc = sb.locator('[aria-disabled="true"]', { hasText: chuaViet.ten });
 	await expect(muc).toBeVisible();
 	await expect(muc).toContainText('Sắp có');
-	await expect(sb.locator('a', { hasText: 'Hồi quy logistic' })).toHaveCount(0);
+	await expect(sb.locator('a', { hasText: chuaViet.ten })).toHaveCount(0);
 });
 
-test('trang cuối chương 10 không có Tiếp trỏ tới ch11', async ({ page }) => {
-	await page.goto('/ai-engineer/ch10-hoi-quy-tuyen-tinh/06-bai-tap/');
-	await expect(page.locator('a[href*="ch11"]')).toHaveCount(0);
+test('trang cuối của chương đã viết lớn nhất không có Tiếp trỏ tới chương chưa viết', async ({ page }) => {
+	await page.goto(`/${cuoiCung.slug}/${trangCuoi}/`);
+	await expect(page.locator(`a[href*="${soHai({ so: cuoiCung.so + 1 })}"]`)).toHaveCount(0);
 	await expect(page.locator('a[rel="next"]')).toHaveCount(0);
 });
 
