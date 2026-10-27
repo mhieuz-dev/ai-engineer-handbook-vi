@@ -1,0 +1,92 @@
+---
+title: Trị riêng và vector riêng
+description: Hướng đặc biệt mà ma trận chỉ kéo giãn chứ không xoay. Tính trị riêng bằng np.linalg.eigh, và thấy hướng trải rộng nhất của dữ liệu chính là vector riêng của ma trận hiệp phương sai.
+---
+
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Hướng không bị xoay
+
+Phần lớn vector bị một ma trận vừa kéo giãn vừa **xoay đi**. Nhưng có những hướng đặc biệt: vector nằm trên đó chỉ bị kéo dài hoặc co ngắn, vẫn nằm nguyên trên đường thẳng cũ.
+
+Hướng đó là vector riêng <En>eigenvector</En>, còn hệ số kéo giãn là <Term id="tri-rieng">trị riêng</Term>:
+
+$$
+A \mathbf v = \lambda \mathbf v \tag{5.3}
+$$
+
+Đọc: nhân $A$ với $\mathbf v$ cũng giống hệt nhân $\mathbf v$ với một **con số** $\lambda$ (đọc là "lam-đa").
+
+Lấy một ma trận đối xứng (số ở vị trí hàng $i$ cột $j$ bằng số ở hàng $j$ cột $i$):
+
+```python
+S = np.array([[2.0, 1.0], [1.0, 2.0]])
+gia_tri, vec = np.linalg.eigh(S)     # eigh: dành cho ma trận đối xứng, trị riêng xếp tăng dần
+print(gia_tri)
+print(vec)                           # mỗi CỘT là một vector riêng, độ dài 1
+print(S @ vec[:, 1], gia_tri[1] * vec[:, 1])   # kiểm tra (5.3) với vector riêng thứ hai
+```
+
+```text title="Output"
+[1. 3.]
+[[-0.70710678  0.70710678]
+ [ 0.70710678  0.70710678]]
+[2.12132034 2.12132034] [2.12132034 2.12132034]
+```
+
+Hai trị riêng là 1 và 3. Vector riêng ứng với 3 là cột thứ hai, $(0{,}707;\ 0{,}707)$, tức là hướng đường chéo $(1, 1)$ đã chuẩn hóa về độ dài 1 (vì $0{,}707 \approx 1/\sqrt 2$).
+
+Kiểm tra tay: $S \times (1, 1) = (2 + 1,\ 1 + 2) = (3, 3) = 3 \times (1, 1)$. Đường chéo bị kéo dài gấp 3, không xoay chút nào. Hướng còn lại $(-1, 1)$: $S \times (-1, 1) = (-2 + 1,\ -1 + 2) = (-1, 1)$, giữ nguyên, trị riêng 1.
+
+Dòng cuối của output cho thấy hai vế của (5.3) bằng nhau tới từng chữ số.
+
+## Hướng trải rộng nhất của dữ liệu
+
+Trị riêng có ý nghĩa rất cụ thể với dữ liệu. Lấy lại bảng `X` của Chương 3 (bốn bạn, hai cột giờ học và giờ ngủ), trừ trung bình từng cột để đưa tâm dữ liệu về gốc tọa độ, rồi tính ma trận hiệp phương sai:
+
+```python
+D = np.array([[1, 2], [2, 1], [3, 4], [4, 3]], dtype=float)
+Dc = D - D.mean(axis=0)            # trừ trung bình từng cột (broadcasting)
+C = Dc.T @ Dc / 4                  # ma trận hiệp phương sai, shape (2, 2)
+print(C)
+gia_tri, vec = np.linalg.eigh(C)
+print(gia_tri)
+print(vec)
+```
+
+```text title="Output"
+[[1.25 0.75]
+ [0.75 1.25]]
+[0.5 2. ]
+[[-0.70710678  0.70710678]
+ [ 0.70710678  0.70710678]]
+```
+
+Đường chéo của $C$ (hai số 1,25) là phương sai của từng cột: bình phương độ lệch chuẩn $1{,}118$ mà Bài tập 3.2 đã tính. Số ngoài đường chéo (0,75) là hiệp phương sai, đo hai cột cùng tăng cùng giảm tới đâu. Chương 7 sẽ định nghĩa kỹ hai khái niệm này.
+
+<HinhKetQua src="/hinh/ch05/h2_vector_rieng.svg" alt="Bốn chấm A, B, C, D sau khi trừ trung bình, nằm quanh gốc tọa độ. Mũi tên xanh dài chỉ theo đường chéo lên phải, ghi lambda bằng 2. Mũi tên đỏ ngắn chỉ lên trái, vuông góc với mũi tên xanh, ghi lambda bằng 0,5." so="5.2" chuThich="Bốn bạn sau khi trừ trung bình, và hai vector riêng của ma trận hiệp phương sai. Độ dài mũi tên tỷ lệ với căn bậc hai của trị riêng.">
+**Trục.** Ngang là giờ học, dọc là giờ ngủ, cả hai đã trừ trung bình nên tâm dữ liệu nằm ở gốc. Bốn chấm cam là bốn bạn.
+
+**Hai mũi tên.** Xanh là vector riêng có trị riêng lớn ($\lambda = 2$), đỏ là vector riêng có trị riêng nhỏ ($\lambda = 0{,}5$). Hai mũi tên vuông góc với nhau, điều luôn đúng với ma trận đối xứng.
+
+**Điều cần thấy.** Mũi tên xanh chỉ đúng hướng mà bốn chấm **trải ra xa nhất**: từ A, B ở góc dưới trái tới C, D ở góc trên phải. Trị riêng 2 là phương sai của dữ liệu theo hướng đó. Theo hướng đỏ, các chấm chỉ dao động ít, phương sai 0,5.
+
+Nếu buộc phải mô tả mỗi bạn bằng **một** con số thay vì hai, chiếu lên hướng xanh giữ lại nhiều thông tin nhất: $2/(2 + 0{,}5) = 80\%$ tổng phương sai. Đó chính là ý tưởng của PCA, phương pháp giảm chiều ở Chương 20.
+</HinhKetQua>
+
+<Khung loai="dao-sau" tieuDe="VÌ SAO CẦN EIGH">
+NumPy có hai hàm: `np.linalg.eig` cho ma trận bất kỳ, `np.linalg.eigh` cho ma trận đối xứng. Ma trận hiệp phương sai luôn đối xứng, nên dùng `eigh`.
+
+`eigh` nhanh hơn, luôn trả về trị riêng là số thực xếp tăng dần, và vector riêng vuông góc với nhau. `eig` với ma trận bất kỳ có thể trả về số phức và không xếp theo thứ tự nào.
+
+Dấu của vector riêng là tùy ý: $(0{,}707;\ 0{,}707)$ và $(-0{,}707;\ -0{,}707)$ đều là vector riêng hợp lệ, vì (5.3) vẫn đúng khi đổi dấu $\mathbf v$. Thư viện khác hoặc phiên bản khác có thể trả về dấu ngược lại.
+</Khung>
+
+<Khung loai="loi">
+**Đọc vector riêng theo hàng.** `vec[:, i]` (cột thứ $i$) mới là vector riêng ứng với `gia_tri[i]`. `vec[i]` là một hàng, không có ý nghĩa gì riêng.
+
+**Quên trừ trung bình trước khi tính hiệp phương sai.** Không trừ thì hướng lớn nhất chỉ về phía tâm dữ liệu tính từ gốc tọa độ, chứ không phải hướng dữ liệu trải rộng.
+</Khung>

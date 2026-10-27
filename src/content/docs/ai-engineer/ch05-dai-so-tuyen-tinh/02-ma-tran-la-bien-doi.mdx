@@ -1,0 +1,104 @@
+---
+title: Ma trận là một phép biến đổi
+description: Nhân ma trận với vector là biến vector thành vector khác. Kéo giãn, quay, ghép hai phép biến đổi, vì sao AB khác BA, và định thức đo diện tích bị co giãn bao nhiêu.
+---
+
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Hai cách nhìn một ma trận
+
+Chương 3 dùng bảng `X` để **lưu dữ liệu**: mỗi hàng một bạn. Trang này nhìn <Term id="ma-tran">ma trận</Term> theo cách thứ hai: như một **cỗ máy biến đổi**. Đưa vào một vector, nhận về một vector khác.
+
+$$
+M = \begin{pmatrix} 2 & 0 \\ 0 & 1 \end{pmatrix}, \qquad
+M \begin{pmatrix} x \\ y \end{pmatrix} = \begin{pmatrix} 2x + 0y \\ 0x + 1y \end{pmatrix} = \begin{pmatrix} 2x \\ y \end{pmatrix}
+$$
+
+Mỗi tọa độ của kết quả là tích vô hướng giữa một **hàng** của $M$ với vector đầu vào. Ma trận $M$ này nhân đôi tọa độ ngang, giữ nguyên tọa độ dọc: nó kéo giãn mặt phẳng theo chiều ngang.
+
+Một ma trận khác:
+
+$$
+R = \begin{pmatrix} 0 & -1 \\ 1 & 0 \end{pmatrix}, \qquad
+R \begin{pmatrix} x \\ y \end{pmatrix} = \begin{pmatrix} -y \\ x \end{pmatrix}
+$$
+
+$R$ quay mọi vector 90 độ ngược chiều kim đồng hồ: $(1, 0)$ thành $(0, 1)$, $(0, 1)$ thành $(-1, 0)$.
+
+<HinhKetQua src="/hinh/ch05/h1_bien_doi.svg" alt="Hai khung hình. Khung trái: hình vuông đơn vị nét đứt và ảnh của nó qua M là một hình chữ nhật rộng 2 cao 1. Khung phải: hình vuông đơn vị và ảnh qua R là một hình vuông nằm bên trái trục dọc." so="5.1" chuThich="Hình vuông đơn vị (nét đứt xanh) và ảnh của nó (cam) qua hai ma trận M và R.">
+**Trục.** Mỗi khung là một mặt phẳng tọa độ. Hình vuông nét đứt xanh là hình vuông đơn vị, có đỉnh $(0, 0)$, $(1, 0)$, $(1, 1)$, $(0, 1)$. Hình cam là nơi hình vuông đó đi tới sau khi nhân mọi điểm với ma trận.
+
+**Hai mũi tên.** Mũi tên đỏ là ảnh của $(1, 0)$, mũi tên xanh là ảnh của $(0, 1)$. Với $M$: đỏ dài ra thành $(2, 0)$, xanh giữ nguyên. Với $R$: đỏ quay lên thành $(0, 1)$, xanh quay sang trái thành $(-1, 0)$.
+
+**Điều cần thấy.** Hai mũi tên đó chính là **hai cột** của ma trận. Cột đầu của $M$ là $(2, 0)$, cột đầu của $R$ là $(0, 1)$. Đây là cách đọc nhanh một ma trận: cột thứ $j$ cho biết trục thứ $j$ bị đưa tới đâu. Biết hai trục đi đâu là biết mọi điểm đi đâu.
+</HinhKetQua>
+
+## Ghép hai phép biến đổi
+
+Kéo giãn rồi quay, hay quay rồi kéo giãn, có ra cùng một kết quả không?
+
+```python
+M = np.array([[2.0, 0.0], [0.0, 1.0]])   # kéo giãn ngang gấp đôi
+R = np.array([[0.0, -1.0], [1.0, 0.0]])  # quay 90 độ
+p = np.array([1.0, 1.0])
+print(M @ p, R @ p)          # từng phép riêng lẻ
+print(R @ (M @ p))           # kéo giãn TRƯỚC, quay SAU
+print((R @ M) @ p)           # ghép thành một ma trận R @ M rồi mới nhân: cùng kết quả
+print((M @ R) @ p)           # quay trước, kéo giãn sau: KHÁC
+```
+
+```text title="Output"
+[2. 1.] [-1.  1.]
+[-1.  2.]
+[-1.  2.]
+[-2.  1.]
+```
+
+Đọc từ phải sang trái: $R M \mathbf p$ nghĩa là "làm $M$ trước, rồi làm $R$". Điểm $(1, 1)$ kéo giãn thành $(2, 1)$, quay thành $(-1, 2)$.
+
+Dòng thứ ba cho thấy điều quan trọng: **ghép hai phép biến đổi là nhân hai ma trận**. $R \times M$ là một ma trận duy nhất làm cả hai việc. Đó là lý do phép nhân ma trận được định nghĩa kỳ quặc kiểu "hàng nhân cột": nó được sinh ra để làm đúng việc ghép này.
+
+Dòng cuối: đổi thứ tự là đổi kết quả, $(-2, 1)$ thay vì $(-1, 2)$. Với ma trận, **$AB$ nói chung khác $BA$**, khác hẳn phép nhân số.
+
+<Khung loai="truc-giac">
+Mặc áo rồi khoác áo khoác, khác với khoác áo khoác rồi mặc áo. Hai việc giống nhau, thứ tự khác nhau, kết quả khác nhau.
+
+Một mạng nơ-ron nhiều lớp (Chương 23) là một chuỗi phép biến đổi nối tiếp: lớp 1, rồi lớp 2, rồi lớp 3. Thứ tự các lớp là một phần của mô hình.
+</Khung>
+
+## Định thức: diện tích co giãn bao nhiêu
+
+```python
+print(np.linalg.det(M), np.linalg.det(R))                 # định thức của M và R
+print(np.linalg.det(np.array([[1.0, 2.0], [2.0, 4.0]])))  # một ma trận đặc biệt
+```
+
+```text title="Output"
+2.0 1.0
+0.0
+```
+
+Định thức <En>determinant</En> cho biết phép biến đổi nhân diện tích lên bao nhiêu lần. Với ma trận 2 nhân 2 $\begin{pmatrix} a & b \\ c & d \end{pmatrix}$, định thức là $ad - bc$.
+
+- $M$: $2 \times 1 - 0 \times 0 = 2$. Hình vuông diện tích 1 thành hình chữ nhật diện tích 2, đúng như hình 5.1.
+- $R$: $0 \times 0 - (-1) \times 1 = 1$. Quay không làm đổi diện tích.
+- Ma trận cuối: $1 \times 4 - 2 \times 2 = 0$. Hai cột $(1, 2)$ và $(2, 4)$ cùng nằm trên một đường thẳng (cột hai gấp đôi cột một), nên cả mặt phẳng bị **ép bẹp** thành một đường. Diện tích còn 0.
+
+Ma trận có định thức 0 là ma trận suy biến <En>singular</En>. Nó làm mất thông tin: nhiều điểm khác nhau bị ép vào cùng một chỗ, không có cách nào biết điểm gốc là điểm nào. Trang sau sẽ thấy hậu quả của điều này khi giải phương trình.
+
+<TuKiemTra
+	cauHoi="Ma trận [[3, 0], [0, 3]] làm gì với một hình vuông diện tích 1?"
+	luaChon={['Kéo giãn chỉ theo chiều ngang, diện tích 3', 'Phóng to đều mọi chiều, diện tích 9', 'Quay hình vuông, diện tích 1', 'Ép bẹp thành đường thẳng, diện tích 0']}
+	dapAn={1}
+	giaiThich="Hai cột (3, 0) và (0, 3): cả trục ngang lẫn trục dọc dài gấp 3. Định thức 3 × 3 - 0 × 0 = 9, nên diện tích gấp 9 lần."
+/>
+
+<Khung loai="loi">
+**Đọc sai thứ tự ghép.** $ABx$ là làm $B$ trước rồi mới làm $A$, vì $B$ đứng sát $x$ nhất. Đọc từ phải sang trái.
+
+**Nghĩ rằng `A @ B == B @ A`.** Chỉ đúng trong vài trường hợp đặc biệt, ví dụ khi một trong hai là ma trận đơn vị. Đừng đổi chỗ khi biến đổi công thức.
+</Khung>

@@ -1,0 +1,114 @@
+---
+title: Vector và tích vô hướng
+description: Vector là một điểm và cũng là một mũi tên. Cộng vector, độ dài, tích vô hướng và độ tương đồng cosine, tính tay rồi kiểm bằng NumPy.
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+<CanBietTruoc>
+Mảng NumPy, phép tính từng phần tử, `@` và shape (Chương 3). Định lý Pythago ở lớp 7.
+
+<Fragment slot="sau-chuong">
+Tính được độ dài, tích vô hướng, cosine giữa hai vector. Đọc một ma trận như một phép biến đổi và biết vì sao thứ tự nhân quan trọng. Giải hệ phương trình bằng NumPy và tự tìm lại nghiệm hồi quy của Chương 10 bằng phương trình chuẩn. Hiểu trị riêng, vector riêng qua hình ảnh, bước đệm cho PCA ở Chương 20.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch05_dai_so_tuyen_tinh.ipynb" />
+
+## Mỗi mẫu dữ liệu là một vector
+
+Ở Chương 3, bạn A được mô tả bằng hai con số: 1 giờ học, 2 giờ ngủ. Cặp số $(1, 2)$ đó là một <Term id="vector">vector</Term>.
+
+Có hai cách nhìn một vector, và cả hai đều cần:
+
+- **Một điểm** trong mặt phẳng: tọa độ ngang 1, tọa độ dọc 2.
+- **Một mũi tên** từ gốc $(0, 0)$ tới điểm đó: có hướng và có độ dài.
+
+Một bức ảnh 28 nhân 28 điểm ảnh là một vector 784 chiều. Một câu văn đi qua mô hình ngôn ngữ thành các vector 768 chiều. Không vẽ được 784 chiều, nhưng mọi phép tính dưới đây vẫn y nguyên, chỉ dài hơn. Vì vậy ta học trên vector 2 chiều, nơi vẽ được ra giấy.
+
+Trong toán, vector thường viết in đậm hoặc có mũi tên: $\mathbf u = (3, 4)$. Trong code, nó là một mảng NumPy một chiều.
+
+## Cộng và nhân với một số
+
+```python
+import numpy as np
+u = np.array([3.0, 4.0])
+v = np.array([4.0, 3.0])
+print(u + v, 2 * u)           # cộng từng tọa độ; nhân mọi tọa độ với 2
+```
+
+```text title="Output"
+[7. 7.] [6. 8.]
+```
+
+Cộng vector là cộng từng tọa độ: $(3 + 4,\ 4 + 3) = (7, 7)$. Về hình học: đặt đuôi mũi tên $\mathbf v$ vào đầu mũi tên $\mathbf u$, mũi tên từ gốc tới đầu mới là $\mathbf u + \mathbf v$.
+
+Nhân với một số thì kéo dài mũi tên (giữ hướng nếu số dương). $2\mathbf u = (6, 8)$ dài gấp đôi $\mathbf u$.
+
+## Độ dài
+
+Độ dài của $\mathbf u = (3, 4)$ là cạnh huyền của tam giác vuông có hai cạnh 3 và 4:
+
+$$
+\lVert \mathbf u \rVert = \sqrt{3^2 + 4^2} = \sqrt{25} = 5
+$$
+
+Với $n$ chiều, công thức chỉ dài thêm: $\lVert \mathbf u \rVert = \sqrt{u_1^2 + u_2^2 + \dots + u_n^2}$. Độ dài này còn gọi là chuẩn L2 <En>L2 norm</En>, và trong NumPy là `np.linalg.norm(u)`.
+
+## Tích vô hướng
+
+<Term id="tich-vo-huong">Tích vô hướng</Term> của hai vector là nhân từng cặp tọa độ rồi cộng lại:
+
+$$
+\mathbf u \cdot \mathbf v = u_1 v_1 + u_2 v_2 = 3 \times 4 + 4 \times 3 = 24
+$$
+
+Kết quả là **một con số**, không phải một vector. Trong NumPy, viết `u @ v`.
+
+Con số đó có nghĩa hình học rất đẹp:
+
+$$
+\mathbf u \cdot \mathbf v = \lVert \mathbf u \rVert\, \lVert \mathbf v \rVert \cos\theta \tag{5.1}
+$$
+
+trong đó $\theta$ là góc giữa hai mũi tên. Chia cả hai vế cho tích hai độ dài là ra **cosine** của góc:
+
+$$
+\cos\theta = \frac{\mathbf u \cdot \mathbf v}{\lVert \mathbf u \rVert\, \lVert \mathbf v \rVert} = \frac{24}{5 \times 5} = 0{,}96
+$$
+
+```python
+print(np.linalg.norm(u), u @ v)                                   # độ dài của u; tích vô hướng
+print(round(u @ v / (np.linalg.norm(u) * np.linalg.norm(v)), 4))  # cosine giữa u và v
+print(np.array([1.0, 0.0]) @ np.array([0.0, 1.0]))                # hai trục vuông góc
+```
+
+```text title="Output"
+5.0 24.0
+0.96
+0.0
+```
+
+<Khung loai="truc-giac">
+Cosine đo hai mũi tên **chỉ về cùng một hướng** tới đâu, không quan tâm chúng dài hay ngắn.
+
+- Bằng 1: cùng hướng hẳn.
+- Bằng 0: vuông góc, như trục ngang và trục dọc ở dòng cuối của output.
+- Bằng $-1$: ngược hướng hẳn.
+
+$\mathbf u = (3, 4)$ và $\mathbf v = (4, 3)$ lệch nhau một chút quanh đường chéo, nên cosine 0,96: rất gần cùng hướng.
+</Khung>
+
+Cosine là cách đo độ giống nhau phổ biến nhất trong AI. Ở Chương 40, hai từ có nghĩa gần nhau (như "vua" và "hoàng hậu") có vector với cosine cao. Ở Chương 51, hệ thống tìm kiếm tìm đoạn văn có vector cosine cao nhất với câu hỏi của bạn.
+
+Và mỗi nơ-ron ở Chương 23 tính đúng một tích vô hướng: $\mathbf w \cdot \mathbf x + b$, giữa vector trọng số và vector đầu vào. Đó là phép $wx + b$ của Chương 10, mở rộng ra nhiều đặc trưng.
+
+<Khung loai="loi">
+**Nhầm `u * v` với `u @ v`.** `u * v` nhân từng cặp và trả về **vector** `[12, 12]`. `u @ v` nhân từng cặp rồi **cộng lại**, trả về số 24.
+
+**Dùng tích vô hướng để so độ giống nhau khi các vector dài khác nhau.** Vector dài có tích vô hướng lớn với mọi thứ. Muốn so hướng, chia cho độ dài: đó chính là cosine.
+</Khung>

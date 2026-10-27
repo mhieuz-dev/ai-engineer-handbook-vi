@@ -1,0 +1,117 @@
+---
+title: Bài tập
+description: Ba bài tập đại số tuyến tính có đáp án chi tiết (cosine và khoảng cách giữa các sinh viên, giải hệ ba ẩn, trị riêng của phép kéo giãn và phép quay) và câu hỏi phỏng vấn.
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Tự tính tay trước những gì tính tay được, rồi chạy code trong notebook để kiểm tra.
+
+<BaiTap so="5.1">
+**Ai giống ai?** Lấy ba bạn trong Bảng 4.1, mỗi bạn là vector (giờ học, giờ ngủ): A $= (1, 7)$, I $= (7, 7)$, C $= (3, 8)$.
+
+1. Tính cosine giữa A và I, giữa A và C.
+2. Tính khoảng cách giữa A và I, giữa A và C (độ dài của hiệu hai vector).
+3. Theo cosine thì A giống ai hơn? Theo khoảng cách thì sao? Hai cách có đồng ý không?
+
+<Fragment slot="dap-an">
+
+**Cosine A và I.** Tích vô hướng $1 \times 7 + 7 \times 7 = 56$. Độ dài $\lVert A \rVert = \sqrt{50}$, $\lVert I \rVert = \sqrt{98}$. Cosine $= 56 / \sqrt{4900} = 56/70 = 0{,}8$.
+
+**Cosine A và C.** Tích vô hướng $3 + 56 = 59$. $\lVert C \rVert = \sqrt{73}$. Cosine $= 59/\sqrt{3650} \approx 0{,}9766$.
+
+**Khoảng cách.** $A - I = (-6, 0)$, độ dài 6. $A - C = (-2, -1)$, độ dài $\sqrt 5 \approx 2{,}2361$.
+
+```python
+A_, I_, C_ = np.array([1.0, 7.0]), np.array([7.0, 7.0]), np.array([3.0, 8.0])
+cos = lambda p, q: round(p @ q / np.linalg.norm(p) / np.linalg.norm(q), 4)
+print(cos(A_, I_), cos(A_, C_))
+print(np.linalg.norm(A_ - I_), round(np.linalg.norm(A_ - C_), 4))
+```
+
+```text title="Output"
+0.8 0.9766
+6.0 2.2361
+```
+
+Lần này hai cách đồng ý: A gần C hơn cả về hướng lẫn khoảng cách. Nhưng chúng đo hai thứ khác nhau. Cosine chỉ nhìn **tỷ lệ** giữa giờ học và giờ ngủ: A và C đều ngủ nhiều hơn hẳn học. Khoảng cách nhìn cả **độ lớn**. Một bạn học 2 giờ ngủ 14 giờ có cosine với A bằng đúng 1 (cùng tỷ lệ 1 : 7) nhưng cách A tới $\sqrt{50} \approx 7{,}07$ đơn vị. Chọn thước đo nào tùy bài toán: Chương 14 dùng khoảng cách cho KNN, Chương 40 dùng cosine cho vector từ.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="5.2">
+**Hệ ba ẩn.** Viết hệ sau dưới dạng $A\mathbf x = \mathbf b$ rồi giải bằng `np.linalg.solve`. Tính thêm định thức của $A$ để biết chắc hệ có nghiệm duy nhất.
+
+$$
+\begin{aligned}
+x + y + z &= 6 \\
+2y + 5z &= -4 \\
+2x + 5y - z &= 27
+\end{aligned}
+$$
+
+<Fragment slot="dap-an">
+
+Phương trình thứ hai không có $x$, nên hệ số của $x$ ở hàng đó là 0. Đừng quên số 0 này.
+
+```python
+A = np.array([[1, 1, 1], [0, 2, 5], [2, 5, -1]], dtype=float)
+b = np.array([6, -4, 27], dtype=float)
+print(np.linalg.solve(A, b), round(np.linalg.det(A), 6))
+```
+
+```text title="Output"
+[ 5.  3. -2.] -21.0
+```
+
+Nghiệm $x = 5$, $y = 3$, $z = -2$. Thử lại phương trình thứ ba: $10 + 15 + 2 = 27$.
+
+Định thức $-21$ khác 0 nên hệ có đúng một nghiệm. Dấu âm nghĩa là phép biến đổi lật ngược hướng của không gian (như soi gương), độ lớn 21 nghĩa là thể tích bị nhân 21 lần. `round` ở đây để bỏ sai số dấu phẩy động ở chữ số cuối.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="5.3">
+**Trị riêng của hai phép biến đổi quen thuộc.** Không chạy code, đoán trị riêng và vector riêng của ma trận kéo giãn $M = \begin{pmatrix} 2 & 0 \\ 0 & 1 \end{pmatrix}$ và ma trận quay $R = \begin{pmatrix} 0 & -1 \\ 1 & 0 \end{pmatrix}$ ở trang Ma trận là một phép biến đổi. Gợi ý: nhìn lại hình 5.1, hướng nào không bị xoay?
+
+<Fragment slot="dap-an">
+
+**$M$.** Trục ngang $(1, 0)$ bị kéo dài gấp 2, không xoay: vector riêng $(1, 0)$, trị riêng 2. Trục dọc $(0, 1)$ giữ nguyên: vector riêng $(0, 1)$, trị riêng 1. Ma trận đường chéo thì trị riêng chính là các số trên đường chéo.
+
+**$R$.** Quay 90 độ thì **mọi** hướng đều bị xoay. Không có vector thực nào nằm yên trên đường thẳng cũ, nên $R$ không có trị riêng thực.
+
+```python
+print(np.linalg.eigh(np.array([[2.0, 0.0], [0.0, 1.0]])).eigenvalues)
+print(np.linalg.eig(np.array([[0.0, -1.0], [1.0, 0.0]])).eigenvalues)
+```
+
+```text title="Output"
+[1. 2.]
+[0.+1.j 0.-1.j]
+```
+
+NumPy trả về hai trị riêng **phức** $i$ và $-i$ cho $R$ (chữ `j` là cách Python viết đơn vị ảo). Đây cũng là lý do trang trước dặn dùng `eigh` cho ma trận đối xứng: ma trận đối xứng luôn có trị riêng thực, còn ma trận bất kỳ như $R$ thì không.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Cosine similarity khác khoảng cách Euclid thế nào? Khi nào dùng cái nào?**
+
+<p lang="en"><em>How does cosine similarity differ from Euclidean distance, and when would you use each?</em></p>
+
+*Gợi ý:* cosine chỉ đo góc, bỏ qua độ lớn; Euclid đo cả độ lớn. Với embedding văn bản, độ dài vector thường phản ánh độ dài hay tần suất chứ không phải nghĩa, nên dùng cosine. Khi các vector đã chuẩn hóa về độ dài 1, hai cách cho cùng thứ hạng.
+
+**2. Vì sao không nên tính nghịch đảo ma trận để giải hệ phương trình?**
+
+<p lang="en"><em>Why shouldn't you invert a matrix to solve a linear system?</em></p>
+
+*Gợi ý:* tốn tính toán hơn và kém ổn định số hơn; dùng phân rã (LU, Cholesky, QR) như `solve` làm bên trong. Với hệ nhiều phương trình hơn ẩn, dùng bình phương tối thiểu (`lstsq`).
+
+**3. Trị riêng của ma trận hiệp phương sai cho biết gì?**
+
+<p lang="en"><em>What do the eigenvalues of a covariance matrix tell you?</em></p>
+
+*Gợi ý:* phương sai của dữ liệu theo từng hướng chính (vector riêng). Tỷ lệ trị riêng trên tổng là phần phương sai giải thích được, cơ sở để chọn số thành phần giữ lại trong PCA.
+</Khung>

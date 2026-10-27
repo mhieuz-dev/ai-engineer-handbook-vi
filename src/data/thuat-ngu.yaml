@@ -228,3 +228,18 @@
   tenTiengAnh: histogram
   giaiThich: Histogram chia trục giá trị thành các khoảng bằng nhau rồi đếm có bao nhiêu điểm dữ liệu rơi vào mỗi khoảng, vẽ thành các cột. Nhìn vào là biết dữ liệu tập trung ở đâu, lệch về bên nào.
   hocKy: ai-engineer/ch04-pandas-va-matplotlib
+- id: vector
+  ten: Vector
+  tenTiengAnh: vector
+  giaiThich: Vector là một dãy số có thứ tự, vừa là một điểm vừa là một mũi tên từ gốc tọa độ tới điểm đó. Mỗi mẫu dữ liệu trong ML là một vector, mỗi đặc trưng là một tọa độ.
+  hocKy: ai-engineer/ch05-dai-so-tuyen-tinh
+- id: tich-vo-huong
+  ten: Tích vô hướng
+  tenTiengAnh: dot product
+  giaiThich: Tích vô hướng của hai vector là nhân từng cặp tọa độ rồi cộng lại, ra một con số. Số đó lớn khi hai vector cùng hướng, bằng 0 khi chúng vuông góc. Mỗi nơ-ron tính một tích vô hướng giữa trọng số và đầu vào.
+  hocKy: ai-engineer/ch05-dai-so-tuyen-tinh
+- id: ma-tran
+  ten: Ma trận
+  tenTiengAnh: matrix
+  giaiThich: Ma trận là bảng số chữ nhật. Nó vừa là cách lưu cả bộ dữ liệu, vừa là một phép biến đổi biến vector này thành vector khác khi đem nhân với nó.
+  hocKy: ai-engineer/ch05-dai-so-tuyen-tinh
