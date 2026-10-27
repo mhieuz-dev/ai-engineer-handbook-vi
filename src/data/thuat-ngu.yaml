@@ -498,3 +498,13 @@
   tenTiengAnh: multilayer perceptron
   giaiThich: Mạng nhiều lớp (MLP) xếp nhiều lớp nơ-ron nối tiếp, đầu ra của lớp này là đầu vào của lớp sau. Các lớp giữa gọi là lớp ẩn. Đủ nơ-ron thì xấp xỉ được gần như mọi hàm liên tục.
   hocKy: ai-engineer/ch23-no-ron-mang-nhieu-lop
+- id: backpropagation
+  ten: Lan truyền ngược
+  tenTiengAnh: backpropagation
+  giaiThich: Lan truyền ngược tính gradient của loss theo mọi tham số của mạng bằng cách áp quy tắc chuỗi từ lớp ra ngược về lớp vào, dùng lại các giá trị đã tính ở lượt xuôi. Chi phí chỉ cỡ hai lần truyền xuôi, dù mạng có bao nhiêu tham số.
+  hocKy: ai-engineer/ch24-backpropagation
+- id: do-thi-tinh-toan
+  ten: Đồ thị tính toán
+  tenTiengAnh: computational graph
+  giaiThich: Đồ thị tính toán vẽ một phép tính lớn thành chuỗi các phép tính nhỏ nối với nhau, mỗi nút là một phép tính. Đi xuôi để ra kết quả, đi ngược để tính đạo hàm từng nút bằng quy tắc chuỗi.
+  hocKy: ai-engineer/ch24-backpropagation

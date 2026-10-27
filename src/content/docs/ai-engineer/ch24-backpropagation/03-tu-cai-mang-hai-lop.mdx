@@ -1,0 +1,95 @@
+---
+title: Tự cài mạng hai lớp
+description: Viết truyền xuôi, loss và truyền ngược cho mạng 2-32-1 bằng NumPy trong chưa tới hai mươi dòng, rồi kiểm ba gradient bằng sai phân trung tâm, khớp tới chữ số thứ tám.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Dữ liệu và khởi tạo
+
+Hai vầng trăng của Chương 14, 16, 18, 23. Mạng: 2 đầu vào, một lớp ẩn 32 nơ-ron ReLU, một nơ-ron ra sigmoid.
+
+```python
+from sklearn.datasets import make_moons
+from sklearn.model_selection import train_test_split
+Xm, ym = make_moons(300, noise=0.3, random_state=0)
+Xtr, Xte, ytr, yte = train_test_split(Xm, ym, test_size=0.3, random_state=0)
+r = np.random.default_rng(0)
+P = [r.normal(0, 1.0, (2, 32)),            # W1: (2, 32)
+     np.zeros(32),                         # b1: (32,)
+     r.normal(0, np.sqrt(2 / 32), (32, 1)),   # W2: (32, 1)
+     np.zeros(1)]                          # b2: (1,)
+print([p.shape for p in P], sum(p.size for p in P))
+```
+
+```text title="Output"
+[(2, 32), (32,), (32, 1), (1,)] 129
+```
+
+129 tham số, đúng như mạng `(32,)` ở Chương 23.
+
+Trọng số khởi tạo **ngẫu nhiên** với độ lệch chuẩn $\sqrt{2/d}$ ($d$ là số đầu vào của lớp). Nếu khởi tạo toàn 0, mọi nơ-ron ẩn tính cùng một thứ, nhận cùng một gradient, và mãi mãi giống hệt nhau: 32 nơ-ron chỉ như một. Con số $\sqrt{2/d}$ (khởi tạo He) giữ cho kích hoạt không phình to hay co lại qua các lớp; Chương 26 sẽ giải thích.
+
+## Ba hàm
+
+```python
+def truyen_xuoi(P, X):
+    W1, b1, W2, b2 = P
+    Z1 = X @ W1 + b1                            # (n, 32)
+    A1 = np.maximum(0, Z1)                      # ReLU
+    p = 1 / (1 + np.exp(-(A1 @ W2 + b2)))       # (n, 1) qua sigmoid
+    return Z1, A1, p.ravel()                    # giữ Z1, A1 cho lượt ngược
+
+def mat_mat(P, X, y):
+    p = np.clip(truyen_xuoi(P, X)[2], 1e-12, 1 - 1e-12)          # tránh log(0), Chương 11
+    return float(-np.mean(y * np.log(p) + (1 - y) * np.log(1 - p)))
+
+def truyen_nguoc(P, X, y):
+    W1, b1, W2, b2 = P
+    Z1, A1, p = truyen_xuoi(P, X)
+    dZ2 = (p - y)[:, None] / len(y)             # (24.3): (n, 1)
+    dW2, db2 = A1.T @ dZ2, dZ2.sum(0)           # (24.1) cho lớp ra
+    dA1 = dZ2 @ W2.T                            # gửi về lớp ẩn: (n, 32)
+    dZ1 = dA1 * (Z1 > 0)                        # (24.2) qua ReLU
+    dW1, db1 = X.T @ dZ1, dZ1.sum(0)            # (24.1) cho lớp ẩn
+    return [dW1, db1, dW2, db2]
+```
+
+Đếm dòng của `truyen_nguoc`: bảy phép tính, mỗi phép là một công thức của trang trước. Lượt ngược đi đúng thứ tự ngược với lượt xuôi: lớp ra trước, lớp ẩn sau.
+
+## Gradient check
+
+Chương 6 dặn: viết công thức gradient xong, **luôn** kiểm bằng sai phân. Chọn ba tham số bất kỳ, nhích từng cái một:
+
+```python
+G = truyen_nguoc(P, Xtr, ytr)
+h = 1e-5
+for k, i in [(0, (0, 0)), (2, (5, 0)), (1, (3,))]:          # một ô của W1, một ô của W2, một ô của b1
+    cu = P[k][i]
+    P[k][i] = cu + h; lp = mat_mat(P, Xtr, ytr)
+    P[k][i] = cu - h; lm = mat_mat(P, Xtr, ytr)
+    P[k][i] = cu                                              # trả lại giá trị cũ
+    print(k, i, round(float(G[k][i]), 8), round((lp - lm) / (2 * h), 8))
+```
+
+```text title="Output"
+0 (0, 0) -0.01272586 -0.01272586
+2 (5, 0) -0.05968156 -0.05968156
+1 (3,) 0.09515478 0.09515478
+```
+
+Công thức và sai phân khớp tới chữ số thứ tám ở cả ba chỗ. Lượt ngược đúng.
+
+<Khung loai="vi-sao" tieuDe="KIỂM TRƯỚC KHI HUẤN LUYỆN">
+Một gradient sai **không** làm chương trình báo lỗi. Loss vẫn có thể giảm (gradient sai dấu một phần, hay sai một hệ số, vẫn thường chỉ về hướng xuống), chỉ là chậm hơn, hoặc dừng ở chỗ không phải đáy. Không có gradient check, bạn có thể mất cả ngày chỉnh learning rate mà không biết lỗi nằm ở dòng `X.T @ dZ1`.
+
+Khi tự viết một lớp mới trong PyTorch (Chương 25), `torch.autograd.gradcheck` làm đúng việc này.
+</Khung>
+
+<Khung loai="loi">
+**Quên trả lại giá trị cũ sau khi nhích.** Không có dòng `P[k][i] = cu`, mỗi lần kiểm làm hỏng một tham số, các lần kiểm sau sai theo.
+
+**Kiểm ở chỗ ReLU gãy.** Nếu một $Z_1$ rơi đúng vào khoảng $(-h, h)$, sai phân bước qua chỗ gãy của ReLU và lệch khỏi công thức. Hiếm gặp, nhưng nếu gradient check lệch nhẹ ở đúng một tham số, đó có thể là lý do.
+</Khung>

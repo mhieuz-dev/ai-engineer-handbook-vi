@@ -1,0 +1,62 @@
+---
+title: Huấn luyện mạng tự cài
+description: Ba nghìn bước gradient descent với mạng NumPy tự viết, loss từ 1,17 xuống 0,15, test 93% trên hai vầng trăng. Vì sao lượt ngược chỉ tốn cỡ hai lần lượt xuôi, và phần nào chương sau sẽ được tự động hóa.
+---
+
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Vòng huấn luyện
+
+Đúng năm ô của vòng lặp ở Chương 10: tham số, dự đoán, đo sai số, tính gradient, cập nhật.
+
+```python
+dung = lambda X, y: float(np.mean((truyen_xuoi(P, X)[2] > 0.5) == y))     # độ chính xác
+for buoc in range(3001):
+    if buoc in (0, 100, 1000, 3000):
+        print(buoc, round(mat_mat(P, Xtr, ytr), 4), round(dung(Xtr, ytr), 4), round(dung(Xte, yte), 4))
+    G = truyen_nguoc(P, Xtr, ytr)
+    P = [p - 0.5 * g for p, g in zip(P, G)]     # learning rate 0,5, cả lô 210 điểm
+```
+
+```text title="Output"
+0 1.1723 0.2095 0.3111
+100 0.312 0.8476 0.8667
+1000 0.1673 0.9381 0.9444
+3000 0.1474 0.9429 0.9333
+```
+
+<HinhKetQua src="/hinh/ch24/h2_loss.svg" alt="Đường cross-entropy trên train theo số bước, trục ngang thang log từ 1 tới 3000. Bắt đầu khoảng 1,17, rơi nhanh dưới đường log 2 chỉ sau 2 bước, xuống khoảng 0,37 ở bước 10, đi gần ngang tới bước 100, rồi giảm tiếp xuống khoảng 0,15 ở bước 3000." so="24.2" chuThich="Cross-entropy trên 210 điểm train của mạng 2-32-1 tự cài, theo số bước gradient descent. Đường chấm là log 2, mức của mô hình đoán 50-50.">
+**Lúc đầu.** Loss 1,17, **cao hơn** $\log 2 \approx 0{,}693$ của việc đoán 50-50 (Chương 11): trọng số ngẫu nhiên làm mạng đoán sai mà tự tin. Độ chính xác chỉ 21% trên train, còn **tệ hơn** tung đồng xu: ranh giới ngẫu nhiên lúc đầu tình cờ nghiêng về phía ngược lại.
+
+**Vài bước đầu.** Loss rơi dưới $\log 2$ rất nhanh: chỉ cần học được "trung bình thì nghiêng về đâu" là đã hơn tung đồng xu.
+
+**Từ 100 tới 1000 bước.** Đoạn giảm thứ hai: mạng uốn ranh giới theo hình hai vầng trăng. Test lên 94,4% ở bước 1000.
+
+**Tới 3000 bước.** Loss train còn giảm chút ít (0,167 xuống 0,147), test lại nhích xuống 93,3%: bắt đầu học thuộc vài điểm nhiễu. Đây là chỗ early stopping (Chương 13, 26) sẽ dừng.
+</HinhKetQua>
+
+Mạng hai lớp tự viết bằng chưa đầy hai mươi dòng NumPy, không dùng một hàm học máy nào, đạt 93 tới 94% trên hai vầng trăng: ngang `MLPClassifier`, SVM RBF và random forest ở các chương trước.
+
+## Vì sao lượt ngược rẻ
+
+Đếm phép nhân ma trận, phần tốn kém nhất:
+
+- **Lượt xuôi:** `X @ W1` và `A1 @ W2`. Hai phép.
+- **Lượt ngược:** `A1.T @ dZ2`, `dZ2 @ W2.T`, `X.T @ dZ1`. Ba phép, cùng cỡ với hai phép xuôi.
+
+Mỗi lớp ở lượt ngược cần **hai** phép nhân (một cho $dW$, một cho $dX$) so với **một** ở lượt xuôi. Tổng chi phí lượt ngược cỡ hai lần lượt xuôi, **bất kể** có bao nhiêu tham số. So với sai phân: 129 tham số thì cần $2 \times 129 = 258$ lần lượt xuôi cho một gradient. Với một tỷ tham số, lan truyền ngược nhanh hơn khoảng một tỷ lần.
+
+<Khung loai="vi-sao" tieuDe="CHƯƠNG SAU TỰ ĐỘNG HÓA CÁI GÌ">
+Trong code ở trên, ta viết tay hai thứ: lượt xuôi (`truyen_xuoi`) và lượt ngược (`truyen_nguoc`). Lượt ngược **suy ra được hoàn toàn** từ lượt xuôi: mỗi phép tính của lượt xuôi (nhân ma trận, cộng, ReLU, sigmoid, log) đều có đạo hàm cục bộ đã biết.
+
+PyTorch (Chương 25) ghi lại đồ thị tính toán trong lúc bạn chạy lượt xuôi, rồi tự đi ngược bằng `loss.backward()`. Đó là **automatic differentiation** (vi phân tự động). Bạn chỉ còn viết lượt xuôi, và gradient check gần như không còn cần thiết. Nhưng khi kết quả kỳ lạ, hiểu chương này là cách duy nhất để biết bên trong đang xảy ra chuyện gì.
+</Khung>
+
+<Khung loai="loi">
+**Learning rate quá lớn.** Với learning rate 5 thay vì 0,5, loss của mạng này nhảy loạn hoặc thành `nan` (đúng hình 8.1 của Chương 8). Gặp `nan`, giảm learning rate trước tiên.
+
+**Huấn luyện mà không đo test định kỳ.** Loss train luôn giảm; chỉ test (hoặc validation) cho biết lúc nào bắt đầu học thuộc. Đoạn từ bước 1000 tới 3000 ở trên là ví dụ: train tốt hơn, test kém đi.
+</Khung>

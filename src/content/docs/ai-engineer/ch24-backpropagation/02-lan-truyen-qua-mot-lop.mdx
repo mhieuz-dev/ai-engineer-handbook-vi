@@ -1,0 +1,76 @@
+---
+title: Lan truyền ngược qua một lớp
+description: Dẫn công thức gradient cho một lớp dày đặc dưới dạng nhân ma trận - dW = Xᵀ · dZ, db = tổng dZ theo cột, dX = dZ · Wᵀ - và đạo hàm của ReLU là một mặt nạ 0 và 1. Đọc shape để không bao giờ nhầm.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Ký hiệu
+
+Viết $dZ$ thay cho $\frac{\partial L}{\partial Z}$ cho gọn: $dZ$ là ma trận cùng shape với $Z$, mỗi ô là đạo hàm của loss theo ô tương ứng của $Z$.
+
+Một lớp dày đặc với lô $n$ mẫu, $d$ đầu vào, $m$ nơ-ron: $Z = XW + \mathbf b$, với $X$ shape `(n, d)`, $W$ shape `(d, m)`, $Z$ shape `(n, m)`. Giả sử lớp phía sau đã gửi về $dZ$. Cần ba thứ: $dW$ (để cập nhật trọng số), $d\mathbf b$, và $dX$ (để gửi tiếp về lớp phía trước).
+
+## Ba công thức
+
+$$
+dW = X^\top dZ, \qquad d\mathbf b = \sum_{i=1}^{n} dZ_{i,:}, \qquad dX = dZ\, W^\top \tag{24.1}
+$$
+
+**Kiểm bằng shape.** $dW$ phải cùng shape với $W$, tức `(d, m)`. $X^\top$ là `(d, n)`, $dZ$ là `(n, m)`: tích là `(d, m)`. Đúng. $dX$ phải là `(n, d)`: $dZ$ `(n, m)` nhân $W^\top$ `(m, d)` ra `(n, d)`. Đúng.
+
+**Vì sao.** Ô $Z_{ik} = \sum_j X_{ij} W_{jk} + b_k$. Trọng số $W_{jk}$ xuất hiện ở **mọi** mẫu $i$, nhân với $X_{ij}$. Theo quy tắc tổng của Chương 6, $\frac{\partial L}{\partial W_{jk}} = \sum_i dZ_{ik} X_{ij}$: đó chính là ô $(j, k)$ của $X^\top dZ$. Hệ số chặn $b_k$ có mặt ở mọi mẫu với hệ số 1, nên gradient của nó là tổng cột $k$ của $dZ$.
+
+So với một nơ-ron ở trang trước: $\partial L/\partial w = \partial L/\partial z \cdot x$. Công thức (24.1) là đúng phép đó, viết cho cả ma trận và cả lô một lúc.
+
+## Qua hàm kích hoạt
+
+Hàm kích hoạt áp từng phần tử: $A = f(Z)$. Đạo hàm cũng từng phần tử:
+
+$$
+dZ = dA \odot f'(Z) \tag{24.2}
+$$
+
+$\odot$ là nhân từng phần tử (phép `*` của NumPy). Với ReLU, $f'(z) = 1$ khi $z > 0$ và $0$ khi $z \le 0$: $f'(Z)$ là một **mặt nạ** 0 và 1. Lượt ngược qua ReLU chỉ là cho gradient đi qua ở những ô dương, chặn lại ở những ô âm.
+
+```python
+Z = np.array([[1.5, -0.3], [-2.0, 0.7]])     # đầu vào của ReLU ở lượt xuôi
+dA = np.array([[0.2, 0.4], [0.1, -0.5]])     # gradient từ lớp sau gửi về
+print((Z > 0).astype(int))                   # mặt nạ: đạo hàm của ReLU
+print(dA * (Z > 0))                          # công thức (24.2)
+```
+
+```text title="Output"
+[[1 0]
+ [0 1]]
+[[ 0.2  0. ]
+ [ 0.  -0.5]]
+```
+
+Hai ô có $Z$ âm bị chặn gradient về 0. Một nơ-ron ReLU mà với **mọi** mẫu đều cho $Z \le 0$ thì không bao giờ nhận được gradient, không bao giờ học được nữa: đó là hiện tượng nơ-ron "chết".
+
+## Lớp ra sigmoid với cross-entropy
+
+Chương 11 đã dẫn: sigmoid ghép cross-entropy cho đạo hàm theo $z$ gọn là $p - y$. Với loss là **trung bình** trên $n$ mẫu, chia thêm $n$:
+
+$$
+dZ_{\text{ra}} = \frac{1}{n}(\mathbf p - \mathbf y) \tag{24.3}
+$$
+
+Đây là điểm bắt đầu của lượt ngược cho mạng phân loại nhị phân. Không cần đi qua từng bước $\partial L/\partial p$ rồi $\partial p/\partial z$; phần triệt tiêu đẹp đẽ của Chương 11 đã làm sẵn.
+
+<TuKiemTra
+	cauHoi="Một lớp có X shape (64, 100) và W shape (100, 10). dW có shape gì?"
+	luaChon={['(64, 10)', '(100, 10)', '(10, 100)', '(64, 100)']}
+	dapAn={1}
+	giaiThich="dW luôn cùng shape với W. Kiểm: Xᵀ là (100, 64), dZ là (64, 10), tích là (100, 10)."
+/>
+
+<Khung loai="loi">
+**Quên chuyển vị.** Viết `X @ dZ` thay vì `X.T @ dZ` là báo lỗi shape (nếu may) hoặc ra kết quả sai im lặng (nếu $n = d$). Luôn kiểm shape của gradient bằng shape của tham số.
+
+**Quên chia cho $n$ ở đâu đó.** Nếu loss là trung bình, $1/n$ phải xuất hiện đúng **một** lần trong lượt ngược, thường ở $dZ$ của lớp ra. Chia hai lần hoặc quên chia là gradient lệch $n$ lần, learning rate cũ thành quá lớn hoặc quá nhỏ.
+</Khung>

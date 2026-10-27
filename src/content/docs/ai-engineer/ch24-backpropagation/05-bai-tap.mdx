@@ -1,0 +1,99 @@
+---
+title: Bài tập
+description: Ba bài tập lan truyền ngược có đáp án chi tiết (tính tay gradient khi nhãn đổi thành 0, đọc shape mọi gradient của mạng 784-128-10, khởi tạo mọi trọng số bằng nhau làm 32 nơ-ron thành một) và câu hỏi phỏng vấn.
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Tính tay trước, rồi chạy code trong notebook để kiểm tra.
+
+<BaiTap so="24.1">
+**Nhãn đổi thành 0.** Nơ-ron ở trang 1 ($x = 2$, $w = 0{,}5$, $b = 0{,}1$, $a \approx 0{,}7503$), nhưng nhãn giờ là $y = 0$. Tính tay $\partial L/\partial a$, $\partial L/\partial z$, $\partial L/\partial w$. Dấu của gradient theo $w$ đổi thế nào, và vì sao hợp lý?
+
+<Fragment slot="dap-an">
+
+Lượt xuôi không đổi, chỉ lượt ngược thay $y$:
+
+- $\partial L/\partial a = 2(0{,}7503 - 0) \approx 1{,}5005$.
+- $\partial L/\partial z = 1{,}5005 \times 0{,}1874 \approx 0{,}2812$.
+- $\partial L/\partial w = 0{,}2812 \times 2 \approx 0{,}5623$.
+
+```python
+y0 = 0.0
+dz0 = 2 * (a - y0) * a * (1 - a)
+print(round(2 * (a - y0), 4), round(dz0, 4), round(dz0 * x, 4))
+```
+
+```text title="Output"
+1.5005 0.2812 0.5623
+```
+
+Gradient theo $w$ đổi từ $-0{,}1872$ thành $+0{,}5623$. Hợp lý: đầu ra 0,75 giờ **quá cao** so với nhãn 0, nên phải giảm $w$ (gradient dương, bước ngược gradient là giảm). Gradient cũng **lớn hơn** gấp ba: sai 0,75 nặng hơn sai 0,25, và bình phương phóng to khác biệt đó.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="24.2">
+**Shape của mọi gradient.** Mạng 784-128-10 (Chương 23, bỏ lớp 64) với lô 64 ảnh. Viết shape của $X$, $Z_1$, $W_1$, $dW_1$, $d\mathbf b_1$, $dZ_2$, $W_2$, $dW_2$, $dA_1$.
+
+<Fragment slot="dap-an">
+
+**Bảng 24.1.** Shape trong lượt xuôi và lượt ngược.
+
+| Đại lượng | Shape | Vì sao |
+|:---|:---:|:---|
+| $X$ | (64, 784) | 64 ảnh, 784 điểm ảnh |
+| $W_1$, $dW_1$ | (784, 128) | gradient cùng shape tham số |
+| $\mathbf b_1$, $d\mathbf b_1$ | (128,) | tổng $dZ_1$ theo 64 hàng |
+| $Z_1$, $A_1$, $dA_1$ | (64, 128) | mỗi ảnh, mỗi nơ-ron ẩn |
+| $W_2$, $dW_2$ | (128, 10) | |
+| $Z_2$, $dZ_2$ | (64, 10) | mỗi ảnh, mỗi lớp chữ số |
+
+Kiểm một chỗ: $dW_1 = X^\top dZ_1$ là `(784, 64) @ (64, 128) = (784, 128)`. Mọi gradient của tham số có shape **không phụ thuộc** cỡ lô 64: số mẫu bị cộng dồn vào trong phép nhân $X^\top dZ$. Đó là lý do đổi cỡ lô không cần đổi gì khác trong code.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="24.3">
+**Khởi tạo đối xứng.** Khởi tạo mọi trọng số của mạng 2-32-1 bằng cùng một số 0,1 (hệ số chặn bằng 0), huấn luyện 3000 bước như trang 4. Sau huấn luyện, 32 cột của $W_1$ có bao nhiêu giá trị khác nhau? Độ chính xác test bao nhiêu?
+
+<Fragment slot="dap-an">
+
+```python
+Pd = [np.full((2, 32), 0.1), np.zeros(32), np.full((32, 1), 0.1), np.zeros(1)]
+for _ in range(3000):
+    Pd = [p - 0.5 * g for p, g in zip(Pd, truyen_nguoc(Pd, Xtr, ytr))]
+print(np.unique(Pd[0][0].round(6)).size, np.unique(Pd[0][1].round(6)).size, round(float(np.mean((truyen_xuoi(Pd, Xte)[2] > 0.5) == yte)), 4))
+```
+
+```text title="Output"
+1 1 0.8333
+```
+
+Sau 3000 bước, mỗi hàng của $W_1$ chỉ có **một** giá trị duy nhất lặp lại 32 lần: 32 nơ-ron ẩn vẫn giống hệt nhau. Bắt đầu giống nhau thì chúng nhận cùng gradient ở mọi bước, nên mãi mãi giống nhau. Mạng 129 tham số hoạt động như một mạng chỉ có **một** nơ-ron ẩn, và chỉ đạt 83% thay vì 93%.
+
+Đây là lý do trọng số phải khởi tạo **ngẫu nhiên**: để phá vỡ sự đối xứng, cho mỗi nơ-ron một điểm xuất phát riêng để học một thứ riêng.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Giải thích backpropagation.**
+
+<p lang="en"><em>Explain backpropagation.</em></p>
+
+*Gợi ý:* áp quy tắc chuỗi trên đồ thị tính toán, đi từ loss ngược về đầu vào, mỗi nút nhân gradient nhận được với đạo hàm cục bộ; dùng lại giá trị đã lưu ở lượt xuôi; chi phí cỡ hai lần lượt xuôi bất kể số tham số. Nêu công thức $dW = X^\top dZ$.
+
+**2. Vì sao không khởi tạo mọi trọng số bằng 0?**
+
+<p lang="en"><em>Why not initialize all weights to zero?</em></p>
+
+*Gợi ý:* mọi nơ-ron trong một lớp nhận cùng gradient và giữ đối xứng mãi mãi, lớp chỉ như một nơ-ron. Khởi tạo ngẫu nhiên với thang đo phù hợp (Xavier, He) để phá đối xứng và giữ phương sai kích hoạt ổn định.
+
+**3. Vì sao huấn luyện tốn bộ nhớ hơn suy luận?**
+
+<p lang="en"><em>Why does training use more memory than inference?</em></p>
+
+*Gợi ý:* lượt ngược cần kích hoạt của mọi lớp ở lượt xuôi, phải giữ lại tới khi tính xong gradient; còn phải lưu gradient và trạng thái của optimizer (Adam giữ hai trung bình động cho mỗi tham số). Gradient checkpointing đổi tính toán lấy bộ nhớ.
+</Khung>

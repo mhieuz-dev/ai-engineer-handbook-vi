@@ -1,0 +1,88 @@
+---
+title: Đồ thị tính toán
+description: Vẽ một nơ-ron thành chuỗi phép tính nhỏ, đi xuôi để ra loss, đi ngược để nhân dồn đạo hàm cục bộ. Tính tay gradient theo w ra -0,1872 và kiểm bằng sai phân.
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+<CanBietTruoc>
+Quy tắc chuỗi và gradient check (Chương 6). Gradient (p - y)x của cross-entropy (Chương 11). Lượt truyền xuôi của mạng nhiều lớp (Chương 23).
+
+<Fragment slot="sau-chuong">
+Vẽ đồ thị tính toán và lan truyền ngược bằng tay. Dẫn ra công thức gradient cho một lớp dày đặc dưới dạng nhân ma trận. Tự cài một mạng hai lớp bằng NumPy, kiểm từng gradient bằng sai phân, rồi huấn luyện nó trên hai vầng trăng tới 93% mà không dùng thư viện học máy nào.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch24_backpropagation.ipynb" />
+
+## Bài toán: gradient của hàng triệu tham số
+
+Chương 23 để `MLPClassifier` tự tìm trọng số. Bên trong, nó làm gradient descent: cần đạo hàm của loss theo **mọi** trọng số. Mạng hai lớp 32 nơ-ron có 1185 tham số; một mô hình ngôn ngữ có hàng tỷ.
+
+Chương 6 có hai cách tính gradient. Sai phân cần chạy cả mạng **hai lần cho mỗi tham số**: với một tỷ tham số là hai tỷ lần chạy mạng cho một bước. Quá chậm. Công thức thì nhanh, nhưng viết công thức đạo hàm cho cả một mạng sâu bằng tay là không tưởng.
+
+<Term id="backpropagation">Lan truyền ngược</Term> là cách tính gradient của mọi tham số với chi phí chỉ khoảng **hai lần** chạy mạng, bằng cách áp quy tắc chuỗi một cách có hệ thống trên <Term id="do-thi-tinh-toan">đồ thị tính toán</Term>.
+
+## Một nơ-ron, vẽ thành đồ thị
+
+Một nơ-ron sigmoid với một đầu vào, loss bình phương: $x = 2$, $w = 0{,}5$, $b = 0{,}1$, nhãn $y = 1$. Tách thành từng bước nhỏ:
+
+$$
+z = w x + b, \qquad a = \sigma(z), \qquad L = (a - y)^2
+$$
+
+**Lượt xuôi.** Tính từ trái sang phải: $z = 1 + 0{,}1 = 1{,}1$; $a = \sigma(1{,}1) \approx 0{,}7503$; $L = (0{,}7503 - 1)^2 \approx 0{,}0624$.
+
+**Lượt ngược.** Đi từ phải sang trái. Mỗi nút nhân đạo hàm nhận được từ phía sau với **đạo hàm cục bộ** của chính nó:
+
+- $\frac{\partial L}{\partial L} = 1$ (điểm bắt đầu).
+- $\frac{\partial L}{\partial a} = 2(a - y) = 2 \times (-0{,}2497) \approx -0{,}4995$.
+- $\frac{\partial L}{\partial z} = \frac{\partial L}{\partial a} \cdot \sigma'(z) = -0{,}4995 \times a(1 - a) = -0{,}4995 \times 0{,}1874 \approx -0{,}0936$.
+- $\frac{\partial L}{\partial w} = \frac{\partial L}{\partial z} \cdot x = -0{,}0936 \times 2 \approx -0{,}1872$, và $\frac{\partial L}{\partial b} = \frac{\partial L}{\partial z} \cdot 1 \approx -0{,}0936$.
+
+<HinhKetQua src="/hinh/ch24/h1_do_thi_tinh.svg" alt="Sơ đồ các ô nối bằng mũi tên từ trái sang phải. Ô w bằng 0,5 và ô x bằng 2 cùng vào ô z bằng w x cộng b bằng 1,1, ô b bằng 0,1 vào ô z từ dưới. Ô z vào ô a bằng sigma z bằng 0,7503, rồi vào ô L bằng a trừ y bình phương bằng 0,0624. Chữ đỏ cạnh mỗi ô ghi đạo hàm: đạo hàm L theo L bằng 1, theo a bằng -0,4995, theo z bằng -0,0936, theo w bằng -0,1872, theo b bằng -0,0936." so="24.1" chuThich="Đồ thị tính toán của một nơ-ron. Chữ xanh trong ô là giá trị ở lượt xuôi, chữ đỏ là đạo hàm của L theo nút đó ở lượt ngược.">
+**Đọc hình.** Mũi tên chỉ chiều xuôi: dữ liệu chảy từ trái sang phải. Lượt ngược đi theo chiều ngược lại, bắt đầu từ $\partial L/\partial L = 1$ ở ô cuối.
+
+**Điều cần thấy.** Mỗi ô chỉ cần biết hai thứ: đạo hàm gửi tới từ phía sau, và đạo hàm cục bộ của phép tính của chính nó (ô sigmoid biết $\sigma' = a(1 - a)$, ô nhân biết đạo hàm theo $w$ là $x$). Không ô nào cần biết cả mạng trông thế nào. Đó là lý do lan truyền ngược áp dụng được cho mạng tùy ý: chỉ cần mỗi phép tính biết đạo hàm cục bộ của nó.
+
+**Dùng lại lượt xuôi.** Ô sigmoid dùng lại $a = 0{,}7503$ đã tính ở lượt xuôi để có $a(1 - a)$, không tính lại $\sigma$. Ô nhân dùng lại $x$. Lượt ngược cần **lưu** các giá trị trung gian của lượt xuôi.
+</HinhKetQua>
+
+```python
+import numpy as np
+x, w, b, y = 2.0, 0.5, 0.1, 1.0
+z = w * x + b                               # lượt xuôi
+a = 1 / (1 + np.exp(-z))
+L = (a - y) ** 2
+dL_da = 2 * (a - y)                         # lượt ngược: nhân dồn đạo hàm cục bộ
+dL_dz = dL_da * a * (1 - a)
+dL_dw, dL_db = dL_dz * x, dL_dz
+print(round(z, 4), round(a, 4), round(L, 4), round(dL_dz, 4), round(dL_dw, 4), round(dL_db, 4))
+h = 1e-5
+f = lambda w_: (1 / (1 + np.exp(-(w_ * x + b))) - y) ** 2        # L như một hàm của w
+print(round((f(w + h) - f(w - h)) / (2 * h), 4))                  # gradient check của Chương 6
+```
+
+```text title="Output"
+1.1 0.7503 0.0624 -0.0936 -0.1872 -0.0936
+-0.1872
+```
+
+Sai phân trung tâm cho đúng $-0{,}1872$. Gradient âm: tăng $w$ thì loss giảm, đúng vì $a = 0{,}75$ đang thấp hơn nhãn 1.
+
+<Khung loai="truc-giac">
+Lan truyền ngược là quy tắc chuỗi của Chương 6, nhưng làm theo thứ tự **thông minh**. Bánh răng của Chương 6: muốn biết tay quay đầu ảnh hưởng tới bánh răng cuối bao nhiêu, nhân các tỷ số truyền dọc theo chuỗi.
+
+Đi từ cuối về đầu, mỗi bước chỉ nhân thêm một tỷ số. Khi tới một nút mà nhiều tham số cùng đi qua (như $z$ ở đây, cả $w$ và $b$ đều qua nó), đạo hàm tới nút đó chỉ cần tính **một lần** rồi dùng chung. Với mạng sâu, đó là khác biệt giữa tính hàng tỷ chuỗi riêng lẻ và tính một lượt duy nhất.
+</Khung>
+
+<Khung loai="loi">
+**Quên lưu giá trị lượt xuôi.** Lượt ngược cần $a$, $x$ và mọi giá trị trung gian. Đây là lý do huấn luyện tốn bộ nhớ GPU hơn hẳn chỉ chạy dự đoán: phải giữ kích hoạt của mọi lớp cho tới khi lượt ngược đi qua.
+
+**Đi ngược sai thứ tự.** Phải có $\partial L/\partial a$ trước mới tính được $\partial L/\partial z$. Lượt ngược đi theo thứ tự ngược hẳn với lượt xuôi.
+</Khung>
