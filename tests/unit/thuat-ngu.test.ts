@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import yaml from 'js-yaml';
 import { CHUONG } from '../../src/data/chuong';
-import { trichIdThuatNgu, dungLinkNguoc, linkHocKy } from '../../src/lib/thuat-ngu';
+import { trichIdThuatNgu, dungLinkNguoc, linkHocKy, hienTenTiengAnh } from '../../src/lib/thuat-ngu';
 
 describe('trichIdThuatNgu', () => {
 	it('lấy id theo thứ tự, không trùng', () => {
@@ -61,7 +61,31 @@ describe('linkHocKy', () => {
 	});
 });
 
+describe('hienTenTiengAnh', () => {
+	it('chữ hiện đã là tên tiếng Anh thì không lặp lại', () => {
+		expect(hienTenTiengAnh('learning rate', 'learning rate')).toBe(false);
+		expect(hienTenTiengAnh('Gradient', 'gradient')).toBe(false);
+		expect(hienTenTiengAnh('  Gradient   descent ', 'gradient descent')).toBe(false);
+	});
+	it('chữ tiếng Việt khác tên tiếng Anh thì hiện', () => {
+		expect(hienTenTiengAnh('đạo hàm', 'derivative')).toBe(true);
+		expect(hienTenTiengAnh('MSE', 'mean squared error')).toBe(true);
+	});
+	it('so sánh bỏ dấu và hoa thường', () => {
+		expect(hienTenTiengAnh('Vectơ', 'vecto')).toBe(false);
+		expect(hienTenTiengAnh('Đô', 'do')).toBe(false);
+	});
+	it('không có tên tiếng Anh thì không hiện', () => {
+		expect(hienTenTiengAnh('đạo hàm', undefined)).toBe(false);
+		expect(hienTenTiengAnh('đạo hàm', '  ')).toBe(false);
+	});
+});
+
 describe('dữ liệu thuat-ngu.yaml', () => {
+	it('mọi mục đều có tenTiengAnh', () => {
+		const muc = yaml.load(readFileSync('src/data/thuat-ngu.yaml', 'utf8')) as { id: string; tenTiengAnh?: string }[];
+		for (const m of muc) expect(m.tenTiengAnh?.trim(), m.id).toBeTruthy();
+	});
 	it('mọi hocKy đều có trong danh mục chương', () => {
 		const muc = yaml.load(readFileSync('src/data/thuat-ngu.yaml', 'utf8')) as { id: string; hocKy?: string }[];
 		const slug = new Set(CHUONG.map((c) => c.slug));

@@ -1,22 +1,27 @@
 ---
 import { getCollection, getEntry } from 'astro:content';
-import { linkHocKy } from '../lib/thuat-ngu';
+import { hienTenTiengAnh, linkHocKy } from '../lib/thuat-ngu';
 
 interface Props {
 	id: string;
 	/** Một câu riêng cho chương đang dùng thuật ngữ, chỉ hiện trong tooltip (trang /thuat-ngu/ không có). */
 	oDay?: string;
+	/** false: không hiện tên tiếng Anh cạnh chữ, cho vài chỗ câu văn đã tự nêu tên tiếng Anh. */
+	en?: boolean;
 }
-const { id, oDay } = Astro.props;
+const { id, oDay, en = true } = Astro.props;
 const muc = await getEntry('thuatNgu', id);
 if (!muc) throw new Error(`Thuật ngữ chưa khai báo: ${id}`);
-const { ten, giaiThich, hocKy } = muc.data;
+const { ten, tenTiengAnh, giaiThich, hocKy } = muc.data;
+const chu = await Astro.slots.render('default');
+const chuHien = chu.replace(/<[^>]*>/g, '');
+const tenEn = en && hienTenTiengAnh(chuHien, tenTiengAnh) ? tenTiengAnh : undefined;
 const tipId = `tip-${id}-${Math.random().toString(36).slice(2, 8)}`;
 const docIds = hocKy ? (await getCollection('docs')).map((d) => d.id) : [];
 const hoc = hocKy ? linkHocKy(hocKy, docIds, Astro.url.pathname) : undefined;
 ---
 
-<span class="term-wrap"><span class="term" tabindex="0" role="button" aria-expanded="false" aria-describedby={tipId}><slot /></span><span class="tip" role="tooltip" id={tipId} tabindex="-1"><span class="nhan">NHẮC NHANH · {ten.toUpperCase()}</span><span class="nd">{giaiThich}</span>{oDay && <span class="o-day">{oDay}</span>}{hoc && <a class="hoc-ky" href={hoc.href}>Học kỹ ở Chương {hoc.so} →</a>}</span></span>
+<span class="term-wrap"><span class="term" tabindex="0" role="button" aria-expanded="false" aria-describedby={tipId}><Fragment set:html={chu} /></span>{tenEn && <span class="term-en" lang="en"> ({tenEn})</span>}<span class="tip" role="tooltip" id={tipId} tabindex="-1"><span class="nhan">NHẮC NHANH · {ten.toUpperCase()}</span><span class="nd">{giaiThich}</span>{oDay && <span class="o-day">{oDay}</span>}{hoc && <a class="hoc-ky" href={hoc.href}>Học kỹ ở Chương {hoc.so} →</a>}</span></span>
 
 <style is:global>
 	.term-wrap {
@@ -25,6 +30,13 @@ const hoc = hocKy ? linkHocKy(hocKy, docIds, Astro.url.pathname) : undefined;
 	.term {
 		border-bottom: 2px dotted var(--pri);
 		cursor: help;
+	}
+	/* Tên tiếng Anh ngay sau chữ tiếng Việt: nhỏ, nghiêng, màu nhấn như nhãn tiếng Anh ở /thuat-ngu/ nhưng không có nền. */
+	.term-en {
+		font-size: 0.88em;
+		font-style: italic;
+		font-weight: 500;
+		color: var(--acc);
 	}
 	.term-wrap .tip {
 		display: none;

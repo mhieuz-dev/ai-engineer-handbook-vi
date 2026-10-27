@@ -39,3 +39,22 @@ export function linkHocKy(hocKy: string, docIds: string[], duongDanTrang?: strin
 	const trangDau = daXuatBan ? docIds.filter((id) => id.startsWith(`${hocKy}/`)).sort()[0] : undefined;
 	return { so: c.so, href: trangDau ? `/${trangDau}/` : '/lo-trinh/' };
 }
+
+/** Bỏ dấu, đ thành d, chữ thường, gộp mọi ký tự không phải chữ/số thành một khoảng trắng. */
+const chuanHoaChu = (s: string) =>
+	s
+		.normalize('NFD')
+		.replace(/\p{M}/gu, '')
+		.replace(/đ/gi, 'd')
+		.toLowerCase()
+		.replace(/[^\p{L}\p{N}]+/gu, ' ')
+		.trim();
+
+/**
+ * Có hiện tên tiếng Anh cạnh chữ của `<Term>` không: chỉ khi có tên tiếng Anh và nó khác chữ đang hiện
+ * (không phân biệt hoa thường, dấu). Tránh "learning rate (learning rate)".
+ */
+export function hienTenTiengAnh(chuHien: string, tenTiengAnh?: string): boolean {
+	if (!tenTiengAnh?.trim()) return false;
+	return chuanHoaChu(chuHien) !== chuanHoaChu(tenTiengAnh);
+}

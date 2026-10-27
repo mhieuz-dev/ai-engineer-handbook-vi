@@ -114,3 +114,31 @@ test('tên tiếng Anh trong trang Thuật ngữ có màu nhấn', async ({ page
 	await expect(en).toHaveCSS('color', 'rgb(224, 122, 31)');
 });
 
+
+test('tên tiếng Anh hiện ngay sau chữ tiếng Việt, nghiêng, màu nhấn, lang="en"', async ({ page }) => {
+	await page.goto('/ai-engineer/ch10-hoi-quy-tuyen-tinh/02-toan/');
+	const wrap = (ten: RegExp) => page.locator('.term-wrap', { has: page.locator('.nhan', { hasText: ten }) });
+	const en = wrap(/· ĐẠO HÀM$/).first().locator(':scope > .term-en');
+	await expect(en).toHaveText('(derivative)');
+	await expect(en).toHaveAttribute('lang', 'en');
+	await expect(en).toHaveCSS('color', 'rgb(224, 122, 31)');
+	await expect(en).toHaveCSS('font-style', 'italic');
+	// Nằm ngoài chữ có gạch chấm, nên không bị gạch chân.
+	await expect(wrap(/· ĐẠO HÀM$/).first().locator('.term')).toHaveText('đạo hàm');
+	// Thuật ngữ vốn dùng tiếng Anh thì không lặp lại.
+	for (const ten of [/· LEARNING RATE$/, /· GRADIENT DESCENT$/]) {
+		await expect(wrap(ten).first().locator(':scope > .term-en'), String(ten)).toHaveCount(0);
+	}
+	await expect(wrap(/· LEARNING RATE$/).first().locator('.term')).toHaveText('learning rate');
+});
+
+test('en={false} tắt tên tiếng Anh; trang in vẫn có tên tiếng Anh', async ({ page }) => {
+	await page.goto(URL);
+	const wraps = page.locator('.term-wrap', { has: page.locator('.nhan', { hasText: /· ĐẠO HÀM$/ }) });
+	await expect(wraps).toHaveCount(2);
+	await expect(wraps.nth(0).locator(':scope > .term-en')).toHaveCount(1);
+	await expect(wraps.nth(1).locator(':scope > .term-en')).toHaveCount(0);
+	await page.goto('/in/ai-engineer/ch10-hoi-quy-tuyen-tinh/');
+	await page.emulateMedia({ media: 'print' });
+	await expect(page.locator('.term-en', { hasText: '(derivative)' }).first()).toBeVisible();
+});
