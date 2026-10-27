@@ -15,6 +15,9 @@
 	--purple: #6c3483;
 	/* Mặt nổi trên thẻ: mục đang đọc trong sidebar, thẻ nhánh, nút tròn. */
 	--be-mat: #fff;
+	/* Chữ nhạt cho nhãn nhỏ: --mut chỉ 3,3-3,8:1 trên nền nhạt, hai bản đậm này >= 5,1:1 trên --panel. */
+	--mut-chu: #6b6354;
+	--ok-chu: #1f6b43;
 }
 :root[data-theme='dark'] {
 	--bg: #14171c;
@@ -30,6 +33,8 @@
 	--red: #ee7d70;
 	--purple: #b88ad0;
 	--be-mat: #252b33;
+	--mut-chu: #8a94a3;
+	--ok-chu: #4cc38a;
 }
 
 /* Ánh xạ sang biến của Starlight. */

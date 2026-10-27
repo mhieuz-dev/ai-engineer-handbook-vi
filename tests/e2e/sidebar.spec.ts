@@ -93,3 +93,73 @@ test('mobile: không có nút thu gọn, menu ☰ vẫn mở sidebar', async ({ 
 	await page.locator('button.sl-menu-button').tap();
 	await expect(page.locator('.sidebar-content a[aria-current="page"]')).toBeVisible();
 });
+
+/** Tương phản thấp nhất giữa chữ và nền đã trộn (nền trong suốt chồng lên nền trang) của mọi chữ hiện trong sidebar. */
+async function tuongPhanThapNhat(page: import('@playwright/test').Page) {
+	return page.locator('.sidebar-content').evaluate((goc) => {
+		const doc = (s: string): number[] => {
+			const m = s.match(/[\d.]+/g)!.map(Number);
+			if (s.startsWith('color(')) return [m[0] * 255, m[1] * 255, m[2] * 255, m[3] ?? 1];
+			return [m[0], m[1], m[2], m[3] ?? 1];
+		};
+		const tron = (tren: number[], duoi: number[]) => [0, 1, 2].map((i) => tren[i] * tren[3] + duoi[i] * (1 - tren[3])).concat(1);
+		const nenCua = (el: Element | null): number[] => {
+			if (!el) return doc(getComputedStyle(document.body).backgroundColor);
+			// nền kính của thẻ nằm ở ::before
+			const c = doc(getComputedStyle(el, el === goc ? '::before' : null).backgroundColor);
+			if (c[3] === 1) return c;
+			return tron(c, nenCua(el.parentElement));
+		};
+		const L = (c: number[]) => {
+			const [r, g, b] = c.slice(0, 3).map((v) => {
+				const x = v / 255;
+				return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
+			});
+			return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+		};
+		let thap = { tile: 99, chu: '' };
+		const walker = document.createTreeWalker(goc, NodeFilter.SHOW_TEXT);
+		while (walker.nextNode()) {
+			const t = walker.currentNode as Text;
+			const el = t.parentElement!;
+			if (!t.data.trim() || !el.checkVisibility() || el.closest('.tn-o')) continue;
+			const nen = nenCua(el);
+			const chu = tron(doc(getComputedStyle(el).color), nen);
+			const [a, b] = [L(chu), L(nen)].sort((p, q) => q - p);
+			const tile = (a + 0.05) / (b + 0.05);
+			if (tile < thap.tile) thap = { tile, chu: t.data.trim() };
+		}
+		return thap;
+	});
+}
+
+for (const cheDo of ['light', 'dark'] as const) {
+	test(`desktop ${cheDo}: thẻ sidebar là kính mờ, mọi chữ trong thẻ >= 4,5:1`, async ({ page, isMobile }) => {
+		test.skip(!!isMobile);
+		await page.addInitScript((m) => localStorage.setItem('starlight-theme', m), cheDo);
+		await page.goto('/ai-engineer/ch10-hoi-quy-tuyen-tinh/02-toan/');
+		const the = page.locator('.sidebar-content');
+		expect(await the.evaluate((e) => getComputedStyle(e, '::before').backdropFilter)).toContain('blur');
+		const nen = await the.evaluate((e) => getComputedStyle(e, '::before').backgroundColor);
+		expect(nen).toMatch(/^rgba\(.*, 0\.\d+\)$/);
+		// nút ‹ không bị thẻ cắt: điểm giữa nửa ngoài mép thẻ vẫn trúng nút
+		const nut = (await page.locator('.nut-thu-gon').boundingBox())!;
+		const trung = await page.evaluate(([x, y]) => !!document.elementFromPoint(x, y)?.closest('.nut-thu-gon'), [nut.x + nut.width * 0.8, nut.y + nut.height / 2]);
+		expect(trung).toBe(true);
+		const thap = await tuongPhanThapNhat(page);
+		expect(thap.tile, thap.chu).toBeGreaterThanOrEqual(4.5);
+	});
+}
+
+test('mobile: sidebar trong menu ☰ nền đặc, không kính mờ, chữ >= 4,5:1', async ({ page, isMobile }) => {
+	test.skip(!isMobile);
+	await page.goto('/ai-engineer/ch10-hoi-quy-tuyen-tinh/02-toan/');
+	await page.locator('button.sl-menu-button').tap();
+	const the = page.locator('.sidebar-content');
+	await expect(the).toBeVisible();
+	expect(await the.evaluate((e) => getComputedStyle(e).backdropFilter)).toBe('none');
+	expect(await the.evaluate((e) => getComputedStyle(e, '::before').backdropFilter)).toBe('none');
+	expect(await page.locator('.sidebar-pane').evaluate((e) => getComputedStyle(e).backgroundColor)).toBe('rgb(251, 248, 241)');
+	const thap = await tuongPhanThapNhat(page);
+	expect(thap.tile, thap.chu).toBeGreaterThanOrEqual(4.5);
+});

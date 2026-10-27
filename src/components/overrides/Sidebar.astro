@@ -83,16 +83,38 @@ const cay = dungCay(Astro.locals.starlightRoute.sidebar as Nut[], NHANH, PHAN, C
 			border-inline-end: 0;
 			padding: 1rem 0.5rem 1rem 1rem;
 		}
+		/* Kính mờ: nền --panel trong suốt 65% (tối: rgb(26 30 36 / 0.72)) + làm mờ 14px. Chữ nhạt nhất trong thẻ
+		   (--mut-chu) vẫn đạt 5,4:1 trên nền đã trộn (sáng #f6f2e8, tối #181c22 với --mut 5,6:1).
+		   Nền kính nằm ở ::before: backdrop-filter đặt thẳng lên thẻ sẽ biến thẻ thành khối chứa của nút ‹
+		   (position: fixed) và cắt mất nửa nút nằm ngoài mép. */
 		:global(.sidebar-content) {
+			position: relative;
+			isolation: isolate;
 			height: auto;
 			min-height: 100%;
 			padding: 1rem 0.75rem 1.25rem;
-			background: var(--panel);
 			border-radius: 16px;
 			box-shadow: 0 1px 2px rgb(80 60 30 / 0.06), 0 10px 28px -6px rgb(80 60 30 / 0.14);
 		}
+		:global(.sidebar-content::before) {
+			content: '';
+			position: absolute;
+			inset: 0;
+			z-index: -1;
+			border-radius: inherit;
+			border: 1px solid color-mix(in srgb, var(--line) 75%, transparent);
+			background: rgb(243 238 227 / 0.65);
+			-webkit-backdrop-filter: blur(14px) saturate(140%);
+			backdrop-filter: blur(14px) saturate(140%);
+		}
 		:global(:root[data-theme='dark'] .sidebar-content) {
 			box-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 10px 28px -6px rgb(0 0 0 / 0.5);
+		}
+		:global(:root[data-theme='dark'] .sidebar-content::before) { background: rgb(26 30 36 / 0.72); }
+		/* Trình duyệt không có backdrop-filter: nền đặc để chữ không phụ thuộc thứ nằm phía sau. */
+		@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+			:global(.sidebar-content::before),
+			:global(:root[data-theme='dark'] .sidebar-content::before) { background: var(--panel); }
 		}
 		.nut-thu-gon {
 			display: grid;
