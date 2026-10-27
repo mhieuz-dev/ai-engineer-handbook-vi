@@ -43,7 +43,7 @@ const BANG: [number, string, string, string, XuatBan?][] = [
 	[14, 'phan-2', 'KNN và khoảng cách', 'knn', { trangThai: 'xong', notebook: 'ch14_knn.ipynb' }],
 	[15, 'phan-2', 'Naive Bayes', 'naive-bayes', { trangThai: 'xong', notebook: 'ch15_naive_bayes.ipynb' }],
 	[16, 'phan-2', 'SVM và kernel', 'svm-kernel', { trangThai: 'xong', notebook: 'ch16_svm_kernel.ipynb' }],
-	[17, 'phan-2', 'Cây quyết định', 'cay-quyet-dinh'],
+	[17, 'phan-2', 'Cây quyết định', 'cay-quyet-dinh', { trangThai: 'xong', notebook: 'ch17_cay_quyet_dinh.ipynb' }],
 	[18, 'phan-2', 'Ensemble', 'ensemble'],
 	[19, 'phan-2', 'Phân cụm', 'phan-cum'],
 	[20, 'phan-2', 'Giảm chiều', 'giam-chieu'],

@@ -1,0 +1,88 @@
+---
+title: Cây hồi quy, độ quan trọng và tính bất ổn
+description: "Cây hồi quy đoán trung bình của lá. Độ quan trọng đặc trưng chỉ ra một đặc trưng gánh 77% công việc. Bỏ 20 ca ngẫu nhiên là cây đổi câu hỏi ở tầng hai: lý do Chương 18 gộp nhiều cây lại."
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Cây hồi quy
+
+Với nhãn là số, mỗi lá đoán **trung bình** nhãn của các mẫu rơi vào nó, và cây chọn câu hỏi làm giảm MSE nhiều nhất (thay cho Gini). Trên bộ tiểu đường của Chương 9:
+
+```python
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.datasets import load_diabetes
+from sklearn.metrics import r2_score
+Xd, yd = load_diabetes(return_X_y=True, as_frame=True, scaled=False)
+Xdtr, Xdte, ydtr, ydte = train_test_split(Xd, yd, test_size=0.2, random_state=42)
+for md in [2, 3, 5, None]:
+    r = DecisionTreeRegressor(max_depth=md, random_state=0).fit(Xdtr, ydtr)
+    print(md, round(r2_score(ydte, r.predict(Xdte)), 4))
+```
+
+```text title="Output"
+2 0.2949
+3 0.3294
+5 0.2602
+None -0.0063
+```
+
+Độ sâu 3 tốt nhất với $R^2 = 0{,}33$, kém xa 0,45 của hồi quy tuyến tính (Chương 9). Không giới hạn độ sâu, $R^2$ **âm**: tệ hơn cả đoán trung bình. Mỗi lá chứa đúng một bệnh nhân, nên dự đoán cho người mới là mức tiến triển của **một** người gần giống nhất, mang theo toàn bộ nhiễu của người đó: đúng chuyện của KNN với $k = 1$ ở Chương 14.
+
+Cây hồi quy đoán ra một **hàm bậc thang**: hằng số trên mỗi ô. Với quan hệ gần tuyến tính như bộ tiểu đường, cần rất nhiều bậc mới xấp xỉ được một đường dốc đều, và mỗi bậc thêm là thêm nhiễu.
+
+## Độ quan trọng đặc trưng
+
+Mỗi lần một đặc trưng được dùng để chia, nó làm Gini giảm một lượng (nhân với số mẫu đi qua nút). Cộng mọi lượng giảm của một đặc trưng, chuẩn hóa để tổng bằng 1, ta có độ quan trọng của nó:
+
+```python
+m3 = DecisionTreeClassifier(max_depth=3, random_state=0).fit(Xtr, ytr)
+qt = m3.feature_importances_
+o = np.argsort(qt)[::-1][:4]
+print([(str(dd.feature_names[i]), round(float(qt[i]), 4)) for i in o], int((qt > 0).sum()))
+```
+
+```text title="Output"
+[('mean concave points', 0.7731), ('worst concavity', 0.0659), ('worst radius', 0.0653), ('mean texture', 0.037)] 7
+```
+
+Trong cây sâu 3, **một** đặc trưng, số điểm lõm trung bình trên đường viền khối u, gánh 77% công việc. Cây chỉ dùng 7 trên 30 đặc trưng; 23 đặc trưng còn lại có độ quan trọng 0.
+
+Đọc con số này cẩn thận. Độ quan trọng 0 không có nghĩa đặc trưng vô dụng: bán kính trung bình tương quan 0,998 với chu vi trung bình (Chương 15), nên khi cây đã dùng một cái, cái kia không còn gì để thêm. Độ quan trọng cho biết **cây này** đã dựa vào đâu, không cho biết thế giới vận hành ra sao.
+
+## Cây không ổn định
+
+Bỏ ngẫu nhiên 20 trong 426 ca train (gần 5%), học lại cây không giới hạn, xem câu hỏi ở gốc và ở hai nút con:
+
+```python
+rng = np.random.default_rng(0)
+for k in range(5):
+    idx = rng.choice(len(Xtr), len(Xtr) - 20, replace=False)              # giữ 406 ca ngẫu nhiên
+    t = DecisionTreeClassifier(random_state=0).fit(Xtr[idx], ytr[idx]).tree_
+    goc, trai, phai = t.feature[0], t.feature[1], t.feature[t.children_right[0]]
+    print(k, dd.feature_names[goc], "|", dd.feature_names[trai], "|", dd.feature_names[phai])
+```
+
+```text title="Output"
+0 mean concave points | worst radius | worst perimeter
+1 mean concave points | worst area | worst concavity
+2 mean concave points | worst radius | worst concavity
+3 mean concave points | worst radius | worst concavity
+4 mean concave points | worst radius | worst concavity
+```
+
+Câu hỏi ở gốc vững vàng: lần nào cũng là số điểm lõm. Nhưng chỉ bỏ 5% dữ liệu, tầng thứ hai đã đổi qua lại giữa bán kính lớn nhất và diện tích lớn nhất, giữa chu vi lớn nhất và độ lõm lớn nhất. Một thay đổi ở tầng trên kéo theo thay đổi cả cây con bên dưới, vì mọi câu hỏi phía dưới được chọn trên một nhóm mẫu khác.
+
+<Khung loai="vi-sao" tieuDe="BẤT ỔN LÀ CƠ HỘI">
+Bất ổn chính là **variance cao** của Chương 13: đổi dữ liệu một chút, mô hình đổi nhiều. Đó là điểm yếu lớn nhất của cây đơn lẻ.
+
+Nhưng Chương 13 cũng đã dạy: variance có thể giảm bằng cách **lấy trung bình**. Nếu học 100 cây trên 100 phiên bản hơi khác nhau của dữ liệu rồi cho chúng bỏ phiếu, các lỗi riêng của từng cây triệt tiêu nhau. Đó là ý tưởng của random forest, mở đầu Chương 18. Cây đơn lẻ hiếm khi là mô hình cuối cùng; nhưng nó là viên gạch của những mô hình mạnh nhất cho dữ liệu dạng bảng hiện nay.
+</Khung>
+
+<Khung loai="loi">
+**Dùng cây để ngoại suy.** Cây hồi quy không bao giờ đoán vượt khỏi khoảng nhãn đã thấy trong train (mỗi lá là một trung bình). Hỏi về một bệnh nhân có BMI 60 khi dữ liệu chỉ tới 42, cây trả lời bằng lá cuối cùng, như thể BMI 42.
+
+**Tin tuyệt đối vào độ quan trọng của một cây.** Đặc trưng xếp hạng 2 và 3 có thể đổi chỗ khi đổi vài mẫu dữ liệu. Muốn chắc hơn, lấy trung bình độ quan trọng qua nhiều cây (Chương 18) hoặc dùng permutation importance (Chương 21).
+</Khung>

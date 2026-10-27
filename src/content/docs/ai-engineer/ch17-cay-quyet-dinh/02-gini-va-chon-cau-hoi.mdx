@@ -1,0 +1,91 @@
+---
+title: Gini và cách chọn câu hỏi
+description: Tính tay độ vẩn Gini của nút gốc (0,48) và của mọi phép chia ứng viên. Phép chia "giờ học từ 3,5 trở xuống" hạ Gini xuống 0,16, tốt nhất trong mọi câu hỏi có thể hỏi.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Đo độ lẫn lộn
+
+Một nút tốt là nút "thuần": cả nhóm cùng một lớp. <Term id="gini">Độ vẩn Gini</Term> đo một nhóm lẫn lộn tới đâu:
+
+$$
+G = 1 - \sum_{k} p_k^2 \tag{17.1}
+$$
+
+với $p_k$ là tỷ lệ của lớp $k$ trong nhóm.
+
+Nút gốc có 10 bạn, 6 đạt, 4 không: $G = 1 - (0{,}6^2 + 0{,}4^2) = 1 - 0{,}52 = 0{,}48$.
+
+- Nhóm thuần (toàn một lớp): $G = 1 - 1^2 = 0$.
+- Hai lớp chia đôi: $G = 1 - (0{,}5^2 + 0{,}5^2) = 0{,}5$, lẫn lộn nhất có thể với hai lớp.
+
+$G$ có một nghĩa cụ thể: lấy ngẫu nhiên một bạn trong nhóm, rồi đoán nhãn ngẫu nhiên theo đúng tỷ lệ của nhóm. $G$ là xác suất đoán **sai**.
+
+## Đánh giá một phép chia
+
+Một câu hỏi chia nút thành hai nhóm con, trái và phải. Độ tốt của câu hỏi là Gini **trung bình có trọng số** của hai nhóm con, trọng số là số bạn mỗi bên:
+
+$$
+G_{\text{chia}} = \frac{n_{\text{trái}}}{n} G_{\text{trái}} + \frac{n_{\text{phải}}}{n} G_{\text{phải}} \tag{17.2}
+$$
+
+**Câu hỏi "giờ học ≤ 3,5".** Bên trái 5 bạn (A, B, C, F, H), 1 đạt: $G = 1 - (0{,}2^2 + 0{,}8^2) = 0{,}32$. Bên phải 5 bạn, cả 5 đạt: $G = 0$.
+
+$$
+G_{\text{chia}} = \frac{5}{10} \times 0{,}32 + \frac{5}{10} \times 0 = 0{,}16
+$$
+
+Từ 0,48 xuống 0,16: giảm 0,32.
+
+## Thử mọi câu hỏi
+
+Cây không đoán câu hỏi; nó **thử hết**. Với mỗi đặc trưng, ngưỡng ứng viên là trung điểm giữa hai giá trị liền kề đã thấy (giờ học có các giá trị 1, 2, 3, 4, 5, 6, 7 nên ngưỡng là 1,5; 2,5; ...; 6,5). Với mỗi ngưỡng, tính (17.2):
+
+```python
+gini = lambda v: 1 - sum(np.mean(v == k) ** 2 for k in (0, 1)) if len(v) else 0.0
+ung_vien = []
+for j, ten in [(0, "gio"), (1, "ngu")]:
+    gt = np.unique(X[:, j])                                  # các giá trị khác nhau, đã sắp xếp
+    for t in (gt[:-1] + gt[1:]) / 2:                         # trung điểm giữa hai giá trị liền kề
+        L, R = y[X[:, j] <= t], y[X[:, j] > t]
+        g = (len(L) * gini(L) + len(R) * gini(R)) / len(y)   # công thức (17.2)
+        ung_vien.append((round(float(g), 4), ten, float(t), len(L), len(R)))
+print(round(gini(y), 4))
+for u in sorted(ung_vien)[:4]:
+    print(u)
+```
+
+```text title="Output"
+0.48
+(0.16, 'gio', 3.5, 5, 5)
+(0.1714, 'gio', 2.5, 3, 7)
+(0.3429, 'gio', 4.5, 7, 3)
+(0.4, 'gio', 1.5, 1, 9)
+```
+
+"Giờ học ≤ 3,5" thắng với 0,16, đúng câu hỏi đầu của cây ở trang 1. Á quân là "giờ học ≤ 2,5" với 0,1714: bên trái 3 bạn đều không đạt (thuần), nhưng bên phải 7 bạn còn lẫn 1 bạn không đạt (H). Câu hỏi tốt nhất về giờ ngủ chỉ đạt 0,4: giờ ngủ tách hai lớp kém hơn nhiều.
+
+Rồi cây **lặp lại** đúng quy trình này cho từng nhóm con, cho tới khi nhóm thuần hoặc chạm điều kiện dừng. Cách chọn tốt nhất ở từng bước mà không nhìn trước như vậy gọi là thuật toán tham lam <En>greedy</En>.
+
+<TuKiemTra
+	cauHoi="Một nút có 8 mẫu: 2 lớp A, 6 lớp B. Gini của nút là bao nhiêu?"
+	luaChon={['0,25', '0,375', '0,5', '0,75']}
+	dapAn={1}
+	giaiThich="Tỷ lệ 0,25 và 0,75. G = 1 - (0,0625 + 0,5625) = 1 - 0,625 = 0,375."
+/>
+
+<Khung loai="dao-sau" tieuDe="ENTROPY THAY CHO GINI">
+Một thước đo khác hay dùng là entropy: $H = -\sum_k p_k \log_2 p_k$. Với nút gốc: $H = -(0{,}6\log_2 0{,}6 + 0{,}4 \log_2 0{,}4) \approx 0{,}971$. Lượng giảm entropy khi chia gọi là **information gain**.
+
+Trong thực tế, Gini và entropy chọn phép chia giống nhau trong phần lớn trường hợp. Gini nhanh hơn chút vì không cần tính log, nên là mặc định của scikit-learn (`criterion="gini"`). Đổi bằng `criterion="entropy"`.
+</Khung>
+
+<Khung loai="loi">
+**Nghĩ cây tìm ra cây tốt nhất.** Tham lam chỉ chọn câu hỏi tốt nhất **tại mỗi bước**. Có những dữ liệu mà một câu hỏi đầu kém hơn lại mở đường cho cây tổng thể tốt hơn. Tìm cây tối ưu toàn cục là bài toán quá khó; tham lam là cái giá chấp nhận được.
+
+**Quên rằng ngưỡng là trung điểm.** Cây học ngưỡng 3,5 chứ không phải 3 hay 4. Một bạn mới học 3,6 giờ đi nhánh phải, 3,4 giờ đi nhánh trái, dù trong dữ liệu không có ai học từ 3 tới 4 giờ.
+</Khung>

@@ -1,0 +1,93 @@
+---
+title: Bài tập
+description: Ba bài tập cây quyết định có đáp án chi tiết (tính tay Gini của câu hỏi về giờ ngủ, đi theo cây để đoán bạn mới rồi so với KNN, tính entropy và information gain) và câu hỏi phỏng vấn.
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Ba bài dùng 10 bạn `X`, `y` và cây `cay` ở trang 1.
+
+<BaiTap so="17.1">
+**Câu hỏi về giờ ngủ.** Tính tay Gini của phép chia "giờ ngủ ≤ 5,5". Vì sao nó kém hơn hẳn "giờ học ≤ 3,5"?
+
+<Fragment slot="dap-an">
+
+Chỉ bạn H ngủ 5 giờ, nên bên trái có 1 bạn (không đạt): $G = 0$. Bên phải 9 bạn, 6 đạt 3 không: $G = 1 - \left((6/9)^2 + (3/9)^2\right) = 1 - (0{,}444 + 0{,}111) = 0{,}444$.
+
+$$
+G_{\text{chia}} = \frac{1}{10} \times 0 + \frac{9}{10} \times 0{,}444 = 0{,}4
+$$
+
+Khớp dòng tốt nhất của giờ ngủ trong bảng ứng viên ở trang 2 (0,4). Câu hỏi này chỉ tách được **một** bạn, nhóm còn lại vẫn lẫn lộn gần như nút gốc (0,444 so với 0,48). Một phép chia tốt phải tạo ra hai nhóm **đều** thuần hơn, không chỉ cắt riêng một điểm.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="17.2">
+**Đi theo cây.** Bạn mới ở Chương 14 học 3,4 giờ, ngủ 6,3 giờ. Đi theo cây ở hình 17.1 bằng tay: cây đoán gì? So với KNN với $k = 3$ ở Chương 14.
+
+<Fragment slot="dap-an">
+
+- Giờ học 3,4 ≤ 3,5: đi nhánh trái.
+- Giờ ngủ 6,3 ≤ 7,5: đi nhánh trái, tới lá **không đạt**.
+
+```python
+print(cay.predict([[3.4, 6.3]]), cay.predict_proba([[3.4, 6.3]]))
+```
+
+```text title="Output"
+[0] [[1. 0.]]
+```
+
+Cây đoán không đạt, với "xác suất" 100% (lá đó thuần: 4 bạn đều không đạt). KNN với $k = 3$ đoán **đạt**, vì hai láng giềng gần nhất K và D đều đạt.
+
+Hai mô hình bất đồng vì nhìn dữ liệu khác nhau. KNN nhìn ai **ở gần**: K (4; 6) chỉ cách 0,67. Cây nhìn bạn rơi vào **ô** nào: ngưỡng 3,5 đặt bạn mới cùng ô với A, B, F, H, dù K chỉ cách 0,6 giờ học về phía bên kia ngưỡng. Gần ranh giới của cây, một chút chênh lệch đổi hẳn câu trả lời, còn xác suất 100% của cây là quá tự tin.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="17.3">
+**Entropy.** Tính entropy $H = -\sum_k p_k \log_2 p_k$ của nút gốc (6 đạt, 4 không) và của hai nhóm con sau câu hỏi "giờ học ≤ 3,5". Information gain (entropy gốc trừ entropy trung bình có trọng số của hai con) là bao nhiêu?
+
+<Fragment slot="dap-an">
+
+- Gốc: $-(0{,}6\log_2 0{,}6 + 0{,}4\log_2 0{,}4) \approx 0{,}971$.
+- Trái (1 đạt, 4 không): $-(0{,}2\log_2 0{,}2 + 0{,}8\log_2 0{,}8) \approx 0{,}722$.
+- Phải (5 đạt): $0$.
+
+Information gain $= 0{,}971 - \left(\frac{5}{10} \times 0{,}722 + \frac{5}{10} \times 0\right) \approx 0{,}61$.
+
+```python
+H = lambda p: -sum(q * np.log2(q) for q in p if q > 0)
+print(round(H([0.6, 0.4]), 4), round(H([0.2, 0.8]), 4), round(H([0.6, 0.4]) - 0.5 * H([0.2, 0.8]), 4))
+```
+
+```text title="Output"
+0.971 0.7219 0.61
+```
+
+Entropy đo bằng **bit**: nút gốc cần gần 1 bit thông tin để biết nhãn của một bạn. Câu hỏi về giờ học cung cấp 0,61 bit. Gini (giảm từ 0,48 xuống 0,16) và entropy (giảm từ 0,971 xuống 0,361) đo bằng hai thang khác nhau nhưng cùng xếp hạng câu hỏi này là tốt nhất.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Cây quyết định chọn phép chia thế nào?**
+
+<p lang="en"><em>How does a decision tree choose a split?</em></p>
+
+*Gợi ý:* với mỗi đặc trưng và mỗi ngưỡng ứng viên, tính độ giảm impurity (Gini, entropy cho phân loại; MSE cho hồi quy), chọn phép chia giảm nhiều nhất; lặp lại tham lam cho từng nút con.
+
+**2. Vì sao cây quyết định dễ overfit, và bạn xử lý thế nào?**
+
+<p lang="en"><em>Why do decision trees overfit, and how do you prevent it?</em></p>
+
+*Gợi ý:* để mọc tự do, cây chia tới khi mọi lá thuần, học thuộc nhiễu. Hãm bằng max_depth, min_samples_leaf, cắt tỉa ccp_alpha, chọn bằng cross-validation; hoặc gộp nhiều cây (random forest, boosting).
+
+**3. Ưu và nhược điểm của cây quyết định?**
+
+<p lang="en"><em>What are the pros and cons of decision trees?</em></p>
+
+*Gợi ý:* ưu: dễ giải thích, không cần chuẩn hóa, xử lý quan hệ phi tuyến và tương tác giữa đặc trưng. Nhược: variance cao, không ổn định, ranh giới bậc thang song song trục, không ngoại suy, xác suất quá tự tin.
+</Khung>

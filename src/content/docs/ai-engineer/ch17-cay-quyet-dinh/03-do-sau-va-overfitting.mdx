@@ -1,0 +1,82 @@
+---
+title: Độ sâu và overfitting
+description: Để mọc tự do, cây chia tới khi mọi lá thuần, đạt 100% trên train. Trên ung thư vú, cây sâu 3 với 8 lá tổng quát tốt nhất; trên hai vầng trăng, ranh giới bậc thang thành những ô vụn quanh từng điểm.
+---
+
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Cây không biết khi nào dừng
+
+Mặc định, cây chia mãi cho tới khi **mọi lá đều thuần** (Gini bằng 0) hoặc không chia được nữa. Với dữ liệu có nhiễu, điều đó nghĩa là tạo một lá riêng cho từng điểm nhiễu. Độ chính xác train luôn lên 100%.
+
+<HinhKetQua src="/hinh/ch17/h2_ranh_gioi_cay.svg" alt="Ba khung trên hai vầng trăng. Độ sâu 1: một đường ngang chia đôi mặt phẳng, train 84%, test 73%. Độ sâu 3: vài khối chữ nhật lớn bám theo hai vầng trăng, train 90%, test 84%. Không giới hạn: nhiều dải chữ nhật mỏng và ô nhỏ chen giữa, bao quanh từng điểm lạc, train 100%, test 84%." so="17.2" chuThich="Ranh giới của cây quyết định trên 210 điểm train của make_moons với ba mức độ sâu.">
+**Độ sâu 1.** Đúng một câu hỏi: một đường ngang. Quá đơn giản, train 84%, test 73%.
+
+**Độ sâu 3.** Tối đa 8 lá, vài khối chữ nhật lớn xấp xỉ hai vầng trăng bằng hình bậc thang. Test 84%.
+
+**Không giới hạn.** 23 lá. Ngoài những khối lớn, có thêm những dải mỏng và ô nhỏ chen vào, mỗi ô bao lấy một hai điểm nằm lạc phía bên kia. Train 100%. Test vẫn 84%: các ô vụn không giúp gì cho dữ liệu mới, chỉ học thuộc nhiễu.
+
+**So với các chương trước.** Trên cùng bộ dữ liệu, KNN tốt nhất đạt 92% (Chương 14), SVM RBF đạt 94% (Chương 16). Một cây đơn lẻ, với ranh giới bậc thang, kém hơn rõ rệt ở bài toán ranh giới cong mượt như thế này.
+</HinhKetQua>
+
+## Chọn độ sâu bằng cross-validation
+
+Trên bộ ung thư vú của Chương 12:
+
+```python
+from sklearn.datasets import load_breast_cancer
+from sklearn.model_selection import train_test_split, cross_val_score
+dd = load_breast_cancer()
+Xb, yb = dd.data, 1 - dd.target
+Xtr, Xte, ytr, yte = train_test_split(Xb, yb, test_size=0.25, random_state=0, stratify=yb)
+for md in [1, 2, 3, 4, 5, None]:
+    m = DecisionTreeClassifier(max_depth=md, random_state=0).fit(Xtr, ytr)
+    cv = cross_val_score(DecisionTreeClassifier(max_depth=md, random_state=0), Xtr, ytr, cv=5).mean()
+    print(md, m.get_n_leaves(), round(m.score(Xtr, ytr), 4), round(cv, 4), round(m.score(Xte, yte), 4))
+```
+
+```text title="Output"
+1 2 0.9249 0.9014 0.8741
+2 4 0.9507 0.9201 0.9231
+3 8 0.9742 0.9295 0.958
+4 13 0.993 0.9201 0.9441
+5 16 0.9953 0.9201 0.958
+None 18 1.0 0.9178 0.9441
+```
+
+**Bảng 17.1.** Cây quyết định trên ung thư vú theo độ sâu tối đa.
+
+| Độ sâu | Số lá | Train | Cross-validation | Test |
+|:---:|:---:|:---:|:---:|:---:|
+| 1 | 2 | 0,925 | 0,901 | 0,874 |
+| 2 | 4 | 0,951 | 0,920 | 0,923 |
+| 3 | 8 | 0,974 | **0,930** | 0,958 |
+| 4 | 13 | 0,993 | 0,920 | 0,944 |
+| không giới hạn | 18 | 1,000 | 0,918 | 0,944 |
+
+Cross-validation chọn độ sâu 3. Từ độ sâu 4, train vẫn tăng nhưng cross-validation giảm: overfitting, đúng hình chữ U của Chương 13. Cột test (chỉ để xem, không dùng để chọn) cũng cao nhất ở độ sâu 3, ngang độ sâu 5.
+
+Cây đơn tốt nhất đạt 95,8% trên test. Hồi quy logistic đạt 98,6% (Chương 12). Lại một lần nữa, cây đơn lẻ không phải mô hình mạnh nhất. Nhưng chỉ 8 quy tắc, in ra một trang giấy, đọc hiểu được: với bác sĩ, điều đó có thể đáng giá hơn 3 điểm phần trăm.
+
+## Những cách hãm cây khác
+
+**Bảng 17.2.** Các siêu tham số regularization của `DecisionTreeClassifier`.
+
+| Tham số | Nghĩa | Tăng lên thì |
+|:---|:---|:---|
+| `max_depth` | độ sâu tối đa | cây phức tạp hơn |
+| `min_samples_leaf` | mỗi lá phải có ít nhất bấy nhiêu mẫu | cây đơn giản hơn |
+| `min_samples_split` | nút phải có ít nhất bấy nhiêu mẫu mới được chia | cây đơn giản hơn |
+| `max_leaf_nodes` | tổng số lá tối đa | cây phức tạp hơn |
+| `ccp_alpha` | phạt số lá khi cắt tỉa sau khi mọc (cost-complexity pruning) | cây đơn giản hơn |
+
+`min_samples_leaf=5` cấm cây tạo lá chỉ có 1 hay 2 điểm, ngăn trực tiếp kiểu ô vụn trong hình 17.2. `ccp_alpha` giống $\alpha$ của ridge và lasso ở Chương 13: cộng một khoản phạt cho mỗi lá vào hàm mục tiêu, rồi cắt những nhánh không đáng.
+
+<Khung loai="loi">
+**Để mặc định rồi báo cáo kết quả.** Cây mặc định gần như luôn overfit. Luôn đặt ít nhất một giới hạn, chọn bằng cross-validation.
+
+**Nhầm `max_depth=None` với "không có cây".** `None` là không giới hạn độ sâu, cây phức tạp nhất có thể. Cây đơn giản nhất là `max_depth=1`, còn gọi là "gốc cây" <En>stump</En>, sẽ được dùng ở Chương 18.
+</Khung>

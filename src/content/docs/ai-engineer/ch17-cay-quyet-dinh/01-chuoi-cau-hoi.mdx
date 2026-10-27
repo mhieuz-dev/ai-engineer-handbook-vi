@@ -1,0 +1,81 @@
+---
+title: Một chuỗi câu hỏi
+description: Cây quyết định hỏi từng câu có hoặc không về đặc trưng cho tới khi ra câu trả lời. Đọc cây học được từ 10 bạn của Bảng 4.1, và vì sao nó không cần chuẩn hóa.
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+<CanBietTruoc>
+Phân loại và độ chính xác (Chương 11, 12). Overfitting và cross-validation (Chương 13). Chuẩn hóa và vì sao KNN cần nó (Chương 14).
+
+<Fragment slot="sau-chuong">
+Đọc một cây quyết định và tính tay độ vẩn Gini để chọn câu hỏi đầu tiên. Thấy cây overfit thế nào khi để mọc tự do, và hãm nó bằng độ sâu tối đa. Dùng cây cho hồi quy, đọc độ quan trọng đặc trưng, và hiểu vì sao cây không ổn định: lý do Chương 18 gộp nhiều cây lại.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch17_cay_quyet_dinh.ipynb" />
+
+## Trò chơi hai mươi câu hỏi
+
+Trò "đoán xem tôi đang nghĩ gì": "Nó có sống không?" "Có." "Có bay được không?" "Không." Mỗi câu hỏi có hoặc không cắt đôi tập khả năng. Đủ câu hỏi là ra đáp án.
+
+<Term id="cay-quyet-dinh">Cây quyết định</Term> học chính xác điều đó từ dữ liệu: chọn **câu hỏi nào** nên hỏi trước, hỏi tiếp câu gì tùy câu trả lời, và dừng lúc nào.
+
+## Cây của 10 bạn
+
+Lại là 10 bạn của Bảng 4.1 với giờ học, giờ ngủ, và nhãn đạt khi điểm thi từ 5 (đã dùng ở Chương 14).
+
+```python
+import numpy as np
+from sklearn.tree import DecisionTreeClassifier, export_text
+X = np.array([[1, 7], [2, 6], [3, 8], [4, 7], [5, 6], [2, 7], [6, 8], [3, 5], [7, 7], [4, 6]], dtype=float)
+y = (np.array([2, 4, 5, 7, 6, 3.5, 8.5, 4, 9, 6.5]) >= 5).astype(int)
+cay = DecisionTreeClassifier(random_state=0).fit(X, y)
+print(export_text(cay, feature_names=["gio", "ngu"]))       # in cây dạng chữ
+print(cay.get_depth(), cay.get_n_leaves())                  # độ sâu, số lá
+```
+
+```text title="Output"
+|--- gio <= 3.50
+|   |--- ngu <= 7.50
+|   |   |--- class: 0
+|   |--- ngu >  7.50
+|   |   |--- class: 1
+|--- gio >  3.50
+|   |--- class: 1
+
+2 3
+```
+
+<HinhKetQua src="/hinh/ch17/h1_so_do_cay.svg" alt="Sơ đồ cây ba tầng. Nút gốc hỏi giờ học có nhỏ hơn hoặc bằng 3,5 không, chứa 10 bạn, 6 đạt 4 không, Gini 0,48. Nhánh sai dẫn tới lá ĐẠT gồm 5 bạn D E G I K. Nhánh đúng dẫn tới nút hỏi giờ ngủ có nhỏ hơn hoặc bằng 7,5 không, chứa 5 bạn, 1 đạt 4 không, Gini 0,32; nhánh đúng của nó là lá KHÔNG ĐẠT gồm A B F H, nhánh sai là lá ĐẠT gồm C." so="17.1" chuThich="Cây quyết định học được từ 10 bạn. Mỗi nút ghi câu hỏi, số bạn đi qua và độ vẩn Gini (trang sau sẽ giải thích).">
+**Đọc từ trên xuống.** Câu hỏi đầu: giờ học có từ 3,5 trở xuống không? Năm bạn học nhiều hơn (D, E, G, I, K) đều đạt: lá xanh bên phải, không cần hỏi thêm.
+
+**Nhánh trái.** Năm bạn học ít (A, B, C, F, H) chỉ có C đạt. Câu hỏi thứ hai: giờ ngủ có từ 7,5 trở xuống không? C ngủ 8 tiếng, là người duy nhất ngủ hơn 7,5 trong nhóm này: tách riêng được.
+
+**Đọc như một quy tắc.** "Học hơn 3,5 giờ thì đạt. Học ít hơn mà ngủ trên 7,5 giờ cũng đạt. Còn lại thì không." Đây là ưu điểm lớn nhất của cây: mô hình **chính là** một tập quy tắc con người đọc được, giải thích được cho người không biết ML.
+</HinhKetQua>
+
+Cây này đúng 10 trên 10 bạn. Nhánh "ngủ trên 7,5 giờ" có ý nghĩa thật không, hay chỉ là cây cố tách riêng một bạn C? Với một bạn duy nhất, không thể biết. Đây là mầm mống của overfitting, trang 3 sẽ quay lại.
+
+## Ranh giới hình bậc thang
+
+Mỗi câu hỏi chỉ nhìn **một** đặc trưng và so với **một** ngưỡng. Trên mặt phẳng (giờ học, giờ ngủ), mỗi câu hỏi là một đường thẳng **song song với trục**. Cây chia mặt phẳng thành các hình chữ nhật, mỗi hình chữ nhật là một lá.
+
+Ranh giới của cây vì vậy luôn có hình bậc thang. Hồi quy logistic vẽ được đường chéo tùy ý; cây phải xấp xỉ đường chéo bằng nhiều bậc nhỏ.
+
+<Khung loai="vi-sao" tieuDe="CÂY KHÔNG CẦN CHUẨN HÓA">
+Câu hỏi "giờ học có từ 3,5 trở xuống không" cho cùng một câu trả lời dù giờ học đo bằng giờ hay bằng phút (210 phút), dù có chuẩn hóa hay không: ngưỡng tự co giãn theo. Cây chỉ quan tâm **thứ tự** của các giá trị, không quan tâm khoảng cách.
+
+Đây là khác biệt lớn với KNN và SVM (Chương 14, 16), nơi chuẩn hóa là bắt buộc. Với cây, chuẩn hóa vô hại nhưng vô ích. Notebook kiểm điều này trên bộ ung thư vú: dự đoán của cây trên dữ liệu gốc và trên dữ liệu đã chuẩn hóa trùng nhau 100%.
+</Khung>
+
+<Khung loai="loi">
+**Đọc thứ tự câu hỏi như thứ tự quan trọng tuyệt đối.** Giờ học được hỏi trước vì nó tách tốt nhất **ở bước đó**, với dữ liệu này. Đổi vài mẫu dữ liệu có thể đổi cả câu hỏi đầu. Trang 4 nói về chuyện này.
+
+**Nghĩ cây chỉ dùng được cho đặc trưng số.** Đặc trưng phân loại (lớp L1 hay L2, màu sắc) cũng tách được. scikit-learn yêu cầu mã hóa chúng thành số trước, Chương 21 sẽ dạy cách.
+</Khung>

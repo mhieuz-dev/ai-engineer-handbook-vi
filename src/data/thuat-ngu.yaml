@@ -413,3 +413,13 @@
   tenTiengAnh: kernel
   giaiThich: Kernel là hàm đo độ giống nhau giữa hai điểm, cho phép SVM làm việc như thể dữ liệu đã được đưa lên một không gian nhiều chiều hơn mà không cần tính tọa độ trong không gian đó. Nhờ vậy ranh giới thẳng trên đó thành ranh giới cong ở không gian gốc.
   hocKy: ai-engineer/ch16-svm-kernel
+- id: cay-quyet-dinh
+  ten: Cây quyết định
+  tenTiengAnh: decision tree
+  giaiThich: Cây quyết định là một chuỗi câu hỏi có hoặc không về các đặc trưng, ví dụ giờ học có nhỏ hơn 3,5 không. Mỗi câu trả lời dẫn xuống một nhánh, tới lá thì ra dự đoán. Đọc được bằng mắt như một sơ đồ.
+  hocKy: ai-engineer/ch17-cay-quyet-dinh
+- id: gini
+  ten: Độ vẩn Gini
+  tenTiengAnh: Gini impurity
+  giaiThich: Độ vẩn Gini đo một nhóm mẫu lẫn lộn các lớp tới đâu, bằng xác suất đoán sai nếu gán nhãn ngẫu nhiên theo tỷ lệ các lớp trong nhóm. Bằng 0 khi cả nhóm cùng một lớp. Cây chọn câu hỏi làm Gini giảm nhiều nhất.
+  hocKy: ai-engineer/ch17-cay-quyet-dinh
