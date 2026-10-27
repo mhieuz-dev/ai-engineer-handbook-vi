@@ -210,6 +210,102 @@ test('mobile: bấm cuốn khác khi một cuốn đang mở thì bảng đổi 
 	await expect(nutBatDau(page)).toBeVisible();
 });
 
+const keGoc = (page: Page) => page.locator('#ke-sach');
+const sanKhau3D = (page: Page) => page.locator('#ke-sach [data-frames]');
+
+/** Bấm vào canvas tại vị trí tính theo tỉ lệ khung (0..1). Ở 1280x800 cuốn AI Engineer nằm quanh x ≈ 0.37,
+ * Robotics quanh x ≈ 0.62; khi Robotics mở, bảng thông tin che nửa phải nên bìa đã lật (x ≈ 0.48) là phần còn bấm được. */
+async function bamCanvas(page: Page, fx: number, fy: number) {
+	const b = (await page.locator('#ke-sach canvas').boundingBox())!;
+	const x = b.x + b.width * fx;
+	const y = b.y + b.height * fy;
+	// Điểm bấm phải trúng canvas chứ không phải bảng thông tin nằm đè lên.
+	expect(await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.tagName, [x, y])).toBe('CANVAS');
+	await page.mouse.click(x, y);
+}
+
+/** Bất biến: bảng hiện ⇔ có data-sach-mo; ở bản 3D thì sách rút ra ⇔ bảng hiện. */
+async function kiemDaDong(page: Page, co3D: boolean) {
+	await expect(bang(page)).toBeHidden();
+	await expect(keGoc(page)).not.toHaveAttribute('data-sach-mo', /.+/);
+	if (co3D) {
+		await page.mouse.move(5, 5);
+		await expect.poll(async () => await sanKhau3D(page).getAttribute('data-nho')).toBe('0.00');
+	}
+}
+async function kiemDangMo(page: Page, id: string, ten: RegExp, co3D: boolean) {
+	await expect(bang(page)).toBeVisible();
+	await expect(bang(page).locator('.bang-ten')).toHaveText(ten);
+	await expect(keGoc(page)).toHaveAttribute('data-sach-mo', id);
+	if (co3D) await expect.poll(async () => Number(await sanKhau3D(page).getAttribute('data-nho'))).toBeGreaterThan(0.5);
+}
+
+for (const co3D of [true, false]) {
+	test(`${co3D ? 'desktop 3D' : 'mobile phẳng'}: bấm cuốn đang mở lần nữa thì đóng, bấm cuốn khác thì đổi`, async ({ page, isMobile }) => {
+		test.skip(co3D === !!isMobile);
+		await page.goto('/');
+		await keGoc(page).scrollIntoViewIfNeeded();
+		if (co3D) await expect(sanKhau3D(page)).toHaveAttribute('data-trang-thai', 'san-sang', { timeout: 5000 });
+		const bam = (l: ReturnType<typeof theAi>) => (co3D ? l.click() : l.tap());
+
+		await bam(theAi(page));
+		await kiemDangMo(page, 'ai-engineer', /AI Engineer/, co3D);
+		await bam(theAi(page));
+		await kiemDaDong(page, co3D);
+		await expect(theAi(page)).toBeFocused();
+
+		await bam(theRobotics(page));
+		await kiemDangMo(page, 'robotics', /Robotics/, co3D);
+		await bam(theRobotics(page));
+		await kiemDaDong(page, co3D);
+
+		await bam(theAi(page));
+		await kiemDangMo(page, 'ai-engineer', /AI Engineer/, co3D);
+		await bam(theRobotics(page));
+		await kiemDangMo(page, 'robotics', /Robotics/, co3D);
+		await expect(nutBatDau(page)).toHaveCount(0);
+		// Quay lại vẫn đóng cả bảng lẫn cuốn trong cảnh.
+		await bam(nutQuayLai(page));
+		await kiemDaDong(page, co3D);
+	});
+}
+
+test('mobile: bấm bìa phẳng của cuốn đang mở thì đóng', async ({ page, isMobile }) => {
+	test.skip(!isMobile);
+	await page.goto('/');
+	const bia = page.locator('#ke-sach .bia-phang[data-cuon="robotics"]');
+	await bia.tap();
+	await kiemDangMo(page, 'robotics', /Robotics/, false);
+	await bia.tap();
+	await kiemDaDong(page, false);
+});
+
+test('desktop: bấm cuốn trên canvas 3D lần hai thì cuốn đóng lại, bảng ẩn theo', async ({ page, isMobile }) => {
+	test.skip(!!isMobile);
+	await page.goto('/');
+	await keGoc(page).scrollIntoViewIfNeeded();
+	await expect(sanKhau3D(page)).toHaveAttribute('data-trang-thai', 'san-sang', { timeout: 5000 });
+
+	await bamCanvas(page, 0.37, 0.45);
+	await kiemDangMo(page, 'ai-engineer', /AI Engineer/, true);
+	await bamCanvas(page, 0.37, 0.45);
+	await kiemDaDong(page, true);
+
+	await bamCanvas(page, 0.62, 0.45);
+	await kiemDangMo(page, 'robotics', /Robotics/, true);
+	await page.waitForTimeout(800); // chờ bìa lật xong rồi mới bấm vào nó
+	await bamCanvas(page, 0.48, 0.6);
+	await kiemDaDong(page, true);
+
+	// Đang mở AI Engineer, bấm Robotics trên canvas thì đổi sang Robotics. Bảng che gần hết cuốn Robotics
+	// (mép trái bảng ở x ≈ 0.58), nên bấm vào mép trái gáy còn lộ ra.
+	await bamCanvas(page, 0.37, 0.45);
+	await kiemDangMo(page, 'ai-engineer', /AI Engineer/, true);
+	await page.waitForTimeout(800);
+	await bamCanvas(page, 0.565, 0.45);
+	await kiemDangMo(page, 'robotics', /Robotics/, true);
+});
+
 test('trang chủ: nút hero "Chọn sách để học" trỏ tới #ke-sach', async ({ page }) => {
 	await page.goto('/');
 	await expect(page.getByRole('link', { name: /Chọn sách để học/ })).toHaveAttribute('href', '#ke-sach');

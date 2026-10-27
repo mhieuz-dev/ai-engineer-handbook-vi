@@ -111,22 +111,27 @@ const moTaThe = (s: (typeof sach)[number]) => (s.sapCo ? 'Sắp có' : `${s.tong
 			khoiPhuc = false;
 			nguoiMo = null;
 		};
-		const khiChon = (s: CuonSach) => moBang(s, goc.querySelector<HTMLElement>(`.the-chon[data-cuon="${s.id}"]`));
+		const dangMoId = () => (bang.hidden ? null : (goc.dataset.sachMo ?? null));
+		// Một lối vào duy nhất cho thẻ chọn, bìa phẳng và canvas 3D: bấm cuốn đang mở thì đóng (như nút
+		// Quay lại), bấm cuốn khác thì mở cuốn đó. Nhờ vậy sách rút ra trong cảnh 3D luôn đi cùng bảng thông tin.
+		const bamSach = (s: CuonSach) => {
+			if (dangMoId() === s.id) return dongBang();
+			ke?.chon(s.id);
+			moBang(s, goc.querySelector<HTMLElement>(`.the-chon[data-cuon="${s.id}"]`));
+		};
 		nutQuayLai.addEventListener('click', dongBang);
 		document.addEventListener('keydown', (e) => {
 			if (e.key === 'Escape' && !e.defaultPrevented && !bang.hidden && !document.querySelector('dialog[open]')) dongBang();
 		});
 
-		const nguoiMoId = () => (bang.hidden ? null : nguoiMo?.dataset.cuon);
 		goc.addEventListener('click', (e) => {
 			const el = (e.target as HTMLElement).closest<HTMLElement>('[data-cuon]');
 			if (!el || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
 			const s = sach.find((x) => x.id === el.dataset.cuon);
 			if (!s) return;
-			// Không chuyển trang: mở bảng thông tin; cảnh 3D (nếu có) rút cuốn sách ra và mở bìa.
+			// Không chuyển trang: mở (hoặc đóng) bảng thông tin; cảnh 3D (nếu có) rút sách ra hoặc cất vào.
 			e.preventDefault();
-			ke?.chon(s.id);
-			if (s.id !== nguoiMoId()) khiChon(s);
+			bamSach(s);
 		});
 		for (const loai of ['pointerover', 'focusin'] as const) {
 			goc.addEventListener(loai, (e) => {
@@ -167,10 +172,10 @@ const moTaThe = (s: (typeof sach)[number]) => (s.sapCo ? 'Sắp có' : `${s.tong
 				dangTai = false;
 				// Điều kiện có thể đã đổi trong lúc tải chunk.
 				if (!ke && dieuKien(true)) {
-					ke = dungKe(sanKhau, sach, khiChon);
+					ke = dungKe(sanKhau, sach, bamSach);
 					// Bảng đang mở trước khi cảnh dựng xong: rút cuốn tương ứng ra cho khớp.
-					const dangMoId = nguoiMoId();
-					if (dangMoId) ke.chon(dangMoId as CuonSach['id']);
+					const moId = dangMoId();
+					if (moId) ke.chon(moId as CuonSach['id']);
 				}
 			};
 			const io = new IntersectionObserver(

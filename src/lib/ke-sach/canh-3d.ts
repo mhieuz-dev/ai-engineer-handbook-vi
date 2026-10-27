@@ -397,7 +397,11 @@ interface Cuon {
 	lac: number; // thời điểm bắt đầu lắc, 0 nếu không lắc
 }
 
-export function dungKe(goc: HTMLElement, sach: CuonSach[], khiChon: (s: CuonSach) => void): KeSach3D {
+/**
+ * Dựng kệ 3D trong `goc`. Bấm vào một cuốn chỉ báo `khiBam` (cảnh không tự rút sách ra);
+ * nơi gọi quyết định mở hay đóng rồi gọi `chon` / `dong`.
+ */
+export function dungKe(goc: HTMLElement, sach: CuonSach[], khiBam: (s: CuonSach) => void): KeSach3D {
 	let daHuy = false;
 	let sanSang = false;
 	let renderer: WebGLRenderer | null = null;
@@ -734,7 +738,7 @@ export function dungKe(goc: HTMLElement, sach: CuonSach[], khiChon: (s: CuonSach
 				return;
 			}
 			const c = trungSach(e);
-			if (c && chon(c.s.id)) khiChon(c.s);
+			if (c) khiBam(c.s);
 		};
 		const roi = () => {
 			if (keo?.da) return;
