@@ -1,0 +1,97 @@
+---
+title: Lề cực đại
+description: Khi hai lớp tách được, có vô số đường thẳng chia đúng. SVM chọn đường cách xa cả hai lớp nhất. Tính tay độ rộng lề √5 trên 8 điểm, và thấy chỉ 2 điểm quyết định cả ranh giới.
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+<CanBietTruoc>
+Tích vô hướng và độ dài vector (Chương 5). Ranh giới quyết định tuyến tính của hồi quy logistic (Chương 11). Regularization và cross-validation (Chương 13).
+
+<Fragment slot="sau-chuong">
+Giải thích lề cực đại và vector hỗ trợ, tính tay độ rộng lề. Đọc tham số C như một núm vặn regularization. Hiểu kernel trick bằng một ví dụ tính được, chỉnh gamma của kernel RBF. Dùng SVM đúng cách trên dữ liệu thật: chuẩn hóa, chọn C và gamma.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch16_svm_kernel.ipynb" />
+
+## Vô số đường chia đúng
+
+Tám điểm, hai đặc trưng, hai lớp:
+
+**Bảng 16.1.** Tám điểm tách được bằng một đường thẳng.
+
+| Lớp 0 (đỏ) | (1; 1) | (2; 1) | (1; 2) | (2; 3) |
+|:---|:---:|:---:|:---:|:---:|
+| **Lớp 1 (xanh)** | **(4; 4)** | **(5; 4)** | **(4; 5)** | **(5; 6)** |
+
+Có rất nhiều đường thẳng chia đúng cả 8 điểm. Đường nào tốt nhất? Hồi quy logistic chọn đường làm cross-entropy nhỏ nhất; với dữ liệu tách được hoàn toàn, nó còn gặp rắc rối vì trọng số chạy ra vô cực (Chương 11).
+
+<Term id="svm">SVM</Term> (support vector machine) trả lời theo cách khác: chọn đường thẳng **cách xa nhất** các điểm gần nó nhất của cả hai lớp. Tưởng tượng mở một con đường giữa hai khu dân cư, rộng hết mức có thể mà không phá nhà nào. Đường quyết định là vạch giữa đường; độ rộng con đường là **lề** <En>margin</En>.
+
+## Lề cực đại
+
+```python
+import numpy as np
+from sklearn.svm import SVC
+X = np.array([[1, 1], [2, 1], [1, 2], [2, 3], [4, 4], [5, 4], [4, 5], [5, 6]], dtype=float)
+y = np.array([0, 0, 0, 0, 1, 1, 1, 1])
+m = SVC(kernel="linear", C=1e6).fit(X, y)            # C rất lớn: không cho phép điểm nào lấn vào lề (lề cứng)
+w, b = m.coef_[0], m.intercept_[0]
+print(w.round(4), round(b, 4), m.support_)           # trọng số, hệ số chặn, chỉ số các vector hỗ trợ
+print(round(2 / np.linalg.norm(w), 4))               # độ rộng lề
+print(m.decision_function(X).round(4))               # w·x + b cho từng điểm
+```
+
+```text title="Output"
+[0.8 0.4] -3.8 [3 4]
+2.2361
+[-2.6 -1.8 -2.2 -1.   1.   1.8  1.4  2.6]
+```
+
+Đường quyết định là $0{,}8 x_1 + 0{,}4 x_2 - 3{,}8 = 0$. Điểm nào cho số dương thuộc lớp 1, số âm thuộc lớp 0.
+
+Dòng cuối là điểm quan trọng. Hai điểm cho đúng $-1$ và $+1$: điểm $(2; 3)$ của lớp 0 và $(4; 4)$ của lớp 1. Mọi điểm khác cho giá trị xa hơn. SVM được định nghĩa sao cho những điểm gần ranh giới nhất nằm đúng trên hai đường $\mathbf w \cdot \mathbf x + b = \pm 1$: đó là hai mép của con đường.
+
+<HinhKetQua src="/hinh/ch16/h1_le_cuc_dai.svg" alt="Tám điểm: bốn ô vuông đỏ ở góc dưới trái, bốn chấm tròn xanh ở góc trên phải. Một đường thẳng đậm chéo xuống chạy giữa hai nhóm, hai đường đứt nét song song hai bên. Điểm (2; 3) đỏ nằm trên đường đứt nét trái và điểm (4; 4) xanh nằm trên đường đứt nét phải, cả hai được khoanh tròn cam." so="16.1" chuThich="Đường quyết định (đậm) và hai mép lề (đứt nét) của SVM lề cứng trên 8 điểm của Bảng 16.1. Hai điểm khoanh cam là vector hỗ trợ.">
+**Đọc hình.** Đường đậm là ranh giới. Hai đường đứt nét là hai mép lề, cách đều đường đậm. Không điểm nào nằm trong lề.
+
+**Vector hỗ trợ.** Hai điểm khoanh cam nằm đúng trên mép lề. Chúng là <Term id="vector-ho-tro">vector hỗ trợ</Term>: những điểm "đỡ" lấy ranh giới. Xóa sáu điểm còn lại, chạy lại SVM, ranh giới **y nguyên**. Dịch một trong hai điểm khoanh, ranh giới dịch theo.
+
+**Độ rộng lề.** Hai vector hỗ trợ cách nhau $\sqrt{(4 - 2)^2 + (4 - 3)^2} = \sqrt 5 \approx 2{,}24$. Ở ví dụ này đoạn nối chúng vuông góc với ranh giới, nên đó cũng chính là độ rộng lề.
+</HinhKetQua>
+
+## Độ rộng lề từ trọng số
+
+Khoảng cách từ một điểm $\mathbf x$ tới đường thẳng $\mathbf w \cdot \mathbf x + b = 0$ là $\frac{|\mathbf w \cdot \mathbf x + b|}{\lVert \mathbf w \rVert}$. Vector hỗ trợ cho $|\mathbf w \cdot \mathbf x + b| = 1$, nên mỗi mép lề cách ranh giới $\frac{1}{\lVert \mathbf w \rVert}$, và cả con đường rộng:
+
+$$
+\text{lề} = \frac{2}{\lVert \mathbf w \rVert} = \frac{2}{\sqrt{0{,}8^2 + 0{,}4^2}} = \frac{2}{\sqrt{0{,}8}} = \sqrt 5 \approx 2{,}2361 \tag{16.1}
+$$
+
+Khớp output. Lề rộng nhất nghĩa là $\lVert \mathbf w \rVert$ nhỏ nhất. Vậy SVM lề cứng là bài toán:
+
+$$
+\text{cực tiểu } \tfrac12 \lVert \mathbf w \rVert^2 \quad \text{sao cho } y_i(\mathbf w \cdot \mathbf x_i + b) \ge 1 \text{ với mọi } i
+$$
+
+với nhãn viết là $y_i = \pm 1$. Ràng buộc nói: mọi điểm phải nằm đúng phía và **ngoài** lề.
+
+Để ý $\lVert \mathbf w \rVert^2$: đó chính là khoản phạt của ridge ở Chương 13. SVM là một mô hình tuyến tính có regularization sẵn trong định nghĩa.
+
+<Khung loai="vi-sao" tieuDe="LỀ RỘNG TỔNG QUÁT TỐT HƠN">
+Một điểm mới thường rơi gần các điểm cùng lớp đã thấy, nhưng không trùng. Ranh giới sát rạt một lớp thì một điểm mới của lớp đó chỉ cần lệch một chút là bị chia sai. Lề rộng để dành "chỗ thở" cho cả hai phía.
+
+Đây là lý do SVM nổi tiếng tổng quát hóa tốt khi dữ liệu ít: nó chỉ dựa vào vài điểm sát ranh giới, và đặt ranh giới ở chỗ an toàn nhất có thể.
+</Khung>
+
+<Khung loai="loi">
+**Nghĩ mọi điểm đều ảnh hưởng tới SVM.** Chỉ vector hỗ trợ ảnh hưởng. Điều này tốt (bền với điểm xa ranh giới) và cũng là điểm yếu: một điểm nhiễu nằm sát ranh giới có thể kéo lệch cả mô hình. Trang sau sửa chuyện đó.
+
+**Đọc `decision_function` như xác suất.** Nó là $\mathbf w \cdot \mathbf x + b$, có thể là bất kỳ số thực nào. Dấu cho biết lớp, độ lớn cho biết cách ranh giới bao xa (tính theo đơn vị nửa lề).
+</Khung>

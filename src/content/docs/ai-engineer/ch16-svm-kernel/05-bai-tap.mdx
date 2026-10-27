@@ -1,0 +1,93 @@
+---
+title: Bài tập
+description: Ba bài tập SVM có đáp án chi tiết (điểm mới rơi vào trong lề, khoảng cách tới ranh giới, giá trị kernel RBF theo gamma) và câu hỏi phỏng vấn.
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Ba bài dùng SVM lề cứng ở trang 1: $\mathbf w = (0{,}8;\ 0{,}4)$, $b = -3{,}8$.
+
+<BaiTap so="16.1">
+**Điểm mới trong lề.** Một điểm mới $(3; 3)$. Tính tay $\mathbf w \cdot \mathbf x + b$. SVM đoán lớp nào? Điểm đó nằm ngoài lề hay trong lề?
+
+<Fragment slot="dap-an">
+
+$0{,}8 \times 3 + 0{,}4 \times 3 - 3{,}8 = 2{,}4 + 1{,}2 - 3{,}8 = -0{,}2$.
+
+```python
+print(round(0.8 * 3 + 0.4 * 3 - 3.8, 4))
+```
+
+```text title="Output"
+-0.2
+```
+
+Âm nên đoán **lớp 0**. Nhưng $|-0{,}2| < 1$: điểm nằm **trong lề**, gần ranh giới hơn mọi điểm train. SVM đoán lớp 0 mà không chắc chắn. Khoảng cách tới ranh giới chỉ $0{,}2/\lVert\mathbf w\rVert \approx 0{,}22$, so với nửa lề $\approx 1{,}12$. Nếu ứng dụng cần, có thể coi những điểm có $|\mathbf w \cdot \mathbf x + b| < 1$ là "không chắc" và chuyển cho người xem.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="16.2">
+**Điểm xa nhất.** Điểm $(5; 6)$ của lớp 1 cho $\mathbf w \cdot \mathbf x + b = 2{,}6$ (dòng cuối output trang 1). Nó cách ranh giới bao xa? Nếu xóa điểm này khỏi dữ liệu, ranh giới thay đổi thế nào?
+
+<Fragment slot="dap-an">
+
+Khoảng cách $= \frac{|\mathbf w \cdot \mathbf x + b|}{\lVert\mathbf w\rVert} = \frac{2{,}6}{\sqrt{0{,}8}} \approx 2{,}907$.
+
+```python
+print(round(2.6 / np.sqrt(0.8), 4))
+```
+
+```text title="Output"
+2.9069
+```
+
+Xóa điểm này, ranh giới **không đổi**. Nó không phải vector hỗ trợ (giá trị 2,6 lớn hơn 1, nằm xa ngoài lề). Chỉ hai điểm $(2; 3)$ và $(4; 4)$ quyết định ranh giới. Đây là khác biệt lớn với hồi quy logistic: ở đó mọi điểm đều đóng góp vào gradient, kể cả những điểm đã phân loại đúng rất xa.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="16.3">
+**Kernel RBF theo gamma.** Với $\mathbf a = (1; 2)$, $\mathbf b = (3; 1)$, tính kernel RBF (16.3) với $\gamma = 0{,}1$; $1$; $10$. Giá trị nào nghĩa là "hai điểm này coi như giống nhau", giá trị nào nghĩa là "không liên quan gì"?
+
+<Fragment slot="dap-an">
+
+$\lVert \mathbf a - \mathbf b \rVert^2 = 2^2 + 1^2 = 5$.
+
+- $\gamma = 0{,}1$: $e^{-0{,}5} \approx 0{,}607$.
+- $\gamma = 1$: $e^{-5} \approx 0{,}0067$.
+- $\gamma = 10$: $e^{-50} \approx 1{,}9 \times 10^{-22}$, thực tế bằng 0.
+
+```python
+print([float(np.exp(-g * np.sum((a2 - b2) ** 2))) for g in [0.1, 1, 10]])
+```
+
+```text title="Output"
+[0.6065306597126334, 0.006737946999085467, 1.9287498479639178e-22]
+```
+
+Với $\gamma = 0{,}1$, hai điểm cách nhau $\sqrt 5$ vẫn "khá giống" (0,61): mỗi điểm ảnh hưởng cả vùng rộng, mô hình mượt. Với $\gamma = 10$, chúng hoàn toàn không liên quan: mỗi điểm chỉ ảnh hưởng chính nó, giống hòn đảo trong hình 16.3. Cùng một cặp điểm, $\gamma$ quyết định "gần" nghĩa là bao xa.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Support vector là gì?**
+
+<p lang="en"><em>What are support vectors?</em></p>
+
+*Gợi ý:* các điểm nằm trên hoặc trong lề; chỉ chúng quyết định ranh giới. Điểm xa lề có thể xóa mà mô hình không đổi.
+
+**2. Giải thích kernel trick.**
+
+<p lang="en"><em>Explain the kernel trick.</em></p>
+
+*Gợi ý:* bài toán đối ngẫu của SVM chỉ cần tích vô hướng giữa các cặp điểm; kernel tính tích vô hướng trong không gian đặc trưng cao chiều (thậm chí vô hạn chiều với RBF) mà không cần ánh xạ tường minh. Cái giá là ma trận kernel $n \times n$.
+
+**3. C và gamma ảnh hưởng thế nào tới SVM RBF?**
+
+<p lang="en"><em>How do C and gamma affect an RBF SVM?</em></p>
+
+*Gợi ý:* C lớn phạt nặng điểm lấn lề, ít regularization; gamma lớn thu hẹp bán kính ảnh hưởng mỗi điểm, ranh giới phức tạp hơn. Cả hai lớn dễ overfit. Chọn cùng lúc bằng grid search có cross-validation, sau khi chuẩn hóa.
+</Khung>

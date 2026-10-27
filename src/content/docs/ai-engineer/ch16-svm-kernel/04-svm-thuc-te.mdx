@@ -1,0 +1,85 @@
+---
+title: SVM trên dữ liệu thật
+description: Trên ung thư vú, chuẩn hóa nâng SVM từ 93,0% lên 95,1%. Chọn C và gamma cùng lúc bằng GridSearchCV, lấy xác suất bằng probability=True, và khi nào SVM không còn là lựa chọn tốt.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Chuẩn hóa, lần nữa
+
+Kernel RBF đo khoảng cách, nên mắc đúng vấn đề thang đo của KNN (Chương 14):
+
+```python
+from sklearn.datasets import load_breast_cancer
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+dd = load_breast_cancer()
+Xb, yb = dd.data, 1 - dd.target
+Xtr, Xte, ytr, yte = train_test_split(Xb, yb, test_size=0.25, random_state=0, stratify=yb)   # cách chia của Chương 12
+print(round(SVC().fit(Xtr, ytr).score(Xte, yte), 4), round(make_pipeline(StandardScaler(), SVC()).fit(Xtr, ytr).score(Xte, yte), 4))
+```
+
+```text title="Output"
+0.9301 0.951
+```
+
+Không chuẩn hóa: 93,0%. Có chuẩn hóa: 95,1%. Với SVM, `StandardScaler` trong Pipeline gần như là bắt buộc.
+
+## Chọn C và gamma cùng lúc
+
+$C$ và $\gamma$ tương tác: $\gamma$ lớn làm mô hình linh hoạt, $C$ lớn làm nó cố khớp. Chọn từng cái riêng lẻ dễ lỡ tổ hợp tốt. `GridSearchCV` thử **mọi** tổ hợp trong một lưới, đánh giá mỗi tổ hợp bằng cross-validation:
+
+```python
+luoi = {"svc__C": [0.1, 1, 10, 100], "svc__gamma": [0.001, 0.01, 0.1, 1]}       # 16 tổ hợp
+gs = GridSearchCV(make_pipeline(StandardScaler(), SVC()), luoi, cv=5).fit(Xtr, ytr)   # 16 x 5 = 80 lần huấn luyện
+print(gs.best_params_, round(gs.best_score_, 4), round(gs.score(Xte, yte), 4))
+```
+
+```text title="Output"
+{'svc__C': 10, 'svc__gamma': 0.01} 0.9836 0.965
+```
+
+Tên `svc__C` có hai dấu gạch dưới: "tham số `C` của bước tên `svc` trong Pipeline". `make_pipeline` tự đặt tên mỗi bước bằng tên lớp viết thường.
+
+Tổ hợp tốt nhất $C = 10$, $\gamma = 0{,}01$ đạt 98,4% cross-validation và 96,5% trên test (đo một lần, sau khi đã chọn xong). `GridSearchCV` tự huấn luyện lại mô hình tốt nhất trên cả `Xtr` sau khi chọn, nên `gs.score` dùng thẳng được.
+
+So với hồi quy logistic ở Chương 12 (98,6% trên cùng tập test): SVM **không** thắng ở đây. Trên 143 ca test, chênh 2,1 điểm là 3 ca, nằm trong khoảng dao động mà bootstrap ở Chương 12 đã cho thấy. Với bộ dữ liệu mà ranh giới gần tuyến tính, mô hình tuyến tính đơn giản thường đủ tốt.
+
+## Xác suất từ SVM
+
+SVM cho `decision_function` (khoảng cách có dấu tới ranh giới), không cho xác suất. Muốn có `predict_proba`, đặt `probability=True`:
+
+```python
+mp = make_pipeline(StandardScaler(), SVC(probability=True, random_state=0)).fit(Xtr, ytr)
+print(mp.predict_proba(Xte[:2]).round(4), mp.decision_function(Xte[:2]).round(4))
+```
+
+```text title="Output"
+[[0.0712 0.9288]
+ [0.9955 0.0045]] [ 0.6447 -1.5203]
+```
+
+scikit-learn ước lượng xác suất bằng cách khớp thêm một đường sigmoid lên `decision_function` qua cross-validation nội bộ (phương pháp Platt). Huấn luyện chậm hơn khoảng 5 lần, và trong một số trường hợp hiếm, nhãn từ `predict` có thể không khớp với `predict_proba > 0,5`. Nếu chỉ cần xếp hạng (ví dụ để vẽ ROC ở Chương 12), dùng thẳng `decision_function`.
+
+**Bảng 16.2.** Khi nào chọn SVM.
+
+| Hợp | Không hợp |
+|:---|:---|
+| vài trăm tới vài chục nghìn mẫu | hàng triệu mẫu (kernel tốn $n^2$) |
+| nhiều đặc trưng so với số mẫu | cần xác suất đáng tin, nhanh |
+| ranh giới cong, cần lề an toàn | dữ liệu bảng nhiều kiểu đặc trưng lẫn lộn (cây và ensemble ở Chương 17, 18 thường tốt hơn) |
+
+<Khung loai="vi-sao" tieuDe="SVM TỪNG THỐNG TRỊ">
+Từ cuối những năm 1990 tới khoảng 2012, SVM với kernel là mô hình mạnh nhất cho nhiều bài toán, từ phân loại văn bản tới nhận dạng chữ viết tay. Nó có nền tảng lý thuyết đẹp (lề cực đại gắn với giới hạn của lỗi tổng quát hóa) và chỉ có vài siêu tham số.
+
+Deep learning thay thế nó ở ảnh, âm thanh, văn bản khi dữ liệu lớn và GPU rẻ. Nhưng ý tưởng của SVM vẫn còn: hàm mất mát hinge, nền của lề mềm, xuất hiện trong nhiều mô hình hiện đại; và học "độ giống nhau" giữa các điểm là trái tim của embedding ở Phần IV.
+</Khung>
+
+<Khung loai="loi">
+**Lưới quá thưa hoặc lệch.** Nếu tổ hợp tốt nhất nằm ở **mép** lưới (ví dụ $C = 100$ là giá trị lớn nhất đã thử), giá trị thật sự tốt có thể nằm ngoài lưới. Mở rộng lưới về phía đó rồi chạy lại.
+
+**Lưới quá dày.** 10 giá trị $C$ nhân 10 giá trị $\gamma$ nhân 5 phần là 500 lần huấn luyện. Bắt đầu thưa theo thang log, rồi làm mịn quanh vùng tốt.
+</Khung>

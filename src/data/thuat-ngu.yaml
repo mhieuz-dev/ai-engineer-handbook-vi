@@ -398,3 +398,18 @@
   tenTiengAnh: Laplace smoothing
   giaiThich: Làm trơn Laplace cộng thêm 1 vào mọi số đếm trước khi tính xác suất, để một từ chưa từng gặp trong một lớp không làm xác suất của cả câu bằng đúng 0.
   hocKy: ai-engineer/ch15-naive-bayes
+- id: svm
+  ten: SVM
+  tenTiengAnh: support vector machine
+  giaiThich: SVM là bộ phân loại tìm đường ranh giới cách xa hai lớp nhất có thể, như con đường rộng nhất chạy giữa hai khu dân cư. Chỉ vài điểm sát ranh giới quyết định vị trí của nó.
+  hocKy: ai-engineer/ch16-svm-kernel
+- id: vector-ho-tro
+  ten: Vector hỗ trợ
+  tenTiengAnh: support vector
+  giaiThich: Vector hỗ trợ là những điểm dữ liệu nằm trên hoặc lấn vào lề của SVM. Xóa mọi điểm khác đi, ranh giới vẫn y nguyên; chỉ những điểm này mới quan trọng.
+  hocKy: ai-engineer/ch16-svm-kernel
+- id: kernel
+  ten: Kernel
+  tenTiengAnh: kernel
+  giaiThich: Kernel là hàm đo độ giống nhau giữa hai điểm, cho phép SVM làm việc như thể dữ liệu đã được đưa lên một không gian nhiều chiều hơn mà không cần tính tọa độ trong không gian đó. Nhờ vậy ranh giới thẳng trên đó thành ranh giới cong ở không gian gốc.
+  hocKy: ai-engineer/ch16-svm-kernel

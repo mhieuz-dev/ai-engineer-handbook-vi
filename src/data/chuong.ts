@@ -42,7 +42,7 @@ const BANG: [number, string, string, string, XuatBan?][] = [
 	[13, 'phan-2', 'Overfitting, bias-variance và regularization', 'overfitting-regularization', { trangThai: 'xong', notebook: 'ch13_overfitting_regularization.ipynb' }],
 	[14, 'phan-2', 'KNN và khoảng cách', 'knn', { trangThai: 'xong', notebook: 'ch14_knn.ipynb' }],
 	[15, 'phan-2', 'Naive Bayes', 'naive-bayes', { trangThai: 'xong', notebook: 'ch15_naive_bayes.ipynb' }],
-	[16, 'phan-2', 'SVM và kernel', 'svm-kernel'],
+	[16, 'phan-2', 'SVM và kernel', 'svm-kernel', { trangThai: 'xong', notebook: 'ch16_svm_kernel.ipynb' }],
 	[17, 'phan-2', 'Cây quyết định', 'cay-quyet-dinh'],
 	[18, 'phan-2', 'Ensemble', 'ensemble'],
 	[19, 'phan-2', 'Phân cụm', 'phan-cum'],

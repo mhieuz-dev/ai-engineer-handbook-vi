@@ -1,0 +1,94 @@
+---
+title: Kernel trick
+description: Bảy điểm trên một đường thẳng không chia được bằng một ngưỡng, nhưng thêm cột x² là chia được. Kernel làm việc đó mà không cần tính cột mới, kiểm bằng tay (x·z)² = φ(x)·φ(z) = 25. Kernel RBF và gamma trên hai vầng trăng.
+---
+
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Khi không có đường thẳng nào chia được
+
+Bảy điểm trên trục số, lớp 1 ở giữa, lớp 0 ở hai đầu:
+
+| $x$ | $-3$ | $-2$ | $-1$ | 0 | 1 | 2 | 3 |
+|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| lớp | 0 | 0 | 1 | 1 | 1 | 0 | 0 |
+
+Một mô hình tuyến tính trên một chiều chỉ đặt được **một ngưỡng**: bên trái lớp này, bên phải lớp kia. Không ngưỡng nào chia đúng được.
+
+Mẹo: thêm một đặc trưng $x^2$. Mỗi điểm giờ là $(x, x^2)$ trên mặt phẳng. Lớp 1 có $x^2 \le 1$, lớp 0 có $x^2 \ge 4$: một đường nằm ngang $x^2 = 2{,}5$ chia đúng cả bảy.
+
+```python
+x = np.array([-3, -2, -1, 0, 1, 2, 3.0])
+y7 = (np.abs(x) <= 1.5).astype(int)
+print(SVC(kernel="linear", C=1e6).fit(x[:, None], y7).score(x[:, None], y7))   # chỉ có x
+P = np.c_[x, x ** 2]                                                            # thêm cột x²
+m2 = SVC(kernel="linear", C=1e6).fit(P, y7)
+print(m2.score(P, y7), m2.coef_.round(4), m2.intercept_.round(4))
+```
+
+```text title="Output"
+0.5714285714285714
+1.0 [[-0.     -0.6668]] [1.667]
+```
+
+Chỉ với $x$: đúng 4 trên 7. Thêm $x^2$: đúng cả 7. Ranh giới là $-0{,}6668\, x^2 + 1{,}667 = 0$, tức $x^2 = 2{,}5$, đúng đường nằm ngang ta đoán. Ranh giới **thẳng** trong không gian $(x, x^2)$ là ranh giới **hai ngưỡng** $x = \pm 1{,}58$ trong không gian gốc.
+
+Đây chính là đa thức của Chương 13: thêm đặc trưng phi tuyến để mô hình tuyến tính vẽ được đường cong.
+
+## Kernel: không cần tính cột mới
+
+Với 30 đặc trưng, thêm mọi tích bậc hai $x_i x_j$ là 465 cột mới; bậc ba là gần 5 000 cột. Tính và lưu chúng rất tốn.
+
+Điểm mấu chốt: bài toán SVM (16.2), viết lại theo một dạng gọi là bài toán đối ngẫu, chỉ cần **tích vô hướng** giữa các cặp điểm, không bao giờ cần tọa độ riêng lẻ. Vậy nếu có một hàm $k(\mathbf x, \mathbf z)$ tính thẳng ra tích vô hướng trong không gian mới, ta không cần tạo không gian mới đó.
+
+Hàm như vậy gọi là <Term id="kernel">kernel</Term>. Ví dụ với hai đặc trưng, kernel đa thức bậc hai $k(\mathbf x, \mathbf z) = (\mathbf x \cdot \mathbf z)^2$ ứng với ánh xạ $\varphi(\mathbf x) = (x_1^2,\ \sqrt 2\, x_1 x_2,\ x_2^2)$.
+
+Kiểm tay với $\mathbf a = (1, 2)$, $\mathbf b = (3, 1)$:
+
+- Cách kernel: $\mathbf a \cdot \mathbf b = 3 + 2 = 5$, bình phương lên **25**. Một tích vô hướng 2 chiều, một phép bình phương.
+- Cách tường minh: $\varphi(\mathbf a) = (1;\ 2{,}828;\ 4)$, $\varphi(\mathbf b) = (9;\ 4{,}243;\ 1)$. Tích vô hướng $9 + 12 + 4 = $ **25**.
+
+```python
+a2, b2 = np.array([1.0, 2.0]), np.array([3.0, 1.0])
+phi = lambda v: np.array([v[0] ** 2, np.sqrt(2) * v[0] * v[1], v[1] ** 2])   # ánh xạ lên 3 chiều
+print((a2 @ b2) ** 2, phi(a2) @ phi(b2))
+```
+
+```text title="Output"
+25.0 25.0
+```
+
+Hai cách cùng ra 25, nhưng cách kernel không bao giờ tạo vector 3 chiều. Với bậc cao và nhiều đặc trưng, khoản tiết kiệm là khổng lồ. Mẹo này là **kernel trick**.
+
+## Kernel RBF
+
+Kernel dùng nhiều nhất là RBF (radial basis function):
+
+$$
+k(\mathbf x, \mathbf z) = \exp\!\left(-\gamma\, \lVert \mathbf x - \mathbf z \rVert^2\right) \tag{16.3}
+$$
+
+Nó đo độ **giống nhau** giữa hai điểm: bằng 1 khi trùng nhau, giảm dần về 0 khi xa nhau. Với $\mathbf a$, $\mathbf b$ ở trên, $\lVert \mathbf a - \mathbf b \rVert^2 = 5$: với $\gamma = 0{,}1$ ra $e^{-0{,}5} \approx 0{,}61$ (khá giống); với $\gamma = 1$ ra $e^{-5} \approx 0{,}0067$ (gần như khác hẳn).
+
+Không gian ứng với RBF có **vô hạn** chiều; không thể tính tường minh, chỉ có kernel trick mới dùng được. Dự đoán của SVM với RBF thành một tổng có trọng số các "quả đồi" hình chuông đặt tại mỗi vector hỗ trợ, gợi nhớ KNN có trọng số ở Chương 14.
+
+<HinhKetQua src="/hinh/ch16/h3_rbf_gamma.svg" alt="Ba khung trên dữ liệu hai vầng trăng. Gamma 0,1: ranh giới là một đường cong thoải gần như thẳng, train 82%, test 86%. Gamma 1: ranh giới cong mượt theo hai vầng trăng, train 94%, test 94%. Gamma 100: nền xanh khắp nơi với những đốm đỏ nhỏ bao quanh từng điểm đỏ, train 99%, test 87%." so="16.3" chuThich="SVM kernel RBF trên 210 điểm train của make_moons với ba giá trị γ, C = 1.">
+**$\gamma = 0{,}1$.** Mỗi quả đồi rất rộng, ảnh hưởng của mỗi điểm lan khắp mặt phẳng. Ranh giới gần như thẳng: underfitting, train 82%.
+
+**$\gamma = 1$.** Quả đồi vừa phải. Ranh giới cong mượt theo hai vầng trăng, test 94%, tốt nhất trong ba và tốt hơn KNN tốt nhất ở Chương 14 (92%).
+
+**$\gamma = 100$.** Mỗi quả đồi rất hẹp, chỉ bao đúng một điểm. Mô hình vẽ một "hòn đảo" quanh từng điểm đỏ: train 99%, test 87%. Overfitting, giống KNN với $k = 1$.
+</HinhKetQua>
+
+<Khung loai="truc-giac">
+$\gamma$ là bán kính ảnh hưởng (ngược) của mỗi điểm train. $\gamma$ nhỏ: mỗi điểm "nói" cho cả vùng rộng, mô hình mượt. $\gamma$ lớn: mỗi điểm chỉ nói cho chính chỗ nó đứng, mô hình học thuộc. SVM RBF có **hai** núm vặn regularization: $C$ và $\gamma$, và chúng tương tác nhau, nên phải chọn cùng lúc.
+</Khung>
+
+<Khung loai="loi">
+**Chọn kernel trước khi thử tuyến tính.** Với dữ liệu nhiều đặc trưng (như văn bản, hàng chục nghìn từ), SVM tuyến tính thường đã đủ và nhanh hơn rất nhiều. Thử `LinearSVC` trước, rồi mới RBF.
+
+**Nghĩ kernel trick là phép màu miễn phí.** Kernel tránh được việc tính tọa độ mới, nhưng phải tính kernel giữa **mọi cặp** điểm train: $n^2$ phép tính. Với 100 000 mẫu là $10^{10}$ cặp. SVM kernel vì vậy chậm trên dữ liệu lớn.
+</Khung>

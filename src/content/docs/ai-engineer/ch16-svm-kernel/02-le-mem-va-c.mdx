@@ -1,0 +1,68 @@
+---
+title: Lề mềm và tham số C
+description: Một điểm lạc buộc lề cứng co lại còn 0,89. Lề mềm cho phép vài điểm lấn vào lề đổi lấy con đường rộng hơn, và C quyết định đổi bao nhiêu. C lớn là ít regularization, C nhỏ là nhiều.
+---
+
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Một điểm lạc
+
+Thêm một điểm lớp 0 tại $(3{,}2; 3{,}6)$, nằm sát nhóm xanh. Có thể là dữ liệu thật, có thể là lỗi nhập. Lề cứng buộc phải chia đúng nó:
+
+```python
+X2 = np.vstack([X, [[3.2, 3.6]]])                    # thêm điểm lạc
+y2 = np.append(y, 0)                                 # nhãn lớp 0
+for C in [1000, 1, 0.1]:
+    mc = SVC(kernel="linear", C=C).fit(X2, y2)
+    wc = mc.coef_[0]
+    print(C, wc.round(4), round(mc.intercept_[0], 4), round(2 / np.linalg.norm(wc), 4), round(mc.score(X2, y2), 4))
+```
+
+```text title="Output"
+1000 [2. 1.] -11.0 0.8944 1.0
+1 [0.8 0.4] -4.0 2.2361 0.8889
+0.1 [0.3533 0.3133] -2.02 4.235 0.8889
+```
+
+Với $C = 1000$ (gần như lề cứng), SVM chia đúng cả 9 điểm, nhưng con đường **co lại** từ 2,24 xuống còn 0,89, chen chúc giữa điểm lạc và nhóm xanh. Một điểm duy nhất đã đổi hẳn mô hình.
+
+## Lề mềm
+
+Lề mềm cho phép một số điểm **lấn vào lề**, thậm chí nằm sai phía, nhưng mỗi lần lấn phải trả giá. Gọi $\xi_i \ge 0$ là độ lấn của điểm $i$ (bằng 0 nếu điểm nằm ngoài lề, đúng phía):
+
+$$
+\text{cực tiểu } \tfrac12 \lVert \mathbf w \rVert^2 + C \sum_{i} \xi_i \quad \text{sao cho } y_i(\mathbf w \cdot \mathbf x_i + b) \ge 1 - \xi_i \tag{16.2}
+$$
+
+Số hạng đầu muốn lề rộng, số hạng sau muốn ít điểm lấn. $C$ là tỷ giá giữa hai thứ.
+
+<HinhKetQua src="/hinh/ch16/h2_le_mem.svg" alt="Ba khung cùng 9 điểm, trong đó có một ô vuông đỏ lạc ở (3,2; 3,6) gần nhóm xanh. Khung C bằng 1000: lề hẹp 0,89 ép giữa điểm lạc và nhóm xanh, đúng 100%. Khung C bằng 1: lề rộng 2,24 như khi chưa có điểm lạc, điểm lạc nằm bên phía xanh, đúng 89%. Khung C bằng 0,1: lề rất rộng 4,24, nhiều điểm được khoanh là vector hỗ trợ, đúng 89%." so="16.2" chuThich="SVM tuyến tính với ba mức C trên 9 điểm, có một điểm lạc ở (3,2; 3,6). Điểm khoanh cam là vector hỗ trợ.">
+**$C = 1000$.** Phạt nặng mỗi lần lấn, nên SVM uốn mình chia đúng cả điểm lạc. Lề hẹp, mô hình nhạy với từng điểm: variance cao.
+
+**$C = 1$.** SVM chấp nhận hy sinh điểm lạc (nó nằm sai phía), đổi lại con đường rộng 2,24, đúng bằng khi chưa có điểm lạc. Đúng 8 trên 9 điểm. Nếu điểm lạc là lỗi nhập, đây là quyết định đúng.
+
+**$C = 0{,}1$.** Phạt nhẹ tới mức SVM để rất nhiều điểm nằm trong lề (6 vector hỗ trợ khoanh cam). Lề rộng 4,24. Ranh giới được quyết định bởi nhiều điểm hơn, ổn định hơn nhưng có thể quá đơn giản: bias cao hơn.
+</HinhKetQua>
+
+<Khung loai="truc-giac">
+$C$ là núm vặn regularization của SVM, giống $\alpha$ của ridge nhưng **chạy ngược**, đúng như $C$ của hồi quy logistic ở Chương 11. $C$ lớn: tin dữ liệu, ít regularization. $C$ nhỏ: tin vào lề rộng, nhiều regularization.
+
+Cách nhớ: $C$ đứng trước tổng độ lấn trong (16.2). $C$ to thì mỗi điểm lấn đắt, mô hình cố khớp từng điểm.
+</Khung>
+
+<TuKiemTra
+	cauHoi="SVM của bạn đạt 100% trên train và 78% trên validation. Nên đổi C thế nào?"
+	luaChon={['Tăng C', 'Giảm C', 'Giữ nguyên C, tăng số đặc trưng', 'C không ảnh hưởng tới overfitting']}
+	dapAn={1}
+	giaiThich="Khoảng cách lớn giữa train và validation là overfitting. Giảm C là tăng regularization: lề rộng hơn, mô hình bớt cố khớp từng điểm train."
+/>
+
+<Khung loai="loi">
+**Chọn C bằng độ chính xác train.** C càng lớn train càng đẹp. Chọn bằng cross-validation, như mọi siêu tham số.
+
+**Quên rằng lề cứng có thể không tồn tại.** Nếu dữ liệu không tách được bằng đường thẳng, bài toán lề cứng vô nghiệm. Đặt $C$ cực lớn khi đó làm thuật toán chạy rất lâu và cho kết quả bất ổn.
+</Khung>
