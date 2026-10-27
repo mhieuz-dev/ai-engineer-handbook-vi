@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { CHUONG, chuongDaXuatBan } from '../../src/data/chuong';
 
 const TRANG_DAU = '/ai-engineer/ch10-hoi-quy-tuyen-tinh/01-truc-giac/';
 
@@ -27,22 +28,23 @@ test('sitemap không chứa trang mẫu kiểm thử và trang in', async ({ req
 	expect(xml).not.toContain('/in/');
 });
 
-test('lộ trình: 65 dòng chương, chỉ chương 1 và 10 là link, còn lại có nhãn Sắp có', async ({ page }) => {
+test('lộ trình: 65 dòng chương, chương đã xuất bản là link, còn lại có nhãn Sắp có', async ({ page }) => {
 	await page.goto('/lo-trinh/');
 	const dong = page.locator('li[id^="ch"]');
 	await expect(dong).toHaveCount(65);
 	await expect(page.locator('li#ch01 a')).toHaveAttribute('href', '/ai-engineer/ch01-python-tu-dau/01-bien-va-kieu/');
 	await expect(page.locator('li#ch10 a')).toHaveAttribute('href', TRANG_DAU);
-	await expect(page.locator('li[id^="ch"] a')).toHaveCount(2);
-	await expect(page.locator('li[id^="ch"] .nhan-sap-co')).toHaveCount(63);
+	await expect(page.locator('li[id^="ch"] a')).toHaveCount(chuongDaXuatBan().length);
+	await expect(page.locator('li[id^="ch"] .nhan-sap-co')).toHaveCount(65 - chuongDaXuatBan().length);
 	await expect(page.locator('li#ch64')).toContainText('Phỏng vấn và portfolio');
 });
 
 test('notebook: bảng chương đã xuất bản có nút Colab và link GitHub', async ({ page }) => {
 	await page.goto('/notebook/');
-	await expect(page.locator('table tbody tr')).toHaveCount(2);
+	const coNotebook = CHUONG.filter((c) => c.notebook);
+	await expect(page.locator('table tbody tr')).toHaveCount(coNotebook.length);
 	await expect(page.locator('table tbody tr').first()).toContainText('ch01_python_tu_dau.ipynb');
-	const hang = page.locator('table tbody tr').nth(1);
+	const hang = page.locator('table tbody tr').nth(coNotebook.findIndex((c) => c.so === 10));
 	await expect(hang).toContainText('ch10_hoi_quy_tuyen_tinh.ipynb');
 	await expect(hang.locator('a.colab-nut')).toHaveAttribute('href', /colab\.research\.google\.com\/github\/mhieuz-dev\/ai-engineer-handbook-vi\/blob\/main\/notebooks\/ch10_hoi_quy_tuyen_tinh\.ipynb$/);
 	await expect(hang.getByRole('link', { name: 'GitHub' })).toHaveAttribute('href', /github\.com\/mhieuz-dev\/ai-engineer-handbook-vi\/blob\/main\/notebooks\/ch10_hoi_quy_tuyen_tinh\.ipynb$/);

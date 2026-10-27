@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { chuongDaXuatBan } from '../../src/data/chuong';
 
 const TRANG_DAU = '/ai-engineer/ch01-python-tu-dau/01-bien-va-kieu/';
 /** Chunk của cảnh 3D: three được gộp vào chunk canh-3d hoặc tách riêng tên three. */
@@ -32,7 +33,7 @@ test('mobile: kệ sách sau hero, không tải three, thẻ chọn hoạt độ
 	expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
 
 	await expect(theAi(page)).toContainText('65 chương');
-	await expect(theAi(page)).toContainText('đã viết 2');
+	await expect(theAi(page)).toContainText(`đã viết ${chuongDaXuatBan().length}`);
 	await theRobotics(page).tap();
 	await expect(bang(page)).toContainText('Nhánh này đang được soạn');
 	await expect(nutBatDau(page)).toHaveCount(0);
@@ -43,7 +44,7 @@ test('mobile: kệ sách sau hero, không tải three, thẻ chọn hoạt độ
 	await expect(page).toHaveURL(/\/$/);
 	await theAi(page).tap();
 	await expect(page).toHaveURL(/\/$/);
-	await expect(bang(page)).toContainText('65 chương · đã viết 2');
+	await expect(bang(page)).toContainText(`65 chương · đã viết ${chuongDaXuatBan().length}`);
 	await expect(nutBatDau(page)).toBeFocused();
 	expect((await nutBatDau(page).boundingBox())!.height).toBeGreaterThanOrEqual(44);
 	await nutBatDau(page).tap();

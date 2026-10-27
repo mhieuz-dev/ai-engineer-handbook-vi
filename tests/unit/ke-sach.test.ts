@@ -15,7 +15,6 @@ describe('kệ sách: dữ liệu hai cuốn', () => {
 		expect(ai.ten).toBe('AI Engineer');
 		expect(ai.tongChuong).toBe(65);
 		expect(ai.tongChuong).toBe(CHUONG.length);
-		expect(ai.daViet).toBe(2);
 		expect(ai.daViet).toBe(chuongDaXuatBan().length);
 		expect(ai.href).toBe('/ai-engineer/ch01-python-tu-dau/01-bien-va-kieu/');
 		expect(ai.sapCo).toBe(false);
