@@ -5,6 +5,7 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 import { createRequire } from 'node:module';
 import opentype from 'opentype.js';
+import sharp from 'sharp';
 
 const require = createRequire(import.meta.url);
 const rough = require('roughjs');
@@ -430,8 +431,15 @@ function biaRobotics() {
 /* ---------- Ghi file ---------- */
 
 mkdirSync('public/hinh/bia', { recursive: true });
+/** Ảnh nhỏ cho kệ phẳng trên điện thoại (SVG chỉ dành cho cảnh 3D). Bản 2x 720x1080 nặng 33-36 KB (quá 25 KB) nên chỉ làm 1x. */
+const WEBP = [['', 360, 540, 62]];
 for (const [ten, ve] of [['ai-engineer', biaAi], ['robotics', biaRobotics]]) {
 	const svg = ve();
 	writeFileSync(`public/hinh/bia/${ten}.svg`, svg);
 	console.log(`${ten}.svg: ${svg.length} B, gzip ${gzipSync(svg, { level: 9 }).length} B`);
+	for (const [hau, rong, cao, chatLuong] of WEBP) {
+		const webp = await sharp(Buffer.from(svg), { density: (72 * rong) / W }).resize(rong, cao).webp({ quality: chatLuong, effort: 6 }).toBuffer();
+		writeFileSync(`public/hinh/bia/${ten}${hau}.webp`, webp);
+		console.log(`${ten}${hau}.webp: ${rong}x${cao}, ${webp.length} B`);
+	}
 }

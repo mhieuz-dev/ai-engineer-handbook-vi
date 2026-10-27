@@ -140,11 +140,18 @@ test('mobile: hai bìa vẽ tay tải được dạng ảnh, vẫn không tải 
 	const anh = page.locator('#ke-sach img.anh-bia');
 	await expect(anh).toHaveCount(2);
 	for (const [i, ten] of ['ai-engineer', 'robotics'].entries()) {
-		await expect(anh.nth(i)).toHaveAttribute('src', `/hinh/bia/${ten}.svg`);
+		await expect(anh.nth(i)).toHaveAttribute('src', `/hinh/bia/${ten}.webp`);
 		await expect(anh.nth(i)).toHaveAttribute('loading', 'lazy');
 		await expect.poll(() => anh.nth(i).evaluate((e: HTMLImageElement) => e.complete && e.naturalWidth)).toBeGreaterThan(0);
 	}
 	expect(req.filter((u) => LA_CHUNK_3D.test(u))).toEqual([]);
+	const bia = req.filter((u) => u.includes('/hinh/bia/'));
+	expect(bia.length).toBe(2);
+	expect(bia.every((u) => u.endsWith('.webp'))).toBe(true);
+	const byte = await page.evaluate(() =>
+		performance.getEntriesByType('resource').filter((e) => e.name.includes('/hinh/bia/')).reduce((t, e) => t + (e as PerformanceResourceTiming).encodedBodySize, 0),
+	);
+	expect(byte).toBeLessThanOrEqual(40 * 1024);
 });
 
 test('desktop: cảnh 3D dùng bìa SVG làm texture', async ({ page, isMobile }) => {

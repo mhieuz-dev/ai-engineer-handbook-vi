@@ -16,11 +16,13 @@ export interface CuonSach {
 	mauChu: string;
 	/** Ảnh bìa vẽ tay trong public/ (sinh bằng `scripts/bia/ve-bia.mjs`). Không có thì bìa được vẽ bằng canvas. */
 	anhBia?: string;
+	/** Bản WebP 360x540 của bìa cho kệ phẳng (nhẹ hơn SVG nhiều lần, điện thoại không phải tải SVG). */
+	anhBiaNho?: string;
 }
 
-const GIAO_DIEN: Record<Nhanh['id'], Pick<CuonSach, 'phuDe' | 'mauBia' | 'mauChu' | 'anhBia'>> = {
-	'ai-engineer': { phuDe: 'Từ Python đến mô hình ngôn ngữ lớn', mauBia: '#0E2233', mauChu: '#FBF8F1', anhBia: '/hinh/bia/ai-engineer.svg' },
-	robotics: { phuDe: 'Nhánh thứ hai, đang được soạn', mauBia: '#DCDFE2', mauChu: '#1F2A33', anhBia: '/hinh/bia/robotics.svg' },
+const GIAO_DIEN: Record<Nhanh['id'], Pick<CuonSach, 'phuDe' | 'mauBia' | 'mauChu' | 'anhBia' | 'anhBiaNho'>> = {
+	'ai-engineer': { phuDe: 'Từ Python đến mô hình ngôn ngữ lớn', mauBia: '#0E2233', mauChu: '#FBF8F1', anhBia: '/hinh/bia/ai-engineer.svg', anhBiaNho: '/hinh/bia/ai-engineer.webp' },
+	robotics: { phuDe: 'Nhánh thứ hai, đang được soạn', mauBia: '#DCDFE2', mauChu: '#1F2A33', anhBia: '/hinh/bia/robotics.svg', anhBiaNho: '/hinh/bia/robotics.webp' },
 };
 
 /**

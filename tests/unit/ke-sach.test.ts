@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { readFileSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { dsCuonSach } from '../../src/lib/ke-sach/du-lieu';
 import { du3D } from '../../src/lib/ke-sach/cong-3d';
@@ -29,6 +30,11 @@ describe('kệ sách: dữ liệu hai cuốn', () => {
 	});
 	it('ảnh bìa vẽ tay: mỗi cuốn trỏ đúng file SVG trong public/', () => {
 		expect(dsCuonSach().map((s) => s.anhBia)).toEqual(['/hinh/bia/ai-engineer.svg', '/hinh/bia/robotics.svg']);
+	});
+	it('ảnh bìa nhỏ cho kệ phẳng: đúng đường dẫn WebP, mỗi file ≤ 15 KB', () => {
+		const ds = dsCuonSach();
+		expect(ds.map((s) => s.anhBiaNho)).toEqual(['/hinh/bia/ai-engineer.webp', '/hinh/bia/robotics.webp']);
+		for (const s of ds) expect(statSync(join(process.cwd(), 'public', s.anhBiaNho!)).size).toBeLessThanOrEqual(15 * 1024);
 	});
 	it('màu bìa và chữ là mã hex', () => {
 		for (const s of dsCuonSach()) {

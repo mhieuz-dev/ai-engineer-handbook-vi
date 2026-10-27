@@ -19,7 +19,7 @@ const moTaThe = (s: (typeof sach)[number]) => (s.sapCo ? 'Sắp có' : `${s.tong
 						sach.map((s) => {
 							const noiDung = (
 								<Fragment>
-									{s.anhBia && <img class="anh-bia" src={s.anhBia} alt="" loading="lazy" decoding="async" />}
+									{s.anhBiaNho && <img class="anh-bia" src={s.anhBiaNho} alt="" width="360" height="540" loading="lazy" decoding="async" fetchpriority="low" />}
 									<span class="bia-nhan">AI &amp; ROBOTICS</span>
 									<span class="bia-ten">{s.ten.toUpperCase().split(' ').map((t) => <span>{t}</span>)}</span>
 									<span class="bia-phu">{s.phuDe}</span>
