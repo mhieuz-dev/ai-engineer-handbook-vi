@@ -1,0 +1,81 @@
+---
+title: Thước đo hồi quy và khoảng tin cậy
+description: MAE so với RMSE trên bộ tiểu đường của Chương 9, đọc sai số lớn nhất, và bootstrap cho thấy độ chính xác 98,6% trên 143 ca test thật ra chỉ đáng tin trong khoảng 96,5% tới 100%.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## MAE và RMSE
+
+Chương 9 báo cáo mô hình tiểu đường bằng RMSE 53,9. Có một thước đo khác hay dùng không kém, MAE (sai số tuyệt đối trung bình):
+
+$$
+\text{MAE} = \frac{1}{n}\sum_{i=1}^{n} |y_i - \hat y_i|, \qquad
+\text{RMSE} = \sqrt{\frac{1}{n}\sum_{i=1}^{n} (y_i - \hat y_i)^2}
+$$
+
+```python
+from sklearn.datasets import load_diabetes
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+Xd, yd = load_diabetes(return_X_y=True, as_frame=True, scaled=False)
+Xdtr, Xdte, ydtr, ydte = train_test_split(Xd, yd, test_size=0.2, random_state=42)   # đúng cách chia của Chương 9
+pd_ = LinearRegression().fit(Xdtr, ydtr).predict(Xdte)
+loi = np.abs(ydte - pd_)
+print(round(mean_absolute_error(ydte, pd_), 2), round(mean_squared_error(ydte, pd_) ** 0.5, 2))
+print(round(np.median(loi), 2), round(loi.max(), 2))
+```
+
+```text title="Output"
+42.79 53.85
+37.99 154.49
+```
+
+MAE 42,8 nhỏ hơn RMSE 53,9. Điều này **luôn** đúng (RMSE không bao giờ nhỏ hơn MAE), vì bình phương phóng to các sai số lớn trước khi lấy trung bình. Khoảng cách giữa hai con số cho biết có những ca sai **rất** lớn: ở đây sai số lớn nhất là 154,5, gấp bốn lần sai số điển hình 38.
+
+**Bảng 12.2.** Chọn thước đo hồi quy.
+
+| Thước đo | Đọc là | Dùng khi |
+|:---|:---|:---|
+| MAE | lệch trung bình bao nhiêu đơn vị | mọi sai số đáng ngại như nhau; có outlier không muốn chúng chi phối |
+| RMSE | như MAE nhưng phạt nặng sai số lớn | một lần sai lớn tệ hơn nhiều lần sai nhỏ |
+| $R^2$ | giải thích được bao nhiêu phần biến động | so giữa các bài toán có thang đo khác nhau |
+
+## Khoảng tin cậy bằng bootstrap
+
+Mô hình ung thư vú đạt độ chính xác 98,6% trên 143 ca test. Nếu lấy 143 ca **khác**, con số có còn là 98,6% không? Chương 7 nói với mẫu nhỏ, không.
+
+Bootstrap ước lượng độ dao động đó mà không cần thêm dữ liệu: lấy mẫu **có hoàn lại** từ chính 143 ca test, đủ 143 ca (có ca bị lấy hai lần, có ca không được lấy), tính lại độ chính xác, lặp 10 000 lần.
+
+```python
+dung = (m.predict(Xte) == yte).astype(float)              # 1 nếu đoán đúng ca đó, 0 nếu sai
+rng = np.random.default_rng(0)
+bs = [rng.choice(dung, len(dung)).mean() for _ in range(10000)]   # 10 000 lần lấy mẫu có hoàn lại
+print(round(dung.mean(), 4), np.percentile(bs, [2.5, 97.5]).round(4))
+```
+
+```text title="Output"
+0.986 [0.965 1.   ]
+```
+
+95% số lần bootstrap rơi vào khoảng **96,5% tới 100%**. Đó là khoảng tin cậy 95% của độ chính xác. Báo cáo "98,6% (khoảng tin cậy 95%: 96,5% tới 100%)" trung thực hơn nhiều so với "98,6%".
+
+<Khung loai="truc-giac">
+143 ca test giống như 143 lần tung đồng xu ở Chương 7. Mô hình sai 2 lần. Lấy một bộ 143 ca khác, nó có thể sai 0 lần, cũng có thể sai 5 lần, chỉ vì tình cờ gặp ca dễ hay ca khó.
+
+Bootstrap giả lập việc "lấy bộ khác" bằng cách xáo lại chính dữ liệu đang có. Nó không tạo ra thông tin mới, nhưng cho biết con số của bạn **chắc chắn tới đâu**.
+</Khung>
+
+<Khung loai="vi-sao" tieuDe="QUAN TRỌNG KHI SO HAI MÔ HÌNH">
+Mô hình A đạt 98,6%, mô hình B đạt 97,9% trên cùng 143 ca test. B tệ hơn? Chênh nhau 0,7 điểm, tức đúng **một** ca. Khoảng tin cậy của mỗi mô hình rộng tới 3,5 điểm. Kết luận trung thực là: chưa đủ dữ liệu để biết mô hình nào tốt hơn.
+
+Đây là lỗi rất phổ biến trong báo cáo ML, kể cả trong paper: tuyên bố một mô hình "tốt hơn" dựa trên chênh lệch nhỏ hơn cả độ dao động ngẫu nhiên. Chương 63 sẽ quay lại khi bàn cách đọc paper.
+</Khung>
+
+<Khung loai="loi">
+**Bootstrap trên tập train.** Mô hình đã thấy dữ liệu train, độ chính xác ở đó lạc quan; bootstrap trên đó cho một khoảng lạc quan. Bootstrap trên test (hoặc validation).
+
+**Lấy mẫu không hoàn lại.** Lấy 143 ca từ 143 ca **không** hoàn lại thì lần nào cũng ra đúng bộ cũ, khoảng tin cậy bằng 0. Phải có hoàn lại: `rng.choice` mặc định `replace=True`.
+</Khung>

@@ -328,3 +328,28 @@
   tenTiengAnh: softmax
   giaiThich: Softmax biến một dãy điểm số bất kỳ thành một dãy xác suất dương cộng lại bằng 1, bằng cách lấy mũ từng số rồi chia cho tổng. Dùng ở lớp cuối của mọi mô hình phân loại nhiều lớp.
   hocKy: ai-engineer/ch11-hoi-quy-logistic
+- id: ma-tran-nham-lan
+  ten: Ma trận nhầm lẫn
+  tenTiengAnh: confusion matrix
+  giaiThich: Ma trận nhầm lẫn đếm bốn trường hợp của một bộ phân loại nhị phân - đoán dương đúng, đoán dương sai, đoán âm đúng, đoán âm sai. Mọi thước đo phân loại đều tính từ bốn con số này.
+  hocKy: ai-engineer/ch12-danh-gia-mo-hinh
+- id: precision
+  ten: Precision
+  tenTiengAnh: precision
+  giaiThich: Precision là trong những lần mô hình báo dương tính, có bao nhiêu phần trăm là đúng. Precision thấp nghĩa là mô hình hay báo động nhầm.
+  hocKy: ai-engineer/ch12-danh-gia-mo-hinh
+- id: recall
+  ten: Recall
+  tenTiengAnh: recall
+  giaiThich: Recall là trong những trường hợp thật sự dương tính, mô hình bắt được bao nhiêu phần trăm. Recall thấp nghĩa là mô hình hay bỏ sót.
+  hocKy: ai-engineer/ch12-danh-gia-mo-hinh
+- id: f1
+  ten: F1
+  tenTiengAnh: F1 score
+  giaiThich: F1 là trung bình điều hòa của precision và recall, một con số duy nhất chỉ cao khi cả hai cùng cao. Một trong hai thấp là F1 bị kéo xuống.
+  hocKy: ai-engineer/ch12-danh-gia-mo-hinh
+- id: roc-auc
+  ten: ROC AUC
+  tenTiengAnh: ROC AUC
+  giaiThich: ROC AUC là diện tích dưới đường ROC, bằng xác suất mô hình chấm một mẫu dương ngẫu nhiên cao điểm hơn một mẫu âm ngẫu nhiên. 0,5 là đoán bừa, 1 là xếp hạng hoàn hảo; không phụ thuộc vào ngưỡng.
+  hocKy: ai-engineer/ch12-danh-gia-mo-hinh

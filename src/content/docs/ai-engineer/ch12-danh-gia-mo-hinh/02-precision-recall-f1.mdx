@@ -1,0 +1,88 @@
+---
+title: Precision, recall và F1
+description: Hai câu hỏi khác nhau về cùng một mô hình - báo động có đáng tin không, và có bỏ sót không. Tính tay từ ma trận nhầm lẫn, F1 gộp hai con số, và dữ liệu chỉ 1% dương tính.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Hai câu hỏi
+
+Với ma trận ở trang trước (TN 90, FP 0, FN 2, TP 51), có hai câu hỏi khác nhau:
+
+**Khi mô hình báo ác tính, tin được bao nhiêu?** Đó là <Term id="precision">precision</Term>:
+
+$$
+\text{precision} = \frac{TP}{TP + FP} = \frac{51}{51 + 0} = 1 \tag{12.1}
+$$
+
+Mọi lần báo ác tính đều đúng.
+
+**Trong các ca ác tính thật, bắt được bao nhiêu?** Đó là <Term id="recall">recall</Term>:
+
+$$
+\text{recall} = \frac{TP}{TP + FN} = \frac{51}{51 + 2} \approx 0{,}9623 \tag{12.2}
+$$
+
+Bắt được 96%, bỏ sót 4%.
+
+Hai con số có cùng tử số TP, khác ở mẫu số: precision chia cho số lần **đoán** dương (cột phải của ma trận), recall chia cho số ca **thật** dương (hàng dưới). Recall còn có tên là độ nhạy, đúng khái niệm "độ nhạy 99%" của bài toán xét nghiệm ở Chương 7.
+
+## F1: gộp hai con số
+
+Muốn một con số duy nhất, dùng <Term id="f1">F1</Term>, trung bình điều hòa của precision và recall:
+
+$$
+F_1 = \frac{2 \cdot \text{precision} \cdot \text{recall}}{\text{precision} + \text{recall}} = \frac{2 \times 1 \times 0{,}9623}{1 + 0{,}9623} \approx 0{,}9808 \tag{12.3}
+$$
+
+```python
+from sklearn.metrics import precision_score, f1_score
+print(round(precision_score(yte, p), 4), round(recall_score(yte, p), 4), round(f1_score(yte, p), 4))
+```
+
+```text title="Output"
+1.0 0.9623 0.9808
+```
+
+<Khung loai="vi-sao" tieuDe="TRUNG BÌNH ĐIỀU HÒA">
+Trung bình cộng của precision 1 và recall 0 là 0,5: nghe như mô hình "được một nửa". Nhưng recall 0 nghĩa là không bắt được ca nào, mô hình vô dụng.
+
+Trung bình điều hòa bị kéo mạnh về phía số **nhỏ** hơn. Với precision 1 và recall 0, F1 bằng 0. Với precision 0,9 và recall 0,1, F1 chỉ khoảng 0,18. F1 chỉ cao khi **cả hai** cùng cao, đúng điều ta muốn.
+</Khung>
+
+## Khi lớp dương rất hiếm
+
+Ung thư vú trong bộ dữ liệu này chiếm 37%. Gian lận thẻ tín dụng, lỗi sản phẩm, bệnh hiếm thường dưới 1%. Mô phỏng một bộ dữ liệu như vậy: 10 000 mẫu, đúng 1% dương tính.
+
+```python
+from sklearn.datasets import make_classification
+Xm, ym = make_classification(n_samples=10000, n_features=10, weights=[0.99], flip_y=0, random_state=0)
+a, b, c, e = train_test_split(Xm, ym, test_size=0.3, random_state=0, stratify=ym)
+mm = LogisticRegression(max_iter=1000).fit(a, c)
+pm = mm.predict(b)
+print(e.sum(), len(e))
+print(round(accuracy_score(e, pm), 4), round(precision_score(e, pm), 4), round(recall_score(e, pm), 4), round(f1_score(e, pm), 4))
+```
+
+```text title="Output"
+30 3000
+0.9903 0.6 0.1 0.1714
+```
+
+Độ chính xác 99,03%, gần như hoàn hảo. Nhưng recall chỉ 0,1: trong 30 ca dương tính, mô hình **bắt được 3**. Luôn đoán âm đã đạt 99%, nên 99,03% chỉ hơn baseline có 0,03 điểm. F1 0,17 nói thật hơn nhiều.
+
+<TuKiemTra
+	cauHoi="Một bộ lọc thư rác có precision 0,99 và recall 0,5. Điều nào đúng?"
+	luaChon={['Nó chặn nhầm rất nhiều thư thường', 'Thư nó chặn gần như đều là rác thật, nhưng một nửa thư rác lọt qua', 'Nó đúng 99% số thư', 'Nó bắt được 99% thư rác']}
+	dapAn={1}
+	giaiThich="Precision 0,99: trong những thư bị chặn, 99% là rác thật, nên hiếm khi chặn nhầm. Recall 0,5: trong mọi thư rác, chỉ chặn được một nửa."
+/>
+
+<Khung loai="loi">
+**Chỉ tối ưu một trong hai.** Đoán dương cho mọi mẫu đạt recall 1 tuyệt đối (không bỏ sót ai), precision thì bằng tỷ lệ dương tính. Đoán dương cho đúng một mẫu chắc chắn nhất có thể đạt precision 1, recall gần 0. Luôn báo cả hai.
+
+**Quên chỉ rõ lớp nào là dương.** Precision và recall của lớp "lành" khác hẳn của lớp "ác". Trong scikit-learn, lớp dương mặc định là lớp có nhãn 1; đổi bằng tham số `pos_label`.
+</Khung>

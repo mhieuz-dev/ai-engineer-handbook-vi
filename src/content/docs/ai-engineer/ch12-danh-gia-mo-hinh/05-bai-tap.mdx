@@ -1,0 +1,114 @@
+---
+title: Bài tập
+description: Ba bài tập đánh giá mô hình có đáp án chi tiết (tính tay precision, recall, F1 ở ngưỡng 0,1; chọn ngưỡng đúng cách trên validation; tính tay AUC bằng cách đếm cặp) và câu hỏi phỏng vấn.
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Ba bài dùng mô hình ung thư vú `m`, tập `Xtr`, `ytr`, `Xte`, `yte` và xác suất `pr` ở các trang trước.
+
+<BaiTap so="12.1">
+**Tính tay ở ngưỡng 0,1.** Ma trận nhầm lẫn ở ngưỡng 0,1 là TN 79, FP 11, FN 0, TP 53. Tính tay độ chính xác, precision, recall, F1.
+
+<Fragment slot="dap-an">
+
+- Độ chính xác: $(79 + 53)/143 = 132/143 \approx 0{,}9231$.
+- Precision: $53/(53 + 11) = 53/64 \approx 0{,}8281$.
+- Recall: $53/(53 + 0) = 1$.
+- F1: $\frac{2 \times 0{,}8281 \times 1}{0{,}8281 + 1} \approx 0{,}906$.
+
+```python
+q = (pr >= 0.1).astype(int)
+print(round(f1_score(yte, q), 4))
+```
+
+```text title="Output"
+0.906
+```
+
+So với ngưỡng 0,5: độ chính xác giảm từ 0,986 xuống 0,923, F1 giảm từ 0,981 xuống 0,906. Theo cả hai thước đo, ngưỡng 0,1 "tệ hơn". Nhưng nó không bỏ sót ca ung thư nào. Thước đo tổng hợp như độ chính xác hay F1 coi FP và FN nặng như nhau; khi cái giá của chúng khác nhau, đừng để thước đo tổng hợp chọn ngưỡng thay bạn.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="12.2">
+**Chọn ngưỡng đúng cách.** Trang 3 chọn ngưỡng bằng cách nhìn tập test. Làm lại đúng quy trình của Chương 9:
+
+1. Tách tiếp `Xtr` thành train và validation (25% làm validation, `random_state=0`, `stratify`).
+2. Huấn luyện trên phần train, tính xác suất trên validation.
+3. Trong các ngưỡng 0,01; 0,02; ...; 0,99, chọn ngưỡng **lớn nhất** đạt recall ít nhất 0,97 trên validation.
+4. Huấn luyện lại trên cả `Xtr`, áp ngưỡng đó lên test, báo cáo ma trận nhầm lẫn, precision, recall.
+
+<Fragment slot="dap-an">
+
+```python
+a, v, ya, yv = train_test_split(Xtr, ytr, test_size=0.25, random_state=0, stratify=ytr)
+pv = make_pipeline(StandardScaler(), LogisticRegression()).fit(a, ya).predict_proba(v)[:, 1]
+ts = np.round(np.arange(0.01, 1.0, 0.01), 2)
+t = max(t for t in ts if recall_score(yv, (pv >= t).astype(int)) >= 0.97)      # ngưỡng lớn nhất đạt recall 0,97
+qt = (m.predict_proba(Xte)[:, 1] >= t).astype(int)                              # m đã huấn luyện trên cả Xtr
+print(len(yv), yv.sum(), t)
+print(confusion_matrix(yte, qt).ravel(), round(precision_score(yte, qt), 4), round(recall_score(yte, qt), 4))
+```
+
+```text title="Output"
+107 40 0.57
+[90  0  3 50] 1.0 0.9434
+```
+
+Ngưỡng chọn được là 0,57. Trên validation nó đạt recall 0,975 (39 trên 40); trên test chỉ còn 0,9434 (bỏ sót 3 ca).
+
+Hai bài học. Thứ nhất, con số trên validation **lạc quan** hơn test, vì ngưỡng được chọn để vừa khít validation. Thứ hai, vì sao không chọn mức recall 1 trên validation? Thử sẽ thấy: một ca ác tính trong validation được mô hình chấm xác suất chỉ 0,0019. Muốn bắt cả ca đó, ngưỡng phải dưới 0,002, gần như báo động mọi người. Có những ca mô hình này **không thể** nhận ra; muốn bắt chúng cần đặc trưng tốt hơn hoặc mô hình khác, không phải chỉnh ngưỡng.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="12.3">
+**AUC bằng cách đếm cặp.** Bốn mẫu: hai dương có điểm số 0,9 và 0,4; hai âm có điểm số 0,6 và 0,2. Tính tay AUC theo định nghĩa "xác suất một mẫu dương ngẫu nhiên được chấm cao hơn một mẫu âm ngẫu nhiên".
+
+<Fragment slot="dap-an">
+
+Có $2 \times 2 = 4$ cặp (dương, âm):
+
+| Dương | Âm | Dương cao hơn? |
+|:---:|:---:|:---:|
+| 0,9 | 0,6 | có |
+| 0,9 | 0,2 | có |
+| 0,4 | 0,6 | **không** |
+| 0,4 | 0,2 | có |
+
+3 trên 4 cặp xếp đúng: AUC $= 0{,}75$.
+
+```python
+print(roc_auc_score([1, 1, 0, 0], [0.9, 0.4, 0.6, 0.2]))
+```
+
+```text title="Output"
+0.75
+```
+
+Định nghĩa này giải thích vì sao AUC không phụ thuộc ngưỡng: nó chỉ quan tâm **thứ tự** của các điểm số. Nhân mọi điểm số với 10 hay lấy căn bậc hai, AUC không đổi. Nó cũng cho thấy giới hạn của AUC: mô hình có thể xếp thứ tự tốt (AUC cao) mà xác suất vẫn sai lệch, ví dụ đoán 0,6 cho mọi ca dương và 0,5 cho mọi ca âm.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Precision và recall khác nhau thế nào? Khi nào ưu tiên cái nào?**
+
+<p lang="en"><em>What is the difference between precision and recall, and when do you prioritize each?</em></p>
+
+*Gợi ý:* precision là độ tin cậy của báo động, recall là khả năng không bỏ sót. Ưu tiên recall khi bỏ sót đắt (sàng lọc ung thư, gian lận); ưu tiên precision khi báo nhầm đắt (lọc thư rác chặn nhầm thư quan trọng, gợi ý nội dung).
+
+**2. Vì sao độ chính xác là thước đo tệ cho dữ liệu mất cân bằng?**
+
+<p lang="en"><em>Why is accuracy a poor metric for imbalanced data?</em></p>
+
+*Gợi ý:* luôn đoán lớp đông đã đạt độ chính xác cao. Dùng ma trận nhầm lẫn, precision, recall, F1, và average precision thay vì ROC AUC khi lớp dương rất hiếm.
+
+**3. Giải thích ROC AUC cho người không chuyên.**
+
+<p lang="en"><em>Explain ROC AUC to a non-technical stakeholder.</em></p>
+
+*Gợi ý:* lấy ngẫu nhiên một ca có bệnh và một ca không bệnh, AUC là xác suất mô hình chấm ca có bệnh là nguy cơ cao hơn. 0,5 là tung đồng xu, 1 là luôn đúng.
+</Khung>

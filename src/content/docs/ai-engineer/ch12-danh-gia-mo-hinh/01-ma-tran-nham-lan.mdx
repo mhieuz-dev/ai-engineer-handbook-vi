@@ -1,0 +1,112 @@
+---
+title: Ma trận nhầm lẫn và cái bẫy accuracy
+description: Phân loại khối u lành hay ác trên 569 ca thật, đếm bốn kiểu đúng sai bằng ma trận nhầm lẫn, và vì sao một mô hình luôn đoán lành vẫn đạt độ chính xác 63%.
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+<CanBietTruoc>
+Hồi quy logistic, `predict_proba` và ngưỡng 0,5 (Chương 11). Pipeline, baseline, train và test (Chương 9). Định lý Bayes và bài toán xét nghiệm (Chương 7).
+
+<Fragment slot="sau-chuong">
+Đọc ma trận nhầm lẫn và tính tay precision, recall, F1. Chọn ngưỡng theo cái giá của từng kiểu sai. Đọc đường ROC, precision-recall và biết khi nào AUC đánh lừa. Báo cáo một con số kèm khoảng tin cậy bằng bootstrap.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch12_danh_gia_mo_hinh.ipynb" />
+
+## Bài toán
+
+scikit-learn có sẵn một bộ dữ liệu y khoa thật: 569 khối u vú, mỗi khối đo 30 đặc trưng từ ảnh sinh thiết (bán kính, độ nhám, độ lõm, và vài chục chỉ số khác). Nhãn cho biết khối u **lành** hay **ác tính**.
+
+Ta muốn phát hiện ca ác tính, nên đặt ác tính là lớp **dương** (1). Đây là quy ước quan trọng: "dương tính" là thứ ta đang đi tìm, không phải thứ "tốt".
+
+```python
+import numpy as np
+from sklearn.datasets import load_breast_cancer
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+d = load_breast_cancer()
+X, y = d.data, 1 - d.target       # bộ gốc ghi 0 là ác tính; đảo lại để 1 là ác tính
+print(X.shape, np.bincount(y))    # bincount: đếm số 0 và số 1
+```
+
+```text title="Output"
+(569, 30) [357 212]
+```
+
+357 ca lành, 212 ca ác tính. Chia train và test, giữ tỷ lệ hai lớp:
+
+```python
+Xtr, Xte, ytr, yte = train_test_split(X, y, test_size=0.25, random_state=0, stratify=y)
+print(len(yte), yte.sum())        # 143 ca test, trong đó bao nhiêu ca ác tính
+```
+
+```text title="Output"
+143 53
+```
+
+## Baseline đánh lừa
+
+Theo Chương 9, việc đầu tiên là dựng baseline. Với phân loại, baseline ngốc nhất là luôn đoán lớp **đông nhất**:
+
+```python
+from sklearn.dummy import DummyClassifier
+from sklearn.metrics import accuracy_score, recall_score
+du = DummyClassifier(strategy="most_frequent").fit(Xtr, ytr)   # luôn đoán lớp đông nhất: lành
+p0 = du.predict(Xte)
+print(round(accuracy_score(yte, p0), 4), recall_score(yte, p0))
+```
+
+```text title="Output"
+0.6294 0.0
+```
+
+Độ chính xác <En>accuracy</En> 63%: nghe không tệ. Nhưng mô hình này **chưa bao giờ** báo ác tính. Nó bỏ sót cả 53 ca ung thư. Con số thứ hai (recall, trang sau sẽ định nghĩa) bằng 0 nói đúng điều đó.
+
+Độ chính xác chỉ đếm tổng số lần đúng. Khi một lớp đông hơn hẳn, đoán toàn lớp đó là đủ để có độ chính xác cao. Bài tập 9.3 đã gặp chuyện này: 3% khách hủy gói thì luôn đoán "không hủy" đạt 97%.
+
+## Ma trận nhầm lẫn
+
+Một bộ phân loại nhị phân có thể đúng theo hai cách và sai theo hai cách. <Term id="ma-tran-nham-lan">Ma trận nhầm lẫn</Term> đếm riêng từng cách:
+
+**Bảng 12.1.** Bốn ô của ma trận nhầm lẫn.
+
+| | Đoán âm (lành) | Đoán dương (ác) |
+|:---|:---:|:---:|
+| **Thật âm (lành)** | TN: âm đúng | FP: dương nhầm, báo động nhầm |
+| **Thật dương (ác)** | FN: âm nhầm, bỏ sót | TP: dương đúng |
+
+T và F là đúng (true) hay sai (false); P và N là mô hình **đoán** dương (positive) hay âm (negative). FP là "đoán dương mà sai", FN là "đoán âm mà sai".
+
+Hồi quy logistic với chuẩn hóa, như Chương 11:
+
+```python
+from sklearn.metrics import confusion_matrix
+m = make_pipeline(StandardScaler(), LogisticRegression()).fit(Xtr, ytr)
+p = m.predict(Xte)
+print(confusion_matrix(yte, p))      # hàng là nhãn thật, cột là nhãn đoán
+print(round(accuracy_score(yte, p), 4))
+```
+
+```text title="Output"
+[[90  0]
+ [ 2 51]]
+0.986
+```
+
+Đọc theo Bảng 12.1: 90 ca lành đoán đúng là lành (TN), 0 ca lành bị báo nhầm là ác (FP), **2 ca ác tính bị bỏ sót** (FN), 51 ca ác tính được phát hiện (TP). Độ chính xác $(90 + 51)/143 \approx 98{,}6\%$.
+
+Con số 98,6% đẹp, nhưng ma trận cho thấy thứ quan trọng hơn: hai bệnh nhân ung thư bị nói là không sao. Hai lỗi FP và FN có cái giá **rất khác nhau**: báo nhầm thì bệnh nhân phải làm thêm xét nghiệm; bỏ sót thì bệnh nhân có thể mất cơ hội điều trị sớm.
+
+<Khung loai="loi">
+**Đọc nhầm hàng và cột.** Trong scikit-learn, hàng là nhãn **thật**, cột là nhãn **đoán**, theo thứ tự lớp 0 rồi lớp 1. Sách và thư viện khác có thể quy ước ngược. Luôn kiểm bằng cách cộng hàng: tổng hàng dưới (2 + 51 = 53) phải bằng số ca dương thật.
+
+**Báo cáo độ chính xác cho dữ liệu mất cân bằng.** Luôn kèm ma trận nhầm lẫn, hoặc ít nhất là precision và recall của lớp hiếm.
+</Khung>

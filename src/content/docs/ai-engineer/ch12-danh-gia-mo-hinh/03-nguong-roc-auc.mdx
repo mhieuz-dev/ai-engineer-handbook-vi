@@ -1,0 +1,95 @@
+---
+title: Ngưỡng, ROC và AUC
+description: Hạ ngưỡng từ 0,5 xuống 0,1 để không bỏ sót ca ung thư nào, đổi lại 11 báo động nhầm. Đường ROC và AUC đo khả năng xếp hạng không phụ thuộc ngưỡng, và vì sao trên dữ liệu 1% dương tính nên nhìn đường precision-recall.
+---
+
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Ngưỡng là một lựa chọn
+
+`predict` đoán ác tính khi xác suất từ 0,5 trở lên. Con số 0,5 không có gì đặc biệt. Với ung thư, bỏ sót tệ hơn báo nhầm nhiều, nên ta có thể **hạ** ngưỡng: chỉ cần hơi nghi là đã cho đi xét nghiệm thêm.
+
+```python
+pr = m.predict_proba(Xte)[:, 1]                    # xác suất ác tính cho từng ca test
+for t in [0.5, 0.3, 0.1, 0.05]:
+    q = (pr >= t).astype(int)                      # đoán ác tính khi xác suất từ t trở lên
+    print(t, confusion_matrix(yte, q).ravel(), round(precision_score(yte, q), 4), round(recall_score(yte, q), 4))
+```
+
+```text title="Output"
+0.5 [90  0  2 51] 1.0 0.9623
+0.3 [84  6  2 51] 0.8947 0.9623
+0.1 [79 11  0 53] 0.8281 1.0
+0.05 [75 15  0 53] 0.7794 1.0
+```
+
+`.ravel()` trải ma trận thành bốn số theo thứ tự TN, FP, FN, TP.
+
+Ở ngưỡng 0,1, mô hình bắt được **cả 53** ca ác tính (recall 1), đổi lại 11 ca lành bị báo nhầm (FP từ 0 lên 11). Hạ tiếp xuống 0,05 không bắt thêm được ai, chỉ thêm 4 báo động nhầm. Với bài toán này, 0,1 là một lựa chọn hợp lý: 11 người phải làm thêm sinh thiết để không ai bị bỏ sót.
+
+<HinhKetQua src="/hinh/ch12/h1_nguong.svg" alt="Hai đường theo ngưỡng từ 0 tới 1. Đường cam recall bằng 1 ở bên trái, tụt dần qua các bậc xuống khoảng 0,79 ở ngưỡng 0,99. Đường xanh precision bắt đầu thấp khoảng 0,7 ở bên trái, tăng dần và chạm 1 ở ngưỡng 0,5 trở đi. Hai đường đứt nét đứng đánh dấu ngưỡng 0,1 và 0,5." so="12.1" chuThich="Precision và recall trên 143 ca test theo ngưỡng xác suất dùng để đoán ác tính.">
+**Trục.** Ngang là ngưỡng, dọc là giá trị của hai thước đo. Trục dọc bắt đầu từ 0,7 để thấy rõ các bậc.
+
+**Điều cần thấy.** Hai đường đi **ngược chiều nhau**. Ngưỡng thấp: đoán ác tính dễ dãi, bắt được hết (recall cao) nhưng báo nhầm nhiều (precision thấp). Ngưỡng cao: chỉ báo khi rất chắc, ít nhầm nhưng bỏ sót nhiều. Không có ngưỡng nào làm cả hai cùng bằng 1; chọn ngưỡng là chọn điểm đánh đổi.
+
+**Hai ngưỡng đánh dấu.** Ở 0,1, recall đúng bằng 1 và precision khoảng 0,83. Ở 0,5, precision đúng bằng 1 và recall khoảng 0,96.
+</HinhKetQua>
+
+<Khung loai="vi-sao" tieuDe="CHỌN NGƯỠNG TRÊN VALIDATION">
+Ở đây ta chọn ngưỡng 0,1 bằng cách nhìn thẳng vào tập **test**: đó là kiểu rò rỉ thứ ba của Chương 9. Trong dự án thật, ngưỡng là một siêu tham số như mọi siêu tham số khác, phải chọn trên validation hoặc cross-validation, rồi mới đo test một lần.
+
+Trang này dùng test để minh họa cho gọn. Bài tập 12.2 làm lại đúng cách.
+</Khung>
+
+## Đường ROC
+
+Thay vì xem từng ngưỡng, ta vẽ **tất cả** các ngưỡng lên một hình. Đường ROC lấy:
+
+- trục ngang là tỷ lệ báo động nhầm $\text{FPR} = \frac{FP}{FP + TN}$: trong các ca âm thật, bao nhiêu bị báo nhầm;
+- trục dọc là recall, còn gọi là $\text{TPR}$.
+
+Mỗi ngưỡng cho một điểm. Ngưỡng 1 (không báo ai) ở góc $(0, 0)$, ngưỡng 0 (báo mọi người) ở góc $(1, 1)$. Đường đi giữa hai góc đó; càng ôm sát góc trên trái $(0, 1)$ càng tốt.
+
+Diện tích dưới đường là <Term id="roc-auc">ROC AUC</Term>. Nó có một nghĩa rất cụ thể: lấy ngẫu nhiên một ca dương và một ca âm, AUC là xác suất mô hình chấm ca dương **cao điểm hơn**. AUC 0,5 là đoán bừa; AUC 1 là xếp hạng hoàn hảo.
+
+```python
+from sklearn.metrics import roc_auc_score
+print(round(roc_auc_score(yte, pr), 4))
+```
+
+```text title="Output"
+0.9958
+```
+
+Trên ung thư vú, AUC 0,9958: gần như mọi cặp (ác, lành) đều được xếp đúng thứ tự.
+
+## Khi AUC đánh lừa
+
+Trở lại bộ dữ liệu 1% dương tính ở trang trước.
+
+```python
+from sklearn.metrics import average_precision_score
+prm = mm.predict_proba(b)[:, 1]
+print(round(roc_auc_score(e, prm), 4), round(average_precision_score(e, prm), 4))
+```
+
+```text title="Output"
+0.9075 0.2368
+```
+
+<HinhKetQua src="/hinh/ch12/h2_roc_pr.svg" alt="Hai khung. Khung trái: đường ROC xanh vọt lên nhanh ở bên trái rồi đi gần sát cạnh trên, AUC 0,9075. Khung phải: đường precision-recall đỏ lởm chởm, precision chỉ khoảng 0,5 tới 0,75 ở recall thấp rồi tụt dần xuống gần 0 ở recall cao, AP 0,2368; đường đứt nét ngang ở 0,01 là đoán bừa." so="12.2" chuThich="Cùng một mô hình trên dữ liệu chỉ 1% dương tính (30 ca dương trong 3000 ca test): đường ROC (trái) và đường precision-recall (phải).">
+**Khung trái.** Đường ROC trông tốt, AUC 0,91. Nhìn vào đây dễ kết luận mô hình gần như ổn.
+
+**Khung phải.** Đường precision-recall kể câu chuyện khác. Muốn bắt được một nửa số ca dương (recall 0,5), precision chỉ khoảng 0,2: cứ **5 lần báo động thì 4 lần nhầm**. Diện tích dưới đường này (average precision, AP) chỉ 0,24.
+
+**Vì sao hai hình khác nhau.** FPR chia cho số ca âm, mà có tới 2970 ca âm. 100 báo động nhầm chỉ làm FPR tăng 0,034, gần như không thấy trên trục ngang của ROC. Nhưng 100 báo động nhầm so với 30 ca dương thật thì đè bẹp precision. Khi lớp dương hiếm, ROC che giấu báo động nhầm; đường precision-recall thì không. Đường đứt nét ở 0,01 là precision của việc đoán bừa, bằng đúng tỷ lệ dương tính.
+</HinhKetQua>
+
+<Khung loai="loi">
+**Tính AUC từ `predict` thay vì `predict_proba`.** AUC cần **điểm số** để xếp hạng. Đưa vào nhãn 0 và 1 là chỉ còn một ngưỡng, AUC tính ra sai.
+
+**Báo cáo ROC AUC cho dữ liệu cực kỳ mất cân bằng mà không kèm gì khác.** Kèm average precision hoặc precision ở mức recall cần thiết.
+</Khung>
