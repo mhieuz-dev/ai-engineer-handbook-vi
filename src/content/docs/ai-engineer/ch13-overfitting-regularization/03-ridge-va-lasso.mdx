@@ -1,0 +1,119 @@
+---
+title: Ridge và lasso
+description: Thêm khoản phạt trọng số lớn vào hàm mất mát. Ridge kéo đa thức bậc 9 từ MSE validation 0,74 về 0,12 và trọng số lớn nhất từ 2357 về 3,5. Lasso đẩy hẳn trọng số về 0 và tự chọn đặc trưng trên bộ tiểu đường.
+---
+
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Trọng số khổng lồ là triệu chứng
+
+Nhìn vào trọng số của đa thức bậc 9 đã overfit (thêm `StandardScaler` để các cột $x, x^2, \dots, x^9$ cùng thang đo, so sánh được với nhau):
+
+```python
+from sklearn.preprocessing import StandardScaler
+m0 = make_pipeline(PolynomialFeatures(9), StandardScaler(), LinearRegression()).fit(x[:, None], y)
+print(round(mse(yv, m0.predict(xv[:, None])), 4), round(float(np.abs(m0[-1].coef_).max()), 1))
+```
+
+```text title="Output"
+0.7403 2356.8
+```
+
+Trọng số lớn nhất là **2357**, cho một đường cong mà giá trị chỉ dao động từ $-1$ tới 1. Mô hình đạt được đường cong đó bằng cách cộng trừ những số hạng khổng lồ triệt tiêu nhau gần như hoàn toàn trên các điểm train. Nhích $x$ một chút ra khỏi chỗ có dữ liệu, sự triệt tiêu đó vỡ, và đường cong vọt lên.
+
+Ý tưởng của <Term id="regularization">regularization</Term>: **phạt** trọng số lớn ngay trong hàm mất mát.
+
+## Ridge
+
+Ridge cộng thêm tổng bình phương các trọng số, nhân với một hệ số $\alpha$:
+
+$$
+L_{\text{ridge}}(\mathbf w) = \underbrace{\sum_{i=1}^{n}(y_i - \hat y_i)^2}_{\text{khớp dữ liệu}} + \underbrace{\alpha \sum_{j} w_j^2}_{\text{phạt trọng số lớn}} \tag{13.2}
+$$
+
+Hai số hạng kéo về hai phía: số hạng đầu muốn khớp sát dữ liệu, số hạng sau muốn trọng số nhỏ. $\alpha$ quyết định bên nào thắng. Hệ số chặn $b$ không bị phạt. Công thức này viết đúng như `Ridge` của scikit-learn: tổng bình phương sai số, không chia $n$; `Lasso` ở dưới thì có chia $2n$. Vì vậy cùng một giá trị $\alpha$ không có cùng độ mạnh ở hai lớp.
+
+```python
+from sklearn.linear_model import Ridge
+for a in [1e-6, 1e-3, 1e-1, 10]:
+    m = make_pipeline(PolynomialFeatures(9), StandardScaler(), Ridge(alpha=a)).fit(x[:, None], y)
+    print(a, round(mse(y, m.predict(x[:, None])), 4), round(mse(yv, m.predict(xv[:, None])), 4), round(float(np.abs(m[-1].coef_).max()), 2))
+```
+
+```text title="Output"
+1e-06 0.0331 0.15 66.55
+0.001 0.0352 0.1167 3.47
+0.1 0.0593 0.2417 0.81
+10 0.1493 0.4134 0.13
+```
+
+**Bảng 13.3.** Đa thức bậc 9 với các mức ridge. Cột cuối là trọng số lớn nhất.
+
+| $\alpha$ | MSE train | MSE validation | Trọng số lớn nhất |
+|:---:|:---:|:---:|:---:|
+| 0 (không phạt) | 0,027 | 0,740 | 2356,8 |
+| $10^{-6}$ | 0,033 | 0,150 | 66,6 |
+| $10^{-3}$ | 0,035 | **0,117** | 3,5 |
+| 0,1 | 0,059 | 0,242 | 0,8 |
+| 10 | 0,149 | 0,413 | 0,1 |
+
+Chỉ cần $\alpha = 10^{-6}$, trọng số lớn nhất đã tụt từ 2357 xuống 67, và lỗi validation từ 0,74 xuống 0,15. Ở $\alpha = 10^{-3}$, đa thức bậc 9 đạt 0,117: gần bằng đa thức bậc 3 (0,105). Vẫn giữ 10 tham số, nhưng không còn tự do uốn lượn.
+
+$\alpha$ quá lớn thì lại underfitting: ở $\alpha = 10$, trọng số bị ép gần về 0 hết, mô hình gần thành một đường nằm ngang. Đường chữ U của trang 1 quay lại, lần này theo $\alpha$ thay vì theo bậc.
+
+## Lasso
+
+Lasso thay bình phương bằng **trị tuyệt đối**:
+
+$$
+L_{\text{lasso}}(\mathbf w) = \frac{1}{2n}\sum_{i=1}^{n}(y_i - \hat y_i)^2 + \alpha \sum_{j} |w_j| \tag{13.3}
+$$
+
+Thay đổi nhỏ trong công thức, khác biệt lớn trong kết quả: lasso đẩy nhiều trọng số về **đúng bằng 0**, không chỉ gần 0. Một trọng số bằng 0 là một đặc trưng bị loại hẳn. Lasso vì vậy vừa là regularization vừa là cách **chọn đặc trưng**.
+
+Thử trên bộ tiểu đường của Chương 9, 10 đặc trưng:
+
+```python
+from sklearn.linear_model import Lasso
+from sklearn.datasets import load_diabetes
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import r2_score
+X, yd = load_diabetes(return_X_y=True, as_frame=True, scaled=False)
+Xtr, Xte, ytr, yte = train_test_split(X, yd, test_size=0.2, random_state=42)
+Xtr2, Xva, ytr2, yva = train_test_split(Xtr, ytr, test_size=0.25, random_state=42)    # đúng cách chia của Chương 9
+for a in [0.01, 1, 5, 10, 20]:
+    ml = make_pipeline(StandardScaler(), Lasso(alpha=a)).fit(Xtr2, ytr2)
+    c = ml[-1].coef_
+    print(a, int((c == 0).sum()), round(r2_score(yva, ml.predict(Xva)), 4), [n for n, v in zip(X.columns, c) if v != 0])
+```
+
+```text title="Output"
+0.01 0 0.5219 ['age', 'sex', 'bmi', 'bp', 's1', 's2', 's3', 's4', 's5', 's6']
+1 1 0.5241 ['age', 'sex', 'bmi', 'bp', 's1', 's3', 's4', 's5', 's6']
+5 4 0.5183 ['sex', 'bmi', 'bp', 's2', 's3', 's5']
+10 6 0.4844 ['bmi', 'bp', 's3', 's5']
+20 7 0.3774 ['bmi', 'bp', 's5']
+```
+
+<HinhKetQua src="/hinh/ch13/h3_lasso.svg" alt="Mười đường hệ số theo alpha trên trục log từ 0,01 tới khoảng 40. Bốn đường tô màu: bmi đỏ và s5 cam giữ giá trị khoảng 20 tới 37 lâu nhất, bp xanh khoảng 15, s3 xanh lá đổi dấu từ 10 xuống âm. Các đường xám lần lượt chạm 0 và nằm yên ở đó khi alpha tăng. Đường đứt nét đứng ở alpha bằng 10." so="13.3" chuThich="Hệ số lasso của 10 đặc trưng (đã chuẩn hóa) theo α, trên 264 bệnh nhân train của Chương 9.">
+**Trục.** Ngang là $\alpha$ theo thang log, dọc là hệ số của từng đặc trưng sau chuẩn hóa: đọc được là "tăng một độ lệch chuẩn của đặc trưng này thì mức tiến triển tăng bao nhiêu".
+
+**Điều cần thấy.** Khi $\alpha$ tăng, các đường xám lần lượt **chạm 0 rồi nằm yên** ở đó: đặc trưng đó bị loại. Ở $\alpha = 10$ (đường đứt nét), chỉ còn bốn đường khác 0: BMI, huyết áp, `s3`, `s5`. Cuối cùng còn BMI và `s5`, đúng hai đặc trưng mạnh nhất mà trang 3 của Chương 9 tìm ra bằng tay.
+
+**Đánh đổi.** Ở $\alpha = 1$, lasso bỏ đặc trưng `s2` mà $R^2$ validation còn **nhích lên** (0,524 so với 0,522). Ở $\alpha = 10$, chỉ với 4 trên 10 đặc trưng, $R^2$ vẫn giữ 0,484. Mô hình đơn giản hơn nhiều, giải thích dễ hơn nhiều, mất ít độ chính xác.
+</HinhKetQua>
+
+<Khung loai="vi-sao" tieuDe="TRỊ TUYỆT ĐỐI ĐẨY VỀ ĐÚNG 0">
+Nhìn đạo hàm của khoản phạt theo một trọng số $w$. Với ridge, $\frac{d}{dw}\alpha w^2 = 2\alpha w$: càng gần 0, lực kéo càng **yếu**, nên $w$ tiến tới 0 mà không bao giờ chạm.
+
+Với lasso, $\frac{d}{dw}\alpha |w| = \pm\alpha$: lực kéo **không đổi** dù $w$ lớn hay nhỏ. Nếu lợi ích khớp dữ liệu của một đặc trưng yếu hơn $\alpha$, lực kéo thắng tới tận 0 và giữ nó ở đó.
+</Khung>
+
+<Khung loai="loi">
+**Dùng regularization mà không chuẩn hóa.** Khoản phạt so sánh trọng số của các đặc trưng với nhau. Nếu tuổi đo bằng năm còn `s5` đo quanh 4,6, trọng số của chúng nằm ở hai thang đo khác hẳn và bị phạt không công bằng. Luôn đặt `StandardScaler` trước `Ridge` hay `Lasso` trong Pipeline.
+
+**Lẫn tên $\alpha$ và $C$.** `Ridge(alpha=...)` và `Lasso(alpha=...)`: $\alpha$ lớn là phạt mạnh. `LogisticRegression(C=...)` ở Chương 11: $C$ là **nghịch đảo**, $C$ nhỏ là phạt mạnh.
+</Khung>

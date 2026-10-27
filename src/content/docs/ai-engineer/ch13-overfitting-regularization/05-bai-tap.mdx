@@ -1,0 +1,94 @@
+---
+title: Bài tập
+description: Ba bài tập overfitting có đáp án chi tiết (tính tay khoản phạt ridge và lasso, chẩn đoán ba mô hình từ lỗi train và validation, cứu đa thức bậc 12 bằng RidgeCV) và câu hỏi phỏng vấn.
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Bài 13.1 và 13.2 làm ra giấy. Bài 13.3 dùng 15 điểm `x`, `y` và 200 điểm `xv`, `yv` của trang 1.
+
+<BaiTap so="13.1">
+**Hai khoản phạt.** Với $\alpha = 0{,}1$, tính khoản phạt ridge ($\alpha\sum w_j^2$) và lasso ($\alpha\sum |w_j|$) cho hai vector trọng số $\mathbf w_1 = (3, -4)$ và $\mathbf w_2 = (5, 0)$. Khoản phạt nào phân biệt được hai vector? Nó ưa vector nào hơn?
+
+<Fragment slot="dap-an">
+
+| | Ridge | Lasso |
+|:---|:---:|:---:|
+| $\mathbf w_1 = (3, -4)$ | $0{,}1 \times (9 + 16) = 2{,}5$ | $0{,}1 \times (3 + 4) = 0{,}7$ |
+| $\mathbf w_2 = (5, 0)$ | $0{,}1 \times 25 = 2{,}5$ | $0{,}1 \times 5 = 0{,}5$ |
+
+Ridge phạt hai vector **như nhau**: cả hai có độ dài $\sqrt{9 + 16} = 5$, và ridge chỉ nhìn độ dài.
+
+Lasso phạt $\mathbf w_2$ **nhẹ hơn** (0,5 so với 0,7). Giữa hai lời giải cùng độ lớn, lasso ưa lời giải mà một trọng số bằng 0. Đây là một cách khác để thấy vì sao lasso sinh ra trọng số bằng 0 còn ridge thì không.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="13.2">
+**Chẩn đoán.** Ba mô hình, cùng bài toán, mức nhiễu khoảng 0,10:
+
+| Mô hình | MSE train | MSE validation |
+|:---|:---:|:---:|
+| A | 0,48 | 0,51 |
+| B | 0,02 | 0,64 |
+| C | 0,11 | 0,13 |
+
+Với mỗi mô hình: underfitting, overfitting, hay ổn? Thêm gấp đôi dữ liệu thì giúp được mô hình nào? Bạn sẽ làm gì tiếp với từng mô hình?
+
+<Fragment slot="dap-an">
+
+**A: underfitting.** Lỗi train và validation gần nhau nhưng đều cao gần gấp 5 mức nhiễu. Thêm dữ liệu gần như vô ích, vì hai đường đã gặp nhau. Cần mô hình mạnh hơn hoặc đặc trưng tốt hơn.
+
+**B: overfitting.** Lỗi train 0,02 còn **dưới** mức nhiễu 0,10: mô hình đã học thuộc nhiễu. Validation cao gấp 32 lần train. Thêm dữ liệu giúp được; regularization hoặc mô hình đơn giản hơn cũng vậy.
+
+**C: ổn.** Hai lỗi gần nhau và gần mức nhiễu. Còn lại rất ít để cải thiện; đây là lúc dừng và đo test.
+
+Chú ý: nếu chỉ nhìn lỗi train, B trông là mô hình tốt nhất. Đây là lý do mọi bảng so sánh mô hình phải có cột validation.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="13.3">
+**Cứu đa thức bậc 12.** Đa thức bậc 12 trên 15 điểm (với `StandardScaler`) cho MSE validation bao nhiêu? Dùng `RidgeCV` với $\alpha$ từ $10^{-6}$ tới $10^2$ để cứu nó. Nó chọn $\alpha$ nào, MSE validation còn bao nhiêu?
+
+<Fragment slot="dap-an">
+
+```python
+m12 = make_pipeline(PolynomialFeatures(12), StandardScaler(), LinearRegression()).fit(x[:, None], y)
+print(round(mse(yv, m12.predict(xv[:, None])), 4))
+cv12 = make_pipeline(PolynomialFeatures(12), StandardScaler(), RidgeCV(alphas=np.logspace(-6, 2, 50))).fit(x[:, None], y)
+print(round(float(cv12[-1].alpha_), 5), round(mse(yv, cv12.predict(xv[:, None])), 4))
+```
+
+```text title="Output"
+1.3054
+0.00087 0.1211
+```
+
+Không regularization: 1,31, tệ gấp ba đường thẳng. Với `RidgeCV`, $\alpha \approx 0{,}00087$ được chọn chỉ từ 15 điểm train, và MSE validation tụt xuống 0,121, gần bằng đa thức bậc 3.
+
+13 tham số trên 15 điểm, gần như mỗi điểm một tham số, mà regularization vẫn kìm được. Trong thực tế, người ta thường chọn một mô hình **hơi quá** linh hoạt rồi dùng regularization để kìm lại, thay vì cố đoán đúng độ phức tạp ngay từ đầu. Mạng nơ-ron hàng triệu tham số được huấn luyện theo đúng triết lý đó.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Giải thích đánh đổi bias-variance.**
+
+<p lang="en"><em>Explain the bias-variance tradeoff.</em></p>
+
+*Gợi ý:* lỗi kỳ vọng bằng bias bình phương cộng variance cộng nhiễu. Mô hình đơn giản: bias cao, variance thấp; mô hình linh hoạt: ngược lại. Regularization và thêm dữ liệu giảm variance; mô hình mạnh hơn giảm bias.
+
+**2. L1 và L2 regularization khác nhau thế nào?**
+
+<p lang="en"><em>What is the difference between L1 and L2 regularization?</em></p>
+
+*Gợi ý:* L2 (ridge) phạt bình phương, co đều mọi trọng số, không về đúng 0, ổn định khi đặc trưng tương quan. L1 (lasso) phạt trị tuyệt đối, đẩy nhiều trọng số về 0, chọn đặc trưng. Elastic net trộn cả hai.
+
+**3. Mô hình của bạn overfit. Bạn làm gì?**
+
+<p lang="en"><em>Your model is overfitting. What do you do?</em></p>
+
+*Gợi ý:* xác nhận bằng khoảng cách train và validation, kiểm tra rò rỉ dữ liệu trước. Sau đó: thêm dữ liệu hoặc augmentation, regularization, mô hình đơn giản hơn, early stopping, dropout với mạng nơ-ron. Chọn mức độ bằng cross-validation.
+</Khung>

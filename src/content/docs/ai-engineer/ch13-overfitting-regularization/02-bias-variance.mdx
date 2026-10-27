@@ -1,0 +1,83 @@
+---
+title: Bias và variance
+description: Lặp lại thí nghiệm trên 200 bộ dữ liệu khác nhau để tách lỗi thành bias bình phương, variance và nhiễu. Đa thức bậc 1 lệch có hệ thống, bậc 6 dao động dữ dội theo từng bộ dữ liệu.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Một bộ dữ liệu chỉ là một lần rút thăm
+
+Trang trước khớp mô hình vào **một** bộ 15 điểm. Nếu rút một bộ 15 điểm khác từ cùng quy luật, đường đa thức bậc 9 sẽ uốn lượn theo một kiểu khác hẳn. Đường thẳng bậc 1 thì gần như không đổi, vẫn sai như cũ.
+
+Hai kiểu sai này có tên. Lặp thí nghiệm trên rất nhiều bộ dữ liệu, rồi tại mỗi điểm $x$:
+
+- **Bias** là trung bình các dự đoán lệch khỏi giá trị thật bao nhiêu: lệch **có hệ thống**, đổi bộ dữ liệu cũng không hết.
+- **Variance** là các dự đoán dao động quanh trung bình của chính chúng bao nhiêu: lệch **theo từng lần rút thăm**.
+
+Với MSE, lỗi kỳ vọng trên dữ liệu mới tách đúng thành ba phần:
+
+$$
+\mathbb E\bigl[(y - \hat y)^2\bigr] = \underbrace{\text{bias}^2}_{\text{quá đơn giản}} + \underbrace{\text{variance}}_{\text{quá linh hoạt}} + \underbrace{\sigma^2}_{\text{nhiễu}} \tag{13.1}
+$$
+
+$\sigma^2$ là phương sai của nhiễu, ở đây $0{,}3^2 = 0{,}09$, không mô hình nào giảm được.
+
+## Đo bằng mô phỏng
+
+```python
+xg = np.linspace(0.05, 0.95, 50)                          # 50 điểm để đo bias và variance
+for d in [1, 3, 6]:
+    rng = np.random.default_rng(1)
+    P = []
+    for _ in range(200):                                  # 200 bộ dữ liệu, mỗi bộ 15 điểm
+        xs = rng.uniform(0, 1, 15); ys = f(xs) + rng.normal(0, 0.3, 15)
+        P.append(make_pipeline(PolynomialFeatures(d), LinearRegression()).fit(xs[:, None], ys).predict(xg[:, None]))
+    P = np.array(P)                                       # shape (200, 50): 200 lần đoán tại 50 điểm
+    bias2 = np.mean((P.mean(axis=0) - f(xg)) ** 2)        # trung bình dự đoán lệch khỏi thật
+    var = np.mean(P.var(axis=0))                          # dự đoán dao động quanh trung bình của nó
+    print(d, round(bias2, 4), round(var, 4))
+```
+
+```text title="Output"
+1 0.1501 0.044
+3 0.0023 0.098
+6 0.2257 30.5294
+```
+
+**Bảng 13.2.** Bias bình phương và variance trên 200 bộ dữ liệu 15 điểm.
+
+| Bậc | Bias² | Variance | Đọc là |
+|:---:|:---:|:---:|:---|
+| 1 | 0,150 | 0,044 | lệch có hệ thống, nhưng ổn định |
+| 3 | 0,002 | 0,098 | gần như không lệch, dao động vừa phải |
+| 6 | 0,226 | 30,5 | dao động dữ dội |
+
+Bậc 1: variance nhỏ, vì đường thẳng nào cũng gần giống nhau, nhưng bias lớn vì đường thẳng không thể là hình sin. Bậc 3: bias gần như bằng 0, variance tăng lên một chút. Bậc 6: variance **bùng nổ** lên 30.
+
+<Khung loai="vi-sao" tieuDe="VARIANCE CỦA BẬC 6 LỚN TỚI VẬY">
+Phần lớn trong 200 bộ dữ liệu, đa thức bậc 6 khớp khá ổn. Nhưng thỉnh thoảng một bộ có vài điểm dồn cục lại, để lại một khoảng trống gần mép. Đa thức bậc 6 không có gì giữ nó trong khoảng trống đó, nên vọt lên hàng chục đơn vị. Vài lần vọt như vậy là đủ kéo trung bình phương sai lên 30.
+
+Đây là hình dạng điển hình của variance cao: **thường thì ổn, đôi khi hỏng nặng**, và bạn không biết trước bộ dữ liệu của mình rơi vào trường hợp nào. Bias² của bậc 6 (0,226) cũng cao hơn bậc 3 vì cùng lý do: vài lần vọt kéo lệch cả trung bình.
+</Khung>
+
+<Khung loai="truc-giac">
+Bắn cung vào bia. **Bias cao**: các mũi tên tụm sát nhau nhưng tụm lệch khỏi hồng tâm, vì ngắm sai. **Variance cao**: tâm trung bình của các mũi tên đúng hồng tâm, nhưng từng mũi văng khắp bia, vì tay run.
+
+Mô hình đơn giản như cung thủ ngắm sai mà tay vững. Mô hình quá linh hoạt như cung thủ ngắm đúng mà tay run. Regularization ở trang sau giống như cho cung thủ run tay một cái giá đỡ: bớt tự do một chút để bớt run nhiều.
+</Khung>
+
+<TuKiemTra
+	cauHoi="Một mô hình có lỗi train 0,02 và lỗi validation 0,85. Thêm thật nhiều dữ liệu train nhiều khả năng sẽ giảm phần nào trong (13.1)?"
+	luaChon={['Bias', 'Variance', 'Nhiễu', 'Không phần nào']}
+	dapAn={1}
+	giaiThich="Khoảng cách lớn giữa train và validation là dấu hiệu variance cao (overfitting). Thêm dữ liệu làm mô hình khó bám theo nhiễu của từng điểm, nên variance giảm. Bias và nhiễu không giảm vì thêm dữ liệu."
+/>
+
+<Khung loai="loi">
+**Nghĩ bias-variance là một quy luật cứng.** Đánh đổi bias và variance đúng với phần lớn mô hình cổ điển khi lượng dữ liệu cố định. Với mạng nơ-ron rất lớn, người ta quan sát được hiện tượng "double descent": vượt qua một độ phức tạp nhất định, lỗi validation lại **giảm** tiếp. Chương 26 sẽ nhắc lại.
+
+**Tưởng có thể đo bias, variance trên dữ liệu thật như trang này.** Ở đây ta biết quy luật thật và rút được bao nhiêu bộ dữ liệu tùy ý. Ngoài đời thì không. Trên dữ liệu thật, ta chẩn đoán gián tiếp bằng hai đường lỗi của trang trước.
+</Khung>

@@ -353,3 +353,23 @@
   tenTiengAnh: ROC AUC
   giaiThich: ROC AUC là diện tích dưới đường ROC, bằng xác suất mô hình chấm một mẫu dương ngẫu nhiên cao điểm hơn một mẫu âm ngẫu nhiên. 0,5 là đoán bừa, 1 là xếp hạng hoàn hảo; không phụ thuộc vào ngưỡng.
   hocKy: ai-engineer/ch12-danh-gia-mo-hinh
+- id: overfitting
+  ten: Overfitting
+  tenTiengAnh: overfitting
+  giaiThich: Overfitting là khi mô hình học thuộc cả nhiễu của dữ liệu huấn luyện, nên lỗi trên train rất thấp mà lỗi trên dữ liệu mới lại cao. Như học sinh học vẹt đáp án, gặp đề mới là lúng túng.
+  hocKy: ai-engineer/ch13-overfitting-regularization
+- id: underfitting
+  ten: Underfitting
+  tenTiengAnh: underfitting
+  giaiThich: Underfitting là khi mô hình quá đơn giản để nắm được quy luật thật, nên sai nhiều trên cả train lẫn dữ liệu mới. Như dùng một đường thẳng để mô tả một đường cong.
+  hocKy: ai-engineer/ch13-overfitting-regularization
+- id: bias-variance
+  ten: Bias và variance
+  tenTiengAnh: bias-variance tradeoff
+  giaiThich: Lỗi của mô hình trên dữ liệu mới tách được thành ba phần - bias là lệch có hệ thống do mô hình quá đơn giản, variance là dao động theo từng bộ dữ liệu do mô hình quá linh hoạt, cộng nhiễu không tránh được. Giảm phần này thường làm tăng phần kia.
+  hocKy: ai-engineer/ch13-overfitting-regularization
+- id: regularization
+  ten: Regularization
+  tenTiengAnh: regularization
+  giaiThich: Regularization là thêm vào hàm mất mát một khoản phạt cho trọng số lớn, để mô hình ưu tiên lời giải đơn giản hơn. Ridge phạt tổng bình phương trọng số, lasso phạt tổng trị tuyệt đối và có thể đẩy trọng số về đúng 0.
+  hocKy: ai-engineer/ch13-overfitting-regularization

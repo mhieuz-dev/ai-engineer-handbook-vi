@@ -1,0 +1,92 @@
+---
+title: Overfitting và underfitting
+description: Khớp đa thức bậc 1 tới 12 vào 15 điểm nhiễu. Lỗi train giảm mãi, lỗi validation giảm rồi tăng vọt. Đọc hai đường lỗi để biết mô hình quá đơn giản hay quá phức tạp.
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+<CanBietTruoc>
+Train, validation, test và cross-validation (Chương 9). Hồi quy tuyến tính và Pipeline (Chương 9, 10). Kỳ vọng và phương sai (Chương 7).
+
+<Fragment slot="sau-chuong">
+Nhận ra overfitting và underfitting từ hai đường lỗi train và validation. Hiểu lỗi trên dữ liệu mới tách thành bias, variance và nhiễu. Dùng ridge và lasso để kìm mô hình, chọn độ mạnh bằng cross-validation. Biết khi nào thêm dữ liệu giúp được và khi nào không.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch13_overfitting_regularization.ipynb" />
+
+## Một đường cong ẩn
+
+Có một quy luật thật $y = \sin(2\pi x)$ mà ta không biết. Ta chỉ thấy 15 điểm đo được, mỗi điểm lệch khỏi quy luật bởi một chút nhiễu ngẫu nhiên có độ lệch chuẩn 0,3. Việc của mô hình: từ 15 điểm đó, đoán lại đường cong.
+
+Mô hình ta dùng là **đa thức**: $\hat y = w_0 + w_1 x + w_2 x^2 + \dots + w_d x^d$. Đây vẫn là hồi quy tuyến tính, chỉ là đặc trưng không phải $x$ mà là $x, x^2, \dots, x^d$. scikit-learn có sẵn `PolynomialFeatures` để sinh các cột đó.
+
+```python
+import numpy as np
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.linear_model import LinearRegression
+from sklearn.pipeline import make_pipeline
+from sklearn.metrics import mean_squared_error as mse
+
+f = lambda t: np.sin(2 * np.pi * t)                 # quy luật thật, mô hình không được biết
+rng = np.random.default_rng(0)
+x = rng.uniform(0, 1, 15); y = f(x) + rng.normal(0, 0.3, 15)          # 15 điểm train
+xv = rng.uniform(0, 1, 200); yv = f(xv) + rng.normal(0, 0.3, 200)     # 200 điểm validation, cùng quy luật
+khop = lambda d: make_pipeline(PolynomialFeatures(d), LinearRegression()).fit(x[:, None], y)   # đa thức bậc d
+for d in [1, 3, 9]:
+    m = khop(d)
+    print(d, round(mse(y, m.predict(x[:, None])), 4), round(mse(yv, m.predict(xv[:, None])), 4))
+```
+
+```text title="Output"
+1 0.1682 0.4381
+3 0.038 0.1047
+9 0.0273 0.7235
+```
+
+<HinhKetQua src="/hinh/ch13/h1_ba_do_phuc_tap.svg" alt="Ba khung cạnh nhau, mỗi khung có 15 chấm cam và đường sin đứt nét. Khung bậc 1: đường thẳng xanh dốc xuống, xa phần lớn các chấm. Khung bậc 3: đường xanh bám sát đường sin. Khung bậc 9: đường xanh đi qua sát các chấm nhưng uốn lượn và vọt thẳng lên ở mép phải." so="13.1" chuThich="Ba đa thức bậc 1, 3, 9 khớp vào cùng 15 điểm. Nét đứt xám là quy luật thật sin(2πx).">
+**Bậc 1.** Một đường thẳng không thể uốn theo hình sin. Sai nhiều cả trên 15 điểm train (MSE 0,168) lẫn trên dữ liệu mới (0,438). Mô hình **quá đơn giản**: <Term id="underfitting">underfitting</Term>.
+
+**Bậc 3.** Đủ linh hoạt để có một chỗ lồi một chỗ lõm, bám gần đường sin thật. MSE validation 0,105, gần với mức nhiễu $0{,}3^2 = 0{,}09$, là mức thấp nhất mà **bất kỳ** mô hình nào có thể đạt.
+
+**Bậc 9.** Đi sát các chấm hơn nữa (MSE train 0,027, còn thấp hơn cả mức nhiễu), nhưng phải uốn lượn để làm vậy, và vọt thẳng lên ở mép phải nơi không có điểm nào giữ nó lại. Trên dữ liệu mới, MSE 0,72: tệ hơn cả đường thẳng. Mô hình **quá phức tạp**: <Term id="overfitting">overfitting</Term>.
+</HinhKetQua>
+
+## Hai đường lỗi
+
+Chạy hết các bậc từ 1 tới 12:
+
+<HinhKetQua src="/hinh/ch13/h2_train_validation.svg" alt="Hai đường theo bậc đa thức từ 1 tới 12 trên trục log. Đường xanh train giảm từ khoảng 0,17 xuống khoảng 0,026 và không bao giờ tăng lại. Đường đỏ validation giảm từ 0,44 xuống đáy khoảng 0,10 ở bậc 3, đi ngang tới bậc 6, rồi tăng vọt từ bậc 7 lên trên 1 ở bậc 12. Đường chấm ngang đánh dấu mức nhiễu 0,09." so="13.2" chuThich="MSE trên 15 điểm train và trên 200 điểm validation theo bậc đa thức. Đường chấm là mức nhiễu 0,09.">
+**Đường xanh (train).** Chỉ đi xuống. Thêm một bậc là thêm một tham số, mô hình luôn có thể khớp train tốt bằng hoặc hơn trước. Lỗi train vì vậy **không bao giờ** là thước đo đáng tin cho dữ liệu mới.
+
+**Đường đỏ (validation).** Hình chữ U. Bên trái (bậc 1, 2), cả hai đường đều cao: underfitting. Đáy ở bậc 3 tới 6. Bên phải (từ bậc 7), đường đỏ vọt lên trong khi đường xanh vẫn đi xuống: khoảng cách giữa hai đường mở rộng, dấu hiệu kinh điển của overfitting.
+
+**Đường chấm (nhiễu).** Lỗi validation không thể xuống dưới 0,09, vì nhiễu là phần ngẫu nhiên không mô hình nào đoán được. Lỗi train **xuống được** dưới mức đó, và đó chính là học thuộc nhiễu.
+</HinhKetQua>
+
+<Khung loai="truc-giac">
+15 điểm giống 15 câu hỏi ôn tập, mỗi câu có đáp án hơi in sai một chút. Học sinh bậc 1 chỉ nhớ một quy tắc chung chung, làm sai nhiều câu. Học sinh bậc 3 hiểu ý chính, bỏ qua lỗi in. Học sinh bậc 9 học thuộc từng đáp án, kể cả các lỗi in, nên làm bài ôn tập gần hoàn hảo, và khi gặp đề thi thật thì "nhớ" ra cả những lỗi in không còn ở đó nữa.
+</Khung>
+
+## Chẩn đoán nhanh
+
+**Bảng 13.1.** Đọc hai con số lỗi.
+
+| Lỗi train | Lỗi validation | Chẩn đoán | Hướng xử lý |
+|:---:|:---:|:---|:---|
+| cao | cao, gần train | underfitting | mô hình phức tạp hơn, thêm đặc trưng |
+| thấp | thấp, gần train | ổn | dừng ở đây |
+| thấp | cao hơn hẳn train | overfitting | regularization, thêm dữ liệu, mô hình đơn giản hơn |
+
+Ba trang sau đi qua từng hướng xử lý của dòng cuối.
+
+<Khung loai="loi">
+**Chọn mô hình theo lỗi train.** Bậc 12 thắng ở đường xanh và thua thảm ở đường đỏ. Mọi lựa chọn về độ phức tạp phải nhìn validation.
+
+**Nghĩ overfitting chỉ xảy ra với mô hình lớn.** Ở đây một đa thức 10 tham số đã overfit, vì chỉ có 15 điểm. Overfitting phụ thuộc vào **tỷ lệ** giữa độ linh hoạt của mô hình và lượng dữ liệu, không phải độ lớn tuyệt đối.
+</Khung>

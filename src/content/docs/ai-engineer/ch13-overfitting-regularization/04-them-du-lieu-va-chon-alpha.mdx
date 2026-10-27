@@ -1,0 +1,93 @@
+---
+title: Thêm dữ liệu và chọn độ mạnh
+description: Đường cong học cho thấy đa thức bậc 6 đi từ MSE 0,19 với 15 điểm xuống 0,09 với 1000 điểm. Chọn alpha bằng cross-validation với RidgeCV, LassoCV, và đo test đúng một lần.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Thêm dữ liệu
+
+Overfitting là mô hình quá linh hoạt **so với lượng dữ liệu**. Vậy còn một cách chữa không cần đụng tới mô hình: cho nó thêm dữ liệu.
+
+```python
+for n in [15, 30, 100, 1000]:
+    rng = np.random.default_rng(2)
+    xs = rng.uniform(0, 1, n); ys = f(xs) + rng.normal(0, 0.3, n)                  # n điểm train
+    xt = rng.uniform(0, 1, 2000); yt = f(xt) + rng.normal(0, 0.3, 2000)             # 2000 điểm để đo
+    m6 = make_pipeline(PolynomialFeatures(6), LinearRegression()).fit(xs[:, None], ys)
+    print(n, round(mse(ys, m6.predict(xs[:, None])), 4), round(mse(yt, m6.predict(xt[:, None])), 4))
+```
+
+```text title="Output"
+15 0.056 0.1865
+30 0.075 0.1077
+100 0.0766 0.0966
+1000 0.086 0.0899
+```
+
+Cùng một đa thức bậc 6, không regularization:
+
+- 15 điểm: train 0,056, mới 0,187. Khoảng cách lớn: overfitting.
+- 1000 điểm: train 0,086, mới 0,090. Hai con số gần như trùng nhau và cùng sát mức nhiễu 0,09.
+
+Hai đường đi **ngược chiều**: lỗi train **tăng** khi thêm dữ liệu (càng nhiều điểm càng khó khớp hết), lỗi trên dữ liệu mới **giảm**. Chúng gặp nhau ở mức nhiễu. Bảng này là một **đường cong học** <En>learning curve</En>: lỗi theo lượng dữ liệu.
+
+<Khung loai="vi-sao" tieuDe="THÊM DỮ LIỆU KHÔNG CHỮA UNDERFITTING">
+Thêm dữ liệu giảm **variance**. Nó không giảm **bias**. Một đường thẳng khớp vào một triệu điểm hình sin vẫn là một đường thẳng, vẫn sai như cũ.
+
+Cách đọc đường cong học: nếu lỗi train và lỗi mới **đã gặp nhau** mà vẫn cao hơn hẳn mức mong muốn, thêm dữ liệu vô ích, cần mô hình mạnh hơn. Nếu chúng còn cách xa nhau, thêm dữ liệu giúp được. Thu thập dữ liệu thường tốn kém, nên vẽ đường cong học **trước** khi đi thu thập.
+</Khung>
+
+## Chọn alpha bằng cross-validation
+
+$\alpha$ là một siêu tham số, như bậc đa thức hay ngưỡng phân loại. Chương 9 đã nói cách chọn: trên validation hoặc cross-validation, không bao giờ trên test. scikit-learn có sẵn hai lớp làm đúng việc đó:
+
+```python
+from sklearn.linear_model import RidgeCV, LassoCV
+cv = make_pipeline(PolynomialFeatures(9), StandardScaler(), RidgeCV(alphas=np.logspace(-6, 2, 50))).fit(x[:, None], y)
+print(round(float(cv[-1].alpha_), 5), round(mse(yv, cv.predict(xv[:, None])), 4))      # alpha được chọn, MSE validation
+```
+
+```text title="Output"
+0.00126 0.1177
+```
+
+`RidgeCV` thử 50 giá trị $\alpha$ từ $10^{-6}$ tới $10^2$, chọn bằng cross-validation chỉ trên 15 điểm train. Nó chọn $\alpha \approx 0{,}00126$, gần đúng giá trị $10^{-3}$ tốt nhất ở trang trước, mà **không cần** nhìn 200 điểm validation.
+
+Trên bộ tiểu đường, `LassoCV` với 5 phần, trên cả 353 bệnh nhân train (train cộng validation của Chương 9), rồi đo test đúng một lần:
+
+```python
+lc = make_pipeline(StandardScaler(), LassoCV(cv=5, random_state=0)).fit(Xtr, ytr)
+print(round(float(lc[-1].alpha_), 4), int((lc[-1].coef_ == 0).sum()), round(r2_score(yte, lc.predict(Xte)), 4))
+print(round(r2_score(yte, LinearRegression().fit(Xtr, ytr).predict(Xte)), 4))         # so sánh: không regularization
+```
+
+```text title="Output"
+1.6552 3 0.4714
+0.4526
+```
+
+$\alpha \approx 1{,}66$, loại 3 trên 10 đặc trưng. $R^2$ test 0,471, so với 0,453 của hồi quy thường ở Chương 9: tốt hơn 0,019 với ít đặc trưng hơn.
+
+Chênh 0,019 có đáng kể không? Chương 12 đã dạy cẩn thận: với 89 bệnh nhân test, độ dao động của $R^2$ lớn hơn nhiều so với 0,019. Kết luận trung thực: lasso **không tệ hơn** và **đơn giản hơn**. Đó đã là lý do đủ để chọn nó.
+
+## Tóm lại: chữa overfitting
+
+**Bảng 13.4.** Bốn cách giảm overfitting.
+
+| Cách | Giảm gì | Cái giá |
+|:---|:---|:---|
+| Mô hình đơn giản hơn (bậc thấp hơn, ít đặc trưng hơn) | variance | có thể tăng bias |
+| Regularization (ridge, lasso) | variance | thêm một siêu tham số $\alpha$ phải chọn |
+| Thêm dữ liệu | variance | thu thập tốn kém |
+| Dừng sớm khi huấn luyện lặp (early stopping) | variance | cần theo dõi validation khi huấn luyện |
+
+Cách thứ tư dùng cho mô hình học bằng gradient descent: theo dõi lỗi validation sau mỗi epoch, dừng khi nó bắt đầu tăng. Nó sẽ là công cụ chính với mạng nơ-ron ở Chương 26, cùng với dropout và weight decay (tên gọi của ridge trong deep learning).
+
+<Khung loai="loi">
+**Chọn $\alpha$ bằng test.** Đó là kiểu rò rỉ thứ ba của Chương 9. Dùng `RidgeCV`, `LassoCV` hoặc `GridSearchCV` trên train.
+
+**Kết luận từ một bảng đường cong học với một seed.** Với 15 điểm, đổi seed là con số đổi nhiều (trang 2 đã đo variance). Muốn chắc, lặp lại với vài seed, hoặc dùng `learning_curve` của scikit-learn với cross-validation.
+</Khung>
