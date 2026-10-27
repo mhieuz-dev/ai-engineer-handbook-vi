@@ -56,11 +56,37 @@ describe('notebook chương 10 trình bày cho Colab', () => {
 		for (const m of tatCa.matchAll(/<div style="border-left:[^"]*"/g)) expect(m[0]).toContain('color:#2b2b2b');
 	});
 
-	it('mỗi ô code có comment tiếng Việt trên ít nhất 80% số dòng', () => {
+	it('mỗi ô code có comment tiếng Việt trên ít nhất 80% số dòng (dấu # trong chuỗi như "#E07A1F" không tính)', () => {
+		const boChuoi = (d: string) => d.replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, '""');
+		expect(boChuoi('plt.plot(x, color="#E07A1F")')).not.toContain('#');
 		for (const s of code) {
 			const dong = s.split('\n').filter((d) => d.trim() && !/^[\s)\]}]+$/.test(d));
-			const coComment = dong.filter((d) => d.includes('#')).length;
+			const coComment = dong.filter((d) => boChuoi(d).includes('#')).length;
 			expect(coComment / dong.length, s.slice(0, 60)).toBeGreaterThanOrEqual(0.8);
+		}
+	});
+
+	it('mỗi chỗ "Output mong đợi" có khối code riêng ngay sau', () => {
+		let so = 0;
+		for (const s of md) {
+			for (const m of s.matchAll(/Output mong đợi[^\n]*:\n+(.*)/g)) {
+				so++;
+				expect(m[1], m[0]).toMatch(/^```/);
+			}
+		}
+		expect(so).toBeGreaterThanOrEqual(9);
+	});
+
+	it('khung ĐỌC KẾT QUẢ và THỬ SỬA có thân không rỗng', () => {
+		const khung = md.flatMap((s) => [...s.matchAll(/<div style="border-left:[\s\S]*?\n<\/div>/g)].map((m) => m[0]));
+		for (const nhan of ['ĐỌC KẾT QUẢ', 'THỬ SỬA']) {
+			const cua = khung.filter((k) => k.includes(`>${nhan}</div>`));
+			expect(cua.length, nhan).toBeGreaterThanOrEqual(nhan === 'THỬ SỬA' ? 2 : 8);
+			for (const k of cua) {
+				const than = [...k.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/g)].map((m) => m[1].replace(/<[^>]+>/g, '').trim());
+				expect(than.length, k.slice(0, 120)).toBeGreaterThan(0);
+				for (const t of than) expect(t.length).toBeGreaterThan(20);
+			}
 		}
 	});
 
