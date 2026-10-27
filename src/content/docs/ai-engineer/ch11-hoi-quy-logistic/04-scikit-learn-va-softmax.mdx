@@ -1,0 +1,111 @@
+---
+title: scikit-learn và nhiều lớp
+description: LogisticRegression của scikit-learn khớp với bản tự cài, predict_proba và predict khác nhau thế nào, softmax cho bài toán nhiều lớp và mẹo trừ số lớn nhất để không tràn số, thử trên bộ hoa iris.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Đối chiếu với scikit-learn
+
+```python
+from sklearn.linear_model import LogisticRegression
+X1 = gio.reshape(-1, 1)                                 # bảng một cột, như Chương 10
+m = LogisticRegression(C=np.inf).fit(X1, do)            # C=np.inf: tắt regularization để so với bản tự cài
+print(m.coef_.round(4), m.intercept_.round(4))
+print(m.predict_proba(np.array([[2.0], [3.5], [5.0]]))[:, 1].round(4))   # xác suất lớp 1 (đỗ)
+print(m.predict(X1), m.score(X1, do))                   # nhãn đoán ra và độ chính xác
+```
+
+```text title="Output"
+[[1.0216]] [-3.6745]
+[0.1637 0.4753 0.8075]
+[0. 0. 0. 0. 0. 1. 1. 1. 1. 1.] 0.8
+```
+
+$w = 1{,}0216$, $b = -3{,}6745$: bản tự cài sau 5000 bước (1,0204 và $-3{,}6696$) đã rất gần, chỉ còn trôi chậm trong thung lũng. scikit-learn mặc định dùng L-BFGS, một thuật toán ước lượng cả độ cong của bát (giống ý tưởng $2/c$ ở Chương 8) để chọn bước đi, nên tới đáy nhanh hơn nhiều so với gradient descent thường.
+
+Hai phương thức cho hai thứ khác nhau:
+
+- `predict_proba` trả về **xác suất** của từng lớp, mỗi hàng một mẫu. Cột 1 là xác suất đỗ: 16% cho người học 2 giờ, 48% cho 3,5 giờ, 81% cho 5 giờ.
+- `predict` trả về **nhãn**, tức đem xác suất so với ngưỡng 0,5. Người học 3,5 giờ có xác suất 0,4753, dưới 0,5, nên bị đoán trượt.
+
+<Khung loai="vi-sao" tieuDe="C = NP.INF">
+Mặc định, `LogisticRegression` có `C=1.0`: một mức regularization vừa phải, kéo $w$ về gần 0 để tránh trường hợp dữ liệu tách rời ở trang trước. Với `C=1.0`, bài này ra $w \approx 0{,}76$, $b \approx -2{,}77$: $w$ bị kéo nhỏ đi rõ rệt so với 1,02 của bản tự cài, vì chỉ có 10 mẫu nên lực kéo của regularization chiếm phần lớn.
+
+`C` là **nghịch đảo** độ mạnh của regularization: `C` càng nhỏ, kéo càng mạnh; `C=np.inf` là tắt hẳn. Ở đây ta tắt để so cho công bằng với bản tự cài không có regularization. Ngoài đời, cứ để mặc định rồi chỉnh `C` bằng validation; Chương 13 giải thích vì sao.
+</Khung>
+
+## Nhiều lớp: softmax
+
+Với $K$ lớp, mô hình tính $K$ điểm số $z_1, \dots, z_K$, mỗi lớp một bộ trọng số riêng. Rồi <Term id="softmax">softmax</Term> biến các điểm số thành xác suất:
+
+$$
+p_k = \frac{e^{z_k}}{\sum_{j=1}^{K} e^{z_j}} \tag{11.4}
+$$
+
+Lấy mũ làm mọi số dương; chia cho tổng làm chúng cộng lại bằng 1.
+
+```python
+z = np.array([2.0, 1.0, 0.1])          # điểm số của ba lớp
+e = np.exp(z)
+print(e.round(4), round(e.sum(), 4), (e / e.sum()).round(4))
+```
+
+```text title="Output"
+[7.3891 2.7183 1.1052] 11.2125 [0.659  0.2424 0.0986]
+```
+
+Tính tay: $e^2 \approx 7{,}389$, $e^1 \approx 2{,}718$, $e^{0{,}1} \approx 1{,}105$, tổng 11,21. Lớp đầu được $7{,}389/11{,}21 \approx 0{,}659$. Lấy mũ làm khoảng cách **phóng to**: điểm số 2 và 1 chỉ hơn nhau 1, nhưng xác suất 0,659 và 0,242 hơn nhau gần ba lần.
+
+Với $K = 2$, softmax trở về đúng sigmoid. Hồi quy logistic nhị phân là trường hợp riêng.
+
+<Khung loai="dao-sau" tieuDe="TRÀN SỐ TRONG SOFTMAX">
+Với điểm số lớn, $e^{z}$ tràn khỏi số thực:
+
+```python
+big = np.array([1000.0, 999.0])
+print(np.exp(big) / np.exp(big).sum())       # e^1000 vượt quá số thực lớn nhất
+b2 = big - big.max()                         # trừ số lớn nhất trước khi lấy mũ
+print((np.exp(b2) / np.exp(b2).sum()).round(4))
+```
+
+```text title="Output"
+[nan nan]
+[0.7311 0.2689]
+```
+
+$e^{1000}$ là vô cực, vô cực chia vô cực ra `nan`. Mẹo: trừ mọi điểm số cho số lớn nhất trước. Kết quả **không đổi**, vì tử và mẫu cùng nhân với $e^{-\max}$, nhưng số lớn nhất giờ là $e^0 = 1$, không tràn được nữa. Mọi thư viện đều làm vậy bên trong.
+</Khung>
+
+## Thử trên bộ hoa iris
+
+scikit-learn có sẵn bộ iris: 150 bông hoa thuộc 3 loài, mỗi loài 50 bông, đo 4 đặc trưng (dài, rộng của đài hoa và cánh hoa).
+
+```python
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
+X, y = load_iris(return_X_y=True)
+Xtr, Xte, ytr, yte = train_test_split(X, y, test_size=0.3, random_state=0, stratify=y)   # stratify: giữ tỷ lệ 3 loài
+m3 = LogisticRegression(max_iter=1000).fit(Xtr, ytr)
+print(m3.coef_.shape, round(m3.score(Xte, yte), 4))     # 3 lớp nhân 4 đặc trưng; độ chính xác trên test
+print(m3.predict_proba(Xte[:3]).round(4), m3.predict(Xte[:3]), yte[:3])
+```
+
+```text title="Output"
+(3, 4) 1.0
+[[0.000e+00 3.480e-02 9.651e-01]
+ [5.000e-04 2.333e-01 7.662e-01]
+ [9.660e-01 3.400e-02 0.000e+00]] [2 2 0] [2 2 0]
+```
+
+`coef_` có shape `(3, 4)`: mỗi loài một vector trọng số 4 chiều. Trên 45 bông hoa test, mô hình đoán đúng cả 45. Bông thứ hai được đoán loài 2 với xác suất 0,77 và loài 1 với 0,23: đúng, nhưng không chắc chắn bằng bông thứ nhất (0,97).
+
+Iris là bộ dữ liệu dễ: các loài tách nhau khá rõ. Đừng mong 100% ở bài toán thật. Mục đích ở đây là thấy cùng một lớp `LogisticRegression` tự xử lý nhiều lớp bằng softmax mà không cần đổi code.
+
+<Khung loai="loi">
+**Quên `stratify` khi lớp mất cân bằng.** Chia ngẫu nhiên có thể dồn phần lớn một lớp hiếm vào train, test gần như không có mẫu nào của lớp đó. `stratify=y` giữ tỷ lệ các lớp như nhau ở train và test.
+
+**Gặp cảnh báo `ConvergenceWarning`.** Thuật toán chưa hội tụ sau số bước mặc định. Tăng `max_iter`, hoặc (thường hiệu quả hơn) chuẩn hóa đặc trưng bằng Pipeline như Chương 9.
+</Khung>

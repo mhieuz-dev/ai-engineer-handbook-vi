@@ -1,0 +1,100 @@
+---
+title: Gradient và tự cài
+description: Dẫn gradient của cross-entropy qua sigmoid bằng quy tắc chuỗi, ra dạng gọn (p - y)x giống hệt hồi quy tuyến tính. Kiểm bằng sai phân, rồi tự cài hồi quy logistic bằng gradient descent.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Dẫn gradient
+
+Lấy một mẫu, bỏ chỉ số $i$ cho gọn. Loss của mẫu đó là $\ell = -[y \log p + (1 - y)\log(1 - p)]$, với $p = \sigma(z)$ và $z = wx + b$. Ba lớp lồng nhau, đúng kiểu Bài tập 6.2:
+
+- Lớp ngoài: $\frac{\partial \ell}{\partial p} = -\frac{y}{p} + \frac{1 - y}{1 - p}$.
+- Lớp giữa: $\frac{\partial p}{\partial z} = p(1 - p)$, công thức (6.4).
+- Lớp trong: $\frac{\partial z}{\partial w} = x$ và $\frac{\partial z}{\partial b} = 1$.
+
+Nhân hai lớp đầu lại, quy đồng:
+
+$$
+\left(-\frac{y}{p} + \frac{1 - y}{1 - p}\right) p(1 - p) = -y(1 - p) + (1 - y)p = p - y
+$$
+
+Mọi phân số biến mất. Nhân thêm lớp trong và lấy trung bình trên $n$ mẫu:
+
+$$
+\frac{\partial L}{\partial w} = \frac{1}{n}\sum_{i=1}^{n} (p_i - y_i)\, x_i, \qquad
+\frac{\partial L}{\partial b} = \frac{1}{n}\sum_{i=1}^{n} (p_i - y_i) \tag{11.3}
+$$
+
+<Khung loai="truc-giac">
+So với gradient của hồi quy tuyến tính (6.5): $-\frac{2}{n}\sum x_i e_i$ với $e_i = y_i - \hat y_i$. Bỏ hệ số 2 và dấu, hai công thức **cùng một hình dạng**: (đoán trừ thật) nhân với đặc trưng.
+
+Không phải trùng hợp. Sigmoid ghép với cross-entropy, giống đường thẳng ghép với MSE, là cặp "đúng đôi" sinh ra từ hợp lý cực đại. Đạo hàm của sigmoid triệt tiêu gọn với đạo hàm của log. Chương 23 sẽ thấy softmax ghép với cross-entropy cũng cho đúng dạng $p - y$.
+</Khung>
+
+## Kiểm bằng sai phân
+
+Theo đúng quy trình của Chương 6, kiểm công thức (11.3) ở một điểm bất kỳ trước khi dùng:
+
+```python
+def grad(w, b):
+    p = sig(w * gio + b)
+    return float(np.mean((p - do) * gio)), float(np.mean(p - do))     # công thức (11.3)
+
+h = 1e-5
+print(grad(0.3, -1.0))
+print(((bce(0.3 + h, -1) - bce(0.3 - h, -1)) / (2 * h), (bce(0.3, -1 + h) - bce(0.3, -1 - h)) / (2 * h)))
+```
+
+```text title="Output"
+(-0.23101772770510198, 0.024684044519859026)
+(-0.23101772779754445, 0.024684044519496236)
+```
+
+Khớp tới chữ số thứ 9. Công thức đúng.
+
+## Tự cài
+
+```python
+w = b = 0.0
+for buoc in range(5001):
+    if buoc in (0, 1, 100, 1000, 5000):
+        print(f"Bước {buoc:4d} | w = {w:.4f} | b = {b:.4f} | loss = {bce(w, b):.4f}")
+    gw, gb = grad(w, b)
+    w -= 0.1 * gw                     # learning rate 0,1
+    b -= 0.1 * gb
+print(round(-b / w, 4))               # ranh giới quyết định
+```
+
+```text title="Output"
+Bước    0 | w = 0.0000 | b = 0.0000 | loss = 0.6931
+Bước    1 | w = 0.0550 | b = 0.0000 | loss = 0.6693
+Bước  100 | w = 0.3426 | b = -0.9249 | loss = 0.5633
+Bước 1000 | w = 0.9144 | b = -3.2546 | loss = 0.4696
+Bước 5000 | w = 1.0204 | b = -3.6696 | loss = 0.4680
+3.5962
+```
+
+### Đọc output
+
+**Bước 0.** Loss 0,6931 = $\log 2$, như trang trước: đoán 50-50 cho mọi bạn.
+
+**Bước 1.** $w$ tăng lên 0,055 nhưng $b$ **không đổi**. Vì sao? Gradient theo $b$ là trung bình của $p_i - y_i = 0{,}5 - y_i$. Có đúng 5 bạn đỗ và 5 bạn trượt, nên trung bình đó bằng $0{,}5 - 0{,}5 = 0$. Còn gradient theo $w$ là $\frac{1}{10}\sum (0{,}5 - y_i) x_i = -0{,}55$: bạn đỗ có giờ học cao hơn, nên mô hình cần dốc lên.
+
+**Bước 1000 tới 5000.** Loss chỉ giảm thêm từ 0,4696 xuống 0,4680, trong khi $w$, $b$ vẫn trôi. Lại là thung lũng dài và thoải của Chương 10: không có nghiệm đóng cho hồi quy logistic, và gradient descent cần nhiều bước để đi hết thung lũng.
+
+Ranh giới cuối là 3,5962 giờ, khớp với 3,6 ở trang 1.
+
+<Khung loai="vi-sao" tieuDe="KHÔNG CÓ NGHIỆM ĐÓNG">
+Hồi quy tuyến tính có công thức (10.4) cho thẳng $w$, $b$. Hồi quy logistic thì không: cho gradient (11.3) bằng 0 ra một phương trình chứa $\sigma$ của $w$ và $b$, không giải được bằng đại số. Mọi thư viện đều dùng một thuật toán lặp.
+
+May là bát cross-entropy của hồi quy logistic chỉ có **một đáy** (hàm lồi), nên gradient descent luôn tìm ra nó, chỉ là có thể chậm.
+</Khung>
+
+<Khung loai="loi">
+**Dữ liệu tách rời hoàn toàn.** Nếu có một ngưỡng chia đúng hết hai nhóm (ví dụ mọi bạn học dưới 3 giờ đều trượt, từ 3 giờ đều đỗ), cross-entropy giảm mãi khi $w$ tăng ra vô cực, đường sigmoid dựng đứng thành bậc thang. Gradient descent không bao giờ dừng. Thư viện chữa bằng regularization (Chương 13); trang sau sẽ thấy scikit-learn bật nó theo mặc định.
+
+**Quên chuẩn hóa khi có nhiều đặc trưng.** Giống Chương 9: thang đo lệch nhau là bát dẹt, gradient descent chậm hoặc phân kỳ.
+</Khung>

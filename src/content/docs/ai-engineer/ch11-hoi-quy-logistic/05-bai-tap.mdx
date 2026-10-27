@@ -1,0 +1,110 @@
+---
+title: Bài tập
+description: Ba bài tập hồi quy logistic có đáp án chi tiết (tính tay bước gradient đầu tiên, đổi ngưỡng quyết định từ 0,5 xuống 0,3, softmax tính tay và mẹo chống tràn số) và câu hỏi phỏng vấn.
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Ba bài dùng Bảng 11.1 và các hàm `sig`, `bce`, `grad` ở trang 2 và 3.
+
+<BaiTap so="11.1">
+**Bước đầu tiên, tính tay.** Từ $w = b = 0$ với learning rate 0,1, tính tay gradient (11.3) và $w$, $b$ sau một bước. Vì sao $b$ không đổi?
+
+<Fragment slot="dap-an">
+
+Tại $w = b = 0$, mọi $p_i = 0{,}5$, nên $p_i - y_i$ bằng $0{,}5$ với bạn trượt và $-0{,}5$ với bạn đỗ.
+
+**Theo $b$.** $\frac{1}{10}\sum(p_i - y_i) = \frac{1}{10}(5 \times 0{,}5 + 5 \times (-0{,}5)) = 0$. Năm đỗ, năm trượt: hai bên triệt tiêu, $b$ giữ nguyên 0.
+
+**Theo $w$.** Năm bạn trượt học $1 + 2 + 3 + 3 + 4 = 13$ giờ, năm bạn đỗ học $2 + 4 + 5 + 6 + 7 = 24$ giờ. $\frac{1}{10}(0{,}5 \times 13 - 0{,}5 \times 24) = \frac{1}{10}(-5{,}5) = -0{,}55$.
+
+Sau một bước: $w = 0 - 0{,}1 \times (-0{,}55) = 0{,}055$, $b = 0$.
+
+```python
+print(grad(0.0, 0.0))
+```
+
+```text title="Output"
+(-0.55, 0.0)
+```
+
+Khớp dòng "Bước 1" ở trang 3. Bạn đỗ học nhiều hơn bạn trượt 11 giờ (tổng), nên bước đầu xoay đường lên theo giờ học.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="11.2">
+**Hạ ngưỡng.** Dùng mô hình của trang 4 ($w = 1{,}0216$, $b = -3{,}6745$). Thay vì đoán đỗ khi $p > 0{,}5$, đoán đỗ khi $p > 0{,}3$. Bạn nào đổi kết quả? Độ chính xác thành bao nhiêu? Ngưỡng nào tốt hơn?
+
+<Fragment slot="dap-an">
+
+Xác suất đoán ra cho 10 bạn (theo thứ tự Bảng 11.1): 0,066; 0,164; 0,164; 0,352; 0,352; 0,602; 0,602; 0,807; 0,921; 0,970.
+
+Với ngưỡng 0,3, hai bạn học 3 giờ (xác suất 0,352) chuyển từ "trượt" sang "đỗ".
+
+```python
+p = sig(1.0216 * gio - 3.6745)
+print((p > 0.3).astype(int), float(((p > 0.3) == do).mean()))
+```
+
+```text title="Output"
+[0 0 0 1 1 1 1 1 1 1] 0.6
+```
+
+Độ chính xác **giảm** từ 0,8 xuống 0,6: cả hai bạn 3 giờ thật ra đều trượt.
+
+Nhưng "ngưỡng nào tốt hơn" phụ thuộc mục đích. Giả sử đây là chương trình phụ đạo: ai bị đoán "trượt" sẽ được mời học thêm. Bỏ sót một bạn sẽ trượt thì tệ hơn mời nhầm một bạn sẽ đỗ. Khi đó ta muốn đoán "trượt" **nhiều hơn**, tức là **nâng** ngưỡng đỗ lên (ví dụ 0,7), không phải hạ xuống. Độ chính xác chỉ đếm số lần đúng, không phân biệt hai kiểu sai. Chương 12 sẽ đo riêng từng kiểu.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="11.3">
+**Softmax tính tay.** Với điểm số $z = (1, 2, 3)$:
+
+1. Tính softmax tay (dùng $e \approx 2{,}718$).
+2. Cộng 100 vào mọi điểm số. Softmax thay đổi thế nào?
+3. Nhân mọi điểm số với 2. Softmax thay đổi thế nào?
+
+<Fragment slot="dap-an">
+
+**1.** $e^1 \approx 2{,}718$, $e^2 \approx 7{,}389$, $e^3 \approx 20{,}086$, tổng $\approx 30{,}19$. Softmax $\approx (0{,}090;\ 0{,}245;\ 0{,}665)$.
+
+**2.** **Không đổi.** Cộng cùng một số $c$ vào mọi điểm số là nhân cả tử lẫn mẫu với $e^c$. Đây chính là lý do mẹo trừ số lớn nhất ở trang 4 không làm đổi kết quả.
+
+**3.** Phân phối **nhọn hơn**: lớp có điểm cao nhất được nhiều xác suất hơn. Với $(2, 4, 6)$: $\approx (0{,}016;\ 0{,}117;\ 0{,}867)$.
+
+```python
+sm = lambda v: np.exp(v - v.max()) / np.exp(v - v.max()).sum()
+z = np.array([1.0, 2.0, 3.0])
+print(sm(z).round(3), sm(z + 100).round(3), sm(2 * z).round(3))
+```
+
+```text title="Output"
+[0.09  0.245 0.665] [0.09  0.245 0.665] [0.016 0.117 0.867]
+```
+
+Câu 3 có tên trong mô hình ngôn ngữ: chia điểm số cho một **nhiệt độ** $T$ trước softmax. $T < 1$ (như nhân với 2) làm mô hình chắc chắn hơn, $T > 1$ làm nó "sáng tạo" hơn. Chương 47 sẽ dùng đúng phép này khi sinh văn bản.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Vì sao không dùng MSE cho hồi quy logistic?**
+
+<p lang="en"><em>Why not use MSE as the loss for logistic regression?</em></p>
+
+*Gợi ý:* cross-entropy là hợp lý cực đại cho nhãn Bernoulli. MSE qua sigmoid cho bát không lồi và gradient gần 0 khi mô hình sai mà tự tin (sigmoid bão hòa), học chậm. Cross-entropy cho gradient gọn $(p - y)x$.
+
+**2. Giải thích hệ số của hồi quy logistic.**
+
+<p lang="en"><em>How do you interpret logistic regression coefficients?</em></p>
+
+*Gợi ý:* tăng đặc trưng 1 đơn vị thì log tỷ lệ cược tăng $w$, tức tỷ lệ cược nhân $e^w$, giữ các đặc trưng khác cố định. Không phải độ tăng xác suất.
+
+**3. Hồi quy logistic có ranh giới quyết định dạng gì?**
+
+<p lang="en"><em>What shape is the decision boundary of logistic regression?</em></p>
+
+*Gợi ý:* tuyến tính: siêu phẳng $\mathbf w \cdot \mathbf x + b = 0$. Muốn ranh giới cong thì thêm đặc trưng phi tuyến (bình phương, tích) hoặc dùng mô hình khác.
+</Khung>

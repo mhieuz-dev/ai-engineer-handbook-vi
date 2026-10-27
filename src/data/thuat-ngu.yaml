@@ -308,3 +308,23 @@
   tenTiengAnh: cross-validation
   giaiThich: Cross-validation chia dữ liệu huấn luyện thành k phần, lần lượt lấy mỗi phần làm validation và huấn luyện trên phần còn lại, rồi lấy trung bình k kết quả. Cho con số ổn định hơn một lần chia duy nhất.
   hocKy: ai-engineer/ch09-quy-trinh-du-an-ml
+- id: phan-loai
+  ten: Phân loại
+  tenTiengAnh: classification
+  giaiThich: Phân loại là bài toán đoán mẫu thuộc nhóm nào trong một số nhóm cho trước, như đỗ hay trượt, thư rác hay không, ảnh mèo hay chó. Khác hồi quy là đoán ra một con số liên tục.
+  hocKy: ai-engineer/ch11-hoi-quy-logistic
+- id: cross-entropy
+  ten: Cross-entropy
+  tenTiengAnh: cross-entropy
+  giaiThich: Cross-entropy là hàm mất mát cho bài toán phân loại, bằng trừ log của xác suất mô hình gán cho đáp án đúng. Đoán đúng mà tự tin thì phạt gần 0, đoán sai mà tự tin thì phạt rất nặng.
+  hocKy: ai-engineer/ch11-hoi-quy-logistic
+- id: ranh-gioi-quyet-dinh
+  ten: Ranh giới quyết định
+  tenTiengAnh: decision boundary
+  giaiThich: Ranh giới quyết định là đường (hay mặt) chia không gian đặc trưng thành các vùng mà mô hình đoán khác nhau. Với hồi quy logistic, đó là nơi xác suất đúng bằng 0,5.
+  hocKy: ai-engineer/ch11-hoi-quy-logistic
+- id: softmax
+  ten: Softmax
+  tenTiengAnh: softmax
+  giaiThich: Softmax biến một dãy điểm số bất kỳ thành một dãy xác suất dương cộng lại bằng 1, bằng cách lấy mũ từng số rồi chia cho tổng. Dùng ở lớp cuối của mọi mô hình phân loại nhiều lớp.
+  hocKy: ai-engineer/ch11-hoi-quy-logistic

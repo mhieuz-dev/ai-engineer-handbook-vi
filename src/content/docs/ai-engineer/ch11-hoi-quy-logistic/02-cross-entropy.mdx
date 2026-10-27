@@ -1,0 +1,76 @@
+---
+title: Hàm mất mát cross-entropy
+description: Hợp lý cực đại với nhãn đỗ trượt cho ra cross-entropy. Vì sao nó phạt đoán sai mà tự tin nặng hơn MSE rất nhiều, và giá trị 0,6931 lúc bắt đầu huấn luyện từ đâu ra.
+---
+
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Từ đồng xu tới phân loại
+
+Chương 7 tìm $p$ của một đồng xu bằng hợp lý cực đại: 7 ngửa 3 sấp có log-likelihood $7\log p + 3\log(1 - p)$. Mỗi bạn trong Bảng 11.1 cũng là một "đồng xu", chỉ khác là mỗi bạn có $p$ **riêng**, tính từ giờ học của bạn đó: $p_i = \sigma(w x_i + b)$.
+
+Bạn thứ $i$ đỗ ($y_i = 1$) đóng góp $\log p_i$; trượt ($y_i = 0$) đóng góp $\log(1 - p_i)$. Viết gộp hai trường hợp vào một công thức:
+
+$$
+y_i \log p_i + (1 - y_i)\log(1 - p_i)
+$$
+
+Khi $y_i = 1$, số hạng sau biến mất; khi $y_i = 0$, số hạng đầu biến mất.
+
+Đổi dấu (để thành bài toán **cực tiểu**, như mọi hàm mất mát) rồi lấy trung bình, ta được <Term id="cross-entropy">cross-entropy</Term> nhị phân:
+
+$$
+L(w, b) = -\frac{1}{n}\sum_{i=1}^{n} \Bigl[ y_i \log p_i + (1 - y_i) \log(1 - p_i) \Bigr] \tag{11.2}
+$$
+
+Đây chính là điều Chương 7 đã báo trước: nhiễu chuẩn cho MSE, nhãn 0 và 1 cho cross-entropy. Hàm mất mát không phải chọn tùy ý; nó đến từ giả định về cách dữ liệu được sinh ra.
+
+## Giá trị lúc bắt đầu
+
+```python
+import numpy as np
+gio = np.array([1, 2, 2, 3, 3, 4, 4, 5, 6, 7.0])     # Bảng 11.1
+do = np.array([0, 0, 1, 0, 0, 1, 0, 1, 1, 1.0])
+sig = lambda z: 1 / (1 + np.exp(-z))
+
+def bce(w, b):
+    p = sig(w * gio + b)                              # xác suất đỗ đoán ra cho từng bạn
+    return float(-np.mean(do * np.log(p) + (1 - do) * np.log(1 - p)))   # công thức (11.2)
+
+print(round(bce(0, 0), 4), np.log(2))
+```
+
+```text title="Output"
+0.6931 0.6931471805599453
+```
+
+Với $w = b = 0$, mô hình đoán $p = \sigma(0) = 0{,}5$ cho **mọi** bạn: tung đồng xu cân. Mỗi bạn đóng góp $-\log 0{,}5 = \log 2 \approx 0{,}6931$, bất kể đỗ hay trượt.
+
+Con số 0,6931 đáng nhớ: khi huấn luyện một bộ phân loại nhị phân và loss đứng yên ở 0,693, mô hình chưa học được gì, vẫn đang đoán 50-50.
+
+## Phạt đoán sai mà tự tin
+
+<HinhKetQua src="/hinh/ch11/h2_cross_entropy.svg" alt="Hai đường cong theo xác suất mô hình gán cho đáp án đúng, từ 0 tới 1. Đường đỏ cross-entropy vọt lên rất cao khi xác suất gần 0, đánh dấu 4,61 tại 0,01, 2,30 tại 0,1 và 0,69 tại 0,5. Đường xanh bình phương sai số chỉ lên tới 1 khi xác suất bằng 0." so="11.2" chuThich="Mức phạt cho một mẫu theo xác suất mô hình gán cho đáp án đúng: cross-entropy (đỏ) và bình phương sai số (xanh).">
+**Trục.** Ngang là xác suất mô hình gán cho đáp án **đúng** (với bạn đỗ là $p$, với bạn trượt là $1 - p$). Dọc là mức phạt cho mẫu đó.
+
+**Điều cần thấy.** Cả hai đường đều bằng 0 khi đoán đúng hoàn toàn. Khác biệt nằm ở bên trái: đoán sai mà **tự tin**. Gán xác suất 0,01 cho đáp án đúng, cross-entropy phạt 4,61; bình phương sai số chỉ phạt $(1 - 0{,}01)^2 \approx 0{,}98$. Càng gần 0, cross-entropy càng tiến ra vô cực, còn bình phương sai số không bao giờ vượt quá 1.
+
+**Hệ quả.** Một mô hình tự tin mà sai bị cross-entropy kéo về rất mạnh. Với bình phương sai số qua sigmoid, gradient ở vùng đó lại gần 0 (sigmoid đã phẳng, Chương 6), mô hình sửa sai rất chậm. Đây là lý do thực tế để không dùng MSE cho phân loại.
+</HinhKetQua>
+
+<TuKiemTra
+	cauHoi="Một mô hình đoán xác suất đỗ 0,9 cho một bạn thật ra đã trượt. Cross-entropy của bạn đó là bao nhiêu?"
+	luaChon={['-log 0,9 ≈ 0,105', '-log 0,1 ≈ 2,303', '(1 - 0,9)² = 0,01', '0,9']}
+	dapAn={1}
+	giaiThich="Bạn trượt (y = 0) nên chỉ còn số hạng -log(1 - p) = -log(0,1) ≈ 2,303. Mô hình gán xác suất 0,1 cho đáp án đúng (trượt), nên bị phạt nặng."
+/>
+
+<Khung loai="loi">
+**Tính `np.log(0)`.** Nếu mô hình đoán đúng bằng 0 hoặc 1, log ra $-\infty$ và loss thành `inf` hoặc `nan`. Thư viện tránh bằng cách kẹp $p$ vào $[\epsilon, 1 - \epsilon]$, hoặc tính thẳng từ $z$ bằng công thức ổn định số. Khi tự cài, hãy kẹp: `p = np.clip(p, 1e-12, 1 - 1e-12)`.
+
+**Đọc cross-entropy như tỷ lệ đoán sai.** Loss 0,47 không có nghĩa sai 47%. Mô hình ở trang 1 có loss khoảng 0,468 nhưng đoán đúng 8 trên 10. Muốn biết tỷ lệ đúng, đo riêng độ chính xác.
+</Khung>

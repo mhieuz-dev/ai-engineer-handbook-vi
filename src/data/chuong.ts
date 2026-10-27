@@ -37,7 +37,7 @@ const BANG: [number, string, string, string, XuatBan?][] = [
 	[8, 'phan-1', 'Tối ưu hóa', 'toi-uu-hoa', { trangThai: 'xong', notebook: 'ch08_toi_uu_hoa.ipynb' }],
 	[9, 'phan-2', 'Quy trình một dự án ML', 'quy-trinh-du-an-ml', { trangThai: 'xong', notebook: 'ch09_quy_trinh_du_an_ml.ipynb' }],
 	[10, 'phan-2', 'Hồi quy tuyến tính', 'hoi-quy-tuyen-tinh', { trangThai: 'xong', notebook: 'ch10_hoi_quy_tuyen_tinh.ipynb' }],
-	[11, 'phan-2', 'Hồi quy logistic', 'hoi-quy-logistic'],
+	[11, 'phan-2', 'Hồi quy logistic', 'hoi-quy-logistic', { trangThai: 'xong', notebook: 'ch11_hoi_quy_logistic.ipynb' }],
 	[12, 'phan-2', 'Đánh giá mô hình', 'danh-gia-mo-hinh'],
 	[13, 'phan-2', 'Overfitting, bias-variance và regularization', 'overfitting-regularization'],
 	[14, 'phan-2', 'KNN và khoảng cách', 'knn'],

@@ -1,0 +1,83 @@
+---
+title: Bài toán phân loại và hàm sigmoid
+description: Khi nhãn là đỗ hoặc trượt, đường thẳng của Chương 10 cho ra những con số vô nghĩa. Bọc đường thẳng trong hàm sigmoid để được xác suất, đọc ranh giới quyết định và tỷ lệ cược.
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+<CanBietTruoc>
+Hồi quy tuyến tính và gradient descent (Chương 10). Hàm sigmoid và đạo hàm của nó (Chương 6). Hợp lý cực đại cho đồng xu (Chương 7). Quy trình train, validation, test (Chương 9).
+
+<Fragment slot="sau-chuong">
+Giải thích vì sao phân loại cần sigmoid và cross-entropy chứ không phải MSE. Tự dẫn gradient của cross-entropy, ra dạng gọn $(p - y)x$, và tự cài hồi quy logistic bằng gradient descent. Đọc xác suất, ranh giới quyết định và tỷ lệ cược của mô hình. Mở rộng sang nhiều lớp bằng softmax.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch11_hoi_quy_logistic.ipynb" />
+
+## Đỗ hay trượt
+
+Chương 10 đoán **điểm số**, một con số. Nhiều câu hỏi thật lại có câu trả lời là một **nhóm**: email này là thư rác hay không, khối u lành hay ác, khách hàng có hủy gói cước hay không. Đó là bài toán <Term id="phan-loai">phân loại</Term>. Trường hợp chỉ có hai nhóm gọi là phân loại nhị phân.
+
+Mười bạn đi thi một chứng chỉ. Kết quả chỉ là đỗ (1) hoặc trượt (0):
+
+**Bảng 11.1.** Giờ tự học mỗi tuần và kết quả thi chứng chỉ của 10 bạn.
+
+| Giờ học | 1 | 2 | 2 | 3 | 3 | 4 | 4 | 5 | 6 | 7 |
+|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| Đỗ | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 1 | 1 | 1 |
+
+Học nhiều thì hay đỗ hơn, nhưng không tuyệt đối: một bạn học 2 giờ vẫn đỗ, một bạn học 4 giờ vẫn trượt. Không có ngưỡng giờ học nào chia hai nhóm gọn gàng.
+
+## Đường thẳng không hợp
+
+Thử kẻ một đường thẳng qua các điểm 0 và 1 như Chương 10. Đường đó sẽ đoán ra 1,3 cho người học 9 giờ và $-0{,}2$ cho người học 0 giờ. "Đỗ 1,3 lần" hay "đỗ âm 0,2" không có nghĩa gì.
+
+Ta muốn mô hình đoán ra **xác suất đỗ**: một số trong khoảng 0 tới 1. Cách làm: giữ phép tính tuyến tính $z = wx + b$, rồi ép nó vào khoảng $(0, 1)$ bằng hàm <Term id="sigmoid">sigmoid</Term> của Chương 6:
+
+$$
+p = \sigma(wx + b) = \frac{1}{1 + e^{-(wx + b)}} \tag{11.1}
+$$
+
+Đó là toàn bộ mô hình hồi quy logistic. Tên gọi có chữ "hồi quy" vì lý do lịch sử, nhưng nó là mô hình **phân loại**.
+
+<HinhKetQua src="/hinh/ch11/h1_sigmoid.svg" alt="Mười chấm: chấm đỏ ở độ cao 0 là các bạn trượt tại 1, 2, 3, 3 và 4 giờ; chấm cam ở độ cao 1 là các bạn đỗ tại 2, 4, 5, 6 và 7 giờ. Đường cong chữ S màu xanh đi từ gần 0 ở bên trái lên gần 1 ở bên phải, cắt mức 0,5 tại đường đứt nét đứng ở khoảng 3,6 giờ." so="11.1" chuThich="Mười bạn của Bảng 11.1 và đường sigmoid đã khớp, w ≈ 1,02, b ≈ -3,67. Các chấm trùng tọa độ được dịch nhẹ lên xuống để nhìn thấy cả hai.">
+**Trục.** Ngang là giờ học, dọc là xác suất đỗ. Chấm cam ở độ cao 1 là bạn đỗ, chấm đỏ ở độ cao 0 là bạn trượt.
+
+**Đường cong.** Mô hình đoán xác suất đỗ khoảng 7% cho người học 1 giờ, khoảng 16% cho 2 giờ, 81% cho 5 giờ, 97% cho 7 giờ. Đường luôn nằm trong khoảng 0 tới 1, đúng thứ ta cần.
+
+**Ranh giới.** Đường đứt nét đứng là nơi xác suất đúng bằng 0,5, ở khoảng 3,6 giờ. Muốn một câu trả lời "đỗ hay trượt", ta đoán đỗ khi xác suất trên 0,5: bên phải đường đứt nét.
+
+**Điều cần thấy.** Hai chấm nằm "sai phía": bạn học 2 giờ mà đỗ, bạn học 4 giờ mà trượt. Mô hình đoán sai đúng hai bạn này, độ chính xác 8 trên 10. Với dữ liệu chồng lấn như vậy, không ranh giới nào đoán đúng cả 10.
+</HinhKetQua>
+
+## Ranh giới quyết định
+
+Xác suất bằng 0,5 khi $\sigma(z) = 0{,}5$, tức $z = wx + b = 0$, tức $x = -b/w$. Với $w \approx 1{,}0216$, $b \approx -3{,}6745$:
+
+$$
+x = \frac{3{,}6745}{1{,}0216} \approx 3{,}60 \text{ giờ}
+$$
+
+Điểm (hay đường, hay mặt, khi có nhiều đặc trưng) chia hai vùng đoán khác nhau gọi là <Term id="ranh-gioi-quyet-dinh">ranh giới quyết định</Term>. Với hồi quy logistic, ranh giới luôn là nơi $wx + b = 0$: một điểm khi có một đặc trưng, một đường thẳng khi có hai, một mặt phẳng khi có ba. Mô hình này chỉ vẽ được ranh giới **thẳng**. Chương 16 và 23 sẽ cho mô hình vẽ được ranh giới cong.
+
+## Đọc trọng số: tỷ lệ cược
+
+Hệ số $w$ của hồi quy tuyến tính đọc thẳng được: "thêm 1 giờ, thêm $w$ điểm". Của hồi quy logistic thì đọc qua **tỷ lệ cược** <En>odds</En>: xác suất đỗ chia xác suất trượt, $\frac{p}{1 - p}$.
+
+Từ (11.1), biến đổi một chút ra $\frac{p}{1-p} = e^{wx + b}$. Thêm 1 giờ học, số mũ tăng thêm $w$, nên tỷ lệ cược **nhân** với $e^w = e^{1{,}0216} \approx 2{,}78$.
+
+Kiểm tra: ở 3 giờ, xác suất đỗ khoảng 0,352, tỷ lệ cược $0{,}352/0{,}648 \approx 0{,}54$. Ở 4 giờ, xác suất 0,602, tỷ lệ cược $\approx 1{,}51$. Và $1{,}51 / 0{,}54 \approx 2{,}78$.
+
+Mỗi giờ học thêm làm cơ hội đỗ (tính theo tỷ lệ cược) tăng gần gấp ba. Đó là cách bác sĩ và nhà kinh tế đọc kết quả hồi quy logistic trong các nghiên cứu.
+
+<Khung loai="loi">
+**Đọc $w$ như độ tăng xác suất.** $w = 1{,}02$ không có nghĩa "thêm 1 giờ thì xác suất tăng 1,02". Xác suất tăng nhanh ở giữa đường chữ S và chậm ở hai đầu; chỉ tỷ lệ cược mới nhân đều với $e^w$.
+
+**Luôn dùng ngưỡng 0,5.** 0,5 hợp khi đoán sai hai chiều thiệt hại như nhau. Với sàng lọc bệnh, bỏ sót người bệnh tệ hơn nhiều so với báo nhầm, nên ngưỡng thường thấp hơn. Chương 12 sẽ chọn ngưỡng có hệ thống.
+</Khung>
