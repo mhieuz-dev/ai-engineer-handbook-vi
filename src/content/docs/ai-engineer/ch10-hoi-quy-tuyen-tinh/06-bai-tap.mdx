@@ -119,7 +119,7 @@ Dòng bước 50 in ra `MSE = inf`, với $w$ và $b$ là hai số âm dài hơn
 
 **Chuyện gì xảy ra ở giữa.** Nếu in từng bước, bạn sẽ thấy loss nổ ngay từ bước 1: khoảng $1{,}7 \times 10^{8}$, rồi $1{,}2 \times 10^{15}$ ở bước 2. Mỗi bước loss nhân khoảng 7,3 triệu lần.
 
-Số thực lớn nhất máy lưu được là khoảng $1{,}8 \times 10^{308}$. Tới bước 45, MSE vượt mức đó và máy ghi là `inf` (vô cực). Khi các số đã thành vô cực, những phép như vô cực trừ vô cực không có kết quả, máy ghi là `nan` (not a number). Bước 91, MSE và $w$ đã là `nan`, còn $b$ vẫn là `inf`. Từ bước 92, cả ba đều là `nan`.
+Số thực lớn nhất máy lưu được là khoảng $1{,}8 \times 10^{308}$. Tới bước 45, MSE vượt mức đó và máy ghi là `inf` (vô cực). Khi các số đã thành vô cực, những phép như vô cực trừ vô cực không có kết quả, máy ghi là `nan` <i lang="en">(not a number)</i>. Bước 91, MSE và $w$ đã là `nan`, còn $b$ vẫn là `inf`. Từ bước 92, cả ba đều là `nan`.
 
 **Vì sao.** Số giờ nhân 60, các con số trong dữ liệu lớn hẳn lên, vách bát dốc đứng hơn rất nhiều. Ngưỡng an toàn của $\eta$ tụt từ khoảng 0,12 xuống khoảng $3{,}7 \times 10^{-5}$ (khung Đào sâu "vì sao ngưỡng là 0,12" ở trang Toán). Bước chân 0,05 dài gấp hơn 1000 lần ngưỡng.
 
@@ -128,19 +128,29 @@ Số thực lớn nhất máy lưu được là khoảng $1{,}8 \times 10^{308}$
 </BaiTap>
 
 <Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
 **1. Vì sao MSE nhạy với outlier? Khi dữ liệu có nhiều outlier, bạn làm gì?**
+
+<p lang="en"><em>Why is MSE sensitive to outliers? What do you do when the data has many outliers?</em></p>
 
 *Gợi ý:* bình phương làm sai số lớn bị phạt rất nặng, một điểm sai có thể kéo lệch cả đường. Có thể dùng MAE hoặc Huber loss, hoặc kiểm tra và xử lý dữ liệu trước (điểm đó là lỗi nhập liệu hay là hiện tượng thật?).
 
 **2. Khi nào dùng nghiệm đóng, khi nào dùng gradient descent?**
 
+<p lang="en"><em>When would you use the closed-form solution, and when would you use gradient descent?</em></p>
+
 *Gợi ý:* nghiệm đóng cần nghịch đảo ma trận $d \times d$, tốn cỡ $d^3$ phép tính và giữ cả ma trận trong bộ nhớ. Ít đặc trưng thì nghiệm đóng nhanh và chính xác. Nhiều đặc trưng, dữ liệu không vừa bộ nhớ, hoặc mô hình phi tuyến thì dùng gradient descent.
 
 **3. Loss đang giảm thì đột ngột thành `nan`. Ba thứ đầu tiên bạn kiểm tra là gì?**
 
+<p lang="en"><em>Your loss was decreasing, then suddenly became NaN. What are the first three things you check?</em></p>
+
 *Gợi ý:* learning rate có quá lớn không; dữ liệu đã chuẩn hóa chưa, có cột nào số rất lớn không; dữ liệu có sẵn `nan` hay `inf`, hoặc có phép chia cho 0, lấy log của 0 không.
 
 **4. Mô hình có R² = 0,95. Bạn có kết luận mô hình đúng không?**
+
+<p lang="en"><em>Your model has R² = 0.95. Can you conclude that the model is correct?</em></p>
 
 *Gợi ý:* chưa. R² cao chỉ nói đường thẳng bám dữ liệu sát. Phải vẽ đồ thị phần dư: có hình chữ U hay hình phễu thì dạng mô hình chưa đúng. Ngoài ra R² trên dữ liệu huấn luyện không nói gì về dữ liệu mới.
 </Khung>

@@ -40,12 +40,12 @@
   hocKy: ai-engineer/ch08-toi-uu-hoa
 - id: chuan-hoa
   ten: Chuẩn hóa
-  tenTiengAnh: standardization
+  tenTiengAnh: feature scaling, standardization
   giaiThich: Chuẩn hóa đưa các cột dữ liệu về cùng một thang đo, thường là trung bình 0 và độ lệch chuẩn 1. Nhờ vậy cột có số lớn không lấn át cột có số nhỏ. Gradient descent cũng nhờ đó đi thẳng xuống đáy hơn, ít zích zắc.
   hocKy: ai-engineer/ch14-knn
 - id: r-binh-phuong
   ten: R bình phương
-  tenTiengAnh: R-squared
+  tenTiengAnh: R-squared, coefficient of determination
   giaiThich: R bình phương cho biết mô hình giải thích được bao nhiêu phần của độ biến thiên trong dữ liệu. Bằng 1 là khớp hoàn toàn, bằng 0 là không hơn gì việc đoán mức trung bình. Nó hay dùng để chấm điểm mô hình hồi quy.
   hocKy: ai-engineer/ch10-hoi-quy-tuyen-tinh
 - id: outlier
@@ -108,3 +108,38 @@
   tenTiengAnh: correlation
   giaiThich: Tương quan là hai đại lượng hay đi cùng nhau, cái này lớn thì cái kia cũng hay lớn (hoặc hay nhỏ). Tương quan không có nghĩa cái này gây ra cái kia.
   hocKy: ai-engineer/ch07-xac-suat-thong-ke
+- id: mo-hinh
+  ten: Mô hình
+  tenTiengAnh: model
+  giaiThich: Mô hình là một công thức nhận dữ liệu đầu vào rồi trả ra một con số đoán hay một lựa chọn. Bên trong nó có các tham số mà máy tự chỉnh khi học. Đường thẳng ŷ = wx + b là một trong những mô hình đơn giản nhất.
+  hocKy: ai-engineer/ch09-quy-trinh-du-an-ml
+- id: du-lieu-huan-luyen
+  ten: Dữ liệu huấn luyện
+  tenTiengAnh: training data
+  giaiThich: Dữ liệu huấn luyện là bộ ví dụ có sẵn đáp án để mô hình nhìn vào mà học, như xấp đề có lời giải. Huấn luyện (training) là chỉnh tham số cho mô hình đoán khớp các ví dụ đó. Mô hình tốt phải đoán đúng cả dữ liệu mới, không chỉ dữ liệu đã học.
+  hocKy: ai-engineer/ch09-quy-trinh-du-an-ml
+- id: nhan
+  ten: Nhãn
+  tenTiengAnh: label
+  giaiThich: Nhãn là đáp án đúng đi kèm mỗi ví dụ, thứ mô hình phải học cách đoán ra. Nó còn được gọi là biến mục tiêu (target). Trong bảng dữ liệu, nhãn là cột cần dự đoán.
+  hocKy: ai-engineer/ch09-quy-trinh-du-an-ml
+- id: trong-so
+  ten: Trọng số
+  tenTiengAnh: weight
+  giaiThich: Trọng số là con số cho biết một đầu vào được coi nặng hay nhẹ khi mô hình tính kết quả. Đầu vào nhân với trọng số lớn thì ảnh hưởng nhiều. Mạng nơ-ron có thể có hàng tỷ trọng số, tất cả được chỉnh trong lúc học.
+  hocKy: ai-engineer/ch10-hoi-quy-tuyen-tinh
+- id: he-so-chan
+  ten: Hệ số chặn
+  tenTiengAnh: bias, intercept
+  giaiThich: Hệ số chặn là con số cộng thêm vào kết quả, không nhân với đầu vào nào. Nó nâng hay hạ cả đường thẳng mà không đổi độ nghiêng, như chỉnh độ cao một cái kệ. Trong mạng nơ-ron, nó thường được gọi là bias.
+  hocKy: ai-engineer/ch10-hoi-quy-tuyen-tinh
+- id: hoi-tu
+  ten: Hội tụ
+  tenTiengAnh: convergence
+  giaiThich: Hội tụ là khi các bước lặp tiến sát dần một điểm rồi gần như đứng yên ở đó, như hòn bi lăn rồi nằm im dưới đáy chén. Ngược lại, càng lặp càng đi xa và loss tăng vọt gọi là phân kỳ (divergence). Learning rate quá lớn là lý do phân kỳ hay gặp nhất.
+  hocKy: ai-engineer/ch08-toi-uu-hoa
+- id: do-thi-phan-du
+  ten: Đồ thị phần dư
+  tenTiengAnh: residual plot
+  giaiThich: Đồ thị phần dư vẽ phần dư của từng điểm theo giá trị mô hình đoán. Mô hình hợp với dữ liệu thì các chấm rải đều quanh vạch 0, không có hình thù gì. Thấy hình chữ U hay hình phễu là dấu hiệu mô hình sai dạng.
+  hocKy: ai-engineer/ch10-hoi-quy-tuyen-tinh

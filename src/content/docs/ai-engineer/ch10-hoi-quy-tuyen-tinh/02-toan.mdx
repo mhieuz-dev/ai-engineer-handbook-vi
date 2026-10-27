@@ -18,7 +18,7 @@ Trang này dịch hình ảnh đó sang toán, từng bước một. Mỗi công
 
 Lấy một bạn bất kỳ, gọi là bạn thứ $i$. Bạn đó có điểm thật $y_i$. Đường thẳng đoán cho bạn đó $\hat y_i = w x_i + b$.
 
-Chỗ chênh giữa hai số là phần dư, ký hiệu $e_i$ (chữ e của error):
+Chỗ chênh giữa hai số là phần dư, ký hiệu $e_i$ (chữ e của error, sai số):
 
 $$
 e_i = y_i - \hat y_i = y_i - (w x_i + b)
@@ -38,7 +38,7 @@ Một đường thẳng lệch $+3$ ở bạn này và $-3$ ở bạn kia sẽ c
 
 Vậy phải biến mọi sai số thành số dương trước khi cộng. Có hai cách: lấy trị tuyệt đối $|e_i|$, hoặc bình phương $e_i^2$.
 
-Hồi quy tuyến tính chọn bình phương, rồi lấy trung bình. Con số này gọi là <Term id="mse">MSE</Term> (Mean Squared Error, trung bình bình phương sai số):
+Hồi quy tuyến tính chọn bình phương, rồi lấy trung bình. Con số này gọi là <Term id="mse">trung bình bình phương sai số</Term>, viết tắt là MSE:
 
 $$
 L(w, b) = \frac{1}{n} \sum_{i=1}^{n} e_i^2 \tag{10.1}
@@ -67,17 +67,17 @@ Có ba lý do.
 
 **Ba, bình phương có cơ sở xác suất.** Nếu nhiễu trong dữ liệu có dạng hình chuông, thì làm MSE nhỏ nhất chính là chọn đường thẳng "hợp lý nhất" với dữ liệu. Phần này cần xác suất, xem khung Đào sâu ngay dưới.
 
-**Cái giá phải trả.** Vì phạt sai số lớn rất nặng, MSE dễ bị một điểm bất thường kéo lệch. Điểm như vậy gọi là <Term id="outlier">outlier</Term>.
+**Cái giá phải trả.** Vì phạt sai số lớn rất nặng, MSE dễ bị một điểm bất thường kéo lệch. Điểm như vậy gọi là <Term id="outlier">outlier</Term> (điểm ngoại lai).
 
 Ví dụ: bạn D học 4 giờ nhưng gõ nhầm thành 40 giờ. Chỉ một con số gõ nhầm, độ dốc tìm được tụt từ 1,6 xuống còn khoảng 0,09. Đường thẳng gần như nằm ngang.
 
-Khi dữ liệu có nhiều outlier, người ta dùng <Term id="mae">MAE</Term> (trung bình trị tuyệt đối) hoặc Huber loss (bình phương khi sai ít, trị tuyệt đối khi sai nhiều).
+Khi dữ liệu có nhiều outlier, người ta dùng <Term id="mae">MAE</Term>, tức trung bình trị tuyệt đối, hoặc Huber loss (bình phương khi sai ít, trị tuyệt đối khi sai nhiều).
 </Khung>
 
 <Khung loai="dao-sau" tieuDe="bình phương và xác suất">
-Giả sử điểm thật của mỗi bạn bằng điểm trên đường thẳng cộng thêm một chút nhiễu ngẫu nhiên: $y_i = w x_i + b + \varepsilon_i$.
+Giả sử điểm thật của mỗi bạn bằng điểm trên đường thẳng cộng thêm một chút nhiễu ngẫu nhiên <i lang="en">(noise)</i>: $y_i = w x_i + b + \varepsilon_i$.
 
-Giả sử thêm nhiễu $\varepsilon_i$ có phân phối chuẩn (hình chuông), trung bình 0, độ lệch chuẩn $\sigma$. Khi đó khả năng gặp đúng phần dư $e_i$ tỉ lệ với
+Giả sử thêm nhiễu $\varepsilon_i$ có phân phối chuẩn hình chuông <i lang="en">(normal distribution)</i>, trung bình 0, độ lệch chuẩn $\sigma$. Khi đó khả năng gặp đúng phần dư $e_i$ tỉ lệ với
 
 $$
 \exp\!\left(-\frac{e_i^2}{2\sigma^2}\right).
@@ -91,7 +91,7 @@ $$
 
 Muốn khả năng này **lớn nhất**, phải làm $\sum e_i^2$ **nhỏ nhất**. Đó đúng là làm MSE nhỏ nhất.
 
-Cách chọn tham số như vậy gọi là <Term id="hop-ly-cuc-dai" oDay="Ở đây nó giải thích vì sao MSE dùng bình phương.">ước lượng hợp lý cực đại</Term> (Chương 7). Nếu nhiễu có dạng khác, ví dụ phân phối Laplace (nhọn ở giữa, đuôi dày hơn hình chuông), thì cùng lập luận sẽ dẫn tới MAE thay vì MSE.
+Cách chọn tham số như vậy gọi là <Term id="hop-ly-cuc-dai" oDay="Ở đây nó giải thích vì sao MSE dùng bình phương.">ước lượng hợp lý cực đại</Term>, học kỹ ở Chương 7. Nếu nhiễu có dạng khác, ví dụ phân phối Laplace (nhọn ở giữa, đuôi dày hơn hình chuông), thì cùng lập luận sẽ dẫn tới MAE thay vì MSE.
 </Khung>
 
 <Khung loai="vi-sao" tieuDe="CHIA CHO n">
@@ -101,14 +101,14 @@ Thứ nhất, loss không phình ra theo số dữ liệu. Bốn bạn hay bốn
 
 Thứ hai, độ dốc (sắp học ở mục dưới) cũng không phình ra. Nhờ vậy cùng một độ dài bước chân (gặp ở mục Gradient descent bên dưới) dùng được cho dữ liệu nhỏ lẫn lớn.
 
-Quên chia $n$ thì sao? Với bốn bạn, mỗi bước chân thực tế dài gấp 4 lần, thành $0{,}05 \times 4 = 0{,}2$. Cuối trang bạn sẽ thấy 0,2 là quá dài với dữ liệu này: loss phát nổ.
+Quên chia $n$ thì sao? Với bốn bạn, mỗi bước chân thực tế dài gấp 4 lần, thành $0{,}05 \times 4 = 0{,}2$. Cuối trang bạn sẽ thấy 0,2 là quá dài với dữ liệu này: loss phát nổ <i lang="en">(diverge)</i>.
 </Khung>
 
 ## Tìm đáy của loss: đạo hàm
 
 ### Loss là một cái bát
 
-Mỗi cặp $(w, b)$ cho ra một giá trị loss. Vẽ loss theo $w$ và $b$, ta được một mặt cong hình cái bát. [Hình 10.3](/ai-engineer/ch10-hoi-quy-tuyen-tinh/05-doc-ket-qua/#mặt-loss) ở trang Đọc kết quả là cái bát đó nhìn từ trên xuống.
+Mỗi cặp $(w, b)$ cho ra một giá trị loss. Vẽ loss theo $w$ và $b$, ta được một mặt cong hình cái bát, gọi là mặt loss <i lang="en">(loss surface)</i>. [Hình 10.3](/ai-engineer/ch10-hoi-quy-tuyen-tinh/05-doc-ket-qua/#mặt-loss) ở trang Đọc kết quả là cái bát đó nhìn từ trên xuống.
 
 Đường thẳng tốt nhất nằm ở **đáy bát**.
 
@@ -189,7 +189,7 @@ $$
 
 Gạch ngang trên đầu là trung bình: $\bar x$ là số giờ học trung bình, $\bar y$ là điểm trung bình. Dấu sao nghĩa là "giá trị tốt nhất".
 
-Công thức cho ra đáp án ngay, không cần lặp. Loại công thức như vậy gọi là <Term id="nghiem-dong" oDay="Ở đây dùng để đối chiếu với kết quả của gradient descent.">nghiệm đóng</Term>. Tên trong sách thống kê là bình phương tối thiểu (OLS, ordinary least squares).
+Công thức cho ra đáp án ngay, không cần lặp. Loại công thức như vậy gọi là <Term id="nghiem-dong" oDay="Ở đây dùng để đối chiếu với kết quả của gradient descent.">nghiệm đóng</Term>. Tên trong sách thống kê là bình phương tối thiểu <i lang="en">(ordinary least squares, OLS)</i>.
 
 Đọc nghĩa dòng đầu: tử số đo $x$ và $y$ hay lệch **cùng phía** so với trung bình tới mức nào. Mẫu số đo riêng $x$ trải rộng tới mức nào. Tỉ số là: $x$ lệch 1 đơn vị thì $y$ thường lệch theo bao nhiêu. Đó chính là độ dốc.
 
@@ -300,7 +300,7 @@ Với dữ liệu 4 bạn sinh viên, bước dài hơn khoảng 0,12 là bắt 
 
 Thử ba chỗ: 0,005 (đi chậm), 0,05 (vừa), rồi kéo qua 0,12.
 
-Thử cả 0,11, sát ngưỡng mà chưa vượt. Nó vẫn tới đáy, nhưng mấy bước đầu chậm hẳn: sau bước 1, loss còn khoảng 16,5, trong khi với 0,05 đã xuống 0,69. Bước chân dài quá nên cứ dội qua dội lại giữa hai vách thung lũng.
+Thử cả 0,11, sát ngưỡng mà chưa vượt. Nó vẫn <Term id="hoi-tu">hội tụ</Term>, tức là tới được đáy, nhưng mấy bước đầu chậm hẳn: sau bước 1, loss còn khoảng 16,5, trong khi với 0,05 đã xuống 0,69. Bước chân dài quá nên cứ dội qua dội lại giữa hai vách thung lũng.
 
 Vì vậy người ta không chọn sát ngưỡng. Dữ liệu chỉ cần đổi một chút là ngưỡng dịch theo, và bước sát ngưỡng thành bước vượt ngưỡng. Đứng cách mép vực một quãng là thói quen an toàn.
 
@@ -320,7 +320,7 @@ Mỗi bước, khoảng cách tới đáy bị nhân với $(1 - \eta\lambda)$.
 
 Điều kiện $|1 - \eta\lambda| < 1$ tương đương $0 < \eta < 2/\lambda$. Đó là ngưỡng.
 
-**Hai chiều.** Cái bát MSE của ta có hai trục chính (hai trục của các hình elip ở Hình 10.3). Mỗi trục có độ cong riêng. Hai độ cong đó là hai <Term id="tri-rieng" oDay="Ở đây hai trị riêng là độ cong của cái bát hàm mất mát theo hai trục chính.">trị riêng</Term> (Chương 5) của ma trận
+**Hai chiều.** Cái bát MSE của ta có hai trục chính (hai trục của các hình elip ở Hình 10.3). Mỗi trục có độ cong riêng. Theo ngôn ngữ Chương 5, hai độ cong đó là hai <Term id="tri-rieng" oDay="Ở đây hai trị riêng là độ cong của cái bát hàm mất mát theo hai trục chính.">trị riêng</Term> của ma trận
 
 $$
 H = \frac{2}{n} X^\top X,

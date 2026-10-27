@@ -29,7 +29,7 @@ Câu hỏi: đường thẳng tìm được có bám dữ liệu không?
 
 Ở trang Code, scikit-learn in ra R² $\approx 0{,}9846$. Con số đó từ đâu ra?
 
-Hãy hình dung một "mô hình lười": không thèm nhìn giờ học, đoán ai cũng được điểm trung bình 4,5.
+Hãy hình dung một "mô hình lười" <i lang="en">(baseline)</i>: không thèm nhìn giờ học, đoán ai cũng được điểm trung bình 4,5.
 
 Mô hình lười sai bao nhiêu? Cộng bình phương độ lệch của từng bạn so với 4,5:
 
@@ -56,7 +56,7 @@ Nói bằng lời: đường thẳng giải thích được khoảng 98,5% sự 
 
 Nhưng cẩn thận với câu "học thêm 1 giờ **làm** điểm tăng 1,6".
 
-Hồi quy chỉ đo <Term id="tuong-quan">tương quan</Term>: giờ học và điểm hay đi cùng nhau. Nó không chứng minh cái này gây ra cái kia. Có thể bạn học nhiều vốn đã giỏi sẵn, hoặc có thời gian rảnh hơn.
+Hồi quy chỉ đo <Term id="tuong-quan">tương quan</Term>: giờ học và điểm hay đi cùng nhau. Nó không chứng minh cái này gây ra cái kia, tức quan hệ nhân quả <i lang="en">(causation)</i>. Có thể bạn học nhiều vốn đã giỏi sẵn, hoặc có thời gian rảnh hơn.
 
 Và với 4 bạn, ta không thể nói gì chắc chắn về cả lớp. Bốn điểm dữ liệu đủ để học cách tính, chưa đủ để kết luận.
 
@@ -65,7 +65,7 @@ Và với 4 bạn, ta không thể nói gì chắc chắn về cả lớp. Bốn
 Câu hỏi: vòng lặp có đang đi xuống đáy không, và đi nhanh hay chậm?
 
 <HinhKetQua src="/hinh/ch10/h2_loss_lr.svg" alt="Ba đường MSE theo bước lặp trên thang log: đường xanh rơi thẳng xuống 0,05, đường xám đi xuống chậm, đường đỏ đi lên thành đường thẳng tới hơn một tỷ" so="10.2" chuThich="MSE theo bước lặp với ba learning rate khác nhau, cùng khởi đầu w = b = 0, bước 0 đến bước 39.">
-**Trục.** Trục ngang là số bước lặp. Trục dọc là MSE trên <Term id="thang-log">thang log</Term>: mỗi vạch lớn gấp 10 lần vạch ngay dưới ($10^{-1}$ là 0,1, $10^{1}$ là 10, $10^{9}$ là một tỷ). Phải dùng thang log vì loss trải từ 0,05 đến hơn một tỷ. Ở thang thường, đường xanh và đường xám dính sát đáy, không thấy gì.
+**Trục.** Hình này gọi là đường cong loss <i lang="en">(loss curve)</i>. Trục ngang là số bước lặp. Trục dọc là MSE trên <Term id="thang-log">thang log</Term>: mỗi vạch lớn gấp 10 lần vạch ngay dưới ($10^{-1}$ là 0,1, $10^{1}$ là 10, $10^{9}$ là một tỷ). Phải dùng thang log vì loss trải từ 0,05 đến hơn một tỷ. Ở thang thường, đường xanh và đường xám dính sát đáy, không thấy gì.
 
 **Đường xanh, $\eta = 0{,}05$.** Rơi gần như thẳng đứng: từ 23,5 xuống 0,69 ngay bước 1, đến bước 3 còn 0,051. Sau đó đi ngang. Đi ngang không có nghĩa là mô hình ngừng học. Nó đã chạm mức 0,05, mức thấp nhất mà một đường thẳng có thể đạt với 4 chấm không thẳng hàng.
 
@@ -83,7 +83,7 @@ Câu hỏi: vòng lặp có đang đi xuống đáy không, và đi nhanh hay ch
 Câu hỏi: cái bát loss trông ra sao, và gradient descent đã đi đường nào trong bát?
 
 <HinhKetQua src="/hinh/ch10/h3_mat_loss.svg" alt="Bản đồ đường đồng mức hình elip dài và nghiêng của hàm loss theo w và b, với quỹ đạo màu cam đi từ gốc tọa độ tới gần ngôi sao đỏ ở 1,6 và 0,5, kèm ô phóng to quanh đáy" so="10.3" chuThich="Đường đồng mức của L(w, b) và 60 bước gradient descent với η = 0,05. Ô nhỏ phóng to vùng quanh đáy.">
-**Cách đọc.** Đây là cái bát $L(w, b)$ nhìn từ trên xuống, giống bản đồ địa hình. Trục ngang là $w$, trục dọc là $b$. Mỗi đường elip nối các cặp $(w, b)$ có cùng giá trị loss. Càng vào trong càng thấp. Ngôi sao đỏ là đáy, $(1{,}6;\ 0{,}5)$.
+**Cách đọc.** Đây là cái bát $L(w, b)$ nhìn từ trên xuống, giống bản đồ địa hình có đường đồng mức <i lang="en">(contour plot)</i>. Trục ngang là $w$, trục dọc là $b$. Mỗi đường elip nối các cặp $(w, b)$ có cùng giá trị loss. Càng vào trong càng thấp. Ngôi sao đỏ là đáy, $(1{,}6;\ 0{,}5)$.
 
 **Hình dạng elip.** Các elip dài và nghiêng, không tròn.
 
@@ -106,7 +106,7 @@ Câu hỏi: dạng đường thẳng có đúng với dữ liệu không?
 
 Với 4 bạn và 1 đặc trưng, ta vẽ được mọi thứ như trên. Dữ liệu thật có hàng chục đặc trưng, không vẽ nổi đường thẳng trong không gian nhiều chiều.
 
-Công cụ chẩn đoán dùng được cho mọi trường hợp là **đồ thị phần dư**: trục ngang là giá trị dự đoán $\hat y$, trục dọc là phần dư $y - \hat y$. Dù có bao nhiêu đặc trưng, đồ thị này vẫn chỉ có hai trục.
+Công cụ chẩn đoán dùng được cho mọi trường hợp là <Term id="do-thi-phan-du">**đồ thị phần dư**</Term>: trục ngang là giá trị dự đoán $\hat y$, trục dọc là phần dư $y - \hat y$. Dù có bao nhiêu đặc trưng, đồ thị này vẫn chỉ có hai trục.
 
 Để thấy rõ, Hình 10.4 dùng hai bộ dữ liệu giả lập, mỗi bộ 120 điểm. Bộ (a) sinh từ một đường thẳng cộng nhiễu: $y = 1{,}5x + 2 + \text{nhiễu}$. Bộ (b) sinh từ một đường cong cộng nhiễu: $y = 0{,}25x^2 + \text{nhiễu}$. Cả hai đều được khớp bằng một đường thẳng.
 
@@ -121,7 +121,7 @@ Công cụ chẩn đoán dùng được cho mọi trường hợp là **đồ th
 
 R² chỉ cho biết đường thẳng bám dữ liệu sát tới đâu. Nó không cho biết dạng mô hình có đúng hay không. Chỉ đồ thị phần dư mới cho biết điều đó. Luôn vẽ phần dư.
 
-**Một dáng bệnh khác.** Các chấm loe dần ra như cái phễu (hẹp bên trái, rộng bên phải) nghĩa là mô hình đoán càng lớn thì càng kém chắc chắn. Khi đó trung bình vẫn có thể đúng, nhưng sai số không đều.
+**Một dáng bệnh khác.** Các chấm loe dần ra như cái phễu (hẹp bên trái, rộng bên phải) nghĩa là mô hình đoán càng lớn thì càng kém chắc chắn. Khi đó trung bình vẫn có thể đúng, nhưng sai số không đều <i lang="en">(heteroscedasticity)</i>.
 </HinhKetQua>
 
 <TuKiemTra

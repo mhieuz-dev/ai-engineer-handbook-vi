@@ -65,6 +65,9 @@ test('chương có ít nhất 2 câu Tự kiểm tra; trang 06 có 3 bài tập 
 	await expect(page.locator('.bai-tap')).toHaveCount(3);
 	await expect(page.locator('.bai-tap-dap-an')).toHaveCount(3);
 	await expect(page.locator('.khung-phong-van')).toHaveCount(1);
+	// Mỗi câu phỏng vấn có bản tiếng Anh in nghiêng.
+	await expect(page.locator('.khung-phong-van p[lang="en"] em')).toHaveCount(4);
+	await expect(page.locator('.khung-phong-van')).toContainText('thường bằng tiếng Anh');
 });
 
 test('tìm kiếm "hoi quy" (không dấu) ra trang Hồi quy tuyến tính', async ({ page }) => {
