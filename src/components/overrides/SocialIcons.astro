@@ -9,15 +9,28 @@ import { MENU_CHUNG } from '../../data/menu-chung';
 <Default {...Astro.props}><slot /></Default>
 
 <style>
-	.nav-chung { display: flex; gap: 1rem; font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: var(--sl-text-sm); margin-inline-end: 0.5rem; }
-	.nav-chung a { color: var(--sl-color-gray-2); text-decoration: none; font-weight: 600; white-space: nowrap; }
-	.nav-chung a:hover { color: var(--sl-color-white); }
+	/* Link cách nhau bằng chấm nhỏ như bản mẫu; chấm vẽ bằng ::before nằm giữa khoảng trống, không đọc thành chữ. */
+	.nav-chung { --khoang: 1.4rem; display: flex; gap: var(--khoang); font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: var(--sl-text-sm); margin-inline-end: 0.5rem; }
+	.nav-chung a { position: relative; color: var(--tx); text-decoration: none; font-weight: 400; white-space: nowrap; }
+	.nav-chung a + a::before {
+		content: '';
+		position: absolute;
+		top: 50%;
+		left: calc(var(--khoang) / -2 - 1.5px);
+		transform: translateY(-50%);
+		width: 3px;
+		height: 3px;
+		border-radius: 50%;
+		background: var(--mut);
+		pointer-events: none;
+	}
+	.nav-chung a:hover { color: var(--pri); }
 	:global(header button[data-open-modal] > span) { white-space: nowrap; }
 	/* Máy tính bảng 800-960px: Starlight giữ cột tiêu đề rộng bằng sidebar (284px), phần còn lại không đủ cho
 	   ô tìm kiếm và 4 link. Cho cột tiêu đề co theo chữ và thu nhỏ menu để cả hàng vừa một dòng. */
 	@media (min-width: 50rem) and (max-width: 60rem) {
 		:global(div.header) { grid-template-columns: auto 1fr auto; }
-		.nav-chung { gap: 0.75rem; font-size: var(--sl-text-xs); margin-inline-end: 0; }
+		.nav-chung { --khoang: 0.9rem; font-size: var(--sl-text-xs); margin-inline-end: 0; }
 		:global(header button[data-open-modal] > kbd) { display: none !important; }
 	}
 </style>

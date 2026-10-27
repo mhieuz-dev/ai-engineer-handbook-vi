@@ -7,7 +7,7 @@ const ds = luaChonTaiVe(chuong);
 ---
 
 <div class="nut-tai-ve">
-	<button type="button" class="ntv-nut" aria-haspopup="menu" aria-expanded="false" aria-controls="ntv-menu">⬇ Tải về</button>
+	<button type="button" class="ntv-nut" aria-haspopup="menu" aria-expanded="false" aria-controls="ntv-menu">Tải về</button>
 	<div class="ntv-menu" id="ntv-menu" role="menu" hidden>
 		{ds.map((m) => (
 			<a role="menuitem" href={m.href} target={m.target} rel={m.target ? 'noopener' : undefined} data-in-trang={m.loai === 'in' ? '' : undefined}>{m.nhan}</a>
@@ -51,22 +51,26 @@ const ds = luaChonTaiVe(chuong);
 		position: relative;
 		font-family: 'Be Vietnam Pro', system-ui, sans-serif;
 	}
+	/* Nút viền gọn như bản mẫu: chữ đậm màu chữ thường, viền xám ấm, nền mặt nổi. */
 	.ntv-nut {
 		font: inherit;
 		font-size: 0.8rem;
-		padding: 0.25rem 0.7rem;
-		border: 1px solid var(--line);
-		border-radius: 8px;
-		background: transparent;
-		color: var(--pri);
+		font-weight: 600;
+		line-height: 1.4;
+		padding: 0.3rem 0.8rem;
+		border: 1px solid color-mix(in srgb, var(--line), var(--mut) 45%);
+		border-radius: 6px;
+		background: var(--be-mat);
+		color: var(--tx);
 		cursor: pointer;
 	}
-	.ntv-nut:hover, .ntv-nut[aria-expanded='true'] { background: var(--panel); }
+	.ntv-nut:hover, .ntv-nut[aria-expanded='true'] { border-color: var(--pri); color: var(--pri); }
+	.ntv-nut:focus-visible { outline: 2px solid var(--pri); outline-offset: 2px; }
 	.ntv-menu {
 		position: absolute;
 		z-index: 20;
 		top: calc(100% + 4px);
-		left: 0;
+		right: 0;
 		min-width: 12rem;
 		max-width: calc(100vw - 2rem);
 		padding: 0.25rem;

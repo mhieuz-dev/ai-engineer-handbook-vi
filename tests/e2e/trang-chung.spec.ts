@@ -104,3 +104,17 @@ test('desktop: menu phụ của sidebar ẩn, chỉ còn menu đầu trang', asy
 	await expect(page.locator('.nav-sidebar')).toBeHidden();
 	await expect(page.locator('header .nav-chung')).toBeVisible();
 });
+
+test('desktop: link đầu trang cách nhau bằng chấm nhỏ, nút Tải về là nút viền cuối hàng breadcrumb', async ({ page, isMobile }) => {
+	test.skip(!!isMobile);
+	await page.goto('/ai-engineer/ch10-hoi-quy-tuyen-tinh/02-toan/');
+	const links = page.locator('header .nav-chung a');
+	const cham = await links.evaluateAll((as) => as.map((a) => getComputedStyle(a, '::before').width));
+	expect(cham).toEqual(['auto', '3px', '3px', '3px']);
+	const nut = page.getByRole('button', { name: 'Tải về' });
+	await expect(nut).toHaveText('Tải về');
+	expect(await nut.evaluate((e) => getComputedStyle(e).borderTopWidth)).toBe('1px');
+	const hNut = (await nut.boundingBox())!;
+	const hHang = (await page.locator('.crumb-hang').boundingBox())!;
+	expect(hNut.x + hNut.width).toBeGreaterThan(hHang.x + hHang.width - 2);
+});

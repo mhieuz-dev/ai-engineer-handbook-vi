@@ -22,7 +22,7 @@ const docIds = hocKy ? (await getCollection('docs')).map((d) => d.id) : [];
 const hoc = hocKy ? linkHocKy(hocKy, docIds, Astro.url.pathname) : undefined;
 ---
 
-<span class="term-wrap"><span class="term" tabindex="0" role="button" aria-expanded="false" aria-describedby={tipId}><Fragment set:html={chu} /></span>{tenEn && <Fragment>{' '}<En class="term-en">{tenEn}</En></Fragment>}<span class="tip" role="tooltip" id={tipId} tabindex="-1"><span class="nhan">NHẮC NHANH · {ten.toUpperCase()}</span><span class="nd">{giaiThich}</span>{oDay && <span class="o-day">{oDay}</span>}{hoc && <a class="hoc-ky" href={hoc.href}>Học kỹ ở Chương {hoc.so} →</a>}</span></span>
+<span class="term-wrap"><span class="term" tabindex="0" role="button" aria-expanded="false" aria-describedby={tipId}><Fragment set:html={chu} /></span>{tenEn && <Fragment>{' '}<En class="term-en">{tenEn}</En></Fragment>}<span class="tip" role="tooltip" id={tipId} tabindex="-1"><span class="nhan">NHẮC NHANH · {ten.toUpperCase()}</span><span class="nd">{giaiThich}</span>{oDay && <span class="o-day">{oDay}</span>}{hoc && <a class="hoc-ky" href={hoc.href}>Học kỹ ở Chương {hoc.so} →</a>}<button type="button" class="tip-dong" aria-label="Đóng"><svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true" focusable="false"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg></button></span></span>
 
 <style is:global>
 	.term-wrap {
@@ -32,17 +32,18 @@ const hoc = hocKy ? linkHocKy(hocKy, docIds, Astro.url.pathname) : undefined;
 		border-bottom: 2px dotted var(--pri);
 		cursor: help;
 	}
+	/* Khung nhắc nhanh như bản mẫu: nền --panel, viền ấm, bo nhỏ, nút × đóng ở góc phải. */
 	.term-wrap .tip {
 		display: none;
 		position: absolute;
 		left: 0;
-		top: 100%;
-		width: 300px;
-		max-width: min(300px, 90vw);
+		top: calc(100% + 6px);
+		width: 320px;
+		max-width: min(320px, 90vw);
 		background: var(--panel);
-		border: 1px solid var(--line);
-		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-		border-radius: 10px;
+		border: 1px solid color-mix(in srgb, var(--line), var(--mut) 30%);
+		box-shadow: 0 10px 28px -8px rgb(80 60 30 / 0.28);
+		border-radius: 6px;
 		padding: 12px 14px;
 		font-family: 'Be Vietnam Pro', sans-serif;
 		font-style: normal;
@@ -54,15 +55,36 @@ const hoc = hocKy ? linkHocKy(hocKy, docIds, Astro.url.pathname) : undefined;
 		cursor: default;
 		z-index: 9;
 	}
+	:root[data-theme='dark'] .term-wrap .tip { box-shadow: 0 10px 28px -8px rgb(0 0 0 / 0.6); }
 	.term-wrap[data-open] .tip {
 		display: block;
 	}
 	.term-wrap .tip .nhan {
 		display: block;
 		color: var(--pri);
-		font-weight: 600;
+		font-weight: 800;
+		font-size: 11px;
+		letter-spacing: 0.04em;
 		margin-bottom: 4px;
+		padding-inline-end: 22px;
 	}
+	.term-wrap .tip .tip-dong {
+		position: absolute;
+		top: 6px;
+		right: 6px;
+		display: grid;
+		place-items: center;
+		width: 26px;
+		height: 26px;
+		padding: 0;
+		border: 0;
+		border-radius: 6px;
+		background: transparent;
+		color: var(--mut-chu);
+		cursor: pointer;
+	}
+	.term-wrap .tip .tip-dong:hover { background: color-mix(in srgb, var(--line) 70%, transparent); color: var(--tx); }
+	.term-wrap .tip .tip-dong:focus-visible { outline: 2px solid var(--pri); outline-offset: 1px; }
 	.term-wrap .tip .nd,
 	.term-wrap .tip .o-day {
 		display: block;
@@ -132,6 +154,12 @@ const hoc = hocKy ? linkHocKy(hocKy, docIds, Astro.url.pathname) : undefined;
 				moBangRe.delete(w);
 				dat(w, !dangMo(w));
 			}
+		});
+		// Nút ×: đưa focus về chữ (bàn phím không lạc chỗ) rồi mới đóng, vì focus vào chữ sẽ tự mở tooltip.
+		w.querySelector('.tip-dong')?.addEventListener('click', () => {
+			nut.focus({ preventScroll: true });
+			moBangRe.delete(w);
+			dat(w, false);
 		});
 		nut.addEventListener('click', () => {
 			if (vuaCham(w) && !moBangRe.has(w)) return;

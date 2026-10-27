@@ -196,3 +196,39 @@ for (const cheDo of ['light', 'dark'] as const) {
 		expect(tuongPhan(mau, nen)).toBeGreaterThanOrEqual(4.5);
 	});
 }
+
+test('nút × đóng nhắc nhanh (chuột hoặc chạm), focus quay về chữ, bàn phím tới được', async ({ page }, info) => {
+	const mobile = info.project.name === 'mobile';
+	await page.goto(URL);
+	const wrap = page.locator('.term-wrap').first();
+	const term = wrap.locator('.term');
+	const tip = wrap.locator('.tip');
+	const dong = tip.getByRole('button', { name: 'Đóng' });
+	await term.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+	if (mobile) await term.tap();
+	else await term.hover();
+	await expect(tip).toBeVisible();
+	await expect(dong).toBeVisible();
+	// nút × ở góc phải trên của khung
+	const hDong = (await dong.boundingBox())!;
+	const hTip = (await tip.boundingBox())!;
+	expect(hDong.x + hDong.width).toBeGreaterThan(hTip.x + hTip.width - 16);
+	expect(hDong.y).toBeLessThan(hTip.y + 16);
+	if (mobile) await dong.tap();
+	else await dong.click();
+	await expect(tip).toBeHidden();
+	await expect(term).toHaveAttribute('aria-expanded', 'false');
+	await expect(term).toBeFocused();
+	// mở lại được sau khi đóng
+	if (mobile) await term.tap();
+	else await page.keyboard.press('Enter');
+	await expect(tip).toBeVisible();
+	// bàn phím: Tab qua link Học kỹ tới ×, Enter đóng
+	await term.focus();
+	await page.keyboard.press('Tab');
+	await page.keyboard.press('Tab');
+	await expect(dong).toBeFocused();
+	await page.keyboard.press('Enter');
+	await expect(tip).toBeHidden();
+	await expect(term).toBeFocused();
+});
