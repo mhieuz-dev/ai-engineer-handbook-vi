@@ -4,3 +4,6 @@ scikit-learn==1.9.1
 jupyter==1.1.1
 nbconvert==7.17.2
 pandas==3.1.0
+# Phần III trở đi. Bản CPU để output lặp lại được: uv pip install -r requirements.txt --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
+torch==2.14.1+cpu
+torchvision==0.29.1+cpu
