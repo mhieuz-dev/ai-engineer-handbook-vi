@@ -1,0 +1,99 @@
+---
+title: Bài tập
+description: Ba bài tập feature engineering có đáp án chi tiết (one-hot tính tay cho ba tỉnh, gán số thứ tự làm hồi quy đoán sai cả ba lớp, permutation importance tự làm bằng một lần xáo cột) và câu hỏi phỏng vấn.
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Tự làm ra giấy trước, rồi chạy code trong notebook để kiểm tra.
+
+<BaiTap so="21.1">
+**One-hot cho ba tỉnh.** Cột `tinh` có năm hàng: HN, HCM, DN, HCM, HN. Viết tay ma trận one-hot. scikit-learn xếp các cột theo thứ tự nào?
+
+<Fragment slot="dap-an">
+
+```python
+t = pd.DataFrame({"tinh": ["HN", "HCM", "DN", "HCM", "HN"]})
+oh3 = OneHotEncoder(sparse_output=False).fit(t)
+print(oh3.get_feature_names_out(), oh3.transform(t).astype(int).tolist())
+```
+
+```text title="Output"
+['tinh_DN' 'tinh_HCM' 'tinh_HN'] [[0, 0, 1], [0, 1, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]]
+```
+
+Ba cột, xếp theo **thứ tự chữ cái** của giá trị: DN, HCM, HN, không phải thứ tự xuất hiện. Hàng đầu (HN) là $(0, 0, 1)$. Mỗi hàng có đúng một số 1. Nếu cần biết cột nào là tỉnh nào, luôn đọc `get_feature_names_out()` thay vì đoán.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="21.2">
+**Gán số thứ tự sai.** Ba lớp L1, L2, L3, mỗi lớp 4 bạn, điểm trung bình lần lượt 5, 8, 4. Hồi quy tuyến tính trên cột lớp mã hóa thứ tự (L1 = 0, L2 = 1, L3 = 2) đoán điểm mỗi lớp bao nhiêu? So với one-hot.
+
+<Fragment slot="dap-an">
+
+```python
+from sklearn.preprocessing import OrdinalEncoder
+lop = pd.DataFrame({"lop": ["L1"] * 4 + ["L2"] * 4 + ["L3"] * 4})
+yl = np.array([5] * 4 + [8] * 4 + [4] * 4, dtype=float)
+r1 = LinearRegression().fit(OrdinalEncoder().fit_transform(lop), yl)
+print(r1.predict([[0], [1], [2]]).round(4))
+r2 = LinearRegression().fit(OneHotEncoder(sparse_output=False).fit_transform(lop), yl)
+print(r2.predict(np.eye(3)).round(4))
+```
+
+```text title="Output"
+[6.1667 5.6667 5.1667]
+[5. 8. 4.]
+```
+
+Mã hóa thứ tự buộc mô hình đoán theo một **đường thẳng**: mỗi lớp kém lớp trước 0,5 điểm. Kết quả sai cả ba: L1 đoán 6,17 (thật 5), L2 đoán 5,67 (thật 8, lớp giỏi nhất bị đoán gần như kém nhất), L3 đoán 5,17 (thật 4). One-hot cho mỗi lớp một hệ số riêng và đoán đúng cả ba trung bình.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="21.3">
+**Permutation importance bằng tay.** Lấy hồi quy tuyến tính trên bộ tiểu đường (Chương 9), xáo ngẫu nhiên **một lần** cột `bmi` của tập test (`default_rng(0)`), rồi so $R^2$ trước và sau.
+
+<Fragment slot="dap-an">
+
+```python
+from sklearn.metrics import r2_score
+ml = LinearRegression().fit(Xdtr, ydtr)
+g = r2_score(ydte, ml.predict(Xdte))
+Xx = Xdte.copy()
+Xx["bmi"] = np.random.default_rng(0).permutation(Xx["bmi"].values)    # xáo riêng cột bmi
+print(round(g, 4), round(r2_score(ydte, ml.predict(Xx)), 4), round(g - r2_score(ydte, ml.predict(Xx)), 4))
+```
+
+```text title="Output"
+0.4526 0.1842 0.2684
+```
+
+$R^2$ tụt từ 0,4526 xuống 0,1842: giảm 0,27. Xáo cột `bmi` là cắt đứt mọi liên hệ giữa BMI và từng bệnh nhân, trong khi vẫn giữ nguyên phân phối của cột (cùng các giá trị, chỉ đổi chỗ). Phần $R^2$ mất đi là phần mô hình nhờ vào BMI.
+
+`permutation_importance` làm đúng việc này cho từng cột, lặp lại nhiều lần với các cách xáo khác nhau rồi lấy trung bình, vì một lần xáo có thể may hoặc rủi.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Bạn mã hóa biến phân loại thế nào?**
+
+<p lang="en"><em>How do you encode categorical variables?</em></p>
+
+*Gợi ý:* one-hot cho nhóm không thứ tự, ít giá trị; ordinal cho nhóm có thứ tự thật; target encoding hoặc embedding cho nhóm nhiều giá trị (nhớ làm trong cross-validation); xử lý nhóm lạ lúc dự đoán.
+
+**2. Impurity importance và permutation importance khác nhau thế nào?**
+
+<p lang="en"><em>What is the difference between impurity-based and permutation importance?</em></p>
+
+*Gợi ý:* impurity tính trên train, nhanh nhưng thiên về đặc trưng liên tục nhiều giá trị, có thể đề cao cả cột nhiễu. Permutation đo trên test bằng độ tụt điểm khi xáo cột, đáng tin hơn nhưng chậm và bị ảnh hưởng khi đặc trưng tương quan.
+
+**3. Kể vài kỹ thuật feature engineering bạn hay dùng.**
+
+<p lang="en"><em>Name some feature engineering techniques you often use.</em></p>
+
+*Gợi ý:* mã hóa phân loại, điền thiếu kèm cột đánh dấu thiếu, log cho cột lệch, đặc trưng thời gian (ngày trong tuần, mùa), tỷ số và hiệu giữa các cột có ý nghĩa, tổng hợp theo nhóm tính từ dữ liệu quá khứ; luôn trong Pipeline để tránh rò rỉ.
+</Khung>

@@ -1,0 +1,84 @@
+---
+title: ColumnTransformer và biến đổi cột số
+description: Mỗi loại cột một cách xử lý - cột số điền trung vị rồi chuẩn hóa, cột chữ mã hóa one-hot - gộp trong một ColumnTransformer đặt trong Pipeline. Lấy log để chữa một cột lệch phải có độ lệch 3,9.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Mỗi loại cột một đường
+
+Bảng 4.1 có hai cột số (`gio`, `ngu`, trong đó `ngu` thiếu một ô của bạn F) và một cột chữ (`lop`). Mỗi loại cần xử lý khác nhau, và mọi bước phải học từ train (Chương 9). `ColumnTransformer` gom các đường xử lý đó lại:
+
+```python
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LinearRegression
+ct = ColumnTransformer([
+    ("so", make_pipeline(SimpleImputer(strategy="median"), StandardScaler()), ["gio", "ngu"]),   # cột số: điền trung vị, chuẩn hóa
+    ("chu", OneHotEncoder(), ["lop"]),                                                       # cột chữ: one-hot
+])                                                                                           # cột không liệt kê (ten, diem) bị bỏ
+Z = ct.fit_transform(df)
+print(Z.shape, Z[5].round(4), ct.get_feature_names_out())
+```
+
+```text title="Output"
+(10, 4) [-0.9488  0.3333  0.      1.    ] ['so__gio' 'so__ngu' 'chu__lop_L1' 'chu__lop_L2']
+```
+
+Bốn cột ra: hai cột số đã chuẩn hóa, hai cột one-hot. Hàng 5 là bạn F:
+
+- Giờ học 2, sau chuẩn hóa: $(2 - 3{,}7)/1{,}792 \approx -0{,}9488$ (trung bình 3,7, độ lệch chuẩn chia $n$ là 1,792).
+- Giờ ngủ bị thiếu, được điền trung vị 7 (như Chương 4), rồi chuẩn hóa: $(7 - 6{,}7)/0{,}9 \approx 0{,}3333$.
+- Lớp L2: $(0, 1)$.
+
+Gắn thêm mô hình vào cuối là được một Pipeline nhận thẳng DataFrame thô:
+
+```python
+m = make_pipeline(ct, LinearRegression()).fit(df, df["diem"])
+print(m[-1].coef_.round(4), round(m[-1].intercept_, 4))
+```
+
+```text title="Output"
+[ 2.0287  0.1964  0.1242 -0.1242] 5.55
+```
+
+Giờ học (đã chuẩn hóa) có hệ số 2,03: tăng một độ lệch chuẩn giờ học, điểm tăng khoảng 2 điểm. Giờ ngủ chỉ 0,20. Hai cột lớp có hệ số $\pm 0{,}12$: **khi đã biết giờ học**, học lớp L1 hay L2 chỉ chênh khoảng 0,25 điểm. Chương 4 thấy L2 có điểm trung bình cao hơn L1 0,3 điểm, và đoán phần lớn là do L2 học nhiều giờ hơn; mô hình này xác nhận điều đó, và lần này lớp L1 còn nhỉnh hơn một chút khi cùng giờ học.
+
+Hai hệ số đối nhau và cùng độ lớn, đúng như khung "Hai cột cho hai nhóm là thừa một" ở trang trước dự báo: chúng không duy nhất, chỉ hiệu của chúng có nghĩa.
+
+## Cột lệch: lấy log
+
+Nhiều đại lượng thật lệch hẳn về một phía: thu nhập, giá nhà, số lượt xem. Phần lớn giá trị nhỏ, vài giá trị cực lớn. Mô phỏng một cột như vậy:
+
+```python
+rng = np.random.default_rng(0)
+x = rng.lognormal(3, 1, 1000)                               # 1000 giá trị lệch phải
+lech = lambda v: float(((v - v.mean()) ** 3).mean() / v.std() ** 3)   # độ lệch (skewness)
+print(round(float(np.mean(x)), 2), round(float(np.median(x)), 2), round(lech(x), 3), round(lech(np.log(x)), 3))
+```
+
+```text title="Output"
+30.63 18.64 3.875 -0.073
+```
+
+Trung bình 30,63 lớn hơn hẳn trung vị 18,64: vài giá trị cực lớn kéo trung bình lên. Độ lệch (skewness) 3,9: rất lệch phải. Sau khi lấy log, độ lệch còn $-0{,}07$: gần như đối xứng.
+
+Với mô hình tuyến tính và các mô hình dựa trên khoảng cách, cột lệch có hai vấn đề: vài giá trị cực lớn chi phối hệ số (giống outlier kéo đường hồi quy ở Chương 10), và chuẩn hóa không chữa được vì nó chỉ dời và co giãn chứ không đổi hình dạng. Lấy log (hoặc `np.log1p` khi có giá trị 0) nén các giá trị lớn lại. Với mô hình cây thì không cần: cây chỉ nhìn thứ tự (Chương 17), và log không đổi thứ tự.
+
+<TuKiemTra
+	cauHoi="Một cột có các giá trị 0, 10, 100, 1000. Sau khi áp np.log1p (tức log(1 + x)), chênh lệch giữa hai giá trị liên tiếp thay đổi thế nào?"
+	luaChon={['Vẫn tăng gấp 10 lần mỗi bậc', 'Gần như đều nhau, khoảng 2,3 mỗi bậc', 'Thành 0', 'Đảo ngược thứ tự']}
+	dapAn={1}
+	giaiThich="log1p cho khoảng 0; 2,40; 4,62; 6,91. Mỗi lần giá trị gấp 10, log tăng thêm khoảng log(10) ≈ 2,3. Log biến phép nhân thành phép cộng, nên dữ liệu trải theo cấp số nhân thành trải đều."
+/>
+
+<Khung loai="loi">
+**`fit` bộ điền giá trị thiếu trên cả bộ dữ liệu.** Trung vị dùng để điền phải tính trên train. Đặt `SimpleImputer` trong Pipeline, đừng gọi `df.fillna(df.median())` trước khi chia.
+
+**Quên mất cột khi liệt kê.** `ColumnTransformer` mặc định **bỏ** mọi cột không được nhắc tới (`remainder="drop"`). Ở trên đó là điều ta muốn với `ten` và `diem`; với một cột đặc trưng bị quên thì là mất thông tin mà không báo lỗi. Kiểm tra `get_feature_names_out()`.
+</Khung>

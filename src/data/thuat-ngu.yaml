@@ -468,3 +468,13 @@
   tenTiengAnh: t-distributed stochastic neighbor embedding
   giaiThich: t-SNE đặt dữ liệu nhiều chiều xuống 2 hoặc 3 chiều sao cho những điểm gần nhau vẫn gần nhau, để nhìn bằng mắt. Giữ tốt hàng xóm gần nhưng không giữ khoảng cách xa, nên chỉ dùng để trực quan hóa.
   hocKy: ai-engineer/ch20-giam-chieu
+- id: one-hot
+  ten: Mã hóa one-hot
+  tenTiengAnh: one-hot encoding
+  giaiThich: Mã hóa one-hot biến một cột phân loại có k giá trị thành k cột 0 hoặc 1, mỗi cột ứng với một giá trị. Lớp L1 thành (1, 0), lớp L2 thành (0, 1). Tránh việc mô hình hiểu nhầm giữa các nhóm có thứ tự hay khoảng cách.
+  hocKy: ai-engineer/ch21-feature-engineering
+- id: permutation-importance
+  ten: Permutation importance
+  tenTiengAnh: permutation importance
+  giaiThich: Permutation importance đo độ quan trọng của một đặc trưng bằng cách xáo trộn ngẫu nhiên cột đó trên dữ liệu test rồi xem điểm số của mô hình tụt bao nhiêu. Tụt nhiều là mô hình thật sự dựa vào đặc trưng đó.
+  hocKy: ai-engineer/ch21-feature-engineering

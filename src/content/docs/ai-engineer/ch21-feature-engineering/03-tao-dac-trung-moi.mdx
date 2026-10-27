@@ -1,0 +1,69 @@
+---
+title: Tạo đặc trưng mới
+description: Hồi quy logistic chỉ đúng 48% trên dữ liệu kiểu XOR, thêm một cột tích x1·x2 là lên 96%. Nhưng trên bộ tiểu đường, thêm tích và bình phương của BMI không giúp gì. Đặc trưng tốt đến từ hiểu bài toán.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Khi một đường thẳng không đủ
+
+400 điểm rải đều trong hình vuông $[-1, 1]^2$. Nhãn là 1 khi $x_1$ và $x_2$ **cùng dấu** (góc phần tư thứ nhất và thứ ba), 0 khi khác dấu. Đây là bài toán XOR kinh điển.
+
+```python
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import cross_val_score
+rng = np.random.default_rng(0)
+X = rng.uniform(-1, 1, (400, 2))
+y = ((X[:, 0] * X[:, 1]) > 0).astype(int)            # cùng dấu thì 1
+print(round(cross_val_score(LogisticRegression(), X, y, cv=5).mean(), 4))
+X2 = np.c_[X, X[:, 0] * X[:, 1]]                     # thêm cột tích
+print(round(cross_val_score(LogisticRegression(), X2, y, cv=5).mean(), 4))
+```
+
+```text title="Output"
+0.4825
+0.955
+```
+
+Với hai đặc trưng gốc, hồi quy logistic đúng 48%: tệ hơn tung đồng xu. Không đường thẳng nào chia được bốn góc phần tư xen kẽ. Thêm **một** cột $x_1 x_2$: lên 95,5%. Nhãn được quyết định bởi dấu của tích đó, nên trên cột mới, một ngưỡng duy nhất ($x_1 x_2 > 0$) là đủ.
+
+Đây là cùng một ý với cột $x^2$ ở Chương 16 và đa thức ở Chương 13: mô hình tuyến tính trên đặc trưng phi tuyến vẽ được ranh giới phi tuyến. Cột tích gọi là **đặc trưng tương tác** <En>interaction feature</En>: tác dụng của $x_1$ phụ thuộc vào giá trị của $x_2$.
+
+## Khi đặc trưng mới vô ích
+
+Thử ý tưởng đó trên bộ tiểu đường của Chương 9: có lẽ BMI cao **và** huyết áp cao thì nguy hiểm hơn tổng của hai thứ, và tác dụng của BMI tăng nhanh dần?
+
+```python
+from sklearn.datasets import load_diabetes
+from sklearn.model_selection import train_test_split
+Xd, yd = load_diabetes(return_X_y=True, as_frame=True, scaled=False)
+Xdtr, Xdte, ydtr, ydte = train_test_split(Xd, yd, test_size=0.2, random_state=42)
+goc = cross_val_score(make_pipeline(StandardScaler(), LinearRegression()), Xdtr, ydtr, cv=5, scoring="r2").mean()
+Xm = Xdtr.copy()
+Xm["bmi_x_bp"] = Xm["bmi"] * Xm["bp"]                 # tương tác BMI và huyết áp
+Xm["bmi2"] = Xm["bmi"] ** 2                           # BMI bình phương
+moi = cross_val_score(make_pipeline(StandardScaler(), LinearRegression()), Xm, ydtr, cv=5, scoring="r2").mean()
+print(round(goc, 4), round(moi, 4))
+```
+
+```text title="Output"
+0.4493 0.4475
+```
+
+Không giúp gì: 0,4493 trước, 0,4475 sau. Trên dữ liệu này, hai giả thuyết đó không đúng (hoặc với 353 bệnh nhân, quá yếu để thấy). Hai cột mới chỉ thêm hai hệ số phải ước lượng, tức thêm một chút variance.
+
+<Khung loai="vi-sao" tieuDe="HIỂU BÀI TOÁN TRƯỚC KHI TẠO CỘT">
+Thêm mọi tích và mọi bình phương của 10 đặc trưng là 55 cột mới; của 100 đặc trưng là 5050. Phần lớn vô ích, và như Chương 13 đã thấy, nhiều cột vô ích dẫn tới overfitting.
+
+Đặc trưng tốt nhất thường đến từ hiểu biết về lĩnh vực, không phải từ thử mù: với giá nhà, "giá mỗi mét vuông của khu vực"; với giao dịch, "số tiền so với trung bình của chính khách hàng đó"; với thời gian, "ngày trong tuần", "có phải ngày lễ không". Một câu hỏi tốt: "nếu tự tay đoán, mình sẽ nhìn vào con số nào?"
+
+Mô hình cây và boosting (Chương 17, 18) tự tìm được nhiều tương tác, nên feature engineering ít quan trọng hơn với chúng so với mô hình tuyến tính, nhưng không bao giờ vô ích.
+</Khung>
+
+<Khung loai="loi">
+**Tạo đặc trưng từ nhãn.** "Điểm trung bình của cả lớp học sinh này" tính **cả** điểm của chính học sinh đó là đưa nhãn vào đặc trưng: rò rỉ kiểu 1 của Chương 9.
+
+**Tạo đặc trưng bằng thông tin của tương lai.** "Tổng số giao dịch trong tháng" dùng để dự đoán giao dịch giữa tháng là dùng dữ liệu chưa xảy ra lúc dự đoán. Mọi đặc trưng phải tính được từ thông tin có **trước** thời điểm dự đoán.
+</Khung>

@@ -1,0 +1,79 @@
+---
+title: Mã hóa đặc trưng phân loại
+description: Mô hình chỉ hiểu số. Cột lớp L1, L2 phải được mã hóa. Vì sao gán L1 = 1, L2 = 2 là sai với nhóm không có thứ tự, và mã hóa one-hot làm đúng thế nào.
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+<CanBietTruoc>
+DataFrame, giá trị thiếu và điền trung vị (Chương 4). Pipeline và rò rỉ dữ liệu (Chương 9). Độ quan trọng đặc trưng của cây (Chương 17).
+
+<Fragment slot="sau-chuong">
+Mã hóa cột phân loại đúng cách, điền giá trị thiếu và biến đổi cột lệch trong một ColumnTransformer duy nhất. Tạo đặc trưng tương tác khi mô hình tuyến tính cần chúng, và biết khi nào chúng vô ích. Đo độ quan trọng bằng permutation importance và thấy vì sao độ quan trọng của cây có thể xếp một cột nhiễu ngẫu nhiên lên hạng tư.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch21_feature_engineering.ipynb" />
+
+## Dữ liệu thô không phải lúc nào cũng là số
+
+Bảng 4.1 của Chương 4 có năm cột: `ten`, `lop`, `gio`, `ngu`, `diem`. Từ Chương 9 tới Chương 20, mọi mô hình chỉ dùng cột **số**. Cột `lop` (L1 hay L2) bị bỏ qua, vì scikit-learn không hiểu chữ.
+
+**Feature engineering** là mọi việc biến dữ liệu thô thành những cột số mà mô hình dùng tốt: mã hóa chữ thành số, điền ô thiếu, biến đổi cột lệch, tạo cột mới từ cột cũ, bỏ cột vô ích. Với dữ liệu dạng bảng, bước này thường quyết định kết quả nhiều hơn việc chọn mô hình.
+
+## Gán số thứ tự: sai với nhóm không thứ tự
+
+Cách đơn giản nhất: L1 thành 1, L2 thành 2. Với hai nhóm, không sao. Nhưng giả sử có ba lớp L1, L2, L3 gán thành 1, 2, 3. Hồi quy tuyến tính học **một** hệ số $w$ cho cột này, nghĩa là nó giả định chênh lệch giữa L1 và L2 **bằng** chênh lệch giữa L2 và L3, và L3 "nhiều hơn" L1. Với tên lớp, tỉnh thành, màu sắc, giả định đó vô nghĩa.
+
+Gán số thứ tự chỉ đúng khi nhóm **có thứ tự thật**: trình độ (tiểu học, trung học, đại học), mức độ (thấp, vừa, cao). scikit-learn gọi đó là `OrdinalEncoder`.
+
+## Mã hóa one-hot
+
+Với nhóm không có thứ tự, <Term id="one-hot">mã hóa one-hot</Term> tạo một cột cho mỗi giá trị, mang giá trị 1 nếu hàng đó thuộc nhóm, 0 nếu không:
+
+```python
+import io
+import numpy as np
+import pandas as pd
+from sklearn.preprocessing import OneHotEncoder
+csv = """ten,lop,gio,ngu,diem
+A,L1,1,7,2
+B,L1,2,6,4
+C,L1,3,8,5
+D,L1,4,7,7
+E,L2,5,6,6
+F,L2,2,,3.5
+G,L2,6,8,8.5
+H,L2,3,5,4
+I,L1,7,7,9
+K,L2,4,6,6.5"""
+df = pd.read_csv(io.StringIO(csv))                      # Bảng 4.1, đọc thẳng từ chuỗi
+oh = OneHotEncoder(sparse_output=False).fit(df[["lop"]])
+print(oh.get_feature_names_out(), oh.transform(df[["lop"]])[:3])
+```
+
+```text title="Output"
+['lop_L1' 'lop_L2'] [[1. 0.]
+ [1. 0.]
+ [1. 0.]]
+```
+
+Cột `lop` thành hai cột `lop_L1` và `lop_L2`. Ba bạn đầu thuộc L1: $(1, 0)$. Mỗi nhóm giờ có hệ số **riêng**, không ai "lớn hơn" ai.
+
+`io.StringIO` cho `read_csv` đọc thẳng một chuỗi như thể đọc file, khỏi phải ghi `lop10.csv` ra đĩa như Chương 4.
+
+<Khung loai="vi-sao" tieuDe="HAI CỘT CHO HAI NHÓM LÀ THỪA MỘT">
+`lop_L1` và `lop_L2` luôn cộng lại bằng 1: biết một cột là biết cột kia. Với hồi quy tuyến tính có hệ số chặn, hai cột này cộng với cột hằng số của hệ số chặn tạo thành phụ thuộc tuyến tính, đúng kiểu "đặc trưng trùng lặp" làm $X^\top X$ suy biến ở Chương 5.
+
+`LinearRegression` của scikit-learn vẫn chạy được (nó dùng phương pháp giải bền với chuyện này), nhưng hệ số của hai cột không còn duy nhất. Muốn bỏ đi một cột, dùng `OneHotEncoder(drop="first")`. Với mô hình có regularization hoặc mô hình cây, cứ giữ đủ cột.
+</Khung>
+
+<Khung loai="loi">
+**Gặp nhóm mới lúc dự đoán.** Có học sinh lớp L3 mà lúc `fit` chỉ thấy L1, L2: `OneHotEncoder` mặc định báo lỗi. Đặt `handle_unknown="ignore"` để nhóm lạ thành toàn số 0.
+
+**One-hot cho cột có hàng nghìn giá trị.** Mã sản phẩm, mã khách hàng thành hàng nghìn cột thưa. Gộp nhóm hiếm thành "khác" (`min_frequency`), hoặc dùng mã hóa theo mục tiêu (`TargetEncoder`, nhớ làm trong cross-validation để tránh rò rỉ).
+</Khung>
