@@ -1,15 +1,22 @@
 ---
+// Thẻ nhánh đầu sidebar: ô "AI", tên nhánh và tiến độ thật (phần trăm, chuỗi ngày, thanh 4px).
+// Storage bị chặn thì khối .tien-do giữ nguyên ẩn, thẻ chỉ còn tên nhánh.
 import { slugTrangDaXuatBan } from '../lib/slug-xuat-ban';
 
 const slugs = await slugTrangDaXuatBan();
 ---
 
-<div class="tien-do" hidden data-slugs={JSON.stringify(slugs)}>
-	<div class="td-nhan">Tiến độ cả sách · <span class="td-pt">0%</span></div>
-	<div class="td-thanh" role="progressbar" aria-label="Tiến độ cả sách" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-		<div class="td-day"></div>
+<div class="the-nhanh">
+	<span class="tn-o" aria-hidden="true">AI</span>
+	<div class="tn-chu">
+		<p class="tn-ten">AI Engineer</p>
+		<div class="tien-do" hidden data-slugs={JSON.stringify(slugs)}>
+			<p class="td-nhan">Tiến độ <span class="td-pt">0%</span><span class="td-chuoi" hidden> · <span class="td-n">0</span> ngày liên tiếp</span></p>
+			<div class="td-thanh" role="progressbar" aria-label="Tiến độ cả sách" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+				<div class="td-day"></div>
+			</div>
+		</div>
 	</div>
-	<div class="td-chuoi" hidden>🔥 <span class="td-n">0</span> ngày học liên tiếp</div>
 </div>
 
 <script>
@@ -68,11 +75,35 @@ const slugs = await slugTrangDaXuatBan();
 </script>
 
 <style is:global>
-	.tien-do { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--line); font-family: 'Be Vietnam Pro', sans-serif; }
+	.the-nhanh {
+		display: flex;
+		align-items: center;
+		gap: 0.7rem;
+		padding: 0.7rem 0.75rem;
+		border-radius: 12px;
+		background: var(--be-mat);
+		box-shadow: 0 1px 2px rgb(80 60 30 / 0.06);
+		font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+	}
+	.tn-o {
+		flex: none;
+		display: grid;
+		place-items: center;
+		width: 2.25rem;
+		height: 2.25rem;
+		border-radius: 8px;
+		background: var(--pri);
+		color: var(--bg);
+		font-weight: 800;
+		font-size: 0.8rem;
+		letter-spacing: 0.02em;
+	}
+	.tn-chu { min-width: 0; flex: 1; }
+	.tn-ten { margin: 0; font-weight: 800; font-size: 0.9rem; line-height: 1.3; color: var(--tx); }
 	.tien-do[hidden], .td-chuoi[hidden] { display: none; }
-	.td-nhan { font-size: 0.8rem; color: var(--mut); margin-bottom: 0.4rem; }
-	.td-thanh { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+	/* --mut trộn thêm --tx: chữ 12px vẫn đạt >= 4,5:1 trên nền thẻ. */
+	.td-nhan { margin: 0.1rem 0 0; font-size: 0.75rem; line-height: 1.35; color: color-mix(in srgb, var(--mut), var(--tx) 35%); }
+	.td-thanh { margin-top: 0.4rem; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--mut) 28%, transparent); overflow: hidden; }
 	.td-day { height: 100%; width: 0; background: var(--ok); }
-	.td-chuoi { margin-top: 0.5rem; font-size: 0.8rem; color: var(--tx); }
 	.dau-doc { color: var(--ok); font-weight: 700; }
 </style>

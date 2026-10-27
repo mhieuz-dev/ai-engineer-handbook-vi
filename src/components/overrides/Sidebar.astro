@@ -10,11 +10,30 @@ import TienDoSidebar from '../TienDoSidebar.astro';
 const cay = dungCay(Astro.locals.starlightRoute.sidebar as Nut[], NHANH, PHAN, CHUONG);
 ---
 
+<button type="button" class="nut-thu-gon" aria-controls="starlight__sidebar" aria-expanded="true" aria-label="Thu gọn mục lục">
+	<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M10 3.5 5.5 8l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
+</button>
+<script is:inline>
+	// Chạy ngay khi trình duyệt đọc tới đây (trước phần nội dung): trang tải lại không nháy sidebar.
+	(() => {
+		let thuGon = false;
+		try {
+			thuGon = localStorage.getItem('air-sidebar-thu-gon') === '1';
+		} catch {}
+		document.documentElement.toggleAttribute('data-sb-thu-gon', thuGon);
+		const nut = document.querySelector('.nut-thu-gon');
+		nut?.setAttribute('aria-expanded', String(!thuGon));
+		nut?.setAttribute('aria-label', thuGon ? 'Mở mục lục' : 'Thu gọn mục lục');
+	})();
+</script>
+
+<TienDoSidebar />
+
+<p class="sb-nhan">Menu · Chương trình</p>
+
 <SidebarPersister>
 	<SidebarCay sublist={cay} />
 </SidebarPersister>
-
-<TienDoSidebar />
 
 <div class="md:sl-hidden">
 	<nav class="nav-sidebar" aria-label="Menu chính">
@@ -26,7 +45,79 @@ const cay = dungCay(Astro.locals.starlightRoute.sidebar as Nut[], NHANH, PHAN, C
 	<MobileMenuFooter />
 </div>
 
+<script>
+	const nut = document.querySelector<HTMLButtonElement>('.nut-thu-gon');
+	nut?.addEventListener('click', () => {
+		const thuGon = !document.documentElement.hasAttribute('data-sb-thu-gon');
+		document.documentElement.toggleAttribute('data-sb-thu-gon', thuGon);
+		nut.setAttribute('aria-expanded', String(!thuGon));
+		nut.setAttribute('aria-label', thuGon ? 'Mở mục lục' : 'Thu gọn mục lục');
+		try {
+			localStorage.setItem('air-sidebar-thu-gon', thuGon ? '1' : '0');
+		} catch {
+			/* storage bị chặn: chỉ thu gọn trong lần xem này */
+		}
+	});
+</script>
+
 <style>
 	.nav-sidebar { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--sl-color-hairline); font-weight: 600; }
 	.nav-sidebar a { color: var(--sl-color-text-accent); text-decoration: none; }
+	.sb-nhan {
+		margin: 0.25rem 0 -0.4rem;
+		padding-inline: 0.5rem;
+		font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+		font-size: 0.68rem;
+		font-weight: 600;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: color-mix(in srgb, var(--mut), var(--tx) 35%);
+	}
+	.nut-thu-gon { display: none; }
+
+	/* Máy tính: sidebar là một thẻ nổi trên nền trang, nút ‹ trên mép phải thu gọn hẳn sang trái.
+	   Điện thoại giữ menu ☰ của Starlight như cũ. */
+	@media (min-width: 50rem) {
+		:global(.sidebar-pane) {
+			background: transparent;
+			border-inline-end: 0;
+			padding: 1rem 0.5rem 1rem 1rem;
+		}
+		:global(.sidebar-content) {
+			height: auto;
+			min-height: 100%;
+			padding: 1rem 0.75rem 1.25rem;
+			background: var(--panel);
+			border-radius: 16px;
+			box-shadow: 0 1px 2px rgb(80 60 30 / 0.06), 0 10px 28px -6px rgb(80 60 30 / 0.14);
+		}
+		:global(:root[data-theme='dark'] .sidebar-content) {
+			box-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 10px 28px -6px rgb(0 0 0 / 0.5);
+		}
+		.nut-thu-gon {
+			display: grid;
+			place-items: center;
+			position: fixed;
+			z-index: 1;
+			top: calc(var(--sl-nav-height) + 1.6rem);
+			left: calc(var(--sl-sidebar-width) - 0.5rem - 15px);
+			width: 30px;
+			height: 30px;
+			padding: 0;
+			border: 1px solid var(--line);
+			border-radius: 50%;
+			background: var(--be-mat);
+			color: var(--tx);
+			box-shadow: 0 2px 6px rgb(80 60 30 / 0.12);
+			cursor: pointer;
+			visibility: visible;
+		}
+		.nut-thu-gon:hover { color: var(--pri); }
+		.nut-thu-gon:focus-visible { outline: 2px solid var(--pri); outline-offset: 2px; }
+		:global(:root[data-sb-thu-gon]) .nut-thu-gon { left: 0.75rem; }
+		:global(:root[data-sb-thu-gon]) .nut-thu-gon svg { transform: scaleX(-1); }
+		/* Thu gọn: ẩn thẻ (không còn nhận Tab), trả chỗ cho cột đọc; nút ‹ vẫn hiện nhờ visibility: visible. */
+		:global(:root[data-sb-thu-gon] .sidebar-pane) { visibility: hidden; }
+		:global(:root[data-sb-thu-gon][data-has-sidebar]) { --sl-content-inline-start: 3.5rem; }
+	}
 </style>

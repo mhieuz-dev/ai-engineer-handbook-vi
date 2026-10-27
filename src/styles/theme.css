@@ -13,6 +13,8 @@
 	--ok: #2e8b57;
 	--red: #c0392b;
 	--purple: #6c3483;
+	/* Mặt nổi trên thẻ: mục đang đọc trong sidebar, thẻ nhánh, nút tròn. */
+	--be-mat: #fff;
 }
 :root[data-theme='dark'] {
 	--bg: #14171c;
@@ -27,6 +29,7 @@
 	--ok: #4cc38a;
 	--red: #ee7d70;
 	--purple: #b88ad0;
+	--be-mat: #252b33;
 }
 
 /* Ánh xạ sang biến của Starlight. */

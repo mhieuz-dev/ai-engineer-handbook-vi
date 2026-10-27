@@ -52,11 +52,8 @@ const slugCua = (href: string) => href.replace(/^\/|\/$/g, '');
 	@layer starlight.core {
 		ul { --sl-sidebar-item-padding-inline: 0.5rem; list-style: none; padding: 0; }
 		li { overflow-wrap: anywhere; }
-		ul ul li {
-			margin-inline-start: var(--sl-sidebar-item-padding-inline);
-			border-inline-start: 1px solid var(--sl-color-hairline-light);
-			padding-inline-start: var(--sl-sidebar-item-padding-inline);
-		}
+		/* Không kẻ vạch dọc trong thẻ sidebar: thụt lề đủ cho thấy cấp bậc, như bản mẫu. */
+		ul ul li { margin-inline-start: 0.65rem; }
 		.dem-sap-co { margin-inline-start: 0.4em; font-size: var(--sl-text-xs); font-weight: 400; color: var(--sl-color-gray-3); }
 		.large { font-size: var(--sl-text-lg); font-weight: 600; color: var(--sl-color-white); }
 		.top-level > li + li { margin-top: 0.75rem; }
@@ -69,13 +66,21 @@ const slugCua = (href: string) => href.replace(/^\/|\/$/g, '');
 		.caret { transition: transform 0.2s ease-in-out; flex-shrink: 0; }
 		[open] > summary .caret { transform: rotateZ(90deg); }
 		a {
-			display: block; border-radius: 0.25rem; text-decoration: none;
-			color: var(--sl-color-gray-2); padding: 0.3em var(--sl-sidebar-item-padding-inline); line-height: 1.4;
+			display: block; border-radius: 10px; text-decoration: none;
+			color: var(--sl-color-gray-2); padding: 0.35em 0.6em; line-height: 1.4;
 		}
 		a:hover, a:focus { color: var(--sl-color-white); }
+		/* Mục đang đọc: viên trắng nổi trên thẻ, chấm nhỏ màu --pri trước tên. */
 		[aria-current='page'], [aria-current='page']:hover, [aria-current='page']:focus {
-			font-weight: 600; color: var(--sl-color-text-invert); background-color: var(--sl-color-text-accent);
+			font-weight: 600; color: var(--pri); background-color: var(--be-mat);
+			box-shadow: 0 1px 3px rgb(80 60 30 / 0.1);
 		}
+		[aria-current='page']::before {
+			content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+			background: var(--pri); margin-inline-end: 0.55em; vertical-align: 0.15em;
+		}
+		/* Chương chứa trang đang đọc: tên màu --pri như bản mẫu. */
+		details:has(> ul > li > a[aria-current='page']) > summary .large { color: var(--pri); }
 		.sap-co {
 			display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
 			padding: 0.3em var(--sl-sidebar-item-padding-inline); line-height: 1.4;
@@ -83,11 +88,11 @@ const slugCua = (href: string) => href.replace(/^\/|\/$/g, '');
 		}
 		.nhan-sap-co {
 			flex-shrink: 0; font-size: var(--sl-text-xs); padding: 0 0.5em; border-radius: 999px;
-			border: 1px solid var(--sl-color-hairline); color: var(--sl-color-gray-3);
+			border: 1px solid var(--sl-color-hairline); color: var(--sl-color-gray-3); background: var(--bg);
 		}
 		@media (min-width: 50rem) {
 			.top-level > li + li { margin-top: 0.5rem; }
-			.large { font-size: var(--sl-text-base); }
+			.large { font-size: var(--sl-text-sm); }
 			a, .sap-co { font-size: var(--sl-text-sm); }
 		}
 	}

@@ -60,12 +60,12 @@ test('trang ngoài chương không có nút nhưng vẫn ghi ngày học', async
 	await expect(page.locator('h1')).toBeVisible();
 	await expect(page.locator('.nut-da-doc')).toHaveCount(0);
 	await moSidebar(page);
-	await expect(page.locator('.td-chuoi')).toContainText('1 ngày học liên tiếp');
+	await expect(page.locator('.td-chuoi')).toContainText('· 1 ngày liên tiếp');
 });
 
 test('mở trang chương không tự đánh dấu đã đọc, chuỗi ngày là 1', async ({ page }) => {
 	await page.goto(`${C10}/01-truc-giac/`);
 	await moSidebar(page);
-	await expect(page.locator('.td-chuoi')).toContainText('🔥 1 ngày học liên tiếp');
+	await expect(page.locator('.td-chuoi')).toContainText('· 1 ngày liên tiếp');
 	await expect(page.locator('.td-pt')).toHaveText('0%');
 });
