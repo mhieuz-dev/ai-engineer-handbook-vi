@@ -1,0 +1,104 @@
+---
+title: Tương quan và định lý Bayes
+description: Hiệp phương sai và hệ số tương quan tính tay trên bốn sinh viên, xác suất có điều kiện, và định lý Bayes giải bài toán xét nghiệm dương tính mà phần lớn người đoán sai.
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Hiệp phương sai
+
+Phương sai đo **một** đại lượng tản ra thế nào. Hiệp phương sai đo **hai** đại lượng có cùng lên cùng xuống không:
+
+$$
+\operatorname{Cov}(X, Y) = \mathbb E\bigl[(X - \mathbb E X)(Y - \mathbb E Y)\bigr] \tag{7.4}
+$$
+
+Với bốn bạn A, B, C, D: độ lệch giờ học so với trung bình 2,5 là $-1{,}5;\ -0{,}5;\ 0{,}5;\ 1{,}5$. Độ lệch điểm so với trung bình 4,5 là $-2{,}5;\ -0{,}5;\ 0{,}5;\ 2{,}5$. Nhân từng cặp: $3{,}75;\ 0{,}25;\ 0{,}25;\ 3{,}75$. Trung bình là $8/4 = 2$.
+
+Mọi tích đều dương, vì bạn nào học dưới trung bình thì điểm cũng dưới trung bình, và ngược lại. Nếu hai đại lượng ngược chiều nhau, các tích sẽ âm.
+
+Hiệp phương sai có một điểm yếu: nó phụ thuộc đơn vị. Đo giờ học bằng phút thay vì giờ là hiệp phương sai gấp 60 lần, dù quan hệ vẫn y như cũ.
+
+## Hệ số tương quan
+
+Chia hiệp phương sai cho tích hai độ lệch chuẩn là bỏ được đơn vị:
+
+$$
+\rho = \frac{\operatorname{Cov}(X, Y)}{\sigma_X\, \sigma_Y} \tag{7.5}
+$$
+
+```python
+x = np.array([1, 2, 3, 4.0])
+y = np.array([2, 4, 5, 7.0])
+cov = np.mean((x - x.mean()) * (y - y.mean()))       # công thức (7.4), chia n
+print(cov, round(cov / (x.std() * y.std()), 4))      # hiệp phương sai và tương quan (7.5)
+print(round(np.corrcoef(x, y)[0, 1], 4))             # hàm có sẵn của NumPy
+```
+
+```text title="Output"
+2.0 0.9923
+0.9923
+```
+
+<Term id="tuong-quan">Tương quan</Term> 0,9923 của bốn bạn cao hơn 0,9566 của cả lớp 10 bạn ở Chương 4: bốn chấm A, B, C, D gần thẳng hàng hơn.
+
+Công thức (7.5) giống hệt công thức cosine của Chương 5: tích vô hướng chia tích hai độ dài. Thực ra hệ số tương quan **chính là cosine** giữa hai vector độ lệch $(x - \bar x)$ và $(y - \bar y)$. Tương quan 1 là hai vector cùng hướng hẳn, tương quan 0 là vuông góc.
+
+Ở đây chia $n$ hay $n - 1$ không quan trọng: cả tử lẫn mẫu đều có cùng mẫu số, triệt tiêu nhau.
+
+## Xác suất có điều kiện
+
+$P(A \mid B)$ đọc là "xác suất của $A$ khi biết $B$ đã xảy ra". Ví dụ: xác suất một email là thư rác, khi biết nó chứa chữ "trúng thưởng".
+
+Thứ tự rất quan trọng. $P(\text{có chữ "trúng thưởng"} \mid \text{thư rác})$ là một chuyện, $P(\text{thư rác} \mid \text{có chữ "trúng thưởng"})$ là chuyện khác. Nhầm hai thứ này là một trong những lỗi suy luận phổ biến nhất.
+
+## Định lý Bayes
+
+<Term id="dinh-ly-bayes">Định lý Bayes</Term> cho cách đổi chiều:
+
+$$
+P(A \mid B) = \frac{P(B \mid A)\, P(A)}{P(B)} \tag{7.6}
+$$
+
+<Khung loai="dao-sau" tieuDe="BÀI TOÁN XÉT NGHIỆM">
+Một bệnh có ở 1% dân số. Xét nghiệm có độ nhạy 99% (người có bệnh thì 99% ra dương tính) và độ đặc hiệu 95% (người không bệnh thì 95% ra âm tính, 5% ra dương tính nhầm).
+
+Bạn xét nghiệm ra **dương tính**. Xác suất bạn thật sự có bệnh là bao nhiêu?
+
+Phần lớn người đoán khoảng 95% hay 99%. Tính theo Bayes, với $A$ là có bệnh, $B$ là dương tính:
+
+- $P(B \mid A) = 0{,}99$ và $P(A) = 0{,}01$.
+- $P(B)$ là xác suất dương tính nói chung, gồm hai nhóm: có bệnh và dương tính ($0{,}99 \times 0{,}01 = 0{,}0099$), cộng không bệnh mà dương tính nhầm ($0{,}05 \times 0{,}99 = 0{,}0495$). Tổng $0{,}0594$.
+
+$$
+P(A \mid B) = \frac{0{,}0099}{0{,}0594} \approx 0{,}1667
+$$
+
+Chỉ khoảng **17%**.
+</Khung>
+
+```python
+p_benh, nhay, dac_hieu = 0.01, 0.99, 0.95
+p_duong = nhay * p_benh + (1 - dac_hieu) * (1 - p_benh)   # P(dương tính)
+print(round(p_duong, 4), round(nhay * p_benh / p_duong, 4))
+```
+
+```text title="Output"
+0.0594 0.1667
+```
+
+<Khung loai="truc-giac">
+Hình dung 10 000 người. Có 100 người bệnh, 99 trong số đó ra dương tính. Có 9 900 người khỏe, 5% của họ là 495 người ra dương tính nhầm.
+
+Tổng cộng 594 người dương tính, nhưng chỉ 99 người thật sự có bệnh: $99/594 \approx 17\%$. Vì bệnh **hiếm**, số người khỏe bị báo nhầm áp đảo số người bệnh thật.
+</Khung>
+
+Bài toán này có mặt trong ML dưới nhiều dạng. Một mô hình phát hiện gian lận "chính xác 99%" trên dữ liệu chỉ có 0,1% giao dịch gian lận có thể báo động nhầm gấp nhiều lần báo đúng. Chương 12 sẽ đặt tên cho những con số này: precision, recall. Và Naive Bayes ở Chương 15 là một bộ phân loại xây thẳng trên công thức (7.6).
+
+<Khung loai="loi">
+**Bỏ qua tỷ lệ nền.** Quên $P(A)$, tức bệnh hiếm tới đâu, là lỗi dẫn tới câu trả lời 99%. Tỷ lệ nền càng thấp, kết quả dương tính càng ít đáng tin.
+
+**Đọc tương quan gần 0 là "không liên quan".** Tương quan chỉ đo quan hệ **đường thẳng**. $y = x^2$ với $x$ đối xứng quanh 0 có tương quan bằng 0 dù $y$ hoàn toàn được quyết định bởi $x$.
+</Khung>

@@ -1,0 +1,111 @@
+---
+title: Bài tập
+description: Ba bài tập xác suất có đáp án chi tiết (tổng hai xúc xắc tính tay và mô phỏng, xét nghiệm dương tính hai lần liên tiếp, hợp lý cực đại cho trung bình của phân phối chuẩn) và câu hỏi phỏng vấn.
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Tính tay trước, rồi mô phỏng hoặc chạy code trong notebook để kiểm tra.
+
+<BaiTap so="7.1">
+**Tổng hai xúc xắc.** Tung hai xúc xắc. Tính tay xác suất tổng bằng 7, rồi kiểm tra bằng 100 000 lần tung mô phỏng với `default_rng(4)`.
+
+<Fragment slot="dap-an">
+
+Có $6 \times 6 = 36$ kết quả đồng khả năng. Tổng bằng 7 có 6 cách: $(1, 6), (2, 5), (3, 4), (4, 3), (5, 2), (6, 1)$. Xác suất $6/36 = 1/6 \approx 0{,}1667$.
+
+```python
+rng = np.random.default_rng(4)
+a = rng.integers(1, 7, size=100000)       # xúc xắc thứ nhất
+b = rng.integers(1, 7, size=100000)       # xúc xắc thứ hai
+print(round(np.mean(a + b == 7), 4), round(6 / 36, 4))
+```
+
+```text title="Output"
+0.1672 0.1667
+```
+
+Mô phỏng lệch 0,0005 so với lý thuyết. `a + b == 7` cho một mảng đúng sai, trung bình của nó là tỷ lệ số lần đúng, mẹo đã dùng ở trang 1. Tổng 7 là tổng hay gặp nhất: tổng 2 hay 12 chỉ có một cách mỗi tổng.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="7.2">
+**Xét nghiệm lần hai.** Tiếp bài toán xét nghiệm ở trang 3. Sau lần đầu dương tính, xác suất có bệnh là $1/6$. Bạn xét nghiệm lại (giả sử hai lần xét nghiệm độc lập, cùng độ nhạy 99%, độ đặc hiệu 95%) và lại ra dương tính. Xác suất có bệnh bây giờ là bao nhiêu?
+
+<Fragment slot="dap-an">
+
+Mẹo của Bayes: kết quả sau lần một trở thành **tỷ lệ nền** cho lần hai. Thay $P(A) = 0{,}01$ bằng $P(A) = 1/6$:
+
+$$
+P(B) = 0{,}99 \times \tfrac16 + 0{,}05 \times \tfrac56 = 0{,}165 + 0{,}04167 \approx 0{,}2067
+$$
+
+$$
+P(A \mid B) = \frac{0{,}165}{0{,}2067} \approx 0{,}7984
+$$
+
+```python
+truoc = nhay * p_benh / p_duong                               # sau lần một: khoảng 1/6
+p_duong_2 = nhay * truoc + (1 - dac_hieu) * (1 - truoc)       # P(dương tính lần hai)
+print(round(nhay * truoc / p_duong_2, 4))
+```
+
+```text title="Output"
+0.7984
+```
+
+Từ 17% nhảy lên khoảng 80%. Lần dương tính thứ hai có sức nặng hơn nhiều vì lúc này "có bệnh" không còn là giả thuyết hiếm. Đây là lý do xét nghiệm sàng lọc dương tính luôn được làm lại hoặc kiểm tra bằng phương pháp khác trước khi kết luận.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="7.3">
+**Hợp lý cực đại cho trung bình.** Giả sử điểm của bốn bạn A, B, C, D (2, 4, 5, 7) là mẫu từ một phân phối chuẩn $\mathcal N(\mu, \sigma^2)$ với $\sigma$ đã biết. Viết log-likelihood theo $\mu$, lấy đạo hàm, tìm $\hat\mu$. Kiểm tra bằng cách thử 301 giá trị $\mu$ từ 3 tới 6.
+
+<Fragment slot="dap-an">
+
+Giống như phần cuối của trang 4, bỏ các hằng số không chứa $\mu$:
+
+$$
+\log\mathcal L(\mu) = \text{hằng số} - \frac{1}{2\sigma^2}\sum_{i=1}^4 (y_i - \mu)^2
+$$
+
+Đạo hàm theo $\mu$: $\frac{1}{\sigma^2}\sum (y_i - \mu)$. Cho bằng 0: $\sum y_i = 4\mu$, tức $\hat\mu = \bar y = 18/4 = 4{,}5$.
+
+```python
+y = np.array([2, 4, 5, 7.0])
+mu = np.linspace(3, 6, 301)                          # 301 giá trị cách nhau 0,01
+ll = [-np.sum((y - m) ** 2) for m in mu]             # log-likelihood, bỏ hằng số và hệ số 1/(2σ²)
+print(mu[np.argmax(ll)], y.mean(), y.var())
+```
+
+```text title="Output"
+4.5 4.5 3.25
+```
+
+Hợp lý cực đại cho trung bình của phân phối chuẩn chính là **trung bình mẫu**. Làm tương tự cho $\sigma^2$ sẽ ra phương sai **chia $n$** ($3{,}25$), không phải chia $n - 1$: ước lượng hợp lý cực đại không phải lúc nào cũng không chệch, như trang 2 đã cho thấy.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Hợp lý cực đại liên quan thế nào tới hàm mất mát?**
+
+<p lang="en"><em>How is maximum likelihood estimation related to loss functions?</em></p>
+
+*Gợi ý:* cực tiểu negative log-likelihood là cực đại likelihood. Nhiễu chuẩn cho MSE, nhãn Bernoulli cho binary cross-entropy, nhãn nhiều lớp cho categorical cross-entropy.
+
+**2. Giải thích định lý Bayes bằng một ví dụ.**
+
+<p lang="en"><em>Explain Bayes' theorem with an example.</em></p>
+
+*Gợi ý:* bài toán xét nghiệm bệnh hiếm, nhấn mạnh vai trò tỷ lệ nền. Nối sang ML: mất cân bằng lớp làm precision thấp dù độ chính xác cao.
+
+**3. Vì sao phương sai mẫu chia n - 1?**
+
+<p lang="en"><em>Why do we divide by n - 1 for the sample variance?</em></p>
+
+*Gợi ý:* trung bình mẫu được ước lượng từ chính dữ liệu, làm mất một bậc tự do; chia $n$ cho ước lượng chệch xuống, kỳ vọng bằng $\frac{n-1}{n}\sigma^2$. Chia $n - 1$ cho ước lượng không chệch.
+</Khung>

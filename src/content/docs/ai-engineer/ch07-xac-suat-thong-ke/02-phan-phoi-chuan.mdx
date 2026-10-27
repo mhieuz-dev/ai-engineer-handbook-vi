@@ -1,0 +1,92 @@
+---
+title: Phân phối chuẩn và phương sai mẫu
+description: Đường cong hình chuông, quy tắc 68-95-99,7 kiểm bằng 100 000 mẫu, và mô phỏng cho thấy vì sao phương sai mẫu phải chia n - 1 mới đúng trung bình.
+---
+
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Đường cong hình chuông
+
+<Term id="phan-phoi-chuan">Phân phối chuẩn</Term> với trung bình $\mu$ và độ lệch chuẩn $\sigma$ có hàm mật độ:
+
+$$
+p(x) = \frac{1}{\sigma\sqrt{2\pi}} \exp\!\left(-\frac{(x - \mu)^2}{2\sigma^2}\right) \tag{7.3}
+$$
+
+Đừng sợ công thức. Phần quan trọng là $-(x - \mu)^2$ ở số mũ: càng xa $\mu$, số mũ càng âm, mật độ càng nhỏ, và giảm rất nhanh vì có bình phương. Phân số đứng trước chỉ để diện tích dưới đường cong bằng đúng 1.
+
+Phân phối chuẩn **tắc** là trường hợp $\mu = 0$, $\sigma = 1$. Viết tắt: $\mathcal N(0, 1)$.
+
+```python
+rng = np.random.default_rng(1)
+z = rng.normal(0, 1, size=100000)             # 100 000 mẫu từ N(0, 1)
+for k in [1, 2, 3]:
+    print(k, round(np.mean(np.abs(z) < k), 4))   # tỷ lệ mẫu nằm trong k độ lệch chuẩn
+print(round(z.mean(), 4), round(z.std(), 4))
+```
+
+```text title="Output"
+1 0.6841
+2 0.955
+3 0.9971
+-0.0046 0.9965
+```
+
+<HinhKetQua src="/hinh/ch07/h2_phan_phoi_chuan.svg" alt="Histogram 100 nghìn mẫu chuẩn tắc màu xanh, khớp sát đường cong hình chuông màu cam có đỉnh 0,4 tại 0. Dải tô đậm từ -1 tới 1 ghi 68%, dải nhạt hơn từ -2 tới 2 ghi 95%." so="7.2" chuThich="Histogram 100 000 mẫu từ N(0, 1) và đường mật độ lý thuyết (7.3). Dải đậm là một độ lệch chuẩn quanh trung bình, dải nhạt là hai độ lệch chuẩn.">
+**Trục.** Ngang là giá trị $z$, dọc là mật độ: chiều cao cột đã chia sao cho tổng diện tích các cột bằng 1, để so trực tiếp được với đường cong (7.3).
+
+**Điều cần thấy.** Các cột xanh bám sát đường cam: 100 000 mẫu đủ để vẽ lại hình dạng của phân phối. Đỉnh ở 0, cao khoảng $1/\sqrt{2\pi} \approx 0{,}4$.
+
+**Quy tắc 68-95-99,7.** Lý thuyết nói 68,27% mẫu nằm trong $[-1, 1]$, 95,45% trong $[-2, 2]$, 99,73% trong $[-3, 3]$. Mô phỏng ra 68,41%, 95,5%, 99,71%. Hệ quả hay dùng: một giá trị cách trung bình quá 3 độ lệch chuẩn là rất hiếm (khoảng 3 trên 1000), đáng nghi là outlier.
+</HinhKetQua>
+
+Phân phối chuẩn xuất hiện khắp nơi vì **định lý giới hạn trung tâm**: tổng (hay trung bình) của nhiều đại lượng ngẫu nhiên độc lập có phân phối gần chuẩn, bất kể từng đại lượng phân phối thế nào. Chiều cao người là tổng của rất nhiều yếu tố gen và dinh dưỡng nhỏ, nên gần chuẩn. Sai số đo là tổng của nhiều nhiễu nhỏ, nên gần chuẩn.
+
+Trong ML, bạn sẽ gặp nó ở: khởi tạo trọng số mạng nơ-ron (Chương 26), giả định nhiễu của hồi quy tuyến tính (trang 4 của chương này), không gian ẩn của VAE (Chương 30), nhiễu thêm vào ảnh trong mô hình diffusion (Chương 31).
+
+## Vì sao phương sai mẫu chia n - 1
+
+Chương 2 nói `statistics.stdev` chia $n - 1$ để "bù" cho việc tính quanh trung bình mẫu, và hứa chương này sẽ cho thấy vì sao. Thay vì chứng minh bằng đại số, ta mô phỏng.
+
+Lấy thật nhiều mẫu, mỗi mẫu 4 số, từ một phân phối chuẩn có phương sai thật **bằng 4** (độ lệch chuẩn 2). Với mỗi mẫu tính phương sai theo hai cách, rồi lấy trung bình qua mọi mẫu:
+
+```python
+rng = np.random.default_rng(2)
+mau = rng.normal(0, 2, size=(100000, 4))          # 100 000 mẫu, mỗi mẫu 4 số; phương sai thật = 4
+print(round(mau.var(axis=1, ddof=0).mean(), 4))   # chia n = 4
+print(round(mau.var(axis=1, ddof=1).mean(), 4))   # chia n - 1 = 3
+```
+
+```text title="Output"
+3.0049
+4.0066
+```
+
+Chia cho $n$ cho trung bình khoảng **3**, thấp hơn hẳn giá trị thật 4. Chia cho $n - 1$ cho trung bình khoảng **4**, đúng giá trị thật.
+
+Tỷ lệ $3/4$ không phải ngẫu nhiên: chia $n$ luôn cho trung bình bằng $\frac{n-1}{n}$ lần phương sai thật. Với $n = 4$ là $\frac34$. Nhân lại với $\frac{n}{n-1}$, tức đổi mẫu số từ $n$ thành $n - 1$, là sửa xong. Ước lượng có trung bình đúng bằng giá trị thật như vậy gọi là ước lượng **không chệch** <En>unbiased</En>.
+
+<Khung loai="truc-giac">
+Trung bình mẫu luôn nằm "giữa" chính các điểm của mẫu, nên các điểm luôn có vẻ gần trung bình mẫu hơn là gần trung bình thật. Độ lệch đo được vì thế hơi nhỏ đi.
+
+Với 4 điểm, chỉ có 3 "bậc tự do": biết trung bình và 3 điểm là suy ra được điểm thứ tư. Chia cho số bậc tự do thật sự (3) thay vì số điểm (4) là đúng.
+
+Khi $n$ lớn, $n$ và $n - 1$ gần như bằng nhau, nên với 1 triệu mẫu thì chia cách nào cũng được. Chuyện này chỉ quan trọng với mẫu nhỏ.
+</Khung>
+
+<TuKiemTra
+	cauHoi="Điểm thi một môn có trung bình 6 và độ lệch chuẩn 1,5, phân phối gần chuẩn. Khoảng bao nhiêu phần trăm sinh viên được trên 9 điểm?"
+	luaChon={['Khoảng 16%', 'Khoảng 2,5%', 'Khoảng 5%', 'Khoảng 0,15%']}
+	dapAn={1}
+	giaiThich="9 cách trung bình (9 - 6) / 1,5 = 2 độ lệch chuẩn. 95% nằm trong ±2, nên 5% nằm ngoài, chia đều hai phía: khoảng 2,5% trên 9 điểm."
+/>
+
+<Khung loai="loi">
+**Coi mọi dữ liệu là chuẩn.** Thu nhập, số lượt xem video, thời gian chờ đều lệch hẳn về một phía, có đuôi dài. Áp quy tắc 68-95-99,7 cho chúng là sai. Vẽ histogram trước (Chương 4).
+
+**Nhầm hàm mật độ với xác suất.** $p(x)$ có thể lớn hơn 1 khi $\sigma$ nhỏ. Xác suất là **diện tích** dưới đường cong trên một khoảng, không phải chiều cao tại một điểm.
+</Khung>

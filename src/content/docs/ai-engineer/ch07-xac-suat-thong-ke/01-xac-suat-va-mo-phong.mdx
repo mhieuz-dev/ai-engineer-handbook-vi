@@ -1,0 +1,100 @@
+---
+title: Xác suất và mô phỏng
+description: Xác suất là tỷ lệ về lâu dài. Mô phỏng 10 000 lần tung đồng xu để thấy luật số lớn, kỳ vọng và phương sai của xúc xắc, và vì sao mẫu nhỏ thì kết quả dao động mạnh.
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+<CanBietTruoc>
+Mảng NumPy, `default_rng`, trung bình theo trục (Chương 3). Độ lệch chuẩn chia $n$ và chia $n - 1$ (Chương 2). Đạo hàm và logarit (Chương 6).
+
+<Fragment slot="sau-chuong">
+Mô phỏng một hiện tượng ngẫu nhiên bằng NumPy và đọc kết quả. Tính kỳ vọng, phương sai, hiệp phương sai, tương quan. Biết quy tắc 68-95-99,7 của phân phối chuẩn và vì sao phương sai mẫu chia $n - 1$. Dùng định lý Bayes cho bài toán xét nghiệm, và hiểu ước lượng hợp lý cực đại, lý do sâu xa của MSE và cross-entropy.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch07_xac_suat_thong_ke.ipynb" />
+
+## Xác suất là tỷ lệ về lâu dài
+
+Nói "xác suất đồng xu ra mặt ngửa là 0,5" nghĩa là gì? Tung **một** lần thì hoặc ngửa hoặc sấp, không có "nửa ngửa". Câu đó chỉ có nghĩa khi tung **rất nhiều** lần: tỷ lệ số lần ngửa sẽ tiến về 0,5.
+
+Không cần tung đồng xu thật. Máy làm được 10 000 lần trong một phần nghìn giây:
+
+```python
+import numpy as np
+rng = np.random.default_rng(0)               # seed 0 để chạy lại ra đúng kết quả
+tung = rng.integers(0, 2, size=10000)        # 0 là sấp, 1 là ngửa
+for n in [10, 100, 1000, 10000]:
+    print(n, tung[:n].mean())                # tỷ lệ ngửa trong n lần đầu
+```
+
+```text title="Output"
+10 0.4
+100 0.56
+1000 0.537
+10000 0.503
+```
+
+Trung bình của một mảng toàn 0 và 1 chính là **tỷ lệ số 1**, mẹo đã gặp ở Chương 4 với cột `dat`.
+
+Mười lần đầu chỉ ra 4 ngửa: lệch 0,1 so với 0,5. Một trăm lần ra 0,56, một nghìn lần 0,537, mười nghìn lần 0,503. Càng tung nhiều, tỷ lệ càng sát 0,5. Hiện tượng này có tên là **luật số lớn**.
+
+Output trên chạy với NumPy 2.5. Bản NumPy khác có thể cho dãy tung khác, nhưng xu hướng tiến về 0,5 thì luôn giống.
+
+<HinhKetQua src="/hinh/ch07/h1_luat_so_lon.svg" alt="Đường tỷ lệ mặt ngửa theo số lần tung trên trục log từ 1 tới 10 nghìn. Đầu đường dao động mạnh từ 1 xuống 0,33 rồi lên 0,7, sau đó dao động hẹp dần và bám sát đường ngang 0,5 ở cuối." so="7.1" chuThich="Tỷ lệ mặt ngửa sau n lần tung đầu tiên, n từ 1 tới 10 000. Đường đứt nét là xác suất thật 0,5.">
+**Trục.** Ngang là số lần tung, chia theo **thang log**: mỗi vạch gấp 10 lần vạch trước, để thấy được cả 10 lần đầu lẫn 10 000 lần. Dọc là tỷ lệ mặt ngửa tính tới lần tung đó.
+
+**Điều cần thấy.** Đầu đường nhảy loạn: ba lần đầu đều ngửa nên tỷ lệ bằng 1, tới lần thứ 9 tụt xuống 0,33. Sau vài trăm lần, đường chỉ còn dao động vài phần trăm quanh 0,5. Dao động thu hẹp dần nhưng không bao giờ hết hẳn.
+
+**Bài học cho ML.** Một mô hình đạt độ chính xác 80% trên 10 mẫu test và một mô hình đạt 80% trên 10 000 mẫu là hai chuyện khác hẳn nhau. Với 10 mẫu, con số 80% có thể lệch xa con số thật như tỷ lệ 0,4 ở 10 lần tung đầu. Chương 12 sẽ quay lại câu hỏi "bao nhiêu mẫu test là đủ".
+</HinhKetQua>
+
+## Kỳ vọng và phương sai
+
+Một xúc xắc có 6 mặt, mỗi mặt xác suất $\frac16$. Trung bình về lâu dài, mỗi lần tung được bao nhiêu điểm?
+
+<Term id="ky-vong">Kỳ vọng</Term> là mỗi giá trị nhân xác suất của nó rồi cộng lại:
+
+$$
+\mathbb E[X] = \sum_x x\, P(X = x) = \frac{1 + 2 + 3 + 4 + 5 + 6}{6} = 3{,}5 \tag{7.1}
+$$
+
+Không mặt nào ghi 3,5, nhưng trung bình của rất nhiều lần tung tiến về 3,5.
+
+<Term id="phuong-sai">Phương sai</Term> là kỳ vọng của bình phương độ lệch so với kỳ vọng:
+
+$$
+\operatorname{Var}(X) = \mathbb E\bigl[(X - \mathbb E[X])^2\bigr] \tag{7.2}
+$$
+
+Với xúc xắc: độ lệch so với 3,5 là $\pm 2{,}5$, $\pm 1{,}5$, $\pm 0{,}5$. Bình phương rồi lấy trung bình: $\frac{2(6{,}25 + 2{,}25 + 0{,}25)}{6} = \frac{17{,}5}{6} = \frac{35}{12} \approx 2{,}9167$.
+
+```python
+rng = np.random.default_rng(3)
+xx = rng.integers(1, 7, size=60000)          # 60 000 lần tung xúc xắc
+print(round(xx.mean(), 4), round(xx.var(), 4), 35 / 12)
+```
+
+```text title="Output"
+3.4955 2.9232 2.9166666666666665
+```
+
+Mô phỏng ra 3,4955 và 2,9232, gần với lý thuyết 3,5 và 2,9167. Lệch ở chữ số thứ ba, như luật số lớn dự báo: 60 000 lần là nhiều, nhưng chưa phải vô hạn.
+
+<Khung loai="vi-sao" tieuDe="MÔ PHỎNG MÀ KHÔNG PHẢI CÔNG THỨC">
+Với xúc xắc, công thức (7.1) nhanh và chính xác hơn mô phỏng. Nhưng phần lớn bài toán thật không có công thức gọn: xác suất một mô hình đoán đúng cả 5 câu liên tiếp, phân phối của độ chính xác khi chia train và test ngẫu nhiên, thời gian chờ trung bình của một hàng đợi phức tạp.
+
+Mô phỏng thì luôn làm được: viết lại quá trình ngẫu nhiên bằng code, chạy thật nhiều lần, đếm. Khi có công thức, dùng mô phỏng để **kiểm tra** công thức, như cách sai phân kiểm tra đạo hàm ở Chương 6.
+</Khung>
+
+<Khung loai="loi">
+**Tin vào mẫu nhỏ.** 10 lần tung ra 4 ngửa không có nghĩa đồng xu thiên lệch. Trước khi kết luận từ dữ liệu ít, hãy mô phỏng xem kết quả đó có hay xảy ra một cách ngẫu nhiên không.
+
+**Quên đặt seed.** Mỗi lần chạy lại một con số khác, không so sánh và gỡ lỗi được. Luôn tạo `rng = np.random.default_rng(seed)`.
+</Khung>

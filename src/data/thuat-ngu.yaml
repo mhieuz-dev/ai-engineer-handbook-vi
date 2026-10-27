@@ -248,3 +248,23 @@
   tenTiengAnh: sigmoid
   giaiThich: Hàm sigmoid ép mọi số thực vào khoảng 0 tới 1 theo một đường cong hình chữ S, nên kết quả đọc được như một xác suất. Đạo hàm của nó có dạng rất gọn là sigmoid nhân với một trừ sigmoid.
   hocKy: ai-engineer/ch06-giai-tich
+- id: phan-phoi-chuan
+  ten: Phân phối chuẩn
+  tenTiengAnh: normal distribution
+  giaiThich: Phân phối chuẩn là phân phối hình chuông, đối xứng quanh trung bình. Khoảng 68% giá trị nằm trong một độ lệch chuẩn quanh trung bình, 95% trong hai độ lệch chuẩn. Nhiều đại lượng tự nhiên và sai số đo đạc có dạng này.
+  hocKy: ai-engineer/ch07-xac-suat-thong-ke
+- id: ky-vong
+  ten: Kỳ vọng
+  tenTiengAnh: expected value
+  giaiThich: Kỳ vọng là giá trị trung bình về lâu dài của một đại lượng ngẫu nhiên, tính bằng cách lấy mỗi giá trị nhân với xác suất của nó rồi cộng lại. Tung xúc xắc rất nhiều lần thì trung bình tiến về 3,5.
+  hocKy: ai-engineer/ch07-xac-suat-thong-ke
+- id: phuong-sai
+  ten: Phương sai
+  tenTiengAnh: variance
+  giaiThich: Phương sai là trung bình của bình phương độ lệch so với kỳ vọng, đo dữ liệu tản ra rộng hay hẹp. Căn bậc hai của phương sai là độ lệch chuẩn, có cùng đơn vị với dữ liệu.
+  hocKy: ai-engineer/ch07-xac-suat-thong-ke
+- id: dinh-ly-bayes
+  ten: Định lý Bayes
+  tenTiengAnh: Bayes' theorem
+  giaiThich: Định lý Bayes cho cách cập nhật niềm tin khi có bằng chứng mới. Xác suất của giả thuyết sau khi thấy bằng chứng tỷ lệ với xác suất ban đầu nhân với khả năng giả thuyết đó sinh ra bằng chứng.
+  hocKy: ai-engineer/ch07-xac-suat-thong-ke

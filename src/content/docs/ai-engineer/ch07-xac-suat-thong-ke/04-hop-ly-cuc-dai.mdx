@@ -1,0 +1,87 @@
+---
+title: Ước lượng hợp lý cực đại
+description: Chọn tham số làm dữ liệu đã thấy có xác suất cao nhất. Đồng xu 7 ngửa trong 10 lần cho p = 0,7, và hợp lý cực đại với nhiễu chuẩn dẫn thẳng tới hàm mất mát MSE.
+---
+
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Câu hỏi ngược
+
+Các trang trước đi **xuôi**: biết đồng xu có $p = 0{,}5$, hỏi tung 10 lần ra mấy ngửa. Machine learning đi **ngược**: đã thấy dữ liệu, hỏi tham số là bao nhiêu.
+
+Bạn tung một đồng xu lạ 10 lần, ra 7 ngửa 3 sấp. Xác suất ra ngửa $p$ của nó là bao nhiêu?
+
+Câu trả lời "0,7" có vẻ hiển nhiên. Trang này chỉ ra nó đến từ một nguyên tắc chung, và nguyên tắc đó sinh ra hầu hết hàm mất mát trong ML.
+
+## Hàm hợp lý
+
+Với một giá trị $p$ bất kỳ, xác suất để thấy đúng dãy 7 ngửa 3 sấp (theo một thứ tự cố định) là:
+
+$$
+\mathcal L(p) = p^7 (1 - p)^3
+$$
+
+Hàm này của $p$ gọi là hàm hợp lý <En>likelihood</En>. <Term id="hop-ly-cuc-dai">Ước lượng hợp lý cực đại</Term> là chọn $p$ làm $\mathcal L(p)$ lớn nhất: giá trị tham số giải thích dữ liệu tốt nhất.
+
+Tích của nhiều xác suất nhỏ thì cực nhỏ (với 1000 lần tung, $\mathcal L$ cỡ $10^{-300}$, sát giới hạn của số thực). Nên người ta lấy logarit, biến tích thành tổng:
+
+$$
+\log \mathcal L(p) = 7 \log p + 3 \log(1 - p) \tag{7.7}
+$$
+
+Logarit là hàm đồng biến, nên chỗ $\log \mathcal L$ lớn nhất cũng là chỗ $\mathcal L$ lớn nhất.
+
+```python
+p = np.linspace(0.01, 0.99, 99)                 # thử 99 giá trị p cách nhau 0,01
+ll = 7 * np.log(p) + 3 * np.log(1 - p)          # log-likelihood (7.7)
+print(p[np.argmax(ll)], round(ll.max(), 4))     # p cho log-likelihood lớn nhất
+print(round(10 * np.log(0.5), 4))               # so sánh: log-likelihood nếu p = 0,5
+```
+
+```text title="Output"
+0.7000000000000001 -6.1086
+-6.9315
+```
+
+<HinhKetQua src="/hinh/ch07/h3_log_likelihood.svg" alt="Đường cong log-likelihood theo p từ 0,05 tới 0,95, hình vòm, đỉnh tại p bằng 0,7 với giá trị khoảng -6,1. Điểm p bằng 0,5 nằm thấp hơn, khoảng -6,9." so="7.3" chuThich="Log-likelihood của dãy 7 ngửa 3 sấp theo xác suất ngửa p. Đỉnh ở p = 0,7.">
+**Trục.** Ngang là giá trị $p$ ta thử, dọc là log-likelihood (7.7). Số càng gần 0 (càng ít âm) là $p$ đó càng giải thích tốt dữ liệu.
+
+**Điều cần thấy.** Đường cong có một đỉnh duy nhất ở $p = 0{,}7$, giá trị $-6{,}1086$. Ở $p = 0{,}5$ (đồng xu cân), log-likelihood là $-6{,}9315$: thấp hơn, nhưng không thấp hơn nhiều. Với chỉ 10 lần tung, dữ liệu chưa đủ để loại hẳn khả năng đồng xu cân. Đường cong càng nhọn, ta càng chắc chắn về đỉnh; nhiều dữ liệu hơn làm đường cong nhọn hơn.
+
+**Hai đầu.** $p$ gần 0 hoặc gần 1 thì log-likelihood lao xuống rất sâu. $p = 0{,}05$ nói "gần như không bao giờ ra ngửa", mà ta đã thấy 7 lần ngửa, nên bị phạt nặng.
+</HinhKetQua>
+
+Giải bằng đạo hàm (Chương 6): $\frac{d}{dp}\log\mathcal L = \frac7p - \frac{3}{1-p}$. Cho bằng 0: $7(1 - p) = 3p$, tức $p = 0{,}7$. Tổng quát, $k$ ngửa trong $n$ lần cho $\hat p = k/n$: tỷ lệ quan sát được.
+
+## Từ hợp lý cực đại tới MSE
+
+Đây là phần quan trọng nhất của trang. Giả sử điểm thi được sinh ra như sau: điểm thật bằng $w x + b$, cộng thêm một **nhiễu** ngẫu nhiên có phân phối chuẩn $\mathcal N(0, \sigma^2)$. Nhiễu là mọi thứ mô hình không biết: hôm đó ngủ đủ không, đề có hợp sở trường không.
+
+Theo (7.3), xác suất (mật độ) thấy điểm $y_i$ của một bạn là:
+
+$$
+p(y_i) = \frac{1}{\sigma\sqrt{2\pi}} \exp\!\left(-\frac{(y_i - w x_i - b)^2}{2\sigma^2}\right)
+$$
+
+Lấy log rồi cộng qua mọi bạn:
+
+$$
+\log \mathcal L(w, b) = \text{hằng số} - \frac{1}{2\sigma^2} \sum_{i=1}^{n} (y_i - w x_i - b)^2
+$$
+
+Phần "hằng số" không chứa $w$, $b$. Vậy làm $\log\mathcal L$ **lớn nhất** đúng bằng làm tổng bình phương sai số **nhỏ nhất**: đó chính là cực tiểu MSE của Chương 10.
+
+<Khung loai="vi-sao" tieuDe="BÌNH PHƯƠNG SAI SỐ">
+Chương 10 đưa ra vài lý do trực giác cho việc bình phương sai số. Trang này cho lý do sâu nhất: **MSE là hợp lý cực đại khi nhiễu có phân phối chuẩn.**
+
+Đổi giả định về nhiễu là đổi hàm mất mát. Nhiễu có đuôi dày hơn (phân phối Laplace) dẫn tới MAE. Nhãn là 0 hoặc 1 (phân phối Bernoulli, như đồng xu) dẫn tới cross-entropy của Chương 11, mà công thức (7.7) đã là một phiên bản. Hiểu hàm mất mát nào đến từ giả định nào giúp bạn chọn đúng hàm mất mát cho bài toán mới.
+</Khung>
+
+<Khung loai="loi">
+**Tính likelihood bằng tích trực tiếp.** Nhân hàng nghìn xác suất nhỏ cho ra 0 tròn trĩnh vì tràn dưới số thực. Luôn làm việc với log-likelihood.
+
+**Hiểu likelihood là xác suất của tham số.** $\mathcal L(p)$ là xác suất của **dữ liệu** khi biết $p$, không phải xác suất của $p$. Muốn có xác suất của tham số, phải dùng Bayes với một phân phối tiên nghiệm.
+</Khung>
