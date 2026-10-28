@@ -1,0 +1,94 @@
+---
+title: Bài tập
+description: "Ba bài tập kiến trúc CNN có đáp án chi tiết (đếm 18 lớp của ResNet-18, tính giá trị điểm ảnh sau Normalize của ImageNet, tinh chỉnh toàn bộ với learning rate gấp 10 lần làm mất 13 điểm) và câu hỏi phỏng vấn."
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Đoán trước, rồi chạy code trong notebook để kiểm tra. Code dùng lại `net`, `w`, `TB`, `DL`, `huan_luyen` của các trang trước.
+
+<BaiTap so="28.1">
+**Mười tám lớp ở đâu.** Đếm số lớp `Conv2d` và `Linear` trong ResNet-18. Con số 18 tính thế nào?
+
+<Fragment slot="dap-an">
+
+```python
+print(sum(isinstance(l, nn.Conv2d) for l in net.modules()), sum(isinstance(l, nn.Linear) for l in net.modules()))
+print([n for n, l in net.named_modules() if isinstance(l, nn.Conv2d) and l.kernel_size == (1, 1)])
+```
+
+```text title="Output"
+20 1
+['layer2.0.downsample.0', 'layer3.0.downsample.0', 'layer4.0.downsample.0']
+```
+
+20 lớp tích chập và 1 lớp dày đặc. Ba lớp tích chập 1 nhân 1 tên `downsample` nằm trên **đường tắt** của khối đầu ở `layer2`, `layer3`, `layer4`: đó là phép chiếu ở câu tự kiểm tra trang 2, đổi số kênh (64 lên 128, 128 lên 256, 256 lên 512) và thu nhỏ ảnh bằng stride 2 để phép cộng $x + f(x)$ khớp shape. Con số 18 chỉ đếm các lớp trên **đường chính**: $20 - 3 = 17$ lớp tích chập cộng 1 lớp `fc`.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="28.2">
+**Điểm ảnh sau chuẩn hóa.** Sau `ToTensor`, điểm ảnh nằm trong $[0, 1]$. Sau `Normalize(TB, DL)` của ImageNet, một điểm ảnh đen tuyệt đối (0) và trắng tuyệt đối (1) thành bao nhiêu ở mỗi kênh?
+
+<Fragment slot="dap-an">
+
+`Normalize` tính $(x - \text{trung bình})/\text{độ lệch chuẩn}$ cho từng kênh. Kênh đỏ: $(0 - 0{,}485)/0{,}229 \approx -2{,}118$ và $(1 - 0{,}485)/0{,}229 \approx 2{,}249$.
+
+```python
+print([round((0 - m) / s, 4) for m, s in zip(TB, DL)], [round((1 - m) / s, 4) for m, s in zip(TB, DL)])
+```
+
+```text title="Output"
+[-2.1179, -2.0357, -1.8044] [2.2489, 2.4286, 2.64]
+```
+
+Đầu vào của mạng nằm khoảng từ $-2$ tới $2{,}6$, quanh 0, đúng thang đo mà khởi tạo và batch norm (Chương 26) giả định. Khi muốn hiển thị lại một ảnh đã chuẩn hóa, phải làm ngược: nhân độ lệch chuẩn rồi cộng trung bình, nếu không ảnh trông tối và lệch màu.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="28.3">
+**Learning rate quá lớn khi tinh chỉnh.** Lặp lại phần tinh chỉnh toàn bộ ở trang 4 nhưng với learning rate $10^{-3}$ thay vì $10^{-4}$. Đoán xem độ chính xác sau 5 epoch thay đổi thế nào.
+
+<Fragment slot="dap-an">
+
+```python
+torch.manual_seed(0)
+net4 = models.resnet18(weights=w)
+net4.fc = nn.Linear(512, 2)
+huan_luyen(net4, net4.parameters(), 5, 1e-3)   # learning rate gấp 10 lần
+```
+
+```text title="Output"
+1 0.6928
+2 0.5621
+3 0.6863
+4 0.6732
+5 0.7974
+```
+
+Epoch đầu chỉ 69,3% (với $10^{-4}$ là 90,2%), epoch 2 rơi tiếp xuống 56,2%, sát mức đoán toàn ong 54,2%, và sau 5 epoch mới về 79,7%, so với 92,8% với learning rate $10^{-4}$. Bước lớn làm xáo trộn những trọng số đã học từ 1,28 triệu ảnh ngay trong vài lô đầu, khi lớp `fc` mới còn ngẫu nhiên và gửi về gradient vô nghĩa. Mạng mất phần lớn lợi thế của trọng số ImageNet và phải học lại từ 244 ảnh. Quy tắc khi tinh chỉnh: learning rate nhỏ hơn 10 tới 100 lần so với khi học từ đầu, hoặc đóng băng phần thân trong vài epoch đầu rồi mới mở.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Vì sao ResNet huấn luyện được tới hàng trăm lớp?**
+
+<p lang="en"><em>Why can ResNets be trained with hundreds of layers?</em></p>
+
+*Gợi ý:* kết nối tắt $x + f(x)$ cho đạo hàm $1 + f'(x)$, gradient luôn có đường đi thẳng về lớp đầu; khối chỉ cần học phần dư, học hàm đồng nhất dễ dàng ($f = 0$). Kết hợp batch norm và khởi tạo He.
+
+**2. Bạn có 500 ảnh có nhãn cho một bài phân loại. Bạn làm gì?**
+
+<p lang="en"><em>You have 500 labeled images for a classification task. What do you do?</em></p>
+
+*Gợi ý:* transfer learning từ một mô hình huấn luyện sẵn (ResNet, EfficientNet, ViT), đóng băng phần thân, học lớp cuối; tăng cường dữ liệu; tách validation để dừng sớm; nếu đủ tốt mới thử tinh chỉnh vài khối cuối với learning rate nhỏ. Không huấn luyện từ đầu.
+
+**3. Global average pooling dùng để làm gì?**
+
+<p lang="en"><em>What is global average pooling for?</em></p>
+
+*Gợi ý:* thay lớp dày đặc lớn ở cuối CNN, giảm mạnh số tham số, bớt overfitting, không phụ thuộc vị trí nên bền với dịch chuyển, và chạy được với ảnh vào nhiều kích thước.
+</Khung>

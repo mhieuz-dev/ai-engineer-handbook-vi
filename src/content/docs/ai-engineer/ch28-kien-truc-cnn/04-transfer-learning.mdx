@@ -1,0 +1,176 @@
+---
+title: Transfer learning
+description: "Với 244 ảnh train, một CNN học từ đầu đạt 70,6% sau 10 epoch, ResNet-18 trọng số ngẫu nhiên 69,3%, còn ResNet-18 huấn luyện sẵn trên ImageNet chỉ học lại lớp cuối 1026 tham số đạt 92,8% sau 5 epoch. Đóng băng hay tinh chỉnh toàn bộ."
+---
+
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Học từ đầu với 244 ảnh
+
+Mốc so sánh trước: một CNN nhỏ bốn khối [tích chập, batch norm, ReLU, pooling] với pooling toàn cục (trang 1), huấn luyện từ đầu trên 244 ảnh kiến và ong của trang 3:
+
+```python
+import torch.nn as nn
+ce = nn.CrossEntropyLoss()
+
+def danh_gia(m):                               # độ chính xác trên 153 ảnh val
+    m.eval()
+    dung = 0
+    with torch.no_grad():
+        for xb, yb in dl_te:
+            dung += (m(xb).argmax(1) == yb).sum().item()
+    return round(dung / len(ds_te), 4)
+
+def huan_luyen(m, tham_so, so_epoch, lr):      # chỉ cập nhật các tham số được đưa vào
+    torch.manual_seed(1)
+    opt = torch.optim.Adam(tham_so, lr=lr)
+    for ep in range(so_epoch):
+        m.train()
+        for xb, yb in dl_tr:
+            opt.zero_grad()
+            ce(m(xb), yb).backward()
+            opt.step()
+        print(ep + 1, danh_gia(m))
+
+def khoi(vao, ra):
+    return nn.Sequential(nn.Conv2d(vao, ra, 3, padding=1), nn.BatchNorm2d(ra), nn.ReLU(), nn.MaxPool2d(2))
+
+torch.manual_seed(0)
+tu_dau = nn.Sequential(khoi(3, 16), khoi(16, 32), khoi(32, 64), khoi(64, 128),
+                       nn.AdaptiveAvgPool2d(1), nn.Flatten(), nn.Linear(128, 2))
+print(sum(p.numel() for p in tu_dau.parameters()))
+huan_luyen(tu_dau, tu_dau.parameters(), 10, 1e-3)
+```
+
+```text title="Output"
+98178
+1 0.6667
+2 0.6667
+3 0.6993
+4 0.6732
+5 0.7255
+6 0.7124
+7 0.7516
+8 0.6732
+9 0.7255
+10 0.7059
+```
+
+Sau 10 epoch (khoảng 1 phút trên CPU 16 nhân), độ chính xác val dao động quanh 70%, kết thúc ở 70,6%. Đoán toàn "ong" đã được $83/153 = 54{,}2\%$. 244 ảnh quá ít để học từ đầu những gì một con kiến trông như thế nào.
+
+## Một mạng đã xem 1,28 triệu ảnh
+
+`torchvision.models` có sẵn hàng chục kiến trúc kèm trọng số đã huấn luyện trên ImageNet. ResNet-18 (bản 18 lớp của trang 2):
+
+```python
+from torchvision import models
+w = models.ResNet18_Weights.IMAGENET1K_V1      # trọng số huấn luyện sẵn trên ImageNet, tải 45 MB lần đầu
+torch.manual_seed(0)
+net = models.resnet18(weights=w)
+print(sum(p.numel() for p in net.parameters()), net.fc)
+net.eval()
+with torch.no_grad():
+    for i in (0, 1, 70, 71):                   # hai ảnh kiến, hai ảnh ong đầu tiên của tập val
+        x, y = ds_te[i]
+        p = net(x.unsqueeze(0)).softmax(1)[0]
+        print(ds_te.classes[y], w.meta["categories"][p.argmax().item()], round(p.max().item(), 3))
+```
+
+```text title="Output"
+11689512 Linear(in_features=512, out_features=1000, bias=True)
+ants fountain 0.118
+ants ant 0.552
+bees apiary 0.477
+bees bee 0.555
+```
+
+11,7 triệu tham số, lớp cuối `fc` cho 1000 lớp của ImageNet. Chưa huấn luyện gì trên dữ liệu của ta, nó đã gọi đúng tên "ant" và "bee" cho hai ảnh (ImageNet có sẵn hai lớp này), gọi một ảnh ong là "apiary" (trại nuôi ong, không sai lắm), và nhầm một ảnh kiến thành "fountain" (đài phun nước) với xác suất chỉ 0,118.
+
+Điều quan trọng không phải là lớp cuối. Là 11,7 triệu tham số **phía trước** nó: các lớp tích chập đã học phát hiện cạnh, hoa văn, chân, cánh, mắt từ 1,28 triệu ảnh. Những đặc trưng đó hữu ích cho gần như mọi bài toán ảnh, kể cả bài của ta.
+
+## Đóng băng, chỉ thay lớp cuối
+
+<Term id="transfer-learning">Transfer learning</Term>: giữ nguyên phần thân đã học, thay lớp cuối bằng một lớp mới cho đúng bài toán, và chỉ huấn luyện lớp mới.
+
+```python
+for p in net.parameters():
+    p.requires_grad = False                    # đóng băng toàn bộ mạng đã huấn luyện sẵn
+net.fc = nn.Linear(512, 2)                     # thay lớp cuối 1000 lớp ImageNet bằng 2 lớp: kiến, ong
+print(sum(p.numel() for p in net.parameters() if p.requires_grad))
+huan_luyen(net, net.fc.parameters(), 5, 1e-3)
+```
+
+```text title="Output"
+1026
+1 0.732
+2 0.9085
+3 0.9216
+4 0.9281
+5 0.9281
+```
+
+Chỉ còn $512 \times 2 + 2 = 1026$ tham số được học (lớp `fc` mới tạo ra có `requires_grad=True` mặc định). Sau 2 epoch đã 90,9%; sau 5 epoch **92,8%**, so với 70,6% của mạng học từ đầu. Mỗi epoch mất khoảng 7 giây trên CPU, gần bằng CNN nhỏ (6 giây) dù mạng lớn hơn 100 lần, vì không cần lan ngược qua 11,7 triệu tham số đóng băng.
+
+## Tinh chỉnh toàn bộ
+
+Cách thứ hai: thay lớp cuối nhưng cho **mọi** tham số được học tiếp, với learning rate nhỏ (để không phá những gì đã học):
+
+```python
+torch.manual_seed(0)
+net2 = models.resnet18(weights=w)
+net2.fc = nn.Linear(512, 2)
+huan_luyen(net2, net2.parameters(), 5, 1e-4)
+```
+
+```text title="Output"
+1 0.902
+2 0.9216
+3 0.9346
+4 0.9346
+5 0.9281
+```
+
+Ngay sau epoch đầu đã 90,2%, đỉnh 93,5% ở epoch 3 và 4, cuối cùng 92,8%: ngang bản đóng băng, trong khi mỗi epoch chậm gấp đôi (khoảng 14 giây). Với 244 ảnh và một bài gần với ImageNet, đóng băng là đủ.
+
+Câu hỏi cuối: điểm cao đến từ kiến trúc ResNet hay từ **trọng số** đã học? Cùng ResNet-18 nhưng `weights=None` (khởi tạo ngẫu nhiên), học toàn bộ 5 epoch:
+
+```python
+torch.manual_seed(0)
+net3 = models.resnet18(weights=None)           # cùng kiến trúc, trọng số ngẫu nhiên
+net3.fc = nn.Linear(512, 2)
+huan_luyen(net3, net3.parameters(), 5, 1e-3)
+```
+
+```text title="Output"
+1 0.5425
+2 0.5686
+3 0.6078
+4 0.6601
+5 0.6928
+```
+
+69,3%, kém cả CNN nhỏ. Kiến trúc tốt không đủ; 11,7 triệu tham số với 244 ảnh là quá nhiều để học từ đầu. Toàn bộ khác biệt nằm ở trọng số.
+
+<HinhKetQua src="/hinh/ch28/h1_transfer.svg" alt="Độ chính xác trên 153 ảnh val theo epoch, trục đứng từ 0,5 tới 1. Đường đóng băng màu xanh và tinh chỉnh màu cam nằm trên cùng, vượt 0,9 từ epoch 1 hoặc 2 và đi ngang quanh 0,93. Đường CNN nhỏ học từ đầu màu xám dao động quanh 0,7 suốt 10 epoch. Đường ResNet-18 ngẫu nhiên màu đỏ đi lên chậm từ 0,54 tới 0,69 sau 5 epoch. Đường chấm ngang ở 0,542 là mức đoán toàn ong." so="28.1" chuThich="Độ chính xác trên 153 ảnh val của bốn cách huấn luyện với cùng 244 ảnh train. Đường chấm là mức đoán toàn một lớp (83 ong trên 153 ảnh).">
+Hai đường trên cùng dùng trọng số ImageNet; hai đường dưới không. Khoảng cách giữa hai nhóm (khoảng 23 điểm phần trăm) lớn hơn nhiều so với khác biệt bên trong mỗi nhóm. Đường xám ồn vì val chỉ 153 ảnh: một ảnh là 0,65 điểm phần trăm.
+</HinhKetQua>
+
+<Khung loai="vi-sao" tieuDe="CHỌN CÁCH NÀO">
+**Bảng 28.4.** Chọn cách dùng mô hình huấn luyện sẵn.
+
+| Dữ liệu của bạn | Giống ImageNet | Khác ImageNet (ảnh y tế, vệ tinh) |
+|:---|:---|:---|
+| Ít (vài trăm ảnh) | đóng băng, chỉ học lớp cuối | đóng băng phần đầu, tinh chỉnh vài khối cuối |
+| Nhiều (hàng chục nghìn) | tinh chỉnh toàn bộ, learning rate nhỏ | tinh chỉnh toàn bộ |
+
+Lớp đầu học cạnh và màu, hầu như bài nào cũng dùng được; lớp sâu học vật thể của ImageNet, càng khác ImageNet càng cần học lại. Ý tưởng này đi xa hơn ảnh rất nhiều: Phần IV tinh chỉnh PhoBERT (Chương 46) cho tiếng Việt, Phần V tinh chỉnh LLM (Chương 49). Gần như không ai huấn luyện một mô hình lớn từ đầu nữa.
+</Khung>
+
+<Khung loai="loi">
+**Quên dùng đúng chuẩn hóa của mô hình.** Mô hình huấn luyện sẵn chỉ chạy đúng khi đầu vào được biến đổi y như lúc nó được huấn luyện: cùng kích thước, cùng `Normalize`. `w.transforms()` trả về đúng chuỗi biến đổi đó.
+
+**Đóng băng nhưng vẫn đưa mọi tham số vào optimizer và để `model.train()`.** Với tham số đóng băng thì không sao, nhưng batch norm ở chế độ train vẫn **cập nhật trung bình động** bằng dữ liệu của bạn, dù `requires_grad=False`. Với lô nhỏ, điều này có thể làm hỏng mô hình; nếu thấy kết quả lạ, gọi `.eval()` riêng cho phần thân đóng băng.
+</Khung>

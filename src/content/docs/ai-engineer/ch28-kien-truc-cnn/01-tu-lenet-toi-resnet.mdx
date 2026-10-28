@@ -1,0 +1,110 @@
+---
+title: Từ LeNet tới ResNet
+description: "ImageNet và bốn cột mốc kiến trúc CNN, sai số top-5 từ 15,3% (AlexNet 2012) xuống 3,57% (ResNet 2015). Pooling toàn cục thay lớp dày đặc cuối, giữ 96,7% khi dịch ảnh 4 điểm ảnh, so với 60,6% của CNN ở Chương 27."
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+<CanBietTruoc>
+Tích chập, pooling và CNN trên MNIST (Chương 27). Gradient biến mất, khởi tạo He, batch norm (Chương 26). Vòng huấn luyện và `DataLoader` (Chương 25).
+
+<Fragment slot="sau-chuong">
+Biết các cột mốc kiến trúc CNN và vì sao chúng quan trọng. Dùng pooling toàn cục và tự viết khối dư của ResNet. Đọc ảnh thật từ đĩa theo lô bằng `ImageFolder` và tăng cường dữ liệu. Dùng một ResNet huấn luyện sẵn trên ImageNet để đạt 92,8% với chỉ 244 ảnh train.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch28_kien_truc_cnn.ipynb" />
+
+## ImageNet và các cột mốc
+
+MNIST đã gần bão hòa (Chương 27). Thước đo thật của thị giác máy tính trong thập niên 2010 là **ImageNet**: cuộc thi ILSVRC dùng khoảng 1,28 triệu ảnh màu train, 50 000 ảnh validation, 1000 lớp (từ "chó săn Ailen" tới "núi lửa"). Số đo chính là **sai số top-5**: tỷ lệ ảnh mà nhãn đúng không nằm trong 5 dự đoán có xác suất cao nhất. Một bộ nhỏ hơn hay dùng để thử nhanh là **CIFAR-10**: 60 000 ảnh màu 32 nhân 32, 10 lớp (máy bay, ô tô, chim, mèo...), 50 000 train và 10 000 test.
+
+**Bảng 28.1.** Các cột mốc kiến trúc CNN.
+
+| Năm | Mạng | Ý tưởng chính | Sai số top-5 ImageNet |
+|---:|:---|:---|---:|
+| 1998 | LeNet-5 | tích chập, pooling, lớp dày đặc; đọc chữ số trên séc | chưa có ImageNet |
+| 2012 | AlexNet | sâu hơn, ReLU, dropout, huấn luyện trên GPU | 15,3% |
+| 2014 | VGG | chỉ dùng tích chập 3 nhân 3, chồng 16 tới 19 lớp | 7,3% |
+| 2015 | ResNet | kết nối tắt, tới 152 lớp | 3,57% |
+
+AlexNet (Krizhevsky, Sutskever và Hinton, 2012) thắng ILSVRC 2012 với sai số 15,3%, trong khi đội thứ hai, dùng đặc trưng thiết kế tay, ở mức 26,2%. Khoảng cách đó là thời điểm deep learning bắt đầu thống trị thị giác máy tính. VGG cho thấy hai lớp 3 nhân 3 chồng lên nhau nhìn được vùng 5 nhân 5 (vùng tiếp nhận, Chương 27) với ít tham số hơn một lớp 5 nhân 5, và từ đó 3 nhân 3 thành mặc định. ResNet (trang 2) phá giới hạn độ sâu.
+
+Các con số này là của tổ hợp nhiều mô hình trong cuộc thi, nên chỉ để so sánh xu hướng. Ngoài ra còn GoogLeNet (2014, thắng năm đó với 6,67%), và sau ResNet là các họ hiệu quả hơn như MobileNet, EfficientNet, rồi Vision Transformer (Chương 44 có Transformer).
+
+## Pooling toàn cục
+
+Chương 27 kết thúc với hai vấn đề của lớp `Linear(1568, 10)` cuối: nó chiếm 77% tham số, và có trọng số riêng cho từng vị trí trên bản đồ 7 nhân 7, nên CNN rơi xuống 60,6% khi ảnh dịch 4 điểm ảnh.
+
+**Pooling trung bình toàn cục** (global average pooling, Lin và cộng sự, 2013) lấy trung bình mỗi kênh trên **toàn bộ** bản đồ, ra một số mỗi kênh. Bản đồ `(64, 7, 7)` thành vector 64 số, rồi một lớp `Linear(64, 10)` nhỏ xíu. Vị trí không còn quan trọng: chỉ còn "kênh này phản ứng mạnh cỡ nào trên cả ảnh". Mọi CNN hiện đại, kể cả ResNet, đều kết thúc như vậy. Trong PyTorch là `nn.AdaptiveAvgPool2d(1)`.
+
+Thêm một lớp tích chập 64 kênh và batch norm sau mỗi tích chập (bảng 26.3), rồi so với Chương 27:
+
+```python
+import torch
+import torch.nn as nn
+from torchvision import datasets
+from torch.utils.data import TensorDataset, DataLoader
+tr = datasets.MNIST("data", train=True, download=True)
+te = datasets.MNIST("data", train=False, download=True)
+Xtr, ytr = tr.data.float().div(255).unsqueeze(1), tr.targets
+Xte, yte = te.data.float().div(255).unsqueeze(1), te.targets
+ce = nn.CrossEntropyLoss()
+
+def huan_luyen(m, so_epoch=2):                 # như Chương 27
+    torch.manual_seed(1)
+    dl = DataLoader(TensorDataset(Xtr, ytr), batch_size=64, shuffle=True)
+    opt = torch.optim.Adam(m.parameters(), lr=1e-3)
+    for ep in range(so_epoch):
+        m.train()
+        for xb, yb in dl:
+            opt.zero_grad()
+            ce(m(xb), yb).backward()
+            opt.step()
+        m.eval()
+        with torch.no_grad():
+            print(ep + 1, round((m(Xte).argmax(1) == yte).float().mean().item(), 4))
+
+def dich(X, d):                                # dịch sang phải d điểm ảnh, như Chương 27
+    Y = torch.zeros_like(X)
+    Y[..., d:] = X[..., :-d]
+    return Y
+
+def khoi(vao, ra):                             # tích chập, batch norm, ReLU
+    return [nn.Conv2d(vao, ra, 3, padding=1), nn.BatchNorm2d(ra), nn.ReLU()]
+
+torch.manual_seed(0)
+gap = nn.Sequential(*khoi(1, 16), nn.MaxPool2d(2), *khoi(16, 32), nn.MaxPool2d(2), *khoi(32, 64),
+                    nn.AdaptiveAvgPool2d(1),   # pooling toàn cục: mỗi kênh 7x7 thành 1 số
+                    nn.Flatten(), nn.Linear(64, 10))
+print(sum(p.numel() for p in gap.parameters()), sum(p.numel() for p in gap[-1].parameters()))
+huan_luyen(gap)
+with torch.no_grad():
+    print([round((gap(dich(Xte, d)).argmax(1) == yte).float().mean().item(), 4) for d in (1, 2, 3, 4)])
+```
+
+```text title="Output"
+24170 650
+1 0.9667
+2 0.9735
+[0.9732, 0.9701, 0.9717, 0.9673]
+```
+
+**Bảng 28.2.** Độ chính xác test khi dịch ảnh sang phải, sau 2 epoch.
+
+| Mô hình | Tham số | Lớp cuối | Dịch 0 | Dịch 2 | Dịch 4 |
+|:---|---:|---:|---:|---:|---:|
+| CNN Chương 27 | 20 490 | 15 690 | 98,2% | 93,7% | 60,6% |
+| CNN pooling toàn cục | 24 170 | 650 | 97,4% | 97,0% | **96,7%** |
+
+Lớp cuối từ 15 690 tham số xuống 650. Trên ảnh sạch, mạng mới kém hơn 0,8 điểm sau 2 epoch (nó phải dồn mọi thông tin vào 64 số), nhưng khi dịch 4 điểm ảnh, nó chỉ mất 0,6 điểm thay vì 37,6. Đó là cái được thật sự: mô hình **bền** hơn với một thay đổi mà dữ liệu thật luôn có.
+
+<Khung loai="loi">
+**Nhầm `AdaptiveAvgPool2d(1)` với `AvgPool2d(1)`.** `AvgPool2d(1)` lấy trung bình trên ô 1 nhân 1, tức không làm gì. `AdaptiveAvgPool2d(1)` nghĩa là "cho ra kích thước 1 nhân 1, tự tính ô pooling cho vừa", nên chạy được với ảnh vào cỡ nào cũng được.
+
+**So sánh mô hình bằng số của bài báo.** Sai số trong bảng 28.1 đo bằng tổ hợp mô hình, cắt ảnh nhiều lần, trên tập test của cuộc thi. Một ResNet-18 bạn tải về có độ chính xác khác. Luôn so trên cùng dữ liệu, cùng cách đo.
+</Khung>

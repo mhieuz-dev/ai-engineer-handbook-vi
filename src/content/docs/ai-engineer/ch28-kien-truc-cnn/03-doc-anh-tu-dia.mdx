@@ -1,0 +1,111 @@
+---
+title: Đọc ảnh từ đĩa và tăng cường dữ liệu
+description: "397 ảnh kiến và ong đủ mọi kích thước, xếp theo thư mục. ImageFolder đọc từng ảnh khi cần, transforms cắt, lật, chuẩn hóa về 224x224, DataLoader dùng nhiều tiến trình. Tự viết một Dataset chỉ cần hai hàm."
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Dữ liệu thật nằm trên đĩa
+
+Đến giờ mọi bộ dữ liệu đều nạp hết vào bộ nhớ thành một tensor. ImageNet có 1,28 triệu ảnh, hơn 100 GB: không nạp nổi. Dữ liệu thật thường là một thư mục đầy tệp ảnh, mỗi ảnh một kích thước, và phải đọc **từng lô** khi cần.
+
+Bộ dữ liệu của trang này và trang sau là **kiến và ong** (hymenoptera), lấy từ bài hướng dẫn transfer learning chính thức của PyTorch: ảnh màu chụp thật, cỡ khác nhau, xếp theo kiểu một thư mục con cho mỗi lớp.
+
+```python
+from pathlib import Path
+from PIL import Image
+from torchvision.datasets.utils import download_and_extract_archive
+download_and_extract_archive("https://download.pytorch.org/tutorial/hymenoptera_data.zip", "data")   # 47 MB, lần đầu
+goc = Path("data/hymenoptera_data")
+for phan in ("train", "val"):
+    print(phan, {lop.name: len(list(lop.iterdir())) for lop in sorted((goc / phan).iterdir())})
+print([Image.open(p).size for p in sorted((goc / "train/ants").iterdir())[:4]])
+```
+
+```text title="Output"
+train {'ants': 124, 'bees': 121}
+val {'ants': 70, 'bees': 83}
+[(768, 512), (500, 333), (500, 282), (500, 335)]
+```
+
+Cấu trúc là `train/ants/*.jpg`, `train/bees/*.jpg`, `val/ants/...`, `val/bees/...`. Bốn ảnh kiến đầu tiên có bốn kích thước khác nhau (rộng nhân cao): không xếp thẳng thành một tensor được. 245 tệp train, 153 tệp val: rất ít so với 60 000 ảnh của MNIST.
+
+## ImageFolder và transforms
+
+`datasets.ImageFolder` hiểu đúng cấu trúc thư mục này: mỗi thư mục con là một lớp, đánh số theo thứ tự chữ cái. Nó **không** đọc ảnh nào khi tạo; chỉ khi hỏi tới ảnh thứ $i$ mới mở tệp, rồi chạy qua một chuỗi **biến đổi** (transforms) để ra tensor.
+
+```python
+import torch
+from torchvision import datasets, transforms
+from torch.utils.data import DataLoader
+TB, DL = [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]     # trung bình, độ lệch chuẩn từng kênh của ImageNet
+bd_train = transforms.Compose([transforms.RandomResizedCrop(224),    # cắt một vùng ngẫu nhiên rồi phóng về 224x224
+                               transforms.RandomHorizontalFlip(),    # lật ngang với xác suất 0,5
+                               transforms.ToTensor(), transforms.Normalize(TB, DL)])
+bd_test = transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224),   # cố định, không ngẫu nhiên
+                              transforms.ToTensor(), transforms.Normalize(TB, DL)])
+ds_tr = datasets.ImageFolder(goc / "train", transform=bd_train)
+ds_te = datasets.ImageFolder(goc / "val", transform=bd_test)
+print(len(ds_tr), len(ds_te), ds_tr.classes, ds_tr[0][0].shape)
+torch.manual_seed(0)
+dl_tr = DataLoader(ds_tr, batch_size=32, shuffle=True, num_workers=2)   # 2 tiến trình phụ đọc và biến đổi ảnh
+dl_te = DataLoader(ds_te, batch_size=64, num_workers=2)
+xb, yb = next(iter(dl_tr))
+print(xb.shape, yb[:8].tolist(), len(dl_tr))
+```
+
+```text title="Output"
+244 153 ['ants', 'bees'] torch.Size([3, 224, 224])
+torch.Size([32, 3, 224, 224]) [1, 0, 0, 1, 0, 0, 0, 1] 8
+```
+
+Thư mục có 245 tệp train nhưng `ImageFolder` chỉ nhận 244: trong `train/ants` có một tệp tên `imageNotFound.gif`, một ảnh lỗi lúc thu thập dữ liệu, và `.gif` không nằm trong danh sách đuôi tệp `ImageFolder` chấp nhận. Dữ liệu thật luôn có rác như vậy; lần này may là nó tự bị loại, lần sau có thể không.
+
+Mỗi ảnh ra tensor `(3, 224, 224)` bất kể kích thước gốc, nên `DataLoader` xếp được 32 ảnh thành một lô `(32, 3, 224, 224)`, đúng shape Chương 3 đã nói. Nhãn: `ants` là 0, `bees` là 1. 244 ảnh chia lô 32 là 8 lô.
+
+Hai chuỗi biến đổi khác nhau có chủ đích:
+
+- **Train** dùng **tăng cường dữ liệu** (Chương 27): `RandomResizedCrop` cắt một vùng ngẫu nhiên chiếm từ 8% tới 100% diện tích ảnh, với tỷ lệ khung ngẫu nhiên, rồi phóng về 224 nhân 224; `RandomHorizontalFlip` lật ngang một nửa số lần. Mỗi epoch, cùng một ảnh trông khác đi một chút: 244 ảnh thành vô số biến thể, mạng khó học thuộc hơn.
+- **Test** cố định: thu cạnh ngắn về 256, cắt chính giữa 224 nhân 224. Không ngẫu nhiên, để mỗi lần đo ra cùng một con số.
+
+`Normalize` đưa mỗi kênh về trung bình 0, độ lệch chuẩn 1, bằng trung bình và độ lệch chuẩn của **ImageNet**. Lý do dùng số của ImageNet chứ không phải của kiến và ong ở trang sau: mạng huấn luyện sẵn đã quen với thang đo đó.
+
+`num_workers=2` cho 2 tiến trình phụ đọc tệp và chạy biến đổi trong khi tiến trình chính huấn luyện. Với ảnh lớn, giải nén JPEG và phóng ảnh thường **chậm hơn** chính lượt xuôi của mạng nhỏ; tăng `num_workers` (thường bằng số nhân CPU) là cách đầu tiên khi GPU ngồi chờ dữ liệu.
+
+## Tự viết một Dataset
+
+Khi dữ liệu không xếp theo thư mục (nhãn nằm trong tệp CSV, ảnh kèm hộp bao, cặp ảnh và mặt nạ), tự viết một lớp con của `Dataset`. Chỉ cần hai hàm: `__len__` trả số mẫu, `__getitem__(i)` trả mẫu thứ $i$.
+
+```python
+from torch.utils.data import Dataset
+
+class KienOng(Dataset):
+    def __init__(self, thu_muc, bien_doi):
+        self.tep = sorted(p for p in Path(thu_muc).glob("*/*") if p.suffix in (".jpg", ".jpeg"))
+        self.lop = sorted({p.parent.name for p in self.tep})
+        self.bien_doi = bien_doi
+    def __len__(self):
+        return len(self.tep)
+    def __getitem__(self, i):                  # chỉ mở tệp thứ i khi được hỏi tới
+        p = self.tep[i]
+        return self.bien_doi(Image.open(p).convert("RGB")), self.lop.index(p.parent.name)
+
+ds2 = KienOng(goc / "val", bd_test)
+print(len(ds2), ds2.lop, ds2[0][0].shape, ds2[0][1], torch.equal(ds2[0][0], ds_te[0][0]))
+```
+
+```text title="Output"
+153 ['ants', 'bees'] torch.Size([3, 224, 224]) 0 True
+```
+
+Cùng 153 ảnh, cùng thứ tự, và ảnh đầu tiên ra **đúng từng số** như `ImageFolder`. Lớp này đưa thẳng vào `DataLoader` được, y như mọi `Dataset` khác.
+
+<Khung loai="loi">
+**Tăng cường dữ liệu trên tập test.** Dùng `bd_train` cho tập val thì mỗi lần đánh giá ra một con số khác. Biến đổi ngẫu nhiên chỉ dành cho train.
+
+**Ảnh xám hoặc có kênh trong suốt.** Một ảnh PNG có 4 kênh (RGBA) hay ảnh xám 1 kênh sẽ làm lô bị lệch shape. `ImageFolder` tự chuyển về RGB; khi tự viết `Dataset`, nhớ `.convert("RGB")` như trên.
+
+**`num_workers` lớn hơn 0 trên Windows hoặc trong notebook lạ.** Đôi khi treo hoặc báo lỗi khi tạo tiến trình phụ. Đặt `num_workers=0` để thử, rồi tăng dần.
+</Khung>

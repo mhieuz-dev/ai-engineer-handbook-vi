@@ -1,0 +1,108 @@
+---
+title: ResNet và kết nối tắt
+description: "Mạng 52 lớp không có kết nối tắt có gradient ở lớp đầu cỡ 1e-20 và kẹt ở 10%, cùng mạng đó thêm phép cộng x + f(x) đạt 97,5%. Khối dư của ResNet, viết bằng nn.Module tự định nghĩa."
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Sâu hơn lại kém hơn
+
+Trước 2015, ai cũng thấy một điều lạ: chồng thêm lớp vào một CNN đã tốt, sau một mức nào đó độ chính xác **giảm**, và giảm cả trên tập **train**. Đó không phải overfitting (overfitting thì train vẫn tốt). Mạng sâu hơn có thể biểu diễn mọi thứ mạng nông làm được (chỉ cần các lớp thêm vào học hàm đồng nhất, trả lại đúng đầu vào), nhưng gradient descent không tìm ra lời giải đó.
+
+Kaiming He và cộng sự (2015), cùng người đã đề xuất khởi tạo He ở Chương 26, đưa ra một sửa đổi đơn giản: thay vì để một khối lớp học hàm $h(x)$, cho nó học **phần dư** $f(x) = h(x) - x$, rồi cộng lại:
+
+$$
+\text{đầu ra} = \text{ReLU}\big(x + f(x)\big)
+$$
+
+Phép cộng $x$ đi thẳng từ đầu vào tới đầu ra của khối gọi là <Term id="ket-noi-tat">kết nối tắt</Term> (skip connection, residual connection). Nếu khối không cần làm gì, nó chỉ việc học $f(x) = 0$, dễ hơn nhiều so với học hàm đồng nhất.
+
+## Thử trên mạng rất sâu
+
+Để thí nghiệm chạy nhanh trên CPU, dùng lại 1797 ảnh chữ số 8 nhân 8 của Chương 26 và các khối dày đặc thay cho khối tích chập; ý tưởng giống hệt. Mỗi khối có hai lớp `Linear`. Đây cũng là lần đầu tự viết một `nn.Module` thay vì `nn.Sequential`: lớp con khai báo trong `__init__`, lượt xuôi viết trong `forward`.
+
+```python
+import torch
+import torch.nn as nn
+from sklearn.datasets import load_digits
+from sklearn.model_selection import train_test_split
+from torch.utils.data import TensorDataset, DataLoader
+dg = load_digits()
+A, B, C, E = train_test_split(dg.data / 16.0, dg.target, test_size=0.2, random_state=0, stratify=dg.target)
+Xtr, ytr = torch.tensor(A, dtype=torch.float32), torch.tensor(C)
+Xte, yte = torch.tensor(B, dtype=torch.float32), torch.tensor(E)
+ce = nn.CrossEntropyLoss()
+
+class Khoi(nn.Module):                         # một khối hai lớp, có hoặc không có kết nối tắt
+    def __init__(self, tat):
+        super().__init__()
+        self.f = nn.Sequential(nn.Linear(64, 64), nn.ReLU(), nn.Linear(64, 64))
+        self.tat = tat
+    def forward(self, x):
+        return torch.relu(x + self.f(x)) if self.tat else torch.relu(self.f(x))
+
+def mang(tat, n):                              # lớp vào, n khối, lớp ra: tổng 2n + 2 lớp Linear
+    return nn.Sequential(nn.Linear(64, 64), nn.ReLU(), *[Khoi(tat) for _ in range(n)], nn.Linear(64, 10))
+
+for n in (5, 15, 25):
+    for tat in (False, True):
+        torch.manual_seed(0)
+        m = mang(tat, n)
+        ce(m(Xtr), ytr).backward()
+        g = m[0].weight.grad.norm().item()     # gradient của lớp đầu tiên trước khi huấn luyện
+        m.zero_grad()
+        torch.manual_seed(1)
+        dl = DataLoader(TensorDataset(Xtr, ytr), batch_size=64, shuffle=True)
+        opt = torch.optim.Adam(m.parameters(), lr=1e-3)
+        for ep in range(30):
+            m.train()
+            for xb, yb in dl:
+                opt.zero_grad()
+                ce(m(xb), yb).backward()
+                opt.step()
+        m.eval()
+        with torch.no_grad():
+            acc = (m(Xte).argmax(1) == yte).float().mean().item()
+        print(2 * n + 2, tat, f"{g:.1e}", round(acc, 4))
+```
+
+```text title="Output"
+12 False 2.1e-05 0.7944
+12 True 2.1e-01 0.9583
+32 False 9.0e-13 0.1
+32 True 2.1e-01 0.9667
+52 False 2.8e-20 0.1
+52 True 3.1e-01 0.975
+```
+
+**Bảng 28.3.** Mạng thường và mạng có kết nối tắt, 30 epoch Adam trên chữ số 8 nhân 8.
+
+| Số lớp | Gradient lớp đầu, thường | Gradient lớp đầu, có tắt | Test, thường | Test, có tắt |
+|---:|---:|---:|---:|---:|
+| 12 | $2{,}1 \times 10^{-5}$ | 0,21 | 79,4% | 95,8% |
+| 32 | $9{,}0 \times 10^{-13}$ | 0,21 | 10,0% | 96,7% |
+| 52 | $2{,}8 \times 10^{-20}$ | 0,31 | 10,0% | **97,5%** |
+
+Không có kết nối tắt, gradient ở lớp đầu co lại theo cấp số nhân với độ sâu, đúng như Chương 26 đã đo: tới 32 lớp, mạng không học được gì, độ chính xác bằng đoán bừa. Có kết nối tắt, gradient ở lớp đầu **không đổi bậc** dù sâu 12 hay 52 lớp, và mạng càng sâu càng **tốt hơn** một chút.
+
+## Vì sao phép cộng cứu được gradient
+
+Đạo hàm của $x + f(x)$ theo $x$ là $1 + f'(x)$. Khi lan ngược qua một khối, gradient được nhân với $1 + f'(x)$ thay vì chỉ $f'(x)$. Qua 25 khối, thay vì tích $f'_1 f'_2 \cdots f'_{25}$ (25 số nhỏ nhân với nhau, ra gần 0), ta có tích $(1 + f'_1)(1 + f'_2) \cdots$, trong đó luôn có một số hạng bằng **1**: một con đường đi thẳng từ loss về lớp đầu mà không bị nhân với gì. Gradient có đường cao tốc riêng.
+
+Mạng ResNet thật dùng đúng khối này, chỉ thay `Linear` bằng `Conv2d` 3 nhân 3 kèm batch norm. ResNet-152 có 152 lớp; một tổ hợp các ResNet đạt sai số top-5 3,57% và thắng cuộc thi ImageNet 2015 (trang 1). Từ đó tới nay, gần như mọi mạng sâu đều có kết nối tắt, kể cả mọi Transformer (Chương 44): mỗi lớp attention và mỗi lớp dày đặc trong Transformer đều có dạng $x + f(x)$.
+
+<TuKiemTra
+	cauHoi="Trong một khối dư, đầu vào x có shape (n, 64) nhưng f(x) có shape (n, 128) vì lớp cuối của khối có 128 nơ-ron. Phép cộng x + f(x) thì sao?"
+	luaChon={['PyTorch tự broadcast, không vấn đề gì', 'Báo lỗi shape; phải chiếu x lên 128 chiều bằng một lớp Linear (hoặc Conv2d 1x1) trên đường tắt', 'Bỏ kết nối tắt ở khối đó là cách duy nhất', 'Cắt f(x) còn 64 cột']}
+	dapAn={1}
+	giaiThich="Hai tensor shape (n, 64) và (n, 128) không broadcast được với nhau. ResNet giải quyết bằng một phép chiếu trên đường tắt: Conv2d 1x1 (với ảnh) hoặc Linear (với vector) đưa x về đúng số kênh, thường kèm stride 2 khi khối thu nhỏ ảnh."
+/>
+
+<Khung loai="loi">
+**Quên `super().__init__()`.** Khi tự viết `nn.Module`, thiếu dòng này thì gán `self.f = ...` báo lỗi `cannot assign module before Module.__init__() call`.
+
+**Lưu lớp con trong list Python thường.** `self.cac_khoi = [Khoi(True) for _ in range(5)]` trông đúng nhưng PyTorch không thấy các khối đó: `m.parameters()` bỏ sót chúng, optimizer không cập nhật, `m.to("cuda")` không chuyển chúng. Dùng `nn.ModuleList` hoặc `nn.Sequential`.
+</Khung>

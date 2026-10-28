@@ -548,3 +548,13 @@
   tenTiengAnh: convolutional neural network
   giaiThich: CNN là mạng nơ-ron dùng các lớp tích chập và pooling để xử lý dữ liệu dạng lưới như ảnh. Lớp đầu học các mẫu đơn giản như cạnh, lớp sau ghép chúng thành mẫu phức tạp hơn, với ít tham số hơn nhiều so với lớp dày đặc.
   hocKy: ai-engineer/ch27-cnn
+- id: ket-noi-tat
+  ten: Kết nối tắt
+  tenTiengAnh: residual connection
+  giaiThich: Kết nối tắt cộng thẳng đầu vào của một khối lớp vào đầu ra của nó, đầu ra là x + f(x). Gradient luôn có một đường đi thẳng về các lớp đầu nên mạng hàng trăm lớp vẫn huấn luyện được. Đây là ý tưởng chính của ResNet và có trong mọi Transformer.
+  hocKy: ai-engineer/ch28-kien-truc-cnn
+- id: transfer-learning
+  ten: Transfer learning
+  tenTiengAnh: transfer learning
+  giaiThich: Transfer learning lấy một mô hình đã huấn luyện trên tập dữ liệu lớn (ví dụ ImageNet), giữ phần thân đã học và chỉ thay, huấn luyện lại phần cuối cho bài toán mới. Nhờ vậy vài trăm mẫu cũng đủ đạt kết quả tốt.
+  hocKy: ai-engineer/ch28-kien-truc-cnn
