@@ -1,0 +1,113 @@
+---
+title: Gradient qua thời gian
+description: "Lan truyền ngược qua thời gian nhân gradient với cùng một ma trận ở mỗi bước. Đo trên một RNN: gradient về bước đầu giảm từ 0,96 (chuỗi 2 bước) xuống 1e-13 (50 bước) và đúng bằng 0 ở 100 bước; nhân W_h lên 3 lần thì gradient lại lớn dần. Kẹp gradient giữ hướng, giới hạn độ dài."
+---
+
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Mở vòng lặp ra
+
+Vòng `for` ở trang 1 có thể vẽ thành một mạng rất sâu: mỗi bước thời gian là một "lớp", và mọi lớp dùng chung $W_x$, $W_h$. Chuỗi 100 bước là một mạng 100 lớp. Autograd lan ngược qua nó như mọi mạng khác (Chương 25); cách gọi riêng cho trường hợp này là <Term id="bptt">lan truyền ngược qua thời gian</Term> (backpropagation through time, BPTT).
+
+Gradient của trạng thái cuối $h_T$ theo một trạng thái xa $h_t$ là tích các đạo hàm từng bước, theo quy tắc chuỗi (Chương 6):
+
+$$
+\frac{\partial h_T}{\partial h_t} = \prod_{k=t+1}^{T} \frac{\partial h_k}{\partial h_{k-1}} = \prod_{k=t+1}^{T} \operatorname{diag}\big(1 - h_k^2\big)\, W_h
+$$
+
+Cùng một ma trận $W_h$ nhân vào $T - t$ lần, kèm đạo hàm của tanh, $1 - h_k^2$, luôn nằm trong $(0, 1]$. Đây chính là chuyện của Chương 26 (nhân nhiều số nhỏ hơn 1 thì về 0, nhân nhiều số lớn hơn 1 thì nổ), nhưng nặng hơn: không có cách chọn trọng số riêng cho từng "lớp", vì mọi lớp là cùng một $W_h$.
+
+## Đo gradient theo khoảng cách
+
+Đo trực tiếp: đưa vào một chuỗi ngẫu nhiên, lấy tổng $h_T$ làm "loss" giả, lan ngược, rồi xem gradient đến từng đầu vào $x_t$ lớn cỡ nào.
+
+```python
+def do_grad(mang, T, seed=0):                  # độ lớn gradient của h_T theo từng đầu vào x_t
+    torch.manual_seed(seed)
+    x = torch.randn(1, T, 8, requires_grad=True)
+    ra, _ = mang(x)
+    ra[0, -1].sum().backward()                 # loss giả: tổng trạng thái ở bước cuối
+    return x.grad[0].norm(dim=1)               # một số cho mỗi bước t
+
+torch.manual_seed(0)
+r = nn.RNN(8, 32, batch_first=True)            # khởi tạo mặc định của PyTorch
+g = do_grad(r, 100)
+print([f"{g[t].item():.1e}" for t in (99, 90, 50, 0)])
+print([f"{do_grad(r, T)[0].item():.1e}" for T in (2, 10, 20, 50, 100)])
+```
+
+```text title="Output"
+['2.0e+00', '5.5e-03', '3.0e-14', '0.0e+00']
+['9.6e-01', '3.4e-03', '1.3e-05', '1.0e-13', '0.0e+00']
+```
+
+Dòng đầu: trong một chuỗi 100 bước, đầu vào ngay trước bước cuối nhận gradient 2,0; lùi 9 bước còn $5{,}5 \times 10^{-3}$; lùi 49 bước còn $3 \times 10^{-14}$; còn đầu vào đầu tiên nhận **đúng 0**, vì số đã nhỏ hơn số nhỏ nhất float32 biểu diễn được. Dòng hai: gradient về bước đầu tiên khi chuỗi dài 2, 10, 20, 50, 100 bước, giảm khoảng 10 lần sau mỗi 3 tới 4 bước.
+
+Hệ quả thực tế: nếu nhãn phụ thuộc vào một từ cách 50 bước, tín hiệu sửa lỗi từ loss gửi về từ đó gần như bằng 0. RNN không phải không **thể** nhớ xa; nó không **học** được cách nhớ xa. Đây là lý do "RNN có trí nhớ ngắn".
+
+## Gradient nổ
+
+Nếu $W_h$ lớn, chiều ngược lại xảy ra. Nhân $W_h$ lên 3 lần rồi đo lại:
+
+```python
+with torch.no_grad():
+    r.weight_hh_l0 *= 3                        # phóng to ma trận hồi quy
+print([f"{do_grad(r, T)[0].item():.1e}" for T in (2, 10, 20, 50, 100)])
+```
+
+```text title="Output"
+['2.3e+00', '1.5e+00', '1.4e+01', '1.8e+01', '6.1e+01']
+```
+
+Gradient về bước đầu tăng theo độ dài chuỗi, tới 61 ở 100 bước. Nó không tăng theo cấp số nhân mãi chỉ vì tanh bão hòa: khi $h_k$ gần $\pm 1$, đạo hàm $1 - h_k^2$ gần 0 và hãm lại. Nhưng trong lúc huấn luyện, $W_h$ thay đổi liên tục, và chỉ cần vài bước rơi vào vùng nhân lớn là gradient vọt lên hàng trăm lần trong **một lô**. Một bước gradient descent với gradient như vậy ném trọng số ra rất xa, loss nhảy vọt, đôi khi thành `nan` (bài tập 26.2). Trang 3 sẽ gặp đúng chuyện này trên một LSTM thật.
+
+<HinhKetQua src="/hinh/ch29/h1_gradient_theo_buoc.svg" alt="Độ lớn gradient theo vị trí bước t trong chuỗi 100 bước, trục đứng theo thang log từ 1e-22 tới 1000. Đường RNN mặc định màu xanh đi từ khoảng 2 ở bước 100 xuống 1e-14 ở bước 50 và 3e-22 ở bước 20, rồi biến mất vì bằng 0. Đường RNN có W_h nhân 3 màu đỏ dao động quanh 1 tới 30 suốt chuỗi. Đường LSTM mặc định màu xám giảm gần song song với đường xanh, còn 7e-22 ở bước 1. Đường LSTM có bias cổng quên bằng 3 màu cam gần như nằm ngang quanh 0,03 tới 0,2." so="29.1" chuThich="Gradient của tổng h_100 theo từng đầu vào x_t, cho bốn mạng cùng kích thước ẩn 32. Bên phải là các bước gần cuối chuỗi, bên trái là các bước xa. Đường dừng giữa chừng là chỗ gradient đúng bằng 0 trong float32.">
+Đường xanh là "trí nhớ ngắn" của RNN: lùi 50 bước, tín hiệu học còn khoảng $10^{-14}$; lùi 80 bước, dưới $10^{-21}$. Đường đỏ không biến mất nhưng có thể vọt lên. Hai đường còn lại là LSTM, giải thích ở trang 3: khởi tạo mặc định không khác RNN mấy, còn một thay đổi nhỏ ở khởi tạo giữ gradient ở mức 0,04 suốt 100 bước.
+</HinhKetQua>
+
+## Kẹp gradient
+
+Gradient biến mất cần đổi kiến trúc (trang 3). Gradient nổ có một cách sửa rẻ, đã gặp ở Chương 26: <Term id="kep-gradient">kẹp gradient</Term> (gradient clipping). Trước mỗi bước cập nhật, tính độ dài $\lVert g \rVert$ của toàn bộ gradient (gộp mọi tham số thành một vector); nếu lớn hơn ngưỡng $c$, co cả vector lại cho độ dài bằng $c$:
+
+$$
+g \leftarrow g \cdot \min\left(1, \frac{c}{\lVert g \rVert}\right)
+$$
+
+Hướng giữ nguyên, chỉ bước đi bị giới hạn. Thử trên một gradient biết trước:
+
+```python
+w = nn.Parameter(torch.zeros(3))
+w.grad = torch.tensor([30.0, 40.0, 0.0])      # độ dài sqrt(30^2 + 40^2) = 50
+print(nn.utils.clip_grad_norm_([w], max_norm=1.0).item(), [round(v, 4) for v in w.grad.tolist()])
+```
+
+```text title="Output"
+50.0 [0.6, 0.8, 0.0]
+```
+
+`clip_grad_norm_` trả về độ dài **trước** khi kẹp (50), và sửa gradient tại chỗ thành $[0{,}6;\ 0{,}8;\ 0]$: cùng hướng, độ dài 1. Trong vòng huấn luyện, nó nằm giữa `backward()` và `step()`:
+
+```python
+loss.backward()
+nn.utils.clip_grad_norm_(m.parameters(), max_norm=1.0)
+opt.step()
+```
+
+Ngưỡng 1,0 hay 5,0 đều phổ biến. Giá trị trả về đáng in ra trong vài trăm bước đầu: nếu nó thường xuyên lớn hơn ngưỡng nhiều lần, learning rate có thể quá lớn.
+
+<TuKiemTra
+	cauHoi="Gradient gộp của một mạng là vector độ dài 20, và bạn gọi clip_grad_norm_ với max_norm=5. Sau đó gradient thế nào?"
+	luaChon={['Mọi thành phần bị cắt về khoảng [-5, 5]', 'Cả vector nhân với 0,25, độ dài còn 5, hướng giữ nguyên', 'Không đổi, vì 20 nhỏ hơn số tham số', 'Thành vector 0']}
+	dapAn={1}
+	giaiThich="clip_grad_norm_ co toàn bộ vector theo tỷ lệ c/‖g‖ = 5/20 = 0,25. Cắt từng thành phần về [-5, 5] là một hàm khác, clip_grad_value_, và nó làm đổi hướng gradient."
+/>
+
+<Khung loai="loi">
+**Kẹp sau `opt.step()`.** Khi đó bước cập nhật đã dùng gradient chưa kẹp, và lệnh kẹp chỉ sửa một gradient sắp bị `zero_grad()` xóa. Thứ tự đúng: `backward`, kẹp, `step`.
+
+**Nghĩ rằng kẹp gradient chữa được gradient biến mất.** Kẹp chỉ làm gradient **nhỏ đi**. Gradient $10^{-13}$ vẫn là $10^{-13}$ sau khi kẹp. Gradient biến mất cần kiến trúc khác, là chuyện của trang sau.
+</Khung>

@@ -558,3 +558,33 @@
   tenTiengAnh: transfer learning
   giaiThich: Transfer learning lấy một mô hình đã huấn luyện trên tập dữ liệu lớn (ví dụ ImageNet), giữ phần thân đã học và chỉ thay, huấn luyện lại phần cuối cho bài toán mới. Nhờ vậy vài trăm mẫu cũng đủ đạt kết quả tốt.
   hocKy: ai-engineer/ch28-kien-truc-cnn
+- id: rnn
+  ten: RNN
+  tenTiengAnh: recurrent neural network
+  giaiThich: RNN (mạng hồi quy) đọc một chuỗi từng bước và giữ một vector trạng thái ẩn tóm tắt những gì đã đọc. Ở mỗi bước, trạng thái mới tính từ phần tử hiện tại và trạng thái cũ, với cùng một bộ trọng số cho mọi bước, nên số tham số không phụ thuộc độ dài chuỗi.
+  hocKy: ai-engineer/ch29-rnn-lstm-gru
+- id: bptt
+  ten: Lan truyền ngược qua thời gian
+  tenTiengAnh: backpropagation through time
+  giaiThich: Lan truyền ngược qua thời gian là backpropagation trên một RNN đã mở thành chuỗi các bước, mỗi bước như một lớp dùng chung trọng số. Gradient về các bước xa bị nhân với cùng một ma trận nhiều lần, nên dễ biến mất hoặc nổ.
+  hocKy: ai-engineer/ch29-rnn-lstm-gru
+- id: kep-gradient
+  ten: Kẹp gradient
+  tenTiengAnh: gradient clipping
+  giaiThich: Kẹp gradient co toàn bộ vector gradient lại khi độ dài của nó vượt một ngưỡng, giữ nguyên hướng. Nó chặn những bước cập nhật quá lớn khi gradient nổ, thường gặp khi huấn luyện RNN, LSTM và Transformer.
+  hocKy: ai-engineer/ch29-rnn-lstm-gru
+- id: lstm
+  ten: LSTM
+  tenTiengAnh: long short-term memory
+  giaiThich: LSTM là một loại RNN có thêm ô nhớ cập nhật bằng phép cộng và ba cổng (quên, vào, ra) quyết định giữ, ghi và đọc bao nhiêu thông tin. Khi cổng quên gần 1, ô nhớ và gradient đi qua nhiều bước gần như nguyên vẹn, nên LSTM nhớ được xa hơn RNN thường.
+  hocKy: ai-engineer/ch29-rnn-lstm-gru
+- id: gru
+  ten: GRU
+  tenTiengAnh: gated recurrent unit
+  giaiThich: GRU là một loại RNN có cổng, gọn hơn LSTM, với hai cổng (cập nhật và đặt lại) và không có ô nhớ riêng. Cổng cập nhật trộn trạng thái cũ với trạng thái mới; gần 1 thì giữ nguyên trạng thái cũ.
+  hocKy: ai-engineer/ch29-rnn-lstm-gru
+- id: mo-hinh-ngon-ngu
+  ten: Mô hình ngôn ngữ
+  tenTiengAnh: language model
+  giaiThich: Mô hình ngôn ngữ cho xác suất của phần tử tiếp theo (ký tự, từ hoặc token) khi biết các phần tử trước đó. Lấy mẫu lần lượt từ xác suất đó sinh ra văn bản mới. Mọi LLM như GPT đều là mô hình ngôn ngữ rất lớn.
+  hocKy: ai-engineer/ch29-rnn-lstm-gru

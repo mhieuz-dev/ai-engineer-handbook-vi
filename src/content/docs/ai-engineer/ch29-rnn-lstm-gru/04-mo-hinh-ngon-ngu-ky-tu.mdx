@@ -1,0 +1,242 @@
+---
+title: Mô hình ngôn ngữ ký tự trên Truyện Kiều
+description: "Huấn luyện một LSTM 372 100 tham số đoán ký tự tiếp theo trên 3254 câu Truyện Kiều. Loss val thấp nhất 1,567 ở bước 500 rồi tăng lại vì học thuộc, nên giữ bản tốt nhất. Ở nhiệt độ 0,5, 74% câu sinh ra đúng 6 hoặc 8 tiếng và 98% số tiếng có thật trong Truyện Kiều, không câu nào chép nguyên văn."
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Đoán ký tự tiếp theo
+
+Một <Term id="mo-hinh-ngon-ngu">mô hình ngôn ngữ</Term> trả lời một câu hỏi: biết các ký tự (hay từ) đã có, phần tử tiếp theo là gì, với xác suất bao nhiêu? Đây là bài nhiều thành nhiều (bảng 29.1): ở **mỗi** bước, đầu ra là một phân phối trên mọi ký tự, và đích là ký tự đứng ngay sau. Chuỗi "người ta" cho 7 bài đoán: sau "n" là "g", sau "ng" là "ư", sau "ngư" là "ờ"...
+
+Huấn luyện xong, cho mô hình **tự sinh**: đưa vào một đoạn mở đầu, lấy mẫu một ký tự từ phân phối nó đưa ra, nối vào, đoán tiếp. Mọi LLM như GPT (Chương 47) làm đúng việc này, chỉ khác ba điều: đơn vị là token thay vì ký tự (Chương 45), mạng là Transformer thay vì LSTM (Chương 44), và dữ liệu là hàng nghìn tỷ token thay vì một bài thơ.
+
+## Dữ liệu: Truyện Kiều
+
+Truyện Kiều của Nguyễn Du (1766 tới 1820) đã thuộc phạm vi công cộng, và là một bộ dữ liệu đẹp cho bài này: 3254 câu thơ **lục bát**, câu lẻ 6 tiếng, câu chẵn 8 tiếng. Nhịp đó là thứ ta đo được: mô hình có học được cấu trúc mà không ai dạy nó không?
+
+Văn bản lấy từ Wikisource tiếng Việt, ghim một phiên bản sửa cố định (`oldid`) để ai chạy cũng ra cùng dữ liệu:
+
+```python
+import re
+import urllib.request
+URL = "https://vi.wikisource.org/w/index.php?oldid=205132&action=raw"   # Truyện Kiều trên Wikisource, ghim một phiên bản
+yc = urllib.request.Request(URL, headers={"User-Agent": "ai-and-robotics-handbook/1.0 (giao trinh hoc AI)"})
+tho = urllib.request.urlopen(yc).read().decode("utf-8")
+than = tho.split("<poem>")[1].split("</poem>")[0]                       # phần thơ nằm giữa hai thẻ poem
+cau = [re.sub(r"\{\{số\|\d+\}\}", "", d).strip() for d in than.splitlines()]   # bỏ số thứ tự câu dạng {{số|5}}
+cau = [c for c in cau if c]
+print(len(cau), cau[0], "/", cau[1])
+print(sum(len(c.split()) == (6 if k % 2 == 0 else 8) for k, c in enumerate(cau)))   # câu lẻ 6 tiếng, câu chẵn 8 tiếng
+```
+
+```text title="Output"
+3254 Trăm năm trong cõi người ta, / Chữ tài chữ mệnh khéo là ghét nhau.
+3254
+```
+
+Đủ 3254 câu, và **cả 3254** đúng nhịp 6-8 (đếm tiếng bằng số khoảng trắng). Mã nguồn trang Wikisource có đánh dấu riêng (`<poem>`, `{{số|5}}` mỗi 5 câu); phần lớn công sức làm dữ liệu thật là những dòng gỡ rác như thế.
+
+Wikisource từ chối yêu cầu không có `User-Agent` (lỗi 403); quy định của Wikimedia yêu cầu công cụ tự động tự giới thiệu.
+
+## Ký tự thành số
+
+Mỗi ký tự khác nhau nhận một số. Chia theo **vị trí**: 90% đầu để học, 10% cuối (đoạn kết truyện) để đánh giá. Không xáo trộn, vì với chuỗi, xáo trộn từng ký tự sẽ để mô hình thấy đoạn "tương lai" trong lúc học (rò rỉ, Chương 9).
+
+```python
+import math
+van = "\n".join(cau) + "\n"                    # ký tự xuống dòng cũng là một ký tự phải đoán
+chu = sorted(set(van))                         # bảng ký tự
+so = {c: i for i, c in enumerate(chu)}
+du_lieu = torch.tensor([so[c] for c in van])
+cat = int(0.9 * len(du_lieu))
+tr, va = du_lieu[:cat], du_lieu[cat:]
+print(len(van), len(chu), len(tr), len(va))
+dem = torch.bincount(tr, minlength=len(chu)).float()
+print(round(math.log(len(chu)), 3), round(-torch.log(dem[va] / dem.sum()).mean().item(), 3))
+```
+
+```text title="Output"
+104204 132 93783 10421
+4.883 3.59
+```
+
+104 204 ký tự, 132 ký tự khác nhau: chữ hoa, chữ thường, mỗi tổ hợp chữ và dấu thanh như "ờ" hay "ữ" là một ký tự riêng, cộng dấu câu, khoảng trắng và xuống dòng. Hai mốc so sánh cho loss (cross-entropy, Chương 11) trên tập val:
+
+- **Đoán đều** 132 ký tự: $\ln 132 = 4{,}883$.
+- **Đoán theo tần suất** (khoảng trắng hay gặp hơn "ỹ"), không nhìn ngữ cảnh: 3,59.
+
+Mô hình phải xuống dưới 3,59 mới gọi là học được gì đó từ ngữ cảnh.
+
+## Mô hình và huấn luyện
+
+Một lớp `Embedding` cho 132 ký tự, một LSTM 256 chiều, một lớp `Linear` ra 132 lớp ở **mọi** bước. Mỗi bước huấn luyện lấy 64 đoạn ngẫu nhiên dài 128 ký tự; đích là chính đoạn đó lệch sang phải 1 ký tự. Có kẹp gradient (trang 2, 3), và cứ 100 bước đo loss trên toàn bộ 10 421 ký tự val, giữ lại bản tốt nhất (dừng sớm, Chương 26).
+
+```python
+import copy
+
+class MoHinhKyTu(nn.Module):
+    def __init__(self, V, H=256):
+        super().__init__()
+        self.nhung = nn.Embedding(V, 64)
+        self.lstm = nn.LSTM(64, H, batch_first=True)
+        self.ra = nn.Linear(H, V)
+    def forward(self, x, tt=None):             # tt: trạng thái (h, c) mang từ lần gọi trước, dùng khi sinh
+        h, tt = self.lstm(self.nhung(x), tt)
+        return self.ra(h), tt                  # nhiều thành nhiều: đoán ký tự tiếp theo ở mọi bước
+
+def loss_val(m):
+    m.eval()
+    with torch.no_grad():
+        lg, _ = m(va[:-1].unsqueeze(0))        # cả tập val như một chuỗi dài
+    m.train()
+    return ce(lg[0], va[1:]).item()
+
+torch.manual_seed(0)
+m = MoHinhKyTu(len(chu))
+opt = torch.optim.Adam(m.parameters(), lr=3e-3)
+g = torch.Generator().manual_seed(1)
+L, B = 128, 64
+tot_nhat, ban_tot = float("inf"), None
+for b in range(1, 1001):
+    i = torch.randint(0, len(tr) - L - 1, (B,), generator=g)   # 64 vị trí bắt đầu ngẫu nhiên
+    x = torch.stack([tr[j:j + L] for j in i])
+    y = torch.stack([tr[j + 1:j + L + 1] for j in i])         # đích: cùng đoạn, lệch phải 1 ký tự
+    lg, _ = m(x)
+    opt.zero_grad()
+    ce(lg.reshape(-1, len(chu)), y.reshape(-1)).backward()     # loss trung bình trên 64 x 128 bài đoán
+    nn.utils.clip_grad_norm_(m.parameters(), 1.0)
+    opt.step()
+    if b % 100 == 0:
+        l = loss_val(m)
+        print(b, round(l, 3))
+        if l < tot_nhat:                       # giữ bản có loss val thấp nhất
+            tot_nhat, ban_tot = l, copy.deepcopy(m.state_dict())
+m.load_state_dict(ban_tot)
+print(sum(p.numel() for p in m.parameters()), round(tot_nhat, 3), round(math.exp(tot_nhat), 2))
+```
+
+```text title="Output"
+100 1.887
+200 1.703
+300 1.622
+400 1.586
+500 1.567
+600 1.576
+700 1.586
+800 1.627
+900 1.677
+1000 1.725
+372100 1.567 4.79
+```
+
+Khoảng 100 giây trên CPU 16 nhân. Trong Colab có thể bật GPU (Runtime, Change runtime type) cho nhanh hơn; các số ở chữ số cuối có thể lệch một chút so với trang này. Loss val giảm từ 1,887 xuống **1,567** ở bước 500, xa dưới cả hai mốc, rồi **tăng lại** tới 1,725 ở bước 1000. Đường quen thuộc của overfitting (Chương 13): 372 100 tham số với chỉ 93 783 ký tự train, mô hình bắt đầu học thuộc những đoạn cụ thể. Bản được giữ lại là bản ở bước 500.
+
+$e^{1{,}567} = 4{,}79$ gọi là **perplexity**: trung bình, mô hình phân vân như thể đang chọn đều giữa khoảng 4,8 ký tự, thay vì 132.
+
+## Sinh thơ
+
+Hàm sinh đưa đoạn mở đầu vào một lần, rồi lặp: chia logit cho **nhiệt độ**, softmax, lấy mẫu một ký tự, đưa riêng ký tự đó vào cùng trạng thái `tt` vừa có (không phải đọc lại cả đoạn từ đầu, đó là lợi thế của RNN).
+
+```python
+def sinh(m, dau, n, nhiet, seed=0):
+    torch.manual_seed(seed)
+    m.eval()
+    ra = dau
+    with torch.no_grad():
+        lg, tt = m(torch.tensor([[so[c] for c in dau]]))
+        for _ in range(n):
+            p = torch.softmax(lg[0, -1] / nhiet, dim=0)   # nhiệt độ: chia logit trước softmax
+            k = torch.multinomial(p, 1)                 # lấy mẫu một ký tự theo xác suất p
+            ra += chu[k.item()]
+            lg, tt = m(k.view(1, 1), tt)               # chỉ đưa ký tự mới, mang theo trạng thái
+    return ra
+
+print(sinh(m, "Trăm năm trong cõi người ta,\n", 300, 0.8))
+```
+
+```text title="Output"
+Trăm năm trong cõi người ta,
+Có lâu mây thấy thảy vào,
+Xuân thu khuyết thấy xuân tàn,
+Máu suy lại gió con đọng thâm.
+Nàng rằng: Hiếc dắc vạnh thì thôi!
+Li liều vâng tấm thì bời,
+Dưới rưung đủ đã rõ rầm nghe thuy,
+Trong thuyền ví lắm chi nàng thân.
+Dặm nghe viện trả, trong này,
+Sởn nghe nàng cũng này trời mai.
+Bây giờ sách nhớ c
+```
+
+Đọc kỹ để thấy mô hình học được gì từ 94 nghìn ký tự, không ai dạy:
+
+- **Chính tả tiếng Việt** gần như đúng: "xuân thu", "liều", "thuyền", "bây giờ". Vài chỗ sai ("Hiếc dắc", "rưung") vì nó ghép từng ký tự, không biết từ là gì.
+- **Hình thức thơ**: mỗi dòng viết hoa chữ đầu, một dòng kết bằng dấu phẩy rồi dòng sau kết bằng dấu chấm ("Xuân thu khuyết thấy xuân tàn," rồi "Máu suy lại gió con đọng thâm."), và nhiều chỗ một câu 6 tiếng đi trước một câu 8 tiếng ("Li liều vâng tấm thì bời," rồi "Dưới rưung đủ đã rõ rầm nghe thuy,"). Nhịp chưa đều: ngay câu thứ hai đã có 6 tiếng thay vì 8.
+- **Từ vựng và giọng** của Truyện Kiều: "Nàng rằng:", "thuyền", "trời".
+
+Thứ nó **không** có là nghĩa: không câu nào có nghĩa trọn vẹn. Trạng thái 256 số không đủ, và dữ liệu không đủ, để học điều đó.
+
+## Nhiệt độ
+
+Nhiệt độ $\tau$ chia logit trước softmax: $p_i \propto e^{z_i / \tau}$. $\tau < 1$ làm phân phối **nhọn** hơn (ký tự có xác suất cao càng được chọn nhiều), $\tau > 1$ làm nó **phẳng** hơn. Xem hai đầu:
+
+```python
+for nhiet in (0.2, 1.2):
+    print(nhiet, sinh(m, "Trăm năm trong cõi người ta,\n", 150, nhiet).split("\n")[1:4])
+```
+
+```text title="Output"
+0.2 ['Cho nghe nghe những nghĩa cho người cho thang.', 'Chàng chi chẳng thấy một ngày một người.', 'Nghĩ lời nghĩ chẳng thiệt đào,']
+1.2 ['Ôi lây mẹ Giám tình.', 'Bay giờ mực, cóm nhi thân,', 'Trước nào phục tủi việt tinh,']
+```
+
+Ở 0,2, mọi tiếng đều là tiếng thật, nhưng mô hình bám vào những tiếng hay gặp nhất và **lặp**: "nghe nghe", ba lần "cho" trong một câu, "một ngày một người". Câu đầu dài tới 10 tiếng vì cứ lặp mãi trước khi xuống dòng. Ở 1,2 thì ngược lại: xuất hiện tiếng không có trong Truyện Kiều ("cóm"), và câu đầu chỉ 5 tiếng.
+
+Đo trên 3000 ký tự sinh ra ở mỗi nhiệt độ: tỷ lệ dòng có đúng 6 hoặc 8 tiếng, tỷ lệ tiếng (bỏ dấu câu, viết thường) có xuất hiện trong Truyện Kiều, và số dòng chép **nguyên văn** một câu của Truyện Kiều:
+
+```python
+tieng_kieu = {w.strip(",.;:!?\"'").lower() for c in cau for w in c.split()}   # mọi tiếng có trong Truyện Kiều
+for nhiet in (0.2, 0.5, 0.8, 1.2):
+    dong = sinh(m, "Trăm năm trong cõi người ta,\n", 3000, nhiet).split("\n")[1:-1]   # bỏ câu mở đầu và dòng dở cuối
+    so_tieng = [len(d.split()) for d in dong]
+    tieng = [w.strip(",.;:!?\"'").lower() for d in dong for w in d.split()]
+    print(nhiet, len(dong), round(sum(s in (6, 8) for s in so_tieng) / len(dong), 3),
+          round(sum(w in tieng_kieu for w in tieng) / len(tieng), 3), sum(d in cau for d in dong))
+```
+
+```text title="Output"
+0.2 80 0.637 0.998 0
+0.5 85 0.741 0.984 0
+0.8 91 0.571 0.929 0
+1.2 95 0.663 0.816 0
+```
+
+**Bảng 29.3.** Văn sinh ra theo nhiệt độ, mỗi dòng đo trên 3000 ký tự.
+
+| Nhiệt độ | Số dòng | Dòng đúng 6 hoặc 8 tiếng | Tiếng có trong Truyện Kiều | Dòng chép nguyên văn |
+|---:|---:|---:|---:|---:|
+| 0,2 | 80 | 63,7% | 99,8% | 0 |
+| 0,5 | 85 | **74,1%** | 98,4% | 0 |
+| 0,8 | 91 | 57,1% | 92,9% | 0 |
+| 1,2 | 95 | 66,3% | 81,6% | 0 |
+
+Tỷ lệ tiếng có thật giảm đều khi nhiệt độ tăng: từ 99,8% xuống 81,6%, tức ở nhiệt độ 1,2 cứ khoảng 5 tiếng có một tiếng không có trong Truyện Kiều. Tỷ lệ đúng nhịp thì không đơn điệu; với khoảng 80 tới 95 dòng mỗi lần đo, chênh lệch vài điểm phần trăm còn nhiều nhiễu, nên chỉ nên đọc xu hướng lớn. Không lần nào có dòng chép nguyên văn: mô hình không học thuộc từng câu, nó ghép ra câu mới. Trong mọi API của LLM (Chương 48), tham số `temperature` chính là con số này.
+
+<TuKiemTra
+	cauHoi="Với nhiệt độ τ tiến về 0, hàm sinh ở trên trở thành gì?"
+	luaChon={['Lấy mẫu đều trong 132 ký tự', 'Luôn chọn ký tự có xác suất cao nhất (argmax)', 'Không đổi, vì softmax không phụ thuộc thang đo', 'Báo lỗi chia cho 0 ngay khi τ nhỏ hơn 1']}
+	dapAn={1}
+	giaiThich="Chia logit cho τ rất nhỏ làm khoảng cách giữa logit lớn nhất và các logit khác lớn vô cùng, softmax dồn gần hết xác suất vào ký tự lớn nhất: lấy mẫu thành argmax (sinh tham lam). τ = 0 đúng nghĩa thì chia cho 0, nên code thực tế xử lý riêng trường hợp này bằng argmax."
+/>
+
+<Khung loai="loi">
+**Chia train và val bằng cách xáo trộn các đoạn.** Hai đoạn 128 ký tự lấy ngẫu nhiên từ cùng một văn bản chồng lên nhau rất nhiều. Nếu đoạn val chồng lên đoạn train, loss val thấp giả tạo. Với chuỗi, chia theo vị trí: một khúc liền để học, một khúc liền khác để đánh giá.
+
+**Đọc lại cả đoạn mỗi lần sinh một ký tự.** Gọi `m(toàn_bộ_chuỗi)` ở mỗi bước cho cùng kết quả nhưng chậm dần theo độ dài. Mang trạng thái `tt` theo và chỉ đưa ký tự mới vào. Transformer không có trạng thái gọn như vậy và cần một cơ chế riêng (bộ nhớ đệm khóa và giá trị, Chương 57) để khỏi tính lại.
+
+**Quên `m.eval()` khi đo và sinh.** Mô hình ở trang này không có dropout nên kết quả không đổi, nhưng thêm `dropout` vào LSTM (tham số `dropout=` khi có nhiều lớp) thì quên `eval()` sẽ làm loss val và văn sinh ra ồn hơn thật.
+</Khung>

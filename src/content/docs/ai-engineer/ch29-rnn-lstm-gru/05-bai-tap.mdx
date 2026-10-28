@@ -1,0 +1,93 @@
+---
+title: Bài tập
+description: "Ba bài tập RNN có đáp án chi tiết (đếm 54 272 tham số của LSTM hai lớp, LSTM nhớ được ký hiệu đầu qua 100 bước với 99,9% sau 1500 bước, tính xác suất theo nhiệt độ bằng tay) và câu hỏi phỏng vấn."
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Đoán trước, rồi chạy code trong notebook để kiểm tra. Code dùng lại `nn`, `huan_luyen` của trang 3.
+
+<BaiTap so="29.1">
+**LSTM hai lớp.** `nn.LSTM(16, 64, num_layers=2, batch_first=True)` nhận một lô `x` shape `(8, 20, 16)`. Shape của `ra`, `h_n`, `c_n` là gì, và mạng có bao nhiêu tham số?
+
+<Fragment slot="dap-an">
+
+```python
+lstm2 = nn.LSTM(16, 64, num_layers=2, batch_first=True)
+ra, (h_n, c_n) = lstm2(torch.randn(8, 20, 16))
+print(ra.shape, h_n.shape, c_n.shape)
+print(sum(p.numel() for p in lstm2.parameters()), [(n, p.numel()) for n, p in lstm2.named_parameters() if "weight" in n])
+```
+
+```text title="Output"
+torch.Size([8, 20, 64]) torch.Size([2, 8, 64]) torch.Size([2, 8, 64])
+54272 [('weight_ih_l0', 4096), ('weight_hh_l0', 16384), ('weight_ih_l1', 16384), ('weight_hh_l1', 16384)]
+```
+
+`ra` là đầu ra ở mọi bước của **lớp trên cùng**: `(8, 20, 64)`. `h_n` và `c_n` là trạng thái cuối của **từng lớp**: chiều đầu bằng 2. Lớp thứ nhất nhận vector 16 số nên `weight_ih_l0` là $4 \times 64 \times 16 = 4096$; lớp thứ hai nhận đầu ra 64 số của lớp thứ nhất nên `weight_ih_l1` là $4 \times 64 \times 64 = 16\,384$, bằng `weight_hh`. Cộng bias ($4 \times 64 \times 2 = 512$ mỗi lớp): $4096 + 16\,384 + 512 + 16\,384 + 16\,384 + 512 = 54\,272$.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="29.2">
+**Nhớ qua 100 bước.** Trang 3 dùng chuỗi 50 bước. Chạy `huan_luyen(nn.LSTM, bias_cong=3.0, kep=1.0, T=100)`: chuỗi dài gấp đôi, cùng 1500 bước huấn luyện. Đoán xem độ chính xác cuối còn bao nhiêu.
+
+<Fragment slot="dap-an">
+
+```python
+huan_luyen(nn.LSTM, bias_cong=3.0, kep=1.0, T=100)
+```
+
+```text title="Output"
+LSTM 3.0 1.0 [0.327, 0.518, 0.668, 0.814, 0.975, 0.999] 1168.3
+```
+
+Vẫn học được: 99,9% sau 1500 bước. Nhưng chậm hơn hẳn chuỗi 50 bước: ở bước 500 mới 51,8% (chuỗi 50 bước đã 98,3%), tới bước 1250 mới vượt 97%. Với cổng quên trung bình 0,953, tín hiệu từ bước 1 phải qua gấp đôi số van, nên yếu đi nhiều hơn trước khi về tới đó (kết quả đo ở trang 3 cho thấy gradient về bước đầu từ 0,067 ở 50 bước còn 0,044 ở 100 bước, với mạng chưa huấn luyện). Gradient lớn nhất trước khi kẹp cũng tăng lên 1168: chuỗi dài hơn thì những cú vọt mạnh hơn, và kẹp gradient càng cần. Một RNN thường với chuỗi 100 bước thì như trang 2 đã đo: gradient về bước đầu đúng bằng 0, không có gì để học.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="29.3">
+**Nhiệt độ bằng tay.** Một mô hình cho logit $[2, 1, 0]$ cho ba ký tự. Tính xác suất của từng ký tự ở nhiệt độ 1; 0,5; 2.
+
+<Fragment slot="dap-an">
+
+Ở $\tau = 1$: $e^2 : e^1 : e^0 = 7{,}389 : 2{,}718 : 1$, tổng 11,107, nên xác suất là 0,665; 0,245; 0,090. Ở $\tau = 0{,}5$, logit thành $[4, 2, 0]$; ở $\tau = 2$, thành $[1; 0{,}5; 0]$.
+
+```python
+z = torch.tensor([2.0, 1.0, 0.0])
+for nhiet in (1.0, 0.5, 2.0):
+    print(nhiet, [round(v, 3) for v in torch.softmax(z / nhiet, 0).tolist()])
+```
+
+```text title="Output"
+1.0 [0.665, 0.245, 0.09]
+0.5 [0.867, 0.117, 0.016]
+2.0 [0.506, 0.307, 0.186]
+```
+
+Hạ nhiệt độ xuống 0,5 đẩy ký tự đứng đầu từ 66,5% lên 86,7%, ký tự cuối từ 9% xuống 1,6%: mô hình "chắc chắn" hơn và ít khi chọn ký tự hiếm. Tăng lên 2 thì ba ký tự gần nhau hơn (50,6%, 30,7%, 18,6%): văn sinh ra đa dạng hơn nhưng nhiều tiếng lạ hơn, đúng như bảng 29.3. Thứ tự của ba ký tự không bao giờ đổi, chỉ khoảng cách giữa chúng.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Vì sao RNN khó học phụ thuộc xa, và LSTM sửa điều đó thế nào?**
+
+<p lang="en"><em>Why do vanilla RNNs struggle with long-range dependencies, and how does an LSTM address this?</em></p>
+
+*Gợi ý:* lan ngược qua thời gian nhân gradient với cùng $W_h$ và đạo hàm tanh ở mỗi bước, nên nó co hoặc nổ theo cấp số nhân. LSTM có ô nhớ cập nhật bằng phép cộng $c_t = f_t \odot c_{t-1} + i_t \odot g_t$; khi cổng quên gần 1, gradient đi theo đường đó gần như không bị co. Nhắc mẹo khởi tạo bias cổng quên dương.
+
+**2. Kẹp gradient là gì, đặt ở đâu trong vòng huấn luyện?**
+
+<p lang="en"><em>What is gradient clipping and where does it go in the training loop?</em></p>
+
+*Gợi ý:* co cả vector gradient về độ dài tối đa $c$ nếu nó dài hơn, giữ hướng; đặt giữa `backward()` và `step()`. Chống gradient nổ, không chữa gradient biến mất.
+
+**3. Vì sao Transformer thay thế RNN trong NLP?**
+
+<p lang="en"><em>Why have Transformers replaced RNNs in NLP?</em></p>
+
+*Gợi ý:* RNN phải tính tuần tự từng bước nên không tận dụng được GPU khi huấn luyện; thông tin giữa hai vị trí xa phải đi qua nhiều bước. Attention nối trực tiếp mọi cặp vị trí và tính song song. Đổi lại, Transformer tốn bộ nhớ theo bình phương độ dài chuỗi, còn RNN có trạng thái cỡ cố định khi sinh.
+</Khung>

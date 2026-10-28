@@ -1,0 +1,122 @@
+---
+title: Dữ liệu chuỗi và RNN
+description: "Văn bản, chuỗi thời gian, âm thanh có thứ tự và độ dài thay đổi. RNN đọc từng bước, giữ một trạng thái ẩn và dùng chung trọng số qua mọi bước: 36 tham số đọc được chuỗi 5 bước hay 500 bước. Tự cài vòng lặp RNN, khớp nn.RNN tới từng số."
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+<CanBietTruoc>
+Vòng huấn luyện PyTorch, `nn.Module`, `DataLoader` (Chương 25). Gradient biến mất, khởi tạo, kẹp gradient (Chương 26). Dùng chung trọng số trong tích chập (Chương 27).
+
+<Fragment slot="sau-chuong">
+Biết RNN xử lý chuỗi thế nào và tự cài được nó. Đo được vì sao RNN thường quên những gì ở xa và vì sao gradient có thể nổ. Dùng LSTM và GRU cho chuỗi dài. Huấn luyện một mô hình ngôn ngữ ký tự trên Truyện Kiều và cho nó sinh thơ lục bát.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch29_rnn_lstm_gru.ipynb" />
+
+## Dữ liệu có thứ tự
+
+Mọi bộ dữ liệu từ đầu giáo trình tới giờ đều có một đặc điểm: mỗi mẫu là một vector hoặc một ảnh **cỡ cố định**, và thứ tự các cột không mang nghĩa (đổi chỗ hai cột của bảng nhà ở không làm đổi bài toán). Rất nhiều dữ liệu thật không như vậy:
+
+- **Văn bản**: chuỗi ký tự hoặc chuỗi từ. "Chó cắn người" và "người cắn chó" có cùng ba từ, khác nghĩa.
+- **Chuỗi thời gian**: giá cổ phiếu, nhiệt độ, tín hiệu cảm biến của robot theo từng mili giây.
+- **Âm thanh**: hàng chục nghìn mẫu biên độ mỗi giây.
+
+Hai tính chất chung: **thứ tự quan trọng**, và **độ dài thay đổi** (câu này 5 từ, câu kia 50 từ). Một MLP (Chương 23) cần đầu vào cỡ cố định và học trọng số riêng cho từng vị trí: từ "người" ở vị trí 1 và ở vị trí 3 là hai đặc trưng không liên quan gì đến nhau.
+
+## Đọc từng bước, nhớ bằng một vector
+
+Ý tưởng của <Term id="rnn">RNN</Term> (recurrent neural network, mạng hồi quy) giống cách ta đọc: đọc từng phần tử $x_1, x_2, \dots, x_T$ theo thứ tự, và giữ một vector **trạng thái ẩn** $h_t$ tóm tắt những gì đã đọc tới bước $t$. Ở mỗi bước, trạng thái mới tính từ phần tử hiện tại và trạng thái cũ:
+
+$$
+h_t = \tanh\big(W_x x_t + W_h h_{t-1} + b\big), \qquad h_0 = 0
+$$
+
+Điều quan trọng: $W_x$, $W_h$, $b$ **dùng chung cho mọi bước**. Tích chập dùng chung một bộ lọc cho mọi vị trí trong ảnh (Chương 27); RNN dùng chung một bộ trọng số cho mọi thời điểm trong chuỗi. Nhờ vậy số tham số không phụ thuộc độ dài chuỗi, và một mẫu học được ở đầu câu dùng được ở cuối câu.
+
+PyTorch có sẵn `nn.RNN`. Đưa vào 2 chuỗi, mỗi chuỗi 5 bước, mỗi bước là một vector 3 số; trạng thái ẩn 4 chiều:
+
+```python
+import torch
+import torch.nn as nn
+torch.manual_seed(0)
+rnn = nn.RNN(input_size=3, hidden_size=4, batch_first=True)   # batch_first: shape (lô, bước, đặc trưng)
+x = torch.randn(2, 5, 3)                       # 2 chuỗi, 5 bước, 3 đặc trưng mỗi bước
+ra, h_cuoi = rnn(x)
+print(ra.shape, h_cuoi.shape)
+print([(n, tuple(p.shape)) for n, p in rnn.named_parameters()])
+```
+
+```text title="Output"
+torch.Size([2, 5, 4]) torch.Size([1, 2, 4])
+[('weight_ih_l0', (4, 3)), ('weight_hh_l0', (4, 4)), ('bias_ih_l0', (4,)), ('bias_hh_l0', (4,))]
+```
+
+`nn.RNN` trả về hai thứ. `ra` có shape `(2, 5, 4)`: trạng thái ẩn $h_t$ ở **mọi** bước. `h_cuoi` có shape `(1, 2, 4)`: chỉ trạng thái ở bước cuối, chiều đầu tiên là số lớp RNN chồng lên nhau (ở đây 1). Tham số đúng như công thức: `weight_ih_l0` là $W_x$ (4 nhân 3), `weight_hh_l0` là $W_h$ (4 nhân 4). PyTorch dùng hai vector bias thay vì một, cộng lại thì như một $b$.
+
+## Tự cài vòng lặp
+
+Để chắc đã hiểu đúng, tự viết vòng lặp theo công thức với chính các trọng số của `rnn`, rồi so:
+
+```python
+h = torch.zeros(2, 4)                          # h_0 = 0 cho cả 2 chuỗi
+cac_h = []
+for t in range(5):                             # đọc lần lượt từng bước
+    h = torch.tanh(x[:, t] @ rnn.weight_ih_l0.T + rnn.bias_ih_l0 + h @ rnn.weight_hh_l0.T + rnn.bias_hh_l0)
+    cac_h.append(h)
+tu_cai = torch.stack(cac_h, dim=1)             # (2, 5, 4) như ra
+print(torch.allclose(tu_cai, ra, atol=1e-6), torch.allclose(h, h_cuoi[0], atol=1e-6))
+```
+
+```text title="Output"
+True True
+```
+
+Khớp. `nn.RNN` không làm gì bí ẩn: chỉ là vòng `for` này, viết bằng C++ cho nhanh. Vòng lặp cũng cho thấy điểm yếu về tốc độ của RNN: bước $t$ phải đợi bước $t - 1$ xong, nên không thể tính song song theo thời gian như tích chập. Đây là một lý do lớn khiến Transformer (Chương 44) thay thế RNN trên GPU.
+
+Số tham số không đổi theo độ dài chuỗi:
+
+```python
+print(sum(p.numel() for p in rnn.parameters()), rnn(torch.randn(2, 500, 3))[0].shape)
+```
+
+```text title="Output"
+36 torch.Size([2, 500, 4])
+```
+
+Cùng 36 tham số ($4 \times 3 + 4 \times 4 + 4 + 4$) đọc chuỗi 500 bước bình thường.
+
+## Ba kiểu bài toán chuỗi
+
+`ra` chứa đầu ra ở mọi bước, `h_cuoi` chỉ có bước cuối. Dùng cái nào tùy bài toán:
+
+**Bảng 29.1.** Các kiểu bài toán chuỗi.
+
+| Kiểu | Đầu vào | Đầu ra | Ví dụ | Dùng |
+|:---|:---|:---|:---|:---|
+| Nhiều thành một | cả chuỗi | một nhãn | phân loại cảm xúc một bình luận (Chương 41) | `h_cuoi`, hoặc `ra[:, -1]` |
+| Nhiều thành nhiều, cùng độ dài | cả chuỗi | một nhãn mỗi bước | gán nhãn từ loại (Chương 42), đoán ký tự tiếp theo (trang 4) | `ra` |
+| Chuỗi sang chuỗi | một chuỗi | một chuỗi khác độ dài | dịch máy (Chương 43) | hai RNN: mã hóa và giải mã |
+
+Trang 3 làm bài nhiều thành một, trang 4 làm bài nhiều thành nhiều. Muốn biết RNN có thật sự nhớ được không, trước hết phải xem gradient đi qua thời gian như thế nào (trang 2).
+
+<TuKiemTra
+	cauHoi="nn.RNN(input_size=10, hidden_size=20) có bao nhiêu tham số?"
+	luaChon={['200', '420', '640', 'Tùy độ dài chuỗi']}
+	dapAn={2}
+	giaiThich="W_x có shape (20, 10) là 200 số, W_h có shape (20, 20) là 400 số, hai bias mỗi cái 20 số. Tổng 200 + 400 + 20 + 20 = 640, không phụ thuộc độ dài chuỗi vì trọng số dùng chung cho mọi bước."
+/>
+
+<Khung loai="loi">
+**Quên `batch_first=True`.** Mặc định `nn.RNN`, `nn.LSTM`, `nn.GRU` nhận shape `(bước, lô, đặc trưng)`, ngược với `DataLoader`. Đưa tensor `(32, 100, 8)` vào mà không đặt `batch_first=True` thì mạng hiểu là 32 bước, mỗi bước 100 chuỗi: không báo lỗi gì, chỉ học sai.
+
+**Nhầm shape của `h_cuoi`.** Nó là `(số lớp, lô, ẩn)`, không phải `(lô, ẩn)`. Đưa thẳng vào `nn.Linear` thì ra shape `(1, lô, số lớp ra)` và lỗi ở hàm loss. Dùng `h_cuoi[-1]` (lớp trên cùng) hoặc `ra[:, -1]`.
+
+**Chuỗi khác độ dài trong một lô.** Tensor phải chữ nhật, nên các chuỗi ngắn được **đệm** (padding) thêm ký hiệu rỗng ở cuối cho bằng chuỗi dài nhất. Khi đó `ra[:, -1]` của chuỗi ngắn là trạng thái sau khi đọc toàn ký hiệu rỗng. Cách sửa: lấy trạng thái tại đúng độ dài thật, hoặc dùng `nn.utils.rnn.pack_padded_sequence` (Chương 41).
+</Khung>

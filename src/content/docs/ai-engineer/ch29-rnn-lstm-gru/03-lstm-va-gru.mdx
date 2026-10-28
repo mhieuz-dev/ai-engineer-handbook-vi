@@ -1,0 +1,206 @@
+---
+title: LSTM và GRU
+description: "LSTM thêm một ô nhớ cập nhật bằng phép cộng và ba cổng; GRU gọn hơn với hai cổng. Bài nhớ ký hiệu đầu của chuỗi 50 bước: RNN, LSTM, GRU khởi tạo mặc định kẹt ở 10% sau 1500 bước, còn LSTM và GRU có bias cổng bằng 3 đạt 100%. Kẹp gradient chặn cú vọt 140 lần làm độ chính xác rơi."
+---
+
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Ô nhớ cập nhật bằng phép cộng
+
+Vấn đề của RNN nằm ở chỗ trạng thái mới được tính **lại từ đầu** ở mỗi bước: $h_t = \tanh(W_x x_t + W_h h_{t-1} + b)$. Thông tin cũ chỉ sống sót nếu đi qua phép nhân $W_h$ và tanh lần này qua lần khác.
+
+<Term id="lstm">LSTM</Term> (long short-term memory, Hochreiter và Schmidhuber, 1997; cổng quên thêm vào năm 2000) giữ thêm một vector thứ hai, **ô nhớ** $c_t$, và cập nhật nó bằng **phép cộng**:
+
+$$
+c_t = f_t \odot c_{t-1} + i_t \odot g_t, \qquad h_t = o_t \odot \tanh(c_t)
+$$
+
+trong đó $\odot$ là nhân từng phần tử, và bốn vector mới cùng tính từ $x_t$ và $h_{t-1}$:
+
+$$
+\begin{aligned}
+f_t &= \sigma(W_f [x_t, h_{t-1}] + b_f) && \text{cổng quên: giữ bao nhiêu phần của } c_{t-1} \\
+i_t &= \sigma(W_i [x_t, h_{t-1}] + b_i) && \text{cổng vào: ghi bao nhiêu thông tin mới} \\
+g_t &= \tanh(W_g [x_t, h_{t-1}] + b_g) && \text{thông tin mới đề xuất} \\
+o_t &= \sigma(W_o [x_t, h_{t-1}] + b_o) && \text{cổng ra: cho bao nhiêu phần của ô nhớ ra ngoài}
+\end{aligned}
+$$
+
+Mỗi **cổng** là một sigmoid (Chương 11), cho số trong $(0, 1)$: 0 là đóng, 1 là mở. Khi cổng quên $f_t$ gần 1 và cổng vào $i_t$ gần 0, ô nhớ đi qua bước $t$ **gần như nguyên vẹn**: $c_t \approx c_{t-1}$. Đạo hàm theo con đường thẳng đó là $\partial c_t / \partial c_{t-1} = f_t$, không có $W_h$ hay tanh nào nhân vào. Đây là cùng ý tưởng với kết nối tắt của ResNet (Chương 28): một đường cao tốc cho gradient, chỉ khác là có một cái van $f_t$ mà mạng tự học cách mở hay đóng.
+
+<Term id="gru">GRU</Term> (gated recurrent unit, Cho và cộng sự, 2014) gọn hơn: không có ô nhớ riêng, chỉ hai cổng. Cổng **cập nhật** $z_t$ trộn trạng thái cũ với trạng thái mới đề xuất $n_t$:
+
+$$
+h_t = (1 - z_t) \odot n_t + z_t \odot h_{t-1}
+$$
+
+$z_t$ gần 1 thì giữ nguyên $h_{t-1}$, đúng vai trò cổng quên của LSTM. Cổng thứ hai, cổng **đặt lại** $r_t$, quyết định dùng bao nhiêu phần của $h_{t-1}$ khi tính $n_t$.
+
+Bốn phép biến đổi tuyến tính thay vì một thì số tham số gấp bốn; GRU có ba:
+
+```python
+for loai in (nn.RNN, nn.LSTM, nn.GRU):
+    print(loai.__name__, sum(p.numel() for p in loai(8, 32).parameters()))
+```
+
+```text title="Output"
+RNN 1344
+LSTM 5376
+GRU 4032
+```
+
+$5376 = 4 \times 1344$ và $4032 = 3 \times 1344$. Trong PyTorch, trọng số của các cổng nằm chung một tensor: `weight_ih_l0` của LSTM có shape `(4 * 32, 8)`, bốn khối theo thứ tự `i, f, g, o`; của GRU là ba khối `r, z, n`.
+
+## Khởi tạo mặc định không cứu được
+
+LSTM có đường cao tốc, vậy gradient đi được bao xa? Dùng lại `do_grad` của trang 2:
+
+```python
+H = 32
+for b in (0.0, 1.0, 3.0):
+    torch.manual_seed(0)
+    lstm = nn.LSTM(8, H, batch_first=True)
+    with torch.no_grad():
+        lstm.bias_ih_l0[H:2 * H] += b          # khối thứ hai của bias là cổng quên (thứ tự i, f, g, o)
+    f = torch.sigmoid(lstm.bias_ih_l0[H:2 * H] + lstm.bias_hh_l0[H:2 * H]).mean().item()
+    print(b, round(f, 3), [f"{do_grad(lstm, T)[0].item():.1e}" for T in (2, 10, 20, 50, 100)])
+```
+
+```text title="Output"
+0.0 0.507 ['2.3e-01', '1.7e-03', '2.2e-05', '2.7e-11', '7.1e-22']
+1.0 0.736 ['3.4e-01', '2.4e-02', '5.8e-03', '5.3e-05', '1.7e-09']
+3.0 0.953 ['4.3e-01', '1.9e-01', '2.6e-01', '6.7e-02', '4.4e-02']
+```
+
+Dòng đầu là LSTM y như PyTorch tạo ra: gradient về bước đầu của chuỗi 100 bước là $7{,}1 \times 10^{-22}$, **chẳng hơn RNN là bao**. Cột thứ hai giải thích vì sao: PyTorch khởi tạo bias gần 0, nên cổng quên lúc đầu là $\sigma(0) \approx 0{,}5$, và $0{,}5^{100}$ thì vẫn là 0. Đường cao tốc có đó, nhưng van mới mở một nửa.
+
+Cộng thêm 1 vào bias cổng quên (lời khuyên của Jozefowicz, Zaremba và Sutskever, 2015; Keras làm sẵn điều này) thì cổng quên trung bình 0,736 khi chưa tính phần đóng góp của đầu vào. Cộng 3 thì 0,953, và gradient sau 100 bước vẫn còn 0,044: **gấp khoảng $10^{20}$ lần**. Đường cam trên hình 29.1 ở trang 2 là đường này. Ta mới chỉ đổi giá trị ban đầu của 32 con số; mạng vẫn tự học lại các cổng trong lúc huấn luyện.
+
+## Bài nhớ ký hiệu đầu tiên
+
+Một bài kiểm tra trí nhớ thuần túy: mỗi chuỗi gồm $T$ ký hiệu ngẫu nhiên từ 0 tới 9, nhãn là **ký hiệu đầu tiên**. Mạng chỉ thấy câu trả lời ở bước 1, rồi phải giữ nó qua $T - 1$ ký hiệu nhiễu.
+
+```python
+def tao_lo(n, T, g):                           # n chuỗi T ký hiệu 0..9 ngẫu nhiên, nhãn là ký hiệu đầu tiên
+    X = torch.randint(0, 10, (n, T), generator=g)
+    return X, X[:, 0].clone()
+
+X, y = tao_lo(2, 12, torch.Generator().manual_seed(0))
+print(X.tolist(), y.tolist())
+```
+
+```text title="Output"
+[[4, 9, 3, 0, 3, 9, 7, 3, 7, 3, 1, 6], [6, 9, 8, 6, 6, 8, 4, 3, 6, 9, 1, 4]] [4, 6]
+```
+
+Đoán bừa được 10%. Mô hình: mỗi ký hiệu đi qua một lớp `nn.Embedding` (bảng tra 10 vector 16 số, học được; Chương 40 nói kỹ), rồi một lớp hồi quy 64 chiều, rồi `Linear` đọc trạng thái ở bước cuối (kiểu nhiều thành một, bảng 29.1). Mỗi bước huấn luyện sinh một lô **mới**, nên mạng không thể học thuộc tập train; cuối mỗi 250 bước đo độ chính xác trên 2000 chuỗi test cố định. Hàm huấn luyện cũng ghi lại độ dài gradient lớn nhất từng gặp.
+
+```python
+class Nho(nn.Module):
+    def __init__(self, loai, bias_cong=0.0):
+        super().__init__()
+        self.nhung = nn.Embedding(10, 16)      # mỗi ký hiệu 0..9 thành một vector 16 số học được
+        self.loi = loai(16, 64, batch_first=True)
+        self.ra = nn.Linear(64, 10)
+        if bias_cong:                          # LSTM: cổng quên f; GRU: cổng cập nhật z (thứ tự r, z, n)
+            with torch.no_grad():
+                self.loi.bias_ih_l0[64:128] += bias_cong
+    def forward(self, x):
+        ra, _ = self.loi(self.nhung(x))
+        return self.ra(ra[:, -1])              # nhiều thành một: chỉ dùng trạng thái ở bước cuối
+
+ce = nn.CrossEntropyLoss()
+
+def huan_luyen(loai, bias_cong=0.0, kep=None, T=50, so_buoc=1500):
+    torch.manual_seed(0)
+    m = Nho(loai, bias_cong)
+    opt = torch.optim.Adam(m.parameters(), lr=1e-3)
+    g = torch.Generator().manual_seed(1)
+    Xte, yte = tao_lo(2000, T, torch.Generator().manual_seed(2))
+    acc, g_max = [], 0.0
+    for b in range(1, so_buoc + 1):
+        x, y = tao_lo(64, T, g)                # mỗi bước một lô mới, không lặp lại
+        opt.zero_grad()
+        ce(m(x), y).backward()
+        do_dai = nn.utils.clip_grad_norm_(m.parameters(), kep or float("inf"))   # kep=None: chỉ đo, không kẹp
+        g_max = max(g_max, do_dai.item())
+        opt.step()
+        if b % 250 == 0:                       # độ chính xác trên 2000 chuỗi test sau mỗi 250 bước
+            with torch.no_grad():
+                acc.append(round((m(Xte).argmax(1) == yte).float().mean().item(), 3))
+    print(loai.__name__, bias_cong, kep, acc, round(g_max, 1))
+
+for loai in (nn.RNN, nn.LSTM, nn.GRU):
+    huan_luyen(loai)
+```
+
+```text title="Output"
+RNN 0.0 None [0.105, 0.094, 0.091, 0.1, 0.101, 0.095] 0.6
+LSTM 0.0 None [0.101, 0.087, 0.097, 0.101, 0.101, 0.102] 0.2
+GRU 0.0 None [0.101, 0.089, 0.099, 0.1, 0.096, 0.102] 0.3
+```
+
+Cả ba kẹt ở 10% suốt 1500 bước (khoảng 10 giây với RNN, lâu hơn với GRU). Gradient lớn nhất từng gặp chỉ 0,2 tới 0,6: tín hiệu "ký hiệu đầu là 4" không về tới bước 1, nên mạng không có gì để học, và cách tốt nhất nó tìm được là đoán đều 10 lớp. Giờ chỉ đổi bias của cổng quên (LSTM) hoặc cổng cập nhật (GRU) lúc khởi tạo:
+
+```python
+huan_luyen(nn.LSTM, bias_cong=3.0)
+huan_luyen(nn.GRU, bias_cong=3.0)
+```
+
+```text title="Output"
+LSTM 3.0 None [0.746, 0.867, 0.988, 1.0, 0.899, 1.0] 140.0
+GRU 3.0 None [0.231, 0.999, 1.0, 1.0, 1.0, 1.0] 53.2
+```
+
+**Bảng 29.2.** Độ chính xác test của bài nhớ ký hiệu đầu, chuỗi 50 bước, sau 1500 bước huấn luyện.
+
+| Mạng | Khởi tạo | Bước 500 | Bước 1000 | Bước 1500 | Gradient lớn nhất |
+|:---|:---|---:|---:|---:|---:|
+| RNN | mặc định | 9,4% | 10,0% | 9,5% | 0,6 |
+| LSTM | mặc định | 8,7% | 10,1% | 10,2% | 0,2 |
+| GRU | mặc định | 8,9% | 10,0% | 10,2% | 0,3 |
+| LSTM | bias cổng quên +3 | 86,7% | 100% | 100% | 140,0 |
+| GRU | bias cổng cập nhật +3 | 99,9% | 100% | 100% | 53,2 |
+
+Cùng kiến trúc, cùng dữ liệu, cùng optimizer; khác nhau duy nhất ở 64 con số ban đầu. Mạng không phải không thể nhớ, nó chỉ cần bắt đầu ở chỗ mà gradient đi được về bước 1. Chạy lâu hơn nhiều thì đôi khi mạng khởi tạo mặc định cũng thoát ra được, nhưng thời điểm thoát khó đoán; ở đây cả năm mạng được so trong cùng 1500 bước.
+
+## Kẹp gradient trên mạng thật
+
+Dòng LSTM có bias +3 còn một điểm lạ: đạt 100% ở bước 1000 rồi **rơi xuống 89,9%** ở bước 1250, và gradient lớn nhất từng gặp là 140, trong khi ngay trước đó, quanh bước 1150, độ dài gradient chỉ dưới 0,2. Đây đúng là gradient nổ của trang 2. Thêm kẹp ở 1,0:
+
+```python
+huan_luyen(nn.LSTM, bias_cong=3.0, kep=1.0)
+```
+
+```text title="Output"
+LSTM 3.0 1.0 [0.697, 0.983, 0.999, 1.0, 0.994, 0.994] 723.6
+```
+
+Ở bước 1250, độ chính xác là 99,4% thay vì 89,9%. Số 723,6 là độ dài gradient **trước** khi kẹp: lần chạy này còn gặp gradient lớn hơn, nhưng mỗi lần như vậy bước cập nhật chỉ dài bằng một gradient độ dài 1.
+
+<HinhKetQua src="/hinh/ch29/h2_kep_gradient.svg" alt="Hai khung chung trục ngang là bước huấn luyện từ 0 tới 1500. Khung trên: độ dài gradient trước khi kẹp, thang log từ 0,01 tới vài trăm, đường xanh không kẹp và đường cam kẹp ở 1,0 đều dao động mạnh, có những cú vọt lên trên 100. Khung dưới: độ chính xác test đo mỗi 50 bước, cả hai đường tăng từ khoảng 0,3 lên gần 1 trong 700 bước đầu. Đường xanh không kẹp rơi xuống 0,87 ở bước 500, 0,91 ở bước 900 và 0,88 ở bước 1200. Đường cam kẹp gradient không có cú rơi nào dưới 0,96 sau bước 500." so="29.2" chuThich="LSTM có bias cổng quên +3 trên bài nhớ ký hiệu đầu, chuỗi 50 bước, cùng khởi tạo và cùng thứ tự lô; chỉ khác có kẹp gradient ở 1,0 hay không. Độ chính xác đo dày hơn đoạn code ở trên (mỗi 50 bước thay vì 250), việc đo không đổi quá trình huấn luyện.">
+Ở bước 1194, gradient của lần chạy không kẹp vọt từ dưới 0,2 lên 140. Sáu bước sau, độ chính xác rơi từ 100% xuống 87,8%, và mất khoảng 100 bước để hồi lại. Lần chạy có kẹp cũng gặp những cú vọt như vậy (khung trên, đường cam), nhưng độ chính xác không rơi. Đây là lý do code huấn luyện RNN, LSTM, GRU gần như luôn có một dòng `clip_grad_norm_`.
+</HinhKetQua>
+
+<TuKiemTra
+	cauHoi="Với GRU của PyTorch, h_t = (1 - z_t) ⊙ n_t + z_t ⊙ h_{t-1}. Muốn mạng mặc định giữ thông tin lâu ngay từ đầu huấn luyện, bạn đẩy bias của cổng z theo hướng nào?"
+	luaChon={['Âm, để z gần 0', 'Dương, để z gần 1', 'Để 0, vì z = 0,5 là cân bằng', 'Không liên quan, chỉ cổng r quyết định']}
+	dapAn={1}
+	giaiThich="z gần 1 thì h_t gần bằng h_{t-1}: trạng thái cũ đi qua gần nguyên vẹn, và đạo hàm theo con đường đó gần 1. Đó là lý do bias_cong=3 cộng vào khối z (khối thứ hai trong thứ tự r, z, n). Đẩy z về 0 thì GRU thành một RNN quên ngay ở mỗi bước."
+/>
+
+## Dùng gì ngày nay
+
+Trong NLP, Transformer (Chương 44) đã thay RNN gần như hoàn toàn từ khoảng 2018: nó xử lý mọi vị trí cùng lúc trên GPU, và mọi vị trí nhìn thấy nhau trực tiếp thay vì qua một chuỗi dài các bước. RNN vẫn có chỗ đứng khi dữ liệu đến **từng bước theo thời gian thực** (tín hiệu cảm biến, âm thanh trực tuyến): mỗi bước chỉ tốn một phép tính với bộ nhớ cố định, không phải nhìn lại toàn bộ lịch sử. Một họ mô hình mới hơn, mô hình không gian trạng thái như Mamba (Gu và Dao, 2023), đưa ý tưởng hồi quy trở lại với những cải tiến để huấn luyện song song được.
+
+Khi chọn giữa hai loại, GRU ít tham số hơn và thường chạy nhanh hơn; LSTM là lựa chọn mặc định lâu đời hơn. Trên nhiều bài, hai loại cho kết quả gần nhau; thử cả hai trên dữ liệu của bạn là cách chắc chắn nhất.
+
+<Khung loai="loi">
+**`ra, h = lstm(x)` rồi dùng `h` như một tensor.** LSTM trả về `(ra, (h_n, c_n))`: phần tử thứ hai là một **cặp** gồm trạng thái ẩn và ô nhớ. RNN và GRU thì trả về một tensor. Viết `ra, (h, c) = lstm(x)` cho rõ.
+
+**Sửa nhầm khối bias.** Thứ tự các khối khác nhau giữa các loại: LSTM là `i, f, g, o`, GRU là `r, z, n`. Với ẩn 64, `bias_ih_l0[64:128]` là cổng quên của LSTM nhưng là cổng cập nhật của GRU. Chép code khởi tạo từ một thư viện khác (Keras, JAX) sang PyTorch mà không kiểm thứ tự là lỗi khó thấy: không báo gì, chỉ học kém.
+</Khung>
