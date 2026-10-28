@@ -588,3 +588,23 @@
   tenTiengAnh: language model
   giaiThich: Mô hình ngôn ngữ cho xác suất của phần tử tiếp theo (ký tự, từ hoặc token) khi biết các phần tử trước đó. Lấy mẫu lần lượt từ xác suất đó sinh ra văn bản mới. Mọi LLM như GPT đều là mô hình ngôn ngữ rất lớn.
   hocKy: ai-engineer/ch29-rnn-lstm-gru
+- id: autoencoder
+  ten: Autoencoder
+  tenTiengAnh: autoencoder
+  giaiThich: Autoencoder gồm một bộ mã hóa nén đầu vào thành một vector ngắn (mã) và một bộ giải mã dựng lại đầu vào từ mã đó. Nó được huấn luyện để đầu ra giống đầu vào, nên không cần nhãn; nút thắt buộc mã phải giữ những gì quan trọng nhất.
+  hocKy: ai-engineer/ch30-autoencoder-vae
+- id: khong-gian-an
+  ten: Không gian ẩn
+  tenTiengAnh: latent space
+  giaiThich: Không gian ẩn là không gian của các mã mà một mô hình như autoencoder hay VAE gán cho dữ liệu. Các điểm gần nhau trong không gian ẩn thường ứng với dữ liệu giống nhau; giải mã một điểm trong đó cho ra một mẫu dữ liệu.
+  hocKy: ai-engineer/ch30-autoencoder-vae
+- id: vae
+  ten: VAE
+  tenTiengAnh: variational autoencoder
+  giaiThich: VAE là một autoencoder mà bộ mã hóa cho ra một phân phối chuẩn (trung bình và phương sai) thay vì một điểm, và loss có thêm một số hạng KL kéo phân phối đó về phân phối chuẩn tắc. Nhờ vậy lấy mẫu từ phân phối chuẩn tắc rồi giải mã sẽ ra dữ liệu mới.
+  hocKy: ai-engineer/ch30-autoencoder-vae
+- id: kl-divergence
+  ten: KL divergence
+  tenTiengAnh: Kullback-Leibler divergence
+  giaiThich: KL divergence đo một phân phối xác suất khác một phân phối khác bao nhiêu, bằng kỳ vọng của hiệu log mật độ. Nó luôn không âm, bằng 0 khi hai phân phối trùng nhau, và không đối xứng. VAE dùng nó để kéo phân phối của mã về phân phối chuẩn tắc.
+  hocKy: ai-engineer/ch30-autoencoder-vae

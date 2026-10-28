@@ -1,0 +1,150 @@
+---
+title: VAE
+description: "Muốn sinh ảnh mới thì phải biết lấy mã ở đâu. VAE cho bộ mã hóa ra một phân phối chuẩn, lấy mẫu bằng mẹo tái tham số hóa, và phạt KL divergence để mọi phân phối gần N(0, I). Kiểm công thức KL bằng 100 000 mẫu (2,5677 so với 2,5691). Mã 2 số của VAE gom quanh gốc và tách chữ số tốt hơn: kNN 66,3%."
+---
+
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Muốn sinh ảnh thì lấy mã ở đâu
+
+Bộ giải mã biến 2 số thành một ảnh. Vậy chọn đại 2 số, giải mã, là có một chữ số **mới**? Vấn đề là "chọn đại" ở đâu. Trang 2 đã thấy mã của autoencoder nằm lệch, trải rộng, không theo hình dạng nào biết trước. Giữa các cụm còn có những vùng **không có ảnh train nào**; bộ giải mã chưa bao giờ được dạy phải vẽ gì ở đó, nên giải mã một điểm trong vùng đó thường ra một vệt mờ vô nghĩa. Trang 4 đo điều này: lấy mã ngẫu nhiên theo phân phối chuẩn tắc rồi giải mã bằng autoencoder, chỉ 0,7% ảnh ra trông giống chữ số.
+
+<Term id="vae">VAE</Term> (variational autoencoder, Kingma và Welling, 2013) sửa điều này bằng cách **buộc** không gian ẩn có một hình dạng biết trước: phân phối chuẩn tắc $\mathcal{N}(0, I)$ (Chương 7). Khi đó, sinh ảnh mới chỉ cần lấy $z \sim \mathcal{N}(0, I)$ rồi giải mã.
+
+## Mã hóa thành một phân phối
+
+Thay vì một điểm $z$, bộ mã hóa của VAE cho ra **hai** vector cho mỗi ảnh: trung bình $\mu(x)$ và log phương sai $\log \sigma^2(x)$. Mã của ảnh là một **phân phối** $\mathcal{N}(\mu, \sigma^2)$, một đám mây nhỏ quanh $\mu$. Mỗi lần huấn luyện, lấy một mẫu $z$ từ đám mây đó rồi giải mã. Bộ giải mã vì vậy phải vẽ được ảnh đúng cho **cả vùng** quanh $\mu$, không chỉ một điểm.
+
+Lấy mẫu là một thao tác ngẫu nhiên; gradient đi qua nó thế nào? **Mẹo tái tham số hóa**: viết
+
+$$
+z = \mu + \sigma \odot \varepsilon, \qquad \varepsilon \sim \mathcal{N}(0, I), \qquad \sigma = e^{\frac{1}{2}\log \sigma^2}
+$$
+
+Tính ngẫu nhiên nằm hết trong $\varepsilon$, không phụ thuộc tham số nào; $z$ là một hàm khả vi của $\mu$ và $\sigma$, nên autograd lan ngược qua được như mọi phép tính khác. Kiểm tra rằng cách lấy mẫu này cho đúng phân phối:
+
+```python
+mu, log_var = torch.tensor([1.0, -2.0]), torch.tensor([0.0, -2.0])
+torch.manual_seed(0)
+z = mu + torch.exp(0.5 * log_var) * torch.randn(100000, 2)   # mẹo tái tham số hóa
+print([round(v, 3) for v in z.mean(0).tolist()], [round(v, 3) for v in z.std(0).tolist()], round(torch.exp(torch.tensor(-1.0)).item(), 3))
+```
+
+```text title="Output"
+[0.998, -2.002] [0.998, 0.369] 0.368
+```
+
+Với $\mu = (1, -2)$ và $\log \sigma^2 = (0, -2)$, 100 000 mẫu có trung bình $(0{,}998;\ -2{,}002)$ và độ lệch chuẩn $(0{,}998;\ 0{,}369)$, khớp với $\sigma = (e^0, e^{-1}) = (1;\ 0{,}368)$. Lý do dùng $\log \sigma^2$ thay vì $\sigma$: lớp `Linear` cho ra số bất kỳ, kể cả số âm; $e^{\frac{1}{2}\log\sigma^2}$ thì luôn dương.
+
+## KL divergence
+
+Nếu chỉ có vậy, bộ mã hóa sẽ "gian lận": cho $\sigma$ về gần 0 (đám mây thành một điểm, hết nhiễu) và đặt $\mu$ ở bất cứ đâu, quay về autoencoder thường. VAE thêm vào loss một số hạng phạt mỗi phân phối $q = \mathcal{N}(\mu, \sigma^2)$ nếu nó khác $p = \mathcal{N}(0, 1)$, đo bằng <Term id="kl-divergence">KL divergence</Term>:
+
+$$
+\mathrm{KL}(q \,\Vert\, p) = \mathbb{E}_{z \sim q}\big[\log q(z) - \log p(z)\big]
+$$
+
+KL luôn không âm, và bằng 0 khi và chỉ khi $q = p$. Với hai phân phối chuẩn một chiều, kỳ vọng này có công thức đóng:
+
+$$
+\mathrm{KL}\big(\mathcal{N}(\mu, \sigma^2) \,\Vert\, \mathcal{N}(0, 1)\big) = \tfrac{1}{2}\big(\sigma^2 + \mu^2 - 1 - \log \sigma^2\big)
+$$
+
+cộng theo từng chiều của $z$. Kiểm công thức bằng chính định nghĩa: trung bình của $\log q(z) - \log p(z)$ trên 100 000 mẫu $z$ vừa lấy.
+
+```python
+from torch.distributions import Normal
+kl_cong_thuc = 0.5 * (log_var.exp() + mu ** 2 - 1 - log_var)
+q, p = Normal(mu, torch.exp(0.5 * log_var)), Normal(0.0, 1.0)
+kl_mc = (q.log_prob(z) - p.log_prob(z)).mean(0)              # ước lượng bằng 100 000 mẫu
+print([round(v, 4) for v in kl_cong_thuc.tolist()], [round(v, 4) for v in kl_mc.tolist()])
+```
+
+```text title="Output"
+[0.5, 2.5677] [0.4976, 2.5691]
+```
+
+Khớp tới chữ số thứ hai (sai lệch còn lại là do ước lượng bằng mẫu). Đọc công thức: số hạng $\mu^2$ kéo trung bình về 0; số hạng $\sigma^2 - 1 - \log\sigma^2$ nhỏ nhất (bằng 0) khi $\sigma = 1$, và tăng vô hạn khi $\sigma \to 0$. Hai lực ngược nhau: số hạng tái tạo muốn mỗi ảnh có một đám mây nhỏ, riêng biệt (dễ vẽ lại đúng); KL muốn mọi đám mây to như $\mathcal{N}(0, 1)$ và chồng lên nhau ở gốc. Kết quả là các đám mây lấp kín một vùng quanh gốc, không để lại khoảng trống.
+
+## Huấn luyện một VAE
+
+Loss của mỗi ảnh = sai số tái tạo + KL. Sai số tái tạo ở đây là binary cross-entropy (Chương 11) **cộng trên 784 điểm ảnh**, coi mỗi điểm ảnh là xác suất "có mực"; bộ giải mã ra logit, không có `Sigmoid`. Cùng một lớp `VAE` có tham số `bien_phan`: đặt `False` thì $z = \mu$, không nhiễu, không KL, tức một autoencoder thường cùng kiến trúc, để trang 4 so sánh công bằng.
+
+```python
+import torch.nn.functional as F
+
+class VAE(nn.Module):
+    def __init__(self, k, bien_phan=True):    # bien_phan=False: autoencoder thường, cùng kiến trúc
+        super().__init__()
+        self.ma_hoa = nn.Sequential(nn.Linear(784, 256), nn.ReLU())
+        self.mu = nn.Linear(256, k)
+        self.log_var = nn.Linear(256, k)
+        self.giai_ma = nn.Sequential(nn.Linear(k, 256), nn.ReLU(), nn.Linear(256, 784))   # ra logit
+        self.bien_phan = bien_phan
+    def forward(self, x):
+        h = self.ma_hoa(x)
+        mu, log_var = self.mu(h), self.log_var(h)
+        z = mu + torch.exp(0.5 * log_var) * torch.randn_like(mu) if self.bien_phan else mu
+        return self.giai_ma(z), mu, log_var
+
+def loss_vae(m, x):                            # trả về (tái tạo, KL), cùng tính trên mỗi ảnh
+    logit, mu, log_var = m(x)
+    tai_tao = F.binary_cross_entropy_with_logits(logit, x, reduction="sum") / len(x)
+    kl = 0.5 * (log_var.exp() + mu ** 2 - 1 - log_var).sum() / len(x) if m.bien_phan else torch.tensor(0.0)
+    return tai_tao, kl
+
+def huan_luyen_vae(m, so_epoch):
+    torch.manual_seed(1)
+    dl = DataLoader(TensorDataset(Xtr), batch_size=128, shuffle=True)
+    opt = torch.optim.Adam(m.parameters(), lr=1e-3)
+    for ep in range(so_epoch):
+        m.train()
+        for (xb,) in dl:
+            tai_tao, kl = loss_vae(m, xb)
+            opt.zero_grad()
+            (tai_tao + kl).backward()
+            opt.step()
+    m.eval()
+    with torch.no_grad():
+        tai_tao, kl = loss_vae(m, Xte)
+    print(round(tai_tao.item(), 1), round(kl.item(), 1))
+
+torch.manual_seed(0)
+vae2 = VAE(2)
+huan_luyen_vae(vae2, 10)
+with torch.no_grad():
+    mu_tr, mu_te = vae2.mu(vae2.ma_hoa(Xtr)), vae2.mu(vae2.ma_hoa(Xte))
+print([round(v, 2) for v in mu_te.mean(0).tolist()], [round(v, 2) for v in mu_te.std(0).tolist()])
+print(round(KNeighborsClassifier(5).fit(mu_tr.numpy(), ytr.numpy()).score(mu_te.numpy(), yte.numpy()), 4))
+```
+
+```text title="Output"
+151.3 5.6
+[0.31, 0.08] [1.17, 1.39]
+0.6625
+```
+
+Sau 10 epoch: sai số tái tạo 151,3 và KL 5,6 (đơn vị nat, trên mỗi ảnh test). Tổng 156,9 có một ý nghĩa: nó là một **chặn trên** của $-\log p(x)$, độ "bất ngờ" của mô hình trước một ảnh thật. Loss của VAE chính là âm của đại lượng gọi là ELBO (evidence lower bound), và tối ưu nó là cực đại một chặn dưới của log-likelihood. Đây là lý do VAE được gọi là mô hình **sinh xác suất**: nó gán được xác suất cho dữ liệu.
+
+Hai dòng sau là mã $\mu$ của 10 000 ảnh test: trung bình $(0{,}31;\ 0{,}08)$, độ lệch chuẩn $(1{,}17;\ 1{,}39)$, so với $(3{,}39;\ -2{,}82)$ và $(4{,}84;\ 3{,}5)$ của autoencoder ở trang 2. KL đã kéo mã về quanh gốc với thang đo cỡ 1. Bất ngờ là kNN trên mã của VAE còn **tốt hơn**: 66,3% so với 55,3%.
+
+<HinhKetQua src="/hinh/ch30/h1_khong_gian_an.svg" alt="Hai biểu đồ phân tán của 3000 ảnh test trong không gian ẩn 2 chiều, mỗi chữ số một màu, có nhãn số ở giữa mỗi cụm. Bên trái, autoencoder: trục ngang từ khoảng -8 tới 18, trục đứng từ -12 tới 10; các số 0, 1, 6, 2 chụm ở bên trái gần gốc, các số 4, 7, 9 trải rộng sang phải và lên trên. Bên phải, VAE: các điểm nằm trong khoảng -3 tới 4, phần lớn bên trong một vòng tròn đứt nét bán kính 2 quanh gốc; cụm số 1 là một dải ngang riêng ở phía dưới, quanh z2 bằng -3." so="30.1" chuThich="Không gian ẩn 2 chiều của autoencoder (trang 1, 5 epoch) và VAE (10 epoch), 3000 ảnh test đầu tiên. Với VAE vẽ trung bình mu của mỗi ảnh. Vòng đứt nét là bán kính 2 của N(0, I), nơi chứa khoảng 86% khối lượng xác suất.">
+Chú ý thang đo hai trục khác nhau nhiều: bên trái trải hơn 25 đơn vị, bên phải khoảng 7. Không gian của VAE gọn quanh gốc và không có vùng trống lớn giữa các cụm, đúng thứ cần để lấy mẫu từ N(0, I). Nhưng nó không phải một hình tròn hoàn hảo: cụm số 1 nằm hẳn ra ngoài vòng bán kính 2, và các số 4, 7, 9 chồng lên nhau ở giữa. Với chỉ 2 chiều, KL không thể kéo hết về đúng N(0, I) mà vẫn giữ đủ thông tin để tái tạo.
+</HinhKetQua>
+
+<TuKiemTra
+	cauHoi="Nếu bỏ số hạng KL khỏi loss nhưng vẫn lấy mẫu z = mu + sigma * epsilon, VAE sẽ học được gì?"
+	luaChon={['Vẫn đúng một VAE, vì vẫn có lấy mẫu', 'Đẩy sigma về gần 0 để bỏ nhiễu, và mu nằm đâu cũng được: gần như một autoencoder thường', 'Sigma tiến tới vô cùng', 'Không học được gì vì gradient bằng 0']}
+	dapAn={1}
+	giaiThich="Nhiễu chỉ làm tái tạo tệ hơn, nên khi không có gì phạt, mạng sẽ cho log_var rất âm, sigma gần 0, và z gần bằng mu. Không có KL kéo mu về gốc, mã lại nằm tùy ý như trang 2. KL là thứ cho VAE không gian ẩn có hình dạng biết trước."
+/>
+
+<Khung loai="loi">
+**Lấy trung bình loss tái tạo trên điểm ảnh thay vì cộng.** `F.binary_cross_entropy_with_logits(..., reduction="mean")` chia thêm cho 784, làm số hạng tái tạo nhỏ đi 784 lần so với KL. KL thắng áp đảo, mọi ảnh bị mã hóa gần như giống nhau và bộ giải mã chỉ vẽ ra một ảnh trung bình mờ. Hai số hạng phải cùng thang: cộng trên điểm ảnh và trên chiều của $z$, rồi chia cho số ảnh, như ở trên.
+
+**Dùng một mẫu $z$ khi cần mã của một ảnh.** Lấy mẫu là để huấn luyện và để sinh. Khi cần biểu diễn của một ảnh (kNN, vẽ hình, nội suy), dùng $\mu$, không có nhiễu.
+</Khung>

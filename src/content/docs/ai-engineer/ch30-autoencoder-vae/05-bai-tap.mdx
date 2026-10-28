@@ -1,0 +1,107 @@
+---
+title: Bài tập
+description: "Ba bài tập autoencoder và VAE có đáp án chi tiết (autoencoder tuyến tính đạt 0,0170, sát PCA 0,0168; tính KL bằng tay; sinh riêng số 7 bằng cách lấy mẫu quanh mã trung bình, 997 trên 1000 ảnh ra số 7) và câu hỏi phỏng vấn."
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Đoán trước, rồi chạy code trong notebook để kiểm tra. Code dùng lại `huan_luyen_ae`, `vae16`, `cham`, `cham_diem` của các trang trước.
+
+<BaiTap so="30.1">
+**Autoencoder tuyến tính.** Bỏ hết ReLU và Sigmoid: bộ mã hóa chỉ là `nn.Linear(784, 32)`, bộ giải mã là `nn.Linear(32, 784)`. Huấn luyện 5 epoch như trang 1. Sai số tái tạo so với PCA 32 thành phần (0,0168) thế nào?
+
+<Fragment slot="dap-an">
+
+```python
+torch.manual_seed(0)
+ma_tt, giai_tt = nn.Linear(784, 32), nn.Linear(32, 784)
+print(huan_luyen_ae(ma_tt, giai_tt))
+```
+
+```text title="Output"
+0.017
+```
+
+0,0170, sát 0,0168 của PCA và kém xa 0,0081 của autoencoder có ReLU. Không có hàm kích hoạt, cả hai mạng chỉ là phép nhân ma trận, nên mã nằm trên một mặt phẳng 32 chiều; tốt nhất chúng làm được là tìm ra đúng mặt phẳng của PCA (Baldi và Hornik, 1989), và 5 epoch Adam đã gần tới đó. Chênh lệch nhỏ còn lại là do huấn luyện chưa hội tụ hẳn. Mọi phần hơn PCA ở trang 1 đến từ tính phi tuyến.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="30.2">
+**KL bằng tay.** Tính $\mathrm{KL}(\mathcal{N}(\mu, \sigma^2) \Vert \mathcal{N}(0, 1))$ cho ba trường hợp: $\mu = 0, \sigma = 1$; $\mu = 3, \sigma = 1$; $\mu = 0, \sigma = 0{,}1$. Trường hợp nào bị phạt nặng nhất?
+
+<Fragment slot="dap-an">
+
+Dùng $\tfrac{1}{2}(\sigma^2 + \mu^2 - 1 - \log\sigma^2)$:
+
+- $\mu = 0, \sigma = 1$: $\tfrac{1}{2}(1 + 0 - 1 - 0) = 0$. Trùng với $\mathcal{N}(0, 1)$, không bị phạt.
+- $\mu = 3, \sigma = 1$: $\tfrac{1}{2}(1 + 9 - 1 - 0) = 4{,}5$. Lệch tâm 3 độ lệch chuẩn.
+- $\mu = 0, \sigma = 0{,}1$: $\sigma^2 = 0{,}01$ và $\log \sigma^2 = -4{,}605$, nên $\tfrac{1}{2}(0{,}01 + 0 - 1 + 4{,}605) = 1{,}808$.
+
+```python
+import math
+for m, s in ((0.0, 1.0), (3.0, 1.0), (0.0, 0.1)):
+    print(m, s, round(0.5 * (s ** 2 + m ** 2 - 1 - math.log(s ** 2)), 3))
+```
+
+```text title="Output"
+0.0 1.0 0.0
+3.0 1.0 4.5
+0.0 0.1 1.808
+```
+
+Lệch tâm 3 bị phạt nặng nhất. Nhưng đám mây co còn $\sigma = 0{,}1$ cũng tốn 1,8 nat, và co tiếp thì phạt tăng mãi: $\sigma = 0{,}01$ tốn 4,1 nat, vì $-\log\sigma^2$ tiến tới vô cùng. Đây là thứ ngăn VAE thu mỗi mã về một điểm như autoencoder.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="30.3">
+**Sinh riêng một chữ số.** VAE ở trang 4 sinh chữ số bất kỳ. Không huấn luyện lại, làm sao để nó sinh chủ yếu số 7? Gợi ý: số 7 nằm ở đâu trong không gian ẩn?
+
+<Fragment slot="dap-an">
+
+Lấy mã $\mu$ của mọi ảnh số 7 trong tập train, đo trung bình và độ lệch chuẩn của chúng, rồi lấy mẫu quanh trung bình đó với một nửa độ lệch chuẩn:
+
+```python
+with torch.no_grad():
+    mu7 = vae16.mu(vae16.ma_hoa(Xtr[ytr == 7]))
+    z7 = mu7.mean(0) + 0.5 * mu7.std(0) * torch.randn(1000, 16, generator=torch.Generator().manual_seed(0))
+    anh7 = torch.sigmoid(vae16.giai_ma(z7))
+print(cham_diem(anh7))
+```
+
+```text title="Output"
+(0.974, [0, 0, 0, 0, 0, 2, 0, 997, 0, 1])
+```
+
+997 trên 1000 ảnh được CNN gọi là số 7, và CNN tin trên 90% ở 97,4% số ảnh, **cao hơn cả ảnh thật** (92,7%). Đừng vội mừng: lấy mẫu sát trung bình của các mã số 7 cho ra những số 7 "điển hình nhất", ít nét lạ; cái mất đi là độ đa dạng, thứ bộ chấm này không đo (khung lỗi trang 4). Thử tăng hệ số 0,5 lên 1 hoặc 1,5 rồi chấm lại để thấy đánh đổi giữa độ rõ và độ đa dạng. Muốn chọn lớp một cách đàng hoàng thì đưa nhãn vào cả bộ mã hóa lẫn bộ giải mã khi huấn luyện, gọi là VAE có điều kiện (conditional VAE).
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Autoencoder khác PCA thế nào?**
+
+<p lang="en"><em>How does an autoencoder differ from PCA?</em></p>
+
+*Gợi ý:* PCA là phép chiếu tuyến tính tối ưu theo sai số bình phương, có công thức đóng, các thành phần xếp theo phương sai. Autoencoder dùng mạng phi tuyến nên nén tốt hơn (trên MNIST, 32 số: 0,0081 so với 0,0168) nhưng phải huấn luyện, không có thứ tự thành phần. Autoencoder tuyến tính với sai số bình phương học đúng không gian con của PCA.
+
+**2. Giải thích mẹo tái tham số hóa trong VAE.**
+
+<p lang="en"><em>Explain the reparameterization trick in VAEs.</em></p>
+
+*Gợi ý:* viết $z = \mu + \sigma \odot \varepsilon$ với $\varepsilon \sim \mathcal{N}(0, I)$; tính ngẫu nhiên nằm trong $\varepsilon$ nên gradient lan ngược được qua $\mu$ và $\sigma$. Bộ mã hóa ra $\log\sigma^2$ để $\sigma$ luôn dương.
+
+**3. Vì sao ảnh của VAE thường mờ?**
+
+<p lang="en"><em>Why are VAE samples often blurry?</em></p>
+
+*Gợi ý:* loss tái tạo theo từng điểm ảnh (BCE hoặc MSE) và việc mỗi mã là cả một vùng làm bộ giải mã học vẽ ảnh trung bình của nhiều khả năng; trung bình của nhiều nét hơi lệch là một nét nhòe. GAN dùng một mạng phân biệt thay cho loss theo điểm ảnh; diffusion sinh qua nhiều bước khử nhiễu.
+
+**4. Dùng autoencoder để phát hiện bất thường thế nào, và điểm yếu là gì?**
+
+<p lang="en"><em>How would you use an autoencoder for anomaly detection, and what are its weaknesses?</em></p>
+
+*Gợi ý:* huấn luyện chỉ trên dữ liệu bình thường, chọn ngưỡng sai số tái tạo trên validation, báo bất thường khi vượt ngưỡng. Điểm yếu: bất thường "dễ vẽ lại" (như số 1 xoay 90 độ, chỉ 1% bị bắt) lọt qua, và ngưỡng là đánh đổi giữa bắt sót và báo nhầm.
+</Khung>

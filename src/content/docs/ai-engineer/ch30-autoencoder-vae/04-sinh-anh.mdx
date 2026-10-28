@@ -1,0 +1,119 @@
+---
+title: Sinh ảnh mới
+description: "Chấm 1000 ảnh sinh ra bằng một CNN 98,2%: ảnh thật được tin trên 90% ở 92,7% số ảnh. Autoencoder với z lấy từ N(0, I) chỉ 0,7%; VAE 36,5%. Nhưng autoencoder với z lấy từ một phân phối chuẩn khớp với mã sau khi huấn luyện đạt 40,8%: cái VAE cho là không gian ẩn biết trước, không phải ảnh đẹp hơn."
+---
+
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Chấm ảnh sinh ra bằng cách nào
+
+Nhìn bằng mắt vài ảnh thì dễ tự lừa mình. Cần một con số. Cách đơn giản: huấn luyện một CNN phân loại chữ số (đúng mạng của Chương 27), rồi hỏi nó về mỗi ảnh sinh ra. Nếu CNN tin chắc (xác suất lớp cao nhất trên 90%), ảnh có lẽ trông như một chữ số rõ ràng. Đếm thêm số ảnh theo từng lớp: một mô hình sinh tốt phải sinh đủ cả 10 chữ số, không chỉ một hai loại.
+
+```python
+torch.manual_seed(0)
+cham = nn.Sequential(nn.Conv2d(1, 16, 3, padding=1), nn.ReLU(), nn.MaxPool2d(2),
+                     nn.Conv2d(16, 32, 3, padding=1), nn.ReLU(), nn.MaxPool2d(2),
+                     nn.Flatten(), nn.Linear(32 * 7 * 7, 10))   # CNN của Chương 27
+torch.manual_seed(1)
+opt = torch.optim.Adam(cham.parameters(), lr=1e-3)
+for ep in range(2):
+    for xb, yb in DataLoader(TensorDataset(Xtr.view(-1, 1, 28, 28), ytr), batch_size=64, shuffle=True):
+        opt.zero_grad()
+        F.cross_entropy(cham(xb), yb).backward()
+        opt.step()
+cham.eval()
+
+def cham_diem(anh):                            # tỷ lệ ảnh CNN tin trên 90%, và số ảnh theo từng lớp
+    with torch.no_grad():
+        p = cham(anh.view(-1, 1, 28, 28)).softmax(1)
+    return round((p.max(1).values > 0.9).float().mean().item(), 3), torch.bincount(p.argmax(1), minlength=10).tolist()
+
+with torch.no_grad():
+    print(round((cham(Xte.view(-1, 1, 28, 28)).argmax(1) == yte).float().mean().item(), 4))
+print(cham_diem(Xte[:1000]))
+```
+
+```text title="Output"
+0.9817
+(0.927, [85, 125, 115, 111, 109, 84, 87, 98, 97, 89])
+```
+
+CNN đúng 98,2% trên test. Trên 1000 ảnh test thật, nó tin trên 90% ở **92,7%** số ảnh, và 10 lớp có từ 84 tới 125 ảnh: đây là mức trần mà ảnh sinh ra có thể mong đạt tới.
+
+## Hai mô hình 16 chiều
+
+Một autoencoder và một VAE, cùng kiến trúc (lớp `VAE` của trang 3, `bien_phan=False` cho autoencoder), cùng mã 16 số, cùng 20 epoch:
+
+```python
+torch.manual_seed(0)
+ae16 = VAE(16, bien_phan=False)                # autoencoder thường: z = mu, không KL
+huan_luyen_vae(ae16, 20)
+torch.manual_seed(0)
+vae16 = VAE(16)
+huan_luyen_vae(vae16, 20)
+```
+
+```text title="Output"
+72.1 0.0
+82.7 23.2
+```
+
+Autoencoder tái tạo tốt hơn: sai số 72,1 so với 82,7. Đó là cái giá của VAE: số hạng KL (23,2) kéo các mã về gần nhau, làm chúng mang ít thông tin riêng về từng ảnh hơn.
+
+## Ba cách lấy mẫu
+
+Cùng 1000 điểm $z \sim \mathcal{N}(0, I)$ cho cả ba cách. Cách thứ hai cho autoencoder một cơ hội công bằng hơn: đo trung bình và ma trận hiệp phương sai (Chương 7) của mã 60 000 ảnh train, rồi biến $z$ thành mẫu từ phân phối chuẩn có đúng trung bình và hiệp phương sai đó, qua phân rã Cholesky $\Sigma = L L^\top$ (nếu $z \sim \mathcal{N}(0, I)$ thì $L z + m \sim \mathcal{N}(m, \Sigma)$).
+
+```python
+with torch.no_grad():
+    z_ae = ae16.mu(ae16.ma_hoa(Xtr))           # mã của 60 000 ảnh train
+    z = torch.randn(1000, 16, generator=torch.Generator().manual_seed(0))   # 1000 điểm N(0, I)
+    L = torch.linalg.cholesky(torch.cov(z_ae.T))
+    cach = {"AE, z ~ N(0, I)": z,
+            "AE, z theo phân phối chuẩn khớp với mã": z @ L.T + z_ae.mean(0),
+            "VAE, z ~ N(0, I)": z}
+    for ten, zz in cach.items():
+        m = vae16 if ten.startswith("VAE") else ae16
+        print(ten, cham_diem(torch.sigmoid(m.giai_ma(zz))))
+```
+
+```text title="Output"
+AE, z ~ N(0, I) (0.007, [16, 79, 273, 73, 17, 365, 6, 168, 1, 2])
+AE, z theo phân phối chuẩn khớp với mã (0.408, [72, 23, 136, 169, 87, 122, 87, 110, 135, 59])
+VAE, z ~ N(0, I) (0.365, [64, 50, 140, 152, 101, 91, 82, 135, 108, 77])
+```
+
+**Bảng 30.3.** 1000 ảnh sinh ra, chấm bằng CNN.
+
+| Cách sinh | CNN tin trên 90% | Lớp ít nhất, nhiều nhất |
+|:---|---:|:---|
+| Ảnh thật (mức trần) | 92,7% | 84 và 125 |
+| Autoencoder, $z \sim \mathcal{N}(0, I)$ | 0,7% | 1 (số 8) và 365 (số 5) |
+| Autoencoder, $z$ theo phân phối chuẩn khớp với mã | **40,8%** | 23 và 169 |
+| VAE, $z \sim \mathcal{N}(0, I)$ | 36,5% | 50 và 152 |
+
+Dòng hai là lý do VAE ra đời: lấy mẫu bừa trong không gian ẩn của autoencoder gần như chỉ ra rác, và rác đó lệch hẳn về vài lớp. VAE với **cùng** các điểm $z$ đó cho 36,5% ảnh rõ ràng và đủ 10 lớp.
+
+Nhưng dòng ba là điều sách thường không kể: chỉ cần **đo** phân phối của mã sau khi huấn luyện xong rồi lấy mẫu từ đó, autoencoder thường đạt 40,8%, ngang hoặc hơn VAE trên thí nghiệm này. Đây không phải chuyện riêng của MNIST: Ghosh và cộng sự (2020, "From Variational to Deterministic Autoencoders") cho thấy autoencoder có điều chuẩn, cộng một bước ước lượng mật độ của mã sau khi huấn luyện, sinh ảnh tốt ngang hoặc hơn VAE trên nhiều bộ dữ liệu ảnh.
+
+Vậy VAE hơn ở đâu? Ở chỗ nó là một mô hình xác suất **trọn vẹn ngay từ đầu**: không gian ẩn có hình dạng biết trước mà không cần bước đo thêm, loss là một chặn của log-likelihood nên so được các mô hình với nhau (trang 3), và mỗi ảnh có một độ bất định $\sigma$ đi kèm mã. Những tính chất đó là lý do VAE vẫn có mặt trong các hệ thống lớn: Stable Diffusion dùng một VAE để nén ảnh 512 nhân 512 xuống một lưới mã nhỏ hơn 8 lần mỗi chiều, rồi mới chạy diffusion trong không gian nhỏ đó (Rombach và cộng sự, 2022).
+
+<HinhKetQua src="/hinh/ch30/h2_sinh_anh.svg" alt="Lưới ảnh 5 hàng, mỗi hàng 10 ảnh chữ số 28 nhân 28. Hàng 1, ảnh thật: 7, 2, 1, 0, 4, 1, 4, 9, 5, 9 nét rõ. Hàng 2, autoencoder với z lấy từ N(0, I): các vệt xám nhạt, gần như không đọc được chữ số nào. Hàng 3, autoencoder với phân phối khớp: nét đậm, đọc được vài chữ số như 2, 7, 4, nhưng nhiều ảnh méo hoặc ghép hai nét. Hàng 4, VAE với z lấy từ N(0, I): nét mờ hơn ở viền, đọc được 0, 1, 2, 7, 8, 6. Hàng 5, nội suy của VAE từ một số 3 sang một số 8: nét chuyển dần, phần trên của số 3 khép lại thành vòng của số 8." so="30.2" chuThich="Mười ảnh đầu tiên của mỗi cách sinh trong bảng 30.3 (cùng 10 điểm z cho hàng 2, 3, 4), và hàng cuối là giải mã 10 điểm cách đều trên đoạn thẳng nối mã mu của ảnh số 3 đầu tiên và ảnh số 8 đầu tiên trong tập test.">
+Hàng 2 cho thấy chữ "lỗ hổng" ở trang 3 nghĩa là gì: những điểm đó nằm ở chỗ bộ giải mã của autoencoder chưa từng được dạy, và nó vẽ ra một vệt xám. Ảnh của VAE mờ ở viền: bộ giải mã học vẽ ảnh **trung bình** của cả một vùng mã, và trung bình của nhiều nét hơi lệch nhau là một nét nhòe. Ảnh mờ là điểm yếu nổi tiếng của VAE; GAN và diffusion (Chương 31) ra đời một phần để sửa nó. Hàng cuối: đi thẳng trong không gian ẩn cho các ảnh chuyển dần từ chữ số này sang chữ số kia, các ảnh ở giữa vẫn là những nét liền, không phải hai ảnh chồng mờ lên nhau như khi trộn điểm ảnh.
+</HinhKetQua>
+
+<TuKiemTra
+	cauHoi="Với autoencoder, cách lấy mẫu thứ hai (phân phối chuẩn khớp với mã) cần thêm thứ gì mà VAE không cần?"
+	luaChon={['Nhãn của ảnh train', 'Một lượt đưa toàn bộ ảnh train qua bộ mã hóa để đo trung bình và hiệp phương sai của mã', 'Một CNN để chấm điểm', 'Huấn luyện lại bộ giải mã']}
+	dapAn={1}
+	giaiThich="Không gian ẩn của autoencoder không có hình dạng định trước, nên phải đo nó sau khi huấn luyện. VAE đã được huấn luyện để mã gần N(0, I), nên lấy mẫu thẳng từ N(0, I) mà không cần nhìn lại dữ liệu."
+/>
+
+<Khung loai="loi">
+**Coi "CNN tin chắc" là "ảnh đẹp".** Bộ chấm ở trên là một thước đo thô: một CNN có thể tin chắc vào một ảnh nhòe miễn là nét chính đúng chỗ, và không nói gì về độ đa dạng trong mỗi lớp. Nghiên cứu về mô hình sinh ảnh dùng những thước đo chuẩn hơn như FID (Fréchet inception distance, Heusel và cộng sự, 2017), so phân phối đặc trưng của ảnh sinh với ảnh thật. Dù dùng thước đo nào, luôn đặt cạnh mức trần của dữ liệu thật như dòng đầu bảng 30.3.
+
+**So hai mô hình sinh bằng ảnh chọn lọc.** Mười ảnh đẹp nhất trong một nghìn ảnh không nói lên điều gì. Luôn lấy mẫu với cùng một seed, cùng các điểm $z$, và báo con số trên toàn bộ mẫu.
+</Khung>

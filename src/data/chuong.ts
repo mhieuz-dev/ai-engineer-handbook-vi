@@ -56,7 +56,7 @@ const BANG: [number, string, string, string, XuatBan?][] = [
 	[27, 'phan-3', 'CNN', 'cnn', { trangThai: 'xong', notebook: 'ch27_cnn.ipynb' }],
 	[28, 'phan-3', 'Kiến trúc CNN và transfer learning', 'kien-truc-cnn', { trangThai: 'xong', notebook: 'ch28_kien_truc_cnn.ipynb' }],
 	[29, 'phan-3', 'RNN, LSTM, GRU', 'rnn-lstm-gru', { trangThai: 'xong', notebook: 'ch29_rnn_lstm_gru.ipynb' }],
-	[30, 'phan-3', 'Autoencoder và VAE', 'autoencoder-vae'],
+	[30, 'phan-3', 'Autoencoder và VAE', 'autoencoder-vae', { trangThai: 'xong', notebook: 'ch30_autoencoder_vae.ipynb' }],
 	[31, 'phan-3', 'GAN và Diffusion', 'gan-diffusion'],
 	[32, 'phan-3', 'Dự án Phần III', 'du-an-phan-3'],
 	[33, 'phan-3b', 'Bài toán RL', 'bai-toan-rl'],

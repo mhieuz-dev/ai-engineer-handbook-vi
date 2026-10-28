@@ -1,0 +1,129 @@
+---
+title: Autoencoder
+description: "Một mạng học trả lại chính đầu vào qua một nút thắt k số, không cần nhãn. Nén ảnh MNIST 784 điểm ảnh xuống 32 số: PCA tái tạo với sai số 0,0168, autoencoder 0,0081, bằng một nửa. Với 2 số: 0,0557 so với 0,0451."
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+<CanBietTruoc>
+PCA, nén và tái tạo (Chương 20). Phân phối chuẩn (Chương 7). Vòng huấn luyện PyTorch (Chương 25), CNN trên MNIST (Chương 27).
+
+<Fragment slot="sau-chuong">
+Tự viết một autoencoder, so nó với PCA, dùng nó để khử nhiễu và phát hiện ảnh lạ. Hiểu vì sao autoencoder thường không sinh được ảnh mới, và VAE sửa điều đó thế nào bằng mẹo tái tham số hóa và KL divergence. Sinh ảnh chữ số mới, đo chất lượng bằng một CNN, và biết VAE thật sự hơn ở đâu.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch30_autoencoder_vae.ipynb" />
+
+## Nén rồi bung ra
+
+Chương 20 nén 64 điểm ảnh của một chữ số xuống vài con số bằng PCA rồi tái tạo lại. PCA tìm **phép chiếu thẳng** tốt nhất: mọi ảnh được nén bằng cùng một ma trận, và tái tạo bằng ma trận chuyển vị của nó. Một <Term id="autoencoder">autoencoder</Term> làm cùng việc bằng hai mạng nơ-ron:
+
+- **Bộ mã hóa** (encoder) $f$: ảnh $x$ (784 số) thành một vector ngắn $z = f(x)$ gồm $k$ số, gọi là **mã** hay biểu diễn ẩn.
+- **Bộ giải mã** (decoder) $g$: từ $z$ dựng lại ảnh $\hat{x} = g(z)$.
+
+Huấn luyện để $\hat{x}$ giống $x$ nhất có thể, ví dụ bằng sai số bình phương trung bình $\frac{1}{784}\lVert x - g(f(x)) \rVert^2$. Đích của mạng chính là đầu vào, nên **không cần nhãn**: mọi ảnh đều là dữ liệu huấn luyện. Cái khó nằm ở **nút thắt**: $k$ nhỏ hơn 784 nhiều, nên mạng không thể chép thẳng; nó phải tìm ra những gì quan trọng nhất về một chữ số để dồn vào $k$ số.
+
+Dữ liệu là MNIST của Chương 27, nhưng duỗi mỗi ảnh thành một vector 784 số. Mốc so sánh: nếu luôn "tái tạo" bằng ảnh trung bình của tập train, sai số là bao nhiêu?
+
+```python
+import torch
+import torch.nn as nn
+from torchvision import datasets
+from torch.utils.data import TensorDataset, DataLoader
+tr = datasets.MNIST("data", train=True, download=True)
+te = datasets.MNIST("data", train=False, download=True)
+Xtr = tr.data.float().div(255).view(-1, 784)  # mỗi ảnh thành một vector 784 số trong [0, 1]
+Xte = te.data.float().div(255).view(-1, 784)
+ytr, yte = tr.targets, te.targets
+print(Xtr.shape, round(((Xte - Xtr.mean(0)) ** 2).mean().item(), 4))   # sai số khi đoán ảnh trung bình
+```
+
+```text title="Output"
+torch.Size([60000, 784]) 0.0675
+```
+
+Sai số 0,0675 trên mỗi điểm ảnh. Mọi phương pháp nén phải làm tốt hơn con số này.
+
+## PCA làm mốc
+
+```python
+from sklearn.decomposition import PCA
+for k in (2, 32):
+    pca = PCA(k, random_state=0).fit(Xtr.numpy())
+    tai_tao = torch.tensor(pca.inverse_transform(pca.transform(Xte.numpy())))   # nén xuống k số rồi bung ra
+    print(k, round(((tai_tao - Xte) ** 2).mean().item(), 4))
+```
+
+```text title="Output"
+2 0.0557
+32 0.0168
+```
+
+Với 2 thành phần chính, PCA chỉ giảm sai số từ 0,0675 xuống 0,0557; với 32 thành phần, xuống 0,0168. Đây là giới hạn của mọi phép nén tuyến tính: theo định lý Eckart-Young, không phép chiếu thẳng nào xuống $k$ chiều tái tạo với sai số bình phương nhỏ hơn PCA.
+
+## Autoencoder
+
+Bộ mã hóa và bộ giải mã đối xứng, mỗi bên một lớp ẩn 256 nơ-ron. Lớp cuối của bộ giải mã có `Sigmoid` để điểm ảnh nằm trong $[0, 1]$ như ảnh thật. Tham số `nhieu` để dành cho trang 2.
+
+```python
+def tao_ae(k):                                 # mã hóa 784 -> k, giải mã k -> 784
+    ma_hoa = nn.Sequential(nn.Linear(784, 256), nn.ReLU(), nn.Linear(256, k))
+    giai_ma = nn.Sequential(nn.Linear(k, 256), nn.ReLU(), nn.Linear(256, 784), nn.Sigmoid())
+    return ma_hoa, giai_ma
+
+def huan_luyen_ae(ma_hoa, giai_ma, so_epoch=5, nhieu=0.0):
+    torch.manual_seed(1)
+    dl = DataLoader(TensorDataset(Xtr), batch_size=128, shuffle=True)
+    opt = torch.optim.Adam([*ma_hoa.parameters(), *giai_ma.parameters()], lr=1e-3)
+    for ep in range(so_epoch):
+        for (xb,) in dl:
+            vao = (xb + nhieu * torch.randn_like(xb)).clamp(0, 1)   # nhieu=0: đầu vào sạch (trang 2 dùng nhiễu)
+            loss = ((giai_ma(ma_hoa(vao)) - xb) ** 2).mean()        # đích luôn là ảnh sạch
+            opt.zero_grad()
+            loss.backward()
+            opt.step()
+    with torch.no_grad():
+        return round(((giai_ma(ma_hoa(Xte)) - Xte) ** 2).mean().item(), 4)   # sai số tái tạo trên test
+
+ae = {}
+for k in (2, 32):
+    torch.manual_seed(0)
+    ae[k] = tao_ae(k)
+    print(k, sum(p.numel() for m in ae[k] for p in m.parameters()), huan_luyen_ae(*ae[k]))
+```
+
+```text title="Output"
+2 403730 0.0451
+32 419120 0.0081
+```
+
+**Bảng 30.1.** Sai số tái tạo trên 10 000 ảnh test (bình phương trung bình mỗi điểm ảnh).
+
+| Phương pháp | $k = 2$ | $k = 32$ |
+|:---|---:|---:|
+| Ảnh trung bình (không nén) | 0,0675 | 0,0675 |
+| PCA | 0,0557 | 0,0168 |
+| Autoencoder, 5 epoch | 0,0451 | **0,0081** |
+
+Với 32 số, autoencoder tái tạo với sai số bằng **một nửa** PCA. Lý do: bộ mã hóa và bộ giải mã là hàm phi tuyến (có ReLU), nên mã có thể nằm trên một mặt cong trong không gian 784 chiều thay vì một mặt phẳng. Cái giá: khoảng 410 000 tham số và vài chục giây huấn luyện trên CPU, so với một phép SVD cho PCA; và không còn công thức đóng, không còn thứ tự "thành phần thứ nhất quan trọng nhất".
+
+Nếu bỏ hết hàm kích hoạt, autoencoder chỉ còn là hai phép biến đổi tuyến tính, và với sai số bình phương, nó học đúng không gian con mà PCA tìm ra (Baldi và Hornik, 1989). Bài tập 30.1 kiểm tra điều này.
+
+<TuKiemTra
+	cauHoi="Vì sao autoencoder ở trên với k = 784 (không có nút thắt) là một mô hình vô ích dù sai số tái tạo có thể gần 0?"
+	luaChon={['Vì nó quá chậm', 'Vì nó có thể học chép thẳng đầu vào ra đầu ra, mã không buộc phải tóm tắt điều gì', 'Vì Sigmoid không cho ra đúng 0', 'Vì PCA với k = 784 tốt hơn']}
+	dapAn={1}
+	giaiThich="Khi mã dài bằng đầu vào, hàm đồng nhất là một lời giải hoàn hảo, nên mạng không phải học gì về cấu trúc của chữ số. Nút thắt (hoặc một ràng buộc khác: thêm nhiễu ở trang 2, phạt KL ở trang 3) buộc mã phải giữ những gì quan trọng."
+/>
+
+<Khung loai="loi">
+**So sai số tái tạo trên tập train.** Autoencoder đủ lớn có thể học thuộc ảnh train. Như mọi mô hình khác, đo trên ảnh nó chưa thấy.
+
+**Quên `Sigmoid` ở lớp cuối, hoặc quên chia 255.** Ảnh trong $[0, 255]$ mà đầu ra trong $[0, 1]$ (hoặc ngược lại) thì sai số không bao giờ nhỏ được. Hai đầu phải cùng thang đo.
+</Khung>

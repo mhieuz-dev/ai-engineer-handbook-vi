@@ -1,0 +1,108 @@
+---
+title: Không gian ẩn, khử nhiễu và phát hiện ảnh lạ
+description: "Mã 2 số của autoencoder tách chữ số tốt hơn PCA (kNN 55,3% so với 42,4%) nhưng nằm lệch, trải từ -12,9 tới 21,4. Thêm nhiễu vào đầu vào khi huấn luyện cho một bộ khử nhiễu: sai số 0,1155 còn 0,0179. Sai số tái tạo lớn đánh dấu được 40% ảnh xoay 90 độ, tùy chữ số từ 1% tới 77%."
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Mã 2 số trông thế nào
+
+Với $k = 2$, mỗi ảnh thành một điểm trên mặt phẳng, và tập hợp mọi điểm đó là <Term id="khong-gian-an">không gian ẩn</Term> của autoencoder. Nó có cấu trúc không? Một cách đo không cần vẽ: dùng kNN (Chương 14) đoán nhãn chữ số chỉ từ 2 số, rồi so với 2 thành phần chính của PCA.
+
+```python
+from sklearn.neighbors import KNeighborsClassifier
+ma2, giai2 = ae[2]
+with torch.no_grad():
+    z_tr, z_te = ma2(Xtr), ma2(Xte)            # mã 2 số của mọi ảnh
+print([round(v, 2) for v in z_te.mean(0).tolist()], [round(v, 2) for v in z_te.std(0).tolist()])
+print([round(v, 1) for v in z_te.min(0).values.tolist()], [round(v, 1) for v in z_te.max(0).values.tolist()])
+pca2 = PCA(2, random_state=0).fit(Xtr.numpy())
+for ten, a, b in (("AE", z_tr.numpy(), z_te.numpy()), ("PCA", pca2.transform(Xtr.numpy()), pca2.transform(Xte.numpy()))):
+    print(ten, round(KNeighborsClassifier(5).fit(a, ytr.numpy()).score(b, yte.numpy()), 4))
+```
+
+```text title="Output"
+[3.39, -2.82] [4.84, 3.5]
+[-8.8, -12.9] [21.4, 9.5]
+AE 0.5532
+PCA 0.4237
+```
+
+Mã của autoencoder giữ thông tin về nhãn tốt hơn: kNN đúng 55,3% so với 42,4% với PCA, dù **không ai cho autoencoder biết nhãn**. Nó chỉ được dạy tái tạo ảnh, và tự xếp các ảnh giống nhau lại gần nhau vì đó là cách tái tạo tốt nhất với 2 số. Hình 30.1 ở trang 3 vẽ không gian này.
+
+Hai dòng đầu là điều sẽ quan trọng ở trang 3: mã nằm ở đâu thì tùy mạng. Trung bình $(3{,}39;\ -2{,}82)$, độ lệch chuẩn $(4{,}84;\ 3{,}5)$, trải từ $-8{,}8$ tới $21{,}4$ trên trục thứ nhất. Không có gì buộc các mã gom quanh gốc tọa độ hay có một hình dạng biết trước.
+
+## Khử nhiễu
+
+Thêm nhiễu Gauss độ lệch chuẩn 0,5 vào ảnh test (rồi cắt về $[0, 1]$). Autoencoder 32 số ở trang 1 chưa bao giờ thấy ảnh nhiễu. Một autoencoder thứ hai, cùng kiến trúc, được huấn luyện với **đầu vào nhiễu, đích là ảnh sạch** (tham số `nhieu=0.5`): <Term id="autoencoder">autoencoder</Term> khử nhiễu (Vincent và cộng sự, 2008).
+
+```python
+torch.manual_seed(0)
+Xn = (Xte + 0.5 * torch.randn_like(Xte)).clamp(0, 1)   # ảnh test thêm nhiễu Gauss độ lệch chuẩn 0,5
+ma32, giai32 = ae[32]
+torch.manual_seed(0)
+ma_kn, giai_kn = tao_ae(32)
+print(huan_luyen_ae(ma_kn, giai_kn, nhieu=0.5))        # học khử nhiễu: vào ảnh nhiễu, đích ảnh sạch
+with torch.no_grad():
+    print(round(((Xn - Xte) ** 2).mean().item(), 4),
+          round(((giai32(ma32(Xn)) - Xte) ** 2).mean().item(), 4),
+          round(((giai_kn(ma_kn(Xn)) - Xte) ** 2).mean().item(), 4))
+```
+
+```text title="Output"
+0.0218
+0.1155 0.0713 0.0179
+```
+
+Dòng đầu: autoencoder khử nhiễu vẫn tái tạo ảnh sạch với sai số 0,0218 (so với 0,0081 của bản thường, cái giá cho việc luôn phải đoán ảnh gốc từ ảnh bẩn). Dòng hai là ba sai số so với ảnh sạch:
+
+**Bảng 30.2.** Sai số so với ảnh test sạch khi đầu vào có nhiễu.
+
+| Đầu vào cho mạng | Sai số |
+|:---|---:|
+| Ảnh nhiễu, không làm gì | 0,1155 |
+| Qua autoencoder thường | 0,0713 |
+| Qua autoencoder khử nhiễu | **0,0179** |
+
+Autoencoder thường đã giảm được một phần nhiễu, vì nút thắt 32 số không đủ chỗ cho nhiễu ngẫu nhiên. Nhưng bản được dạy khử nhiễu giảm sai số **6 lần**. Ý tưởng "làm bẩn đầu vào rồi bắt mạng khôi phục" đi rất xa: BERT (Chương 45) che 15% từ rồi bắt mô hình đoán lại, và mô hình diffusion (Chương 31) học khử từng chút nhiễu, rồi sinh ảnh từ nhiễu thuần.
+
+## Phát hiện ảnh lạ
+
+Autoencoder chỉ tái tạo tốt những gì giống dữ liệu train. Một ảnh khác hẳn sẽ có sai số tái tạo lớn. Ngưỡng: mức sai số mà chỉ 1% ảnh train vượt qua. Ảnh "lạ" để thử: chữ số test xoay 90 độ.
+
+```python
+def sai_so(X):                                 # sai số tái tạo của từng ảnh
+    with torch.no_grad():
+        return ((giai32(ma32(X)) - X) ** 2).mean(1)
+nguong = sai_so(Xtr).quantile(0.99)            # 1% ảnh train có sai số lớn hơn ngưỡng này
+xoay = torch.rot90(Xte.view(-1, 28, 28), 1, dims=(1, 2)).reshape(-1, 784)   # ảnh test xoay 90 độ: "lạ"
+print(round(nguong.item(), 4), round((sai_so(Xte) > nguong).float().mean().item(), 4),
+      round((sai_so(xoay) > nguong).float().mean().item(), 4))
+phat_hien = sai_so(xoay) > nguong
+print([round(phat_hien[yte == c].float().mean().item(), 2) for c in range(10)])   # tỷ lệ bắt được theo từng chữ số
+```
+
+```text title="Output"
+0.0234 0.0079 0.4007
+[0.2, 0.01, 0.59, 0.46, 0.31, 0.33, 0.62, 0.34, 0.77, 0.43]
+```
+
+Đúng như thiết kế, chỉ 0,79% ảnh test bình thường vượt ngưỡng (gần 1% của train). Với ảnh xoay, 40,1% bị đánh dấu. Dòng cuối tách theo chữ số và cho thấy giới hạn của cách làm này: số 1 xoay thành một vạch ngang, rất giống một nét của các chữ số khác, chỉ 1% bị bắt; số 0 xoay vẫn là một vòng tròn, 20%; số 8 xoay khác hẳn mọi chữ số đứng, 77%. Sai số tái tạo đo "ảnh này có dễ vẽ lại bằng các nét đã học không", không phải "ảnh này có đúng là chữ số đứng thẳng không".
+
+Phát hiện bất thường bằng sai số tái tạo dùng nhiều trong công nghiệp, vì chỉ cần dữ liệu **bình thường** để huấn luyện: ảnh sản phẩm không lỗi, tín hiệu máy chạy tốt, giao dịch hợp lệ. Lỗi hiếm và đa dạng, khó thu đủ để học có giám sát.
+
+<TuKiemTra
+	cauHoi="Ngưỡng ở trên được chọn để 1% ảnh train vượt qua. Nếu hạ ngưỡng xuống mức 10% ảnh train vượt qua, điều gì xảy ra?"
+	luaChon={['Bắt được nhiều ảnh xoay hơn, nhưng cũng báo nhầm khoảng 10% ảnh bình thường', 'Bắt được ít ảnh xoay hơn', 'Không đổi, vì ngưỡng chỉ ảnh hưởng tập train', 'Báo nhầm 0% ảnh bình thường']}
+	dapAn={0}
+	giaiThich="Hạ ngưỡng thì mọi ảnh dễ vượt hơn: tỷ lệ bắt được ảnh lạ tăng, tỷ lệ báo nhầm ảnh bình thường cũng tăng lên khoảng 10%. Đây là đánh đổi precision và recall của Chương 12; chọn ngưỡng tùy giá của mỗi loại sai."
+/>
+
+<Khung loai="loi">
+**Chọn ngưỡng trên chính tập dùng để báo cáo kết quả.** Ngưỡng là một siêu tham số. Chọn nó trên train hoặc validation, rồi đo tỷ lệ báo nhầm trên test, như ở trên (0,79% trên test với ngưỡng chọn ở mức 1% của train).
+
+**Nghĩ rằng autoencoder khử được mọi loại nhiễu.** Nó chỉ khử loại nhiễu đã thấy khi học. Bản ở trên học với nhiễu Gauss; gặp vết mực hay ảnh bị che một góc, nó không được dạy cách khôi phục.
+</Khung>
