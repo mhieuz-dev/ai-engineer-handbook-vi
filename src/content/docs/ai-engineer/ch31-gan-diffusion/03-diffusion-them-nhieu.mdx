@@ -1,0 +1,106 @@
+---
+title: "Diffusion: thêm nhiễu"
+description: "Quá trình thuận của diffusion thêm một chút nhiễu Gauss ở mỗi bước, 1000 bước cho tới khi ảnh thành nhiễu thuần. Một công thức đóng nhảy thẳng tới bước t bất kỳ: mô phỏng 500 bước từng bước cho trung bình 0,2771, công thức cho 0,2803. Ảnh test sau 1000 bước có trung bình -0,0047, độ lệch chuẩn 0,9998: đúng N(0, 1)."
+---
+
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Phá hủy thì dễ
+
+Sinh một ảnh từ con số không thì khó. Phá hủy một ảnh thì dễ: cứ thêm nhiễu. <Term id="diffusion">Mô hình diffusion</Term> (Sohl-Dickstein và cộng sự, 2015; dạng phổ biến hiện nay là DDPM của Ho, Jain và Abbeel, 2020) dựa trên một ý tưởng: nếu phá hủy ảnh **từng chút một**, qua rất nhiều bước nhỏ, thì mỗi bước nhỏ đủ đơn giản để một mạng nơ-ron học cách **đảo ngược**. Học xong, bắt đầu từ nhiễu thuần và đảo ngược từng bước là ra một ảnh mới.
+
+Trang này là nửa dễ: quá trình **thuận** (thêm nhiễu), không có gì phải học. Trang 4 là nửa khó: học quá trình **ngược**.
+
+## Thêm nhiễu Gauss từng bước
+
+Ảnh $x_0$ (điểm ảnh trong $[-1, 1]$). Ở bước $t$, thu nhỏ ảnh một chút và cộng một chút nhiễu Gauss (Chương 7):
+
+$$
+x_t = \sqrt{1 - \beta_t}\; x_{t-1} + \sqrt{\beta_t}\; \varepsilon_t, \qquad \varepsilon_t \sim \mathcal{N}(0, I)
+$$
+
+$\beta_t$ là lượng nhiễu ở bước $t$, tăng tuyến tính từ $10^{-4}$ ở bước 1 tới 0,02 ở bước 1000, đúng lịch của bài báo DDPM. Hệ số $\sqrt{1 - \beta_t}$ trước $x_{t-1}$ giữ cho phương sai không phình ra: nếu $x_{t-1}$ có phương sai 1 thì $x_t$ cũng vậy, vì $(1 - \beta_t) + \beta_t = 1$.
+
+## Nhảy thẳng tới bước bất kỳ
+
+Huấn luyện cần ảnh nhiễu ở **mọi** mức $t$. Đi lần lượt 500 bước để có $x_{500}$ thì quá chậm. May là tổng của các biến Gauss độc lập vẫn là Gauss, nên gộp được cả chuỗi thành một bước. Đặt $\alpha_t = 1 - \beta_t$ và $\bar\alpha_t = \alpha_1 \alpha_2 \cdots \alpha_t$ (đọc là "alpha ngang"):
+
+$$
+x_t = \sqrt{\bar\alpha_t}\; x_0 + \sqrt{1 - \bar\alpha_t}\; \varepsilon, \qquad \varepsilon \sim \mathcal{N}(0, I)
+$$
+
+Một lần lấy mẫu nhiễu, không cần đi qua các bước giữa. Trong code, chỉ số `t` chạy từ 0 tới 999, ứng với bước 1 tới 1000.
+
+```python
+T = 1000
+beta = torch.linspace(1e-4, 0.02, T)           # lượng nhiễu thêm ở mỗi bước
+alpha = 1 - beta
+ab = torch.cumprod(alpha, dim=0)               # alpha ngang: tích các alpha từ bước 1 tới t
+print([round(ab[t].item(), 4) for t in (0, 99, 249, 499, 999)])
+print([round((ab[t] / (1 - ab[t])).sqrt().item(), 3) for t in (0, 99, 249, 499, 999)])   # tỷ lệ tín hiệu trên nhiễu
+```
+
+```text title="Output"
+[0.9999, 0.897, 0.5241, 0.0786, 0.0]
+[99.987, 2.951, 1.049, 0.292, 0.006]
+```
+
+Dòng đầu là $\bar\alpha_t$ ở bước 1, 100, 250, 500, 1000. Ảnh gốc giữ lại hệ số $\sqrt{\bar\alpha_t}$: ở bước 100 vẫn còn $\bar\alpha = 0{,}897$; ở bước 500 chỉ còn 0,0786; ở bước 1000, 0 tới 4 chữ số. Dòng hai là tỷ lệ tín hiệu trên nhiễu $\sqrt{\bar\alpha_t / (1 - \bar\alpha_t)}$: từ gần 100 ở bước 1, xuống 1,049 ở bước 250 (tín hiệu và nhiễu ngang nhau), và 0,006 ở bước 1000.
+
+Kiểm công thức đóng bằng cách làm từng bước thật. Lấy một điểm ảnh trắng ($x_0 = 1$), chạy 100 000 bản qua 500 bước, rồi so trung bình và độ lệch chuẩn với $\sqrt{\bar\alpha_{500}}$ và $\sqrt{1 - \bar\alpha_{500}}$:
+
+```python
+torch.manual_seed(0)
+x = torch.ones(100000)                         # 100 000 bản của một điểm ảnh trắng (giá trị 1)
+for t in range(500):                           # thêm nhiễu từng bước, 500 bước
+    x = alpha[t].sqrt() * x + beta[t].sqrt() * torch.randn(100000)
+print(round(x.mean().item(), 4), round(x.std().item(), 4), round(ab[499].sqrt().item(), 4), round((1 - ab[499]).sqrt().item(), 4))
+```
+
+```text title="Output"
+0.2771 0.9587 0.2803 0.9599
+```
+
+Mô phỏng từng bước cho trung bình 0,2771 và độ lệch chuẩn 0,9587; công thức cho 0,2803 và 0,9599. Phần lệch nhỏ còn lại là sai số do ước lượng bằng mẫu.
+
+## Cuối chuỗi là nhiễu thuần
+
+Hàm `them_nhieu` viết công thức đóng cho một lô ảnh, mỗi ảnh một bước $t$ riêng (trang 4 dùng đúng hàm này để huấn luyện). Đưa cả 10 000 ảnh test tới bước 1000:
+
+```python
+def them_nhieu(x0, t, eps):                    # nhảy thẳng tới bước t bằng công thức đóng
+    a = ab[t].view(-1, *[1] * (x0.dim() - 1))
+    return a.sqrt() * x0 + (1 - a).sqrt() * eps
+
+torch.manual_seed(0)
+X0 = Xte * 2 - 1                               # ảnh test trong [-1, 1]
+xT = them_nhieu(X0, torch.full((len(X0),), T - 1), torch.randn_like(X0))
+print(round(X0.mean().item(), 4), round(X0.std().item(), 4), round(xT.mean().item(), 4), round(xT.std().item(), 4))
+```
+
+```text title="Output"
+-0.735 0.621 -0.0047 0.9998
+```
+
+Ảnh test có trung bình $-0{,}735$ (phần lớn điểm ảnh là nền đen, giá trị $-1$) và độ lệch chuẩn 0,621. Sau 1000 bước: trung bình $-0{,}0047$, độ lệch chuẩn 0,9998. Mọi dấu vết của chữ số đã mất, chỉ còn $\mathcal{N}(0, 1)$. Đây là điều làm diffusion sinh được ảnh: điểm cuối của quá trình thuận là một phân phối biết trước, nên quá trình ngược có thể **bắt đầu từ đúng phân phối đó** (giống vai trò của $\mathcal{N}(0, I)$ trong VAE, nhưng không cần học bộ mã hóa nào).
+
+<HinhKetQua src="/hinh/ch31/h2_them_nhieu.svg" alt="Hàng trên: bảy ảnh của cùng một chữ số 7 ở bước 1, 51, 101, 251, 501, 751 và 1000. Bước 1 và 51 gần như sạch, bước 101 có lấm tấm nhiễu, bước 251 vẫn nhận ra nét số 7 lẫn trong nhiễu, từ bước 501 trở đi chỉ còn nhiễu đen trắng. Dưới: hai đường theo bước t từ 1 tới 1000. Đường xanh, hệ số của ảnh gốc, giảm từ 1 xuống gần 0, qua 0,5 quanh bước 370. Đường cam, hệ số của nhiễu, tăng từ 0 lên gần 1, cắt đường xanh quanh bước 260." so="31.2" chuThich="Ảnh test đầu tiên (số 7) qua quá trình thêm nhiễu, cùng một mẫu nhiễu cho mọi bước, và hai hệ số của công thức đóng.">
+Hai đường cắt nhau quanh bước 260, gần chỗ tỷ lệ tín hiệu trên nhiễu bằng 1 (1,049 ở bước 250). Hơn nửa chuỗi là ảnh đã chìm sâu trong nhiễu. Khi đi ngược (trang 4), các bước có $t$ lớn quyết định hình dạng thô của chữ số, các bước $t$ nhỏ chỉ làm sắc nét.
+</HinhKetQua>
+
+<TuKiemTra
+	cauHoi="Vì sao công thức có hệ số căn của (1 trừ beta) trước x_{t-1} thay vì chỉ cộng nhiễu, x_t = x_{t-1} + căn(beta) nhân epsilon?"
+	luaChon={['Để tính nhanh hơn', 'Để phương sai của x_t giữ ở mức 1; nếu chỉ cộng nhiễu thì phương sai tăng dần và x_T không phải N(0, 1)', 'Để ảnh sáng hơn', 'Không có lý do, hai cách cho cùng kết quả']}
+	dapAn={1}
+	giaiThich="Chỉ cộng nhiễu thì sau 1000 bước phương sai là 1 cộng tổng các beta, khoảng 11, và ảnh gốc vẫn còn nguyên trong đó. Thu nhỏ x_{t-1} đúng mức làm ảnh gốc mờ dần và tổng phương sai giữ ở 1, nên cuối chuỗi đúng là N(0, 1)."
+/>
+
+<Khung loai="loi">
+**Quên đưa ảnh về $[-1, 1]$.** Với ảnh trong $[0, 1]$, quá trình vẫn chạy, nhưng tâm của dữ liệu lệch khỏi 0 và thang đo không khớp với nhiễu chuẩn. Ảnh và nhiễu cần cùng thang, như ở trên.
+
+**Nhầm $\beta_t$ với $\bar\alpha_t$, hoặc chỉ số lệch một.** $\beta_t$ là lượng nhiễu của **một** bước; $\bar\alpha_t$ là phần ảnh gốc còn lại sau $t$ bước. Code dùng chỉ số từ 0 nên `ab[999]` là $\bar\alpha_{1000}$. Lệch một chỉ số ở đây không báo lỗi gì, chỉ làm mô hình học kém.
+</Khung>

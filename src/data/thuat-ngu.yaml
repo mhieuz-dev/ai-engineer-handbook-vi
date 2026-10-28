@@ -608,3 +608,18 @@
   tenTiengAnh: Kullback-Leibler divergence
   giaiThich: KL divergence đo một phân phối xác suất khác một phân phối khác bao nhiêu, bằng kỳ vọng của hiệu log mật độ. Nó luôn không âm, bằng 0 khi hai phân phối trùng nhau, và không đối xứng. VAE dùng nó để kéo phân phối của mã về phân phối chuẩn tắc.
   hocKy: ai-engineer/ch30-autoencoder-vae
+- id: gan
+  ten: GAN
+  tenTiengAnh: generative adversarial network
+  giaiThich: GAN gồm hai mạng thi đấu với nhau. Bộ sinh biến nhiễu ngẫu nhiên thành dữ liệu giả, bộ phân biệt học phân biệt dữ liệu thật với giả, và bộ sinh học cách lừa bộ phân biệt. Không có loss tái tạo theo từng điểm ảnh, nên ảnh thường sắc nét hơn VAE, nhưng huấn luyện kém ổn định.
+  hocKy: ai-engineer/ch31-gan-diffusion
+- id: sup-mode
+  ten: Sụp mode
+  tenTiengAnh: mode collapse
+  giaiThich: Sụp mode là khi bộ sinh của GAN chỉ sinh ra một phần nhỏ các kiểu dữ liệu (ví dụ chỉ vài chữ số trong 10) vì những kiểu đó đủ để lừa bộ phân biệt. Dữ liệu sinh ra có thể rõ nét nhưng thiếu đa dạng.
+  hocKy: ai-engineer/ch31-gan-diffusion
+- id: diffusion
+  ten: Mô hình diffusion
+  tenTiengAnh: diffusion model
+  giaiThich: Mô hình diffusion học đảo ngược một quá trình thêm nhiễu Gauss dần dần vào dữ liệu cho tới khi thành nhiễu thuần. Một mạng được huấn luyện để đoán phần nhiễu đã thêm; sinh dữ liệu mới bằng cách bắt đầu từ nhiễu và khử nhiễu qua nhiều bước. Đây là nền của Stable Diffusion và các mô hình sinh ảnh hiện nay.
+  hocKy: ai-engineer/ch31-gan-diffusion

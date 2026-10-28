@@ -1,0 +1,92 @@
+---
+title: Bài tập
+description: "Ba bài tập GAN và diffusion có đáp án chi tiết (DDIM 100 bước gần như không hơn 25 bước, 37,5% so với 37,3%; 228 bước với beta cố định 0,02 so với 674 bước với lịch tăng dần; nội suy giữa hai điểm nhiễu của GAN chuyển từ số 7 sang số 1) và câu hỏi phỏng vấn."
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Đoán trước, rồi chạy code trong notebook để kiểm tra. Code dùng lại `G`, `z_co_dinh`, `cham`, `cham_diem`, `entropy`, `sinh` của các trang trước.
+
+<BaiTap so="31.1">
+**Nhiều bước hơn có tốt hơn không.** Sinh lại 1000 ảnh bằng DDIM với 100 bước thay vì 25 (cùng mạng, cùng điểm xuất phát). Đoán xem tỷ lệ CNN tin chắc thay đổi bao nhiêu, và thời gian tăng bao nhiêu lần.
+
+<Fragment slot="dap-an">
+
+```python
+anh100 = sinh(1000, so_buoc=100)
+print(cham_diem(anh100), entropy(cham_diem(anh100)[1]))
+```
+
+```text title="Output"
+(0.375, [26, 28, 193, 78, 188, 97, 25, 96, 256, 13]) 1.974
+```
+
+37,5% so với 37,3%, entropy 1,974 so với 1,969, phân bố lớp gần như y hệt, trong khi thời gian gấp khoảng 4 lần (khoảng 52 giây so với 13 giây trên máy này). Với DDIM, cùng điểm xuất phát cho gần cùng ảnh bất kể số bước, nên thêm bước chỉ làm mịn đường đi. Chất lượng bị giới hạn bởi **mạng**, không phải bởi cách lấy mẫu: muốn ảnh tốt hơn, phải huấn luyện mạng lớn hơn, lâu hơn.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="31.2">
+**Bao lâu thì ảnh biến mất.** Giả sử $\beta_t = 0{,}02$ cho mọi bước (thay vì tăng dần từ $10^{-4}$). Sau bao nhiêu bước thì $\bar\alpha_t < 0{,}01$, tức ảnh gốc chỉ còn hệ số $\sqrt{0{,}01} = 0{,}1$?
+
+<Fragment slot="dap-an">
+
+Với $\beta$ cố định, $\bar\alpha_t = (1 - 0{,}02)^t = 0{,}98^t$. Cần $0{,}98^t < 0{,}01$, tức $t > \ln 0{,}01 / \ln 0{,}98 = 227{,}9$.
+
+```python
+import math
+print(math.log(0.01) / math.log(0.98), 0.98 ** 228, int((ab < 0.01).nonzero()[0]) + 1)
+```
+
+```text title="Output"
+227.94817118369878 0.009989534655931522 674
+```
+
+228 bước, vì $0{,}98^{228} = 0{,}00999$. Số cuối là bước đầu tiên mà lịch tăng dần của trang 3 cho $\bar\alpha_t < 0{,}01$: bước 674. Lịch tăng dần giữ ảnh gốc lâu hơn nhiều ở đầu chuỗi (các bước đầu chỉ thêm $10^{-4}$), rồi mới phá nhanh ở cuối. Nghĩa là lịch của DDPM dành nhiều bước hơn cho mức nhiễu nhỏ. Các lịch sau này còn đi xa hơn: lịch cosine của Nichol và Dhariwal (2021) ra đời vì lịch tuyến tính phá ảnh quá nhanh ở cuối chuỗi.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="31.3">
+**Đi giữa hai điểm nhiễu.** Lấy hai vector nhiễu đầu tiên `z_co_dinh[0]` và `z_co_dinh[1]` của GAN, đi thẳng từ điểm này sang điểm kia qua 11 điểm cách đều, sinh ảnh ở mỗi điểm. Chữ số CNN nhận ra thay đổi thế nào dọc đường?
+
+<Fragment slot="dap-an">
+
+```python
+with torch.no_grad():
+    z = torch.stack([(1 - a) * z_co_dinh[0] + a * z_co_dinh[1] for a in torch.linspace(0, 1, 11)])
+    p = cham(((G(z) + 1) / 2).view(-1, 1, 28, 28)).softmax(1)
+print(p.argmax(1).tolist())
+print([round(v, 2) for v in p.max(1).values.tolist()])
+```
+
+```text title="Output"
+[7, 7, 7, 7, 7, 7, 1, 1, 1, 1, 1]
+[0.97, 0.96, 0.95, 0.9, 0.77, 0.47, 0.44, 0.78, 0.88, 0.9, 0.85]
+```
+
+Điểm đầu sinh ra một số 7, điểm cuối một số 1, và ảnh đổi lớp **một lần**, giữa điểm thứ 6 và thứ 7. Độ tin của CNN giảm dần về giữa (0,47 và 0,44) rồi tăng lại: các ảnh ở giữa là những ảnh mà CNN không chắc là 7 hay 1. Không gian nhiễu của GAN liên tục như không gian ẩn của VAE (Chương 30), dù không có KL nào ép nó: bộ sinh là một hàm liên tục, và hai đầu vào gần nhau cho hai ảnh gần nhau.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. So sánh VAE, GAN và mô hình diffusion.**
+
+<p lang="en"><em>Compare VAEs, GANs and diffusion models.</em></p>
+
+*Gợi ý:* VAE: bộ mã hóa và bộ giải mã, loss tái tạo cộng KL, huấn luyện ổn định, sinh nhanh, ảnh mờ, có chặn log-likelihood. GAN: bộ sinh và bộ phân biệt đấu nhau, ảnh sắc, sinh nhanh, huấn luyện bất ổn và sụp mode. Diffusion: học đoán nhiễu ở mọi mức, loss hồi quy ổn định, phủ toàn bộ dữ liệu, chất lượng tốt nhất khi đủ lớn, nhưng sinh chậm vì nhiều bước.
+
+**2. Sụp mode là gì và phát hiện thế nào?**
+
+<p lang="en"><em>What is mode collapse and how do you detect it?</em></p>
+
+*Gợi ý:* bộ sinh chỉ sinh một phần nhỏ các kiểu dữ liệu vì chừng đó đủ để lừa bộ phân biệt. Phát hiện bằng độ đa dạng của mẫu: phân bố lớp theo một bộ phân loại, khoảng cách giữa các mẫu, FID hoặc precision và recall cho mô hình sinh. Loss của GAN không cho biết điều này.
+
+**3. Mô hình diffusion được huấn luyện thế nào, và vì sao lấy mẫu chậm?**
+
+<p lang="en"><em>How is a diffusion model trained, and why is sampling slow?</em></p>
+
+*Gợi ý:* lấy ảnh, chọn bước t ngẫu nhiên, thêm nhiễu bằng công thức đóng, huấn luyện mạng đoán lại nhiễu bằng MSE. Lấy mẫu phải đi ngược qua nhiều bước, mỗi bước một lần gọi mạng; DDIM và chưng cất giảm số bước.
+</Khung>

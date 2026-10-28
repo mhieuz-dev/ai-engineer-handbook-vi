@@ -1,0 +1,85 @@
+---
+title: Vì sao GAN khó huấn luyện
+description: "Qua 20 epoch, GAN nhảy giữa các chữ số: epoch 1 có 904 trên 1000 ảnh là số 8, số 1 gần như vắng mặt suốt 14 epoch đầu. Đó là sụp mode. Entropy phân bố lớp cuối cùng 2,172 so với 2,294 của ảnh thật. Khoảng cách tới ảnh train gần nhất (5,20 so với 4,24) cho thấy GAN không chép ảnh."
+---
+
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Nhảy giữa các chữ số
+
+Cột số ảnh theo lớp của trang 1, vẽ thành bản đồ:
+
+<HinhKetQua src="/hinh/ch31/h1_gan_theo_epoch.svg" alt="Bản đồ nhiệt 10 hàng (chữ số 0 tới 9) và 20 cột (epoch 1 tới 20), mỗi ô ghi số ảnh trong 1000 ảnh sinh ra mà CNN nhận là chữ số đó. Epoch 1: 904 ảnh là số 8, 93 ảnh số 3, các hàng khác gần 0. Epoch 2: 610 số 8, 262 số 2. Hàng số 1 gần 0 từ epoch 1 tới 14 (nhiều nhất 33) rồi tăng lên 90 tới 168 từ epoch 15. Hàng số 6 dưới 60 suốt 20 epoch. Ô đậm nhất các epoch giữa nằm ở hàng số 3 và số 2. Ở epoch 20 các hàng từ 19 tới 168." so="31.1" chuThich="Số ảnh theo chữ số trong 1000 ảnh GAN sinh ra từ cùng 1000 vector nhiễu, sau mỗi epoch. Ảnh thật có từ 84 tới 125 ảnh mỗi chữ số.">
+Ở epoch 1, bộ sinh gần như chỉ biết một kiểu ảnh mà CNN gọi là số 8. Sau đó nó lần lượt dồn vào số 2, số 3, số 4, số 8, và bỏ rơi những chữ số khác: số 1 gần như vắng mặt suốt 14 epoch đầu, số 6 không bao giờ quá 60 ảnh. Chỉ từ epoch 15 các hàng mới đều hơn, và vẫn chưa đều như ảnh thật.
+</HinhKetQua>
+
+Đây là <Term id="sup-mode">sụp mode</Term> (mode collapse), căn bệnh nổi tiếng nhất của GAN. Lý do nằm ở chính trò chơi: $G$ chỉ được thưởng khi lừa được $D$, không bị phạt vì bỏ sót một phần dữ liệu. Nếu một kiểu số 8 lừa được $D$, cách rẻ nhất là sinh thật nhiều số 8. $D$ dần nhận ra và phạt số 8; $G$ chuyển sang một kiểu khác mà $D$ đang yếu. Hai mạng đuổi nhau vòng quanh thay vì cùng hội tụ, đúng như loss nhảy lung tung ở trang 1.
+
+Đo độ đa dạng bằng một con số: **entropy** của phân bố lớp (Chương 7), $-\sum_c p_c \ln p_c$. Mười lớp đều nhau cho giá trị lớn nhất $\ln 10 = 2{,}303$; một lớp duy nhất cho 0.
+
+```python
+import math
+def entropy(dem):                              # entropy của phân bố lớp; 10 lớp đều nhau cho ln 10 = 2,303
+    p = torch.tensor(dem, dtype=torch.float) / sum(dem)
+    p = p[p > 0]
+    return round(-(p * p.log()).sum().item(), 3)
+
+with torch.no_grad():
+    anh_gan = (G(z_co_dinh) + 1) / 2
+print(entropy(cham_diem(Xte[:1000])[1]), entropy(cham_diem(anh_gan)[1]), round(math.log(10), 3))
+```
+
+```text title="Output"
+2.294 2.172 2.303
+```
+
+Ảnh thật có entropy 2,294, gần mức tối đa. GAN ở epoch 20 đạt 2,172; ở epoch 1, với 904 ảnh số 8, entropy chỉ là 0,331. VAE ở Chương 30 (cùng thước đo) là 2,25: VAE mờ hơn nhưng **đa dạng hơn**. Đây là đánh đổi điển hình giữa hai họ mô hình.
+
+## GAN có chép ảnh train không
+
+Một bộ sinh "hoàn hảo" theo cách hiểu sai là một bộ sinh chép lại ảnh train. Kiểm tra: với mỗi ảnh sinh ra, tìm ảnh gần nhất trong 60 000 ảnh train (khoảng cách Euclid trên 784 điểm ảnh), so với cùng khoảng cách đó của ảnh test thật, những ảnh mô hình chưa từng thấy.
+
+```python
+def gan_nhat(A, B):                            # khoảng cách từ mỗi ảnh của A tới ảnh gần nhất trong B
+    return torch.cdist(A, B).min(1).values
+
+print(round(gan_nhat(anh_gan, Xtr).mean().item(), 2), round(gan_nhat(Xte[:1000], Xtr).mean().item(), 2))
+```
+
+```text title="Output"
+5.2 4.24
+```
+
+Ảnh của GAN cách ảnh train gần nhất trung bình 5,20, **xa hơn** ảnh test thật (4,24). Nếu GAN chép, con số này phải gần 0. GAN này không chép; ngược lại, ảnh của nó còn lệch khỏi dữ liệu hơn ảnh thật, một phần vì các đốm nhiễu quanh nét (hình 31.3 ở trang 4). Với mô hình lớn huấn luyện trên dữ liệu nhỏ, kiểm tra này quan trọng hơn nhiều: mô hình sinh ảnh lớn đã được chứng minh là có thể tái tạo gần y hệt một số ảnh train (Carlini và cộng sự, 2023).
+
+## Những cách làm cho GAN ổn định hơn
+
+Từ 2014 tới khoảng 2020, GAN là họ mô hình sinh ảnh mạnh nhất, và phần lớn nghiên cứu là các mẹo để nó học ổn định:
+
+**Bảng 31.1.** Một số cột mốc của GAN.
+
+| Năm | Mô hình | Ý tưởng chính |
+|---:|:---|:---|
+| 2014 | GAN | bộ sinh và bộ phân biệt, loss không bão hòa cho $G$ |
+| 2015 | DCGAN | bộ sinh và bộ phân biệt bằng tích chập, batch norm, quy tắc kiến trúc ổn định |
+| 2017 | WGAN | thay cross-entropy bằng khoảng cách Wasserstein, loss của $D$ có ý nghĩa như thước đo tiến độ |
+| 2019 | StyleGAN | bộ sinh điều khiển "phong cách" ở từng độ phân giải, ảnh mặt người 1024 nhân 1024 khó phân biệt với ảnh thật |
+
+Dù vậy, việc chọn siêu tham số vẫn khó, và sụp mode chưa bao giờ biến mất hẳn. Diffusion (trang 3, 4) đổi cách tiếp cận: không còn trò chơi hai mạng, chỉ còn một bài hồi quy thông thường với loss giảm đều.
+
+<TuKiemTra
+	cauHoi="Một GAN sinh ảnh mà CNN tin chắc ở 95% số ảnh, nhưng entropy phân bố lớp chỉ 0,7. Kết luận nào đúng nhất?"
+	luaChon={['Mô hình tốt, vì 95% vượt cả ảnh thật', 'Ảnh rõ nét nhưng bị sụp mode: phần lớn ảnh dồn vào một vài chữ số', 'Bộ chấm CNN bị hỏng', 'Mô hình đang chép ảnh train']}
+	dapAn={1}
+	giaiThich="Độ rõ và độ đa dạng là hai trục khác nhau. Entropy 0,7 (so với tối đa 2,303) nghĩa là phân bố lớp rất lệch: GAN chỉ sinh tốt vài kiểu ảnh. Muốn biết có chép ảnh train không thì phải đo khoảng cách tới ảnh train, không suy ra được từ hai số này."
+/>
+
+<Khung loai="loi">
+**Chỉ đo độ rõ.** Một mô hình chỉ sinh đi sinh lại một số 8 đẹp sẽ đạt điểm "tin chắc" rất cao. Luôn đo thêm độ đa dạng: phân bố lớp như ở trên, hoặc FID (Chương 30) gộp cả hai.
+
+**Kết luận từ một lần chạy.** Bản đồ ở trên đổi hoàn toàn nếu đổi seed hay learning rate: GAN nhạy với những chi tiết đó hơn mọi mô hình đã gặp. Khi so GAN với một mô hình khác, chạy vài seed.
+</Khung>

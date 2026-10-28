@@ -1,0 +1,169 @@
+---
+title: GAN
+description: "Hai mạng thi đấu: bộ sinh biến nhiễu thành ảnh, bộ phân biệt đoán ảnh thật hay giả. Một GAN MLP 550 416 tham số sau 20 epoch trên MNIST sinh ảnh mà CNN tin chắc ở 47% số ảnh, so với 36,5% của VAE ở Chương 30. Loss của hai mạng không giảm đều như thường lệ."
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+<CanBietTruoc>
+VAE, bộ chấm ảnh sinh bằng CNN, ảnh VAE bị mờ (Chương 30). Phân phối chuẩn (Chương 7). Cross-entropy nhị phân (Chương 11). U-Net dùng tích chập và kết nối tắt (Chương 27, 28).
+
+<Fragment slot="sau-chuong">
+Tự huấn luyện một GAN và thấy vì sao nó khó: loss không nói lên tiến độ, sụp mode. Hiểu quá trình thêm nhiễu của diffusion và công thức nhảy thẳng tới bước bất kỳ. Huấn luyện một mô hình diffusion nhỏ đoán nhiễu, sinh ảnh bằng DDIM, và so công bằng GAN, VAE, diffusion trên cùng một thước đo.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch31_gan_diffusion.ipynb" />
+
+## Bỏ loss theo từng điểm ảnh
+
+Chương 30 kết thúc với một điểm yếu của VAE: ảnh mờ, vì loss tái tạo so **từng điểm ảnh** với ảnh gốc, và cách giảm loss đó tốt nhất khi không chắc là vẽ một nét trung bình nhòe. <Term id="gan">GAN</Term> (generative adversarial network, Goodfellow và cộng sự, 2014) bỏ hẳn loss đó và thay bằng **một mạng thứ hai** làm giám khảo:
+
+- **Bộ sinh** $G$ (generator): biến một vector nhiễu $z \sim \mathcal{N}(0, I)$ thành một ảnh $G(z)$.
+- **Bộ phân biệt** $D$ (discriminator): nhận một ảnh, trả về xác suất ảnh đó là **thật** (lấy từ dữ liệu) chứ không phải do $G$ sinh ra.
+
+Hai mạng học cùng lúc và ngược mục tiêu. $D$ học phân biệt thật với giả; $G$ học sinh ảnh mà $D$ gọi là thật. Như một người làm tiền giả và một cảnh sát cùng tiến bộ: tiền giả càng tinh vi, cảnh sát càng phải nhìn kỹ, và ngược lại. Viết thành công thức, đó là một trò chơi tổng bằng không:
+
+$$
+\min_G \max_D \; \mathbb{E}_{x}\big[\log D(x)\big] + \mathbb{E}_{z}\big[\log\big(1 - D(G(z))\big)\big]
+$$
+
+$D$ muốn biểu thức lớn (gán xác suất cao cho ảnh thật, thấp cho ảnh giả); $G$ muốn nó nhỏ. Không có ảnh đích nào cho $G$: tín hiệu duy nhất nó nhận là gradient đi qua $D$, cho biết "sửa ảnh theo hướng nào thì trông thật hơn".
+
+## Bộ chấm và hai mạng
+
+Thước đo vẫn là bộ chấm của Chương 30, để so trực tiếp: tỷ lệ ảnh mà CNN tin trên 90%, và số ảnh theo từng chữ số. Ảnh thật là mức trần.
+
+```python
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torchvision import datasets
+from torch.utils.data import TensorDataset, DataLoader
+tr = datasets.MNIST("data", train=True, download=True)
+te = datasets.MNIST("data", train=False, download=True)
+Xtr = tr.data.float().div(255).view(-1, 784)
+Xte = te.data.float().div(255).view(-1, 784)
+ytr, yte = tr.targets, te.targets
+
+torch.manual_seed(0)                           # bộ chấm của Chương 30: CNN của Chương 27, 2 epoch
+cham = nn.Sequential(nn.Conv2d(1, 16, 3, padding=1), nn.ReLU(), nn.MaxPool2d(2),
+                     nn.Conv2d(16, 32, 3, padding=1), nn.ReLU(), nn.MaxPool2d(2),
+                     nn.Flatten(), nn.Linear(32 * 7 * 7, 10))
+torch.manual_seed(1)
+opt = torch.optim.Adam(cham.parameters(), lr=1e-3)
+for ep in range(2):
+    for xb, yb in DataLoader(TensorDataset(Xtr.view(-1, 1, 28, 28), ytr), batch_size=64, shuffle=True):
+        opt.zero_grad()
+        F.cross_entropy(cham(xb), yb).backward()
+        opt.step()
+cham.eval()
+
+def cham_diem(anh):                            # tỷ lệ ảnh CNN tin trên 90%, và số ảnh theo từng lớp
+    with torch.no_grad():
+        p = cham(anh.view(-1, 1, 28, 28)).softmax(1)
+    return round((p.max(1).values > 0.9).float().mean().item(), 3), torch.bincount(p.argmax(1), minlength=10).tolist()
+
+print(cham_diem(Xte[:1000]))
+```
+
+```text title="Output"
+(0.927, [85, 125, 115, 111, 109, 84, 87, 98, 97, 89])
+```
+
+Bộ sinh và bộ phân biệt là hai MLP cỡ ngang nhau. `G` kết thúc bằng `Tanh` nên ảnh nằm trong $[-1, 1]$, và ảnh thật cũng được đưa về $[-1, 1]$ cho cùng thang. `LeakyReLU` (độ dốc 0,2 ở phía âm) thay cho ReLU là lựa chọn quen thuộc cho GAN, để gradient không bị chặn hẳn ở các nơ-ron âm.
+
+```python
+Z = 64                                         # số chiều của nhiễu đầu vào
+torch.manual_seed(0)
+G = nn.Sequential(nn.Linear(Z, 256), nn.LeakyReLU(0.2), nn.Linear(256, 512), nn.LeakyReLU(0.2),
+                  nn.Linear(512, 784), nn.Tanh())                  # bộ sinh: nhiễu thành ảnh trong [-1, 1]
+D = nn.Sequential(nn.Linear(784, 512), nn.LeakyReLU(0.2), nn.Linear(512, 256), nn.LeakyReLU(0.2),
+                  nn.Linear(256, 1))                               # bộ phân biệt: ảnh thành một logit "thật"
+print(sum(p.numel() for p in G.parameters()), sum(p.numel() for p in D.parameters()))
+```
+
+```text title="Output"
+550416 533505
+```
+
+## Vòng huấn luyện xen kẽ
+
+Mỗi lô có hai bước. Bước 1 cập nhật $D$ bằng cross-entropy nhị phân (Chương 11): ảnh thật có nhãn 1, ảnh giả nhãn 0. Ảnh giả được `detach()` để gradient của bước này không chảy vào $G$. Bước 2 cập nhật $G$: đưa chính các ảnh giả đó qua $D$ và tính loss **như thể chúng có nhãn 1**.
+
+Bước 2 không phải đúng công thức trên. Theo công thức, $G$ phải làm nhỏ $\log(1 - D(G(z)))$; nhưng lúc đầu $D$ dễ dàng nhận ra ảnh giả, $D(G(z)) \approx 0$, và hàm đó gần như phẳng ở đó: gradient cho $G$ gần 0 đúng lúc nó cần học nhất. Goodfellow và cộng sự đề xuất làm lớn $\log D(G(z))$ thay vào: cùng điểm cân bằng, nhưng gradient mạnh khi $G$ còn kém. Đó chính là "loss với nhãn 1" ở bước 2.
+
+Sau mỗi epoch, chấm 1000 ảnh sinh từ cùng 1000 vector nhiễu cố định:
+
+```python
+opt_G = torch.optim.Adam(G.parameters(), lr=2e-4, betas=(0.5, 0.999))
+opt_D = torch.optim.Adam(D.parameters(), lr=2e-4, betas=(0.5, 0.999))
+torch.manual_seed(1)
+dl = DataLoader(TensorDataset(Xtr * 2 - 1), batch_size=128, shuffle=True)   # ảnh thật đưa về [-1, 1] như đầu ra Tanh
+z_co_dinh = torch.randn(1000, Z, generator=torch.Generator().manual_seed(0))  # cùng 1000 điểm nhiễu để chấm mỗi epoch
+mot, khong = torch.ones(128, 1), torch.zeros(128, 1)
+for ep in range(20):
+    for (that,) in dl:
+        n = len(that)
+        gia = G(torch.randn(n, Z))
+        # bước 1: D học phân biệt, thật là 1, giả là 0 (detach: không cập nhật G ở bước này)
+        loss_D = F.binary_cross_entropy_with_logits(D(that), mot[:n]) + F.binary_cross_entropy_with_logits(D(gia.detach()), khong[:n])
+        opt_D.zero_grad()
+        loss_D.backward()
+        opt_D.step()
+        # bước 2: G học lừa D, muốn D gọi ảnh giả là 1
+        loss_G = F.binary_cross_entropy_with_logits(D(gia), mot[:n])
+        opt_G.zero_grad()
+        loss_G.backward()
+        opt_G.step()
+    with torch.no_grad():
+        diem = cham_diem((G(z_co_dinh) + 1) / 2)
+    print(ep + 1, round(loss_D.item(), 3), round(loss_G.item(), 3), diem)
+```
+
+```text title="Output"
+1 0.989 1.797 (0.0, [0, 2, 1, 93, 0, 0, 0, 0, 904, 0])
+2 0.347 2.52 (0.047, [70, 0, 262, 56, 0, 0, 0, 2, 610, 0])
+3 0.647 2.691 (0.073, [36, 33, 240, 154, 152, 6, 56, 82, 213, 28])
+4 0.666 3.17 (0.089, [1, 6, 176, 137, 83, 33, 13, 1, 545, 5])
+5 0.473 2.182 (0.121, [46, 18, 28, 277, 124, 72, 47, 84, 243, 61])
+6 0.516 2.879 (0.24, [23, 0, 163, 325, 197, 36, 0, 69, 181, 6])
+7 0.519 1.659 (0.296, [6, 24, 171, 239, 75, 53, 14, 115, 292, 11])
+8 1.694 1.607 (0.255, [4, 2, 151, 315, 173, 43, 0, 111, 159, 42])
+9 0.355 3.559 (0.278, [6, 0, 272, 129, 104, 25, 19, 181, 206, 58])
+10 0.463 2.201 (0.257, [23, 0, 222, 164, 113, 96, 2, 102, 204, 74])
+11 0.461 2.305 (0.348, [0, 0, 176, 361, 165, 14, 0, 55, 193, 36])
+12 0.419 2.554 (0.255, [0, 1, 253, 255, 100, 165, 6, 42, 126, 52])
+13 0.493 2.86 (0.257, [0, 20, 164, 285, 117, 42, 5, 112, 192, 63])
+14 0.442 2.156 (0.312, [7, 30, 157, 234, 130, 51, 9, 132, 101, 149])
+15 0.639 2.502 (0.298, [14, 90, 70, 113, 191, 96, 10, 109, 162, 145])
+16 1.114 0.732 (0.44, [3, 128, 144, 164, 102, 41, 25, 157, 107, 129])
+17 0.76 1.931 (0.383, [18, 168, 74, 140, 65, 64, 3, 187, 214, 67])
+18 0.88 1.35 (0.447, [16, 153, 111, 189, 115, 75, 18, 148, 102, 73])
+19 0.915 1.574 (0.443, [19, 158, 88, 173, 47, 66, 32, 158, 166, 93])
+20 1.184 2.413 (0.47, [19, 138, 135, 132, 110, 71, 33, 168, 128, 66])
+```
+
+20 epoch mất khoảng 105 giây trên CPU 16 nhân. Ba cột đầu là epoch, loss của $D$, loss của $G$ ở lô cuối; cột còn lại là điểm của bộ chấm.
+
+Điều đầu tiên khác mọi chương trước: **loss không giảm**. Loss của $D$ nhảy giữa 0,35 và 1,69, loss của $G$ giữa 0,73 và 3,56, không theo xu hướng nào. Điều đó là bình thường: mỗi mạng được đo so với một đối thủ cũng đang thay đổi, nên loss thấp có thể là mạng giỏi lên, hoặc đối thủ kém đi. Muốn biết GAN có tiến bộ không, phải nhìn chính ảnh nó sinh ra; ở đây bộ chấm tăng từ 0% ở epoch 1 lên **47%** ở epoch 20.
+
+So với Chương 30: VAE 16 chiều, 20 epoch, đạt 36,5%. GAN đạt 47% với cùng số epoch, không có bộ mã hóa nào, và chưa từng so một điểm ảnh nào với ảnh thật. Nhưng hãy nhìn cột số ảnh theo lớp ở các epoch giữa; trang 2 nói về nó.
+
+<TuKiemTra
+	cauHoi="Ở bước 1, nếu quên detach() và viết D(gia) thay vì D(gia.detach()), điều gì xảy ra khi chạy?"
+	luaChon={['Không khác gì, vì opt_D chỉ cập nhật tham số của D', 'loss_D.backward() báo lỗi ngay', 'loss_G.backward() ở bước 2 báo lỗi RuntimeError: Trying to backward through the graph a second time', 'D học nhanh gấp đôi']}
+	dapAn={2}
+	giaiThich="Không có detach, loss_D.backward() lan ngược qua cả G và giải phóng đồ thị tính toán của gia = G(z) như mọi lượt ngược. Bước 2 dùng lại chính gia, nên loss_G.backward() cần đồ thị đã bị xóa và báo lỗi (đã chạy thử trên một GAN nhỏ). detach() cắt đường từ loss_D vào G, nên đồ thị của G còn nguyên cho bước 2."
+/>
+
+<Khung loai="loi">
+**Dùng loss để chọn epoch tốt nhất.** Với GAN, loss của $G$ thấp nhất ở epoch 16 (0,732), nhưng đó là lúc $D$ đang yếu chứ không chắc $G$ tốt nhất. Lưu mô hình theo một thước đo trên chính ảnh sinh ra.
+
+**Ảnh thật và ảnh giả khác thang đo.** `Tanh` cho $[-1, 1]$ trong khi ảnh thật để $[0, 1]$: $D$ thắng ngay chỉ bằng cách nhìn xem có điểm ảnh âm không, và $G$ không bao giờ đuổi kịp.
+</Khung>
