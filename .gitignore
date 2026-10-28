@@ -11,3 +11,4 @@ playwright-report/
 
 # Liên kết Vercel CLI cục bộ
 .vercel
+.env*
