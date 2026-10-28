@@ -533,3 +533,18 @@
   tenTiengAnh: dropout
   giaiThich: Dropout tắt ngẫu nhiên một tỷ lệ nơ-ron ở mỗi bước huấn luyện, buộc mạng không dựa vào một vài nơ-ron riêng lẻ. Lúc đánh giá thì tắt dropout. Đây là một cách chống overfitting.
   hocKy: ai-engineer/ch26-huan-luyen-mang-sau
+- id: tich-chap
+  ten: Tích chập
+  tenTiengAnh: convolution
+  giaiThich: Tích chập trượt một bộ lọc nhỏ (ví dụ 3 nhân 3) qua mọi vị trí của ảnh, ở mỗi vị trí nhân từng ô rồi cộng lại thành một số. Cùng một bộ lọc dùng chung cho mọi vị trí, nên nó phát hiện cùng một mẫu (cạnh, góc) ở bất kỳ đâu trong ảnh.
+  hocKy: ai-engineer/ch27-cnn
+- id: pooling
+  ten: Pooling
+  tenTiengAnh: pooling
+  giaiThich: Pooling thu nhỏ bản đồ đặc trưng bằng cách gộp mỗi ô nhỏ (thường 2 nhân 2) thành một số, ví dụ lấy số lớn nhất. Nó giảm số phép tính và làm mạng ít nhạy với dịch chuyển nhỏ.
+  hocKy: ai-engineer/ch27-cnn
+- id: cnn
+  ten: CNN
+  tenTiengAnh: convolutional neural network
+  giaiThich: CNN là mạng nơ-ron dùng các lớp tích chập và pooling để xử lý dữ liệu dạng lưới như ảnh. Lớp đầu học các mẫu đơn giản như cạnh, lớp sau ghép chúng thành mẫu phức tạp hơn, với ít tham số hơn nhiều so với lớp dày đặc.
+  hocKy: ai-engineer/ch27-cnn

@@ -1,0 +1,84 @@
+---
+title: CNN trên MNIST
+description: "70 000 ảnh chữ số viết tay, hai epoch huấn luyện. MLP 101 770 tham số đạt 96,3%, CNN 20 490 tham số đạt 98,2% - ít tham số hơn 5 lần mà số lỗi giảm còn một nửa."
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## MNIST
+
+MNIST (LeCun và cộng sự, 1998) là bộ dữ liệu "hello world" của thị giác máy tính: 60 000 ảnh train và 10 000 ảnh test, mỗi ảnh là một chữ số viết tay xám 28 nhân 28. Lớn hơn nhiều so với 1797 ảnh 8 nhân 8 của các chương trước, nên đủ để thấy sự khác biệt giữa các kiến trúc.
+
+`torchvision` (thư viện ảnh đi kèm PyTorch, Colab có sẵn) tải về lần đầu khoảng 10 MB:
+
+```python
+from torchvision import datasets
+from torch.utils.data import TensorDataset, DataLoader
+tr = datasets.MNIST("data", train=True, download=True)      # tải 60 000 ảnh train lần đầu, khoảng 10 MB
+te = datasets.MNIST("data", train=False, download=True)     # 10 000 ảnh test
+Xtr, ytr = tr.data.float().div(255).unsqueeze(1), tr.targets   # (60000, 1, 28, 28), giá trị 0 tới 1
+Xte, yte = te.data.float().div(255).unsqueeze(1), te.targets
+print(Xtr.shape, Xte.shape)
+ce = nn.CrossEntropyLoss()
+
+def huan_luyen(m, so_epoch=2):
+    torch.manual_seed(1)
+    dl = DataLoader(TensorDataset(Xtr, ytr), batch_size=64, shuffle=True)
+    opt = torch.optim.Adam(m.parameters(), lr=1e-3)
+    for ep in range(so_epoch):
+        m.train()
+        for xb, yb in dl:
+            opt.zero_grad()
+            ce(m(xb), yb).backward()
+            opt.step()
+        m.eval()
+        with torch.no_grad():
+            print(ep + 1, round((m(Xte).argmax(1) == yte).float().mean().item(), 4))
+    return m
+
+torch.manual_seed(0)
+mlp = nn.Sequential(nn.Flatten(), nn.Linear(784, 128), nn.ReLU(), nn.Linear(128, 10))
+print("MLP", sum(p.numel() for p in mlp.parameters()))
+huan_luyen(mlp)
+print("CNN", sum(p.numel() for p in cnn.parameters()))
+huan_luyen(cnn)
+```
+
+```text title="Output"
+torch.Size([60000, 1, 28, 28]) torch.Size([10000, 1, 28, 28])
+MLP 101770
+1 0.9455
+2 0.9631
+CNN 20490
+1 0.9792
+2 0.9817
+```
+
+`tr.data` là tensor số nguyên 0 tới 255 shape `(60000, 28, 28)`; chia 255 đưa về 0 tới 1, `unsqueeze(1)` thêm chiều kênh. Toàn bộ 60 000 ảnh `float32` chỉ chiếm 188 MB, nên nạp hết vào bộ nhớ như các chương trước. Với dữ liệu lớn hơn, `torchvision` có cách đọc từng lô từ đĩa (Chương 28).
+
+`cnn` là mạng ở trang 2, khởi tạo với seed 0.
+
+## Kết quả
+
+**Bảng 27.2.** Sau 2 epoch Adam, lô 64, trên 10 000 ảnh test.
+
+| Mô hình | Tham số | Epoch 1 | Epoch 2 | Số ảnh test sai |
+|:---|---:|---:|---:|---:|
+| MLP 784-128-10 | 101 770 | 94,6% | 96,3% | 369 |
+| CNN ở trang 2 | 20 490 | 97,9% | **98,2%** | **183** |
+
+CNN có số tham số bằng **một phần năm** MLP, mà số ảnh đoán sai chỉ bằng **một nửa** (183 so với 369). Ngay sau epoch đầu, CNN đã vượt MLP sau hai epoch. Thiên kiến quy nạp ở trang 2 không chỉ tiết kiệm tham số: nó giúp mạng học **nhanh hơn**, vì mỗi lần cập nhật một bộ lọc là cập nhật cho mọi vị trí của ảnh cùng lúc.
+
+Cái giá là tính toán. Trên CPU 16 nhân của máy chạy bài, mỗi epoch CNN mất khoảng 5 giây, MLP khoảng 1 giây: lớp tích chập đầu tiên làm $16 \times 9$ phép nhân cho mỗi trong 784 vị trí, ở mỗi ảnh. Ít tham số không có nghĩa là ít phép tính. Đây là chỗ GPU (Chương 25) bắt đầu đáng giá.
+
+<Khung loai="vi-sao" tieuDe="98% CÓ LÀ GIỚI HẠN?">
+Không. Các CNN sâu hơn, có tăng cường dữ liệu và huấn luyện lâu hơn, đạt trên 99,5% trên MNIST, tức sai dưới 50 trong 10 000 ảnh. Vì đã gần bão hòa, MNIST giờ chủ yếu dùng để học và để kiểm tra nhanh code; bài toán thật được đo trên các bộ khó hơn như CIFAR-10 hay ImageNet (Chương 28).
+</Khung>
+
+<Khung loai="loi">
+**Quên chia 255.** Điểm ảnh 0 tới 255 làm tín hiệu lớn gấp 255 lần thang đo mà khởi tạo dự kiến (Chương 26), loss nhảy loạn ở những bước đầu. Luôn đưa về 0 tới 1, hoặc chuẩn hóa về trung bình 0, độ lệch chuẩn 1.
+
+**Đánh giá cả 10 000 ảnh một lúc trên GPU nhỏ.** Ở đây CPU đủ bộ nhớ. Trên GPU vài GB với mạng lớn, chia tập test thành lô như lúc huấn luyện để không báo lỗi hết bộ nhớ.
+</Khung>

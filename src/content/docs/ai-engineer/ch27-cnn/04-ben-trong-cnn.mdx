@@ -1,0 +1,67 @@
+---
+title: Bên trong một CNN
+description: "Nhìn 16 bộ lọc lớp đầu mà CNN tự học và bản đồ đặc trưng của một chữ số 7. Dịch ảnh test sang phải 2 điểm ảnh - MLP rơi từ 96% xuống 74%, CNN còn 94% - và vì sao CNN chưa bất biến hoàn toàn."
+---
+
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Mạng học được những bộ lọc nào
+
+Bộ lọc cạnh dọc ở trang 1 do ta tự đặt. Trong <Term id="cnn">CNN</Term>, 16 bộ lọc của lớp đầu khởi tạo ngẫu nhiên và được học bằng gradient descent, y như trọng số của lớp dày đặc. Sau 2 epoch trên MNIST, chúng trông như sau:
+
+<HinhKetQua src="/hinh/ch27/h2_bo_loc.svg" alt="Bên trái là ảnh test đầu tiên của MNIST, chữ số 7. Bên phải là hai dải, mỗi dải gồm 8 bộ lọc 3 nhân 3 tô màu đỏ cho số dương và xanh cho số âm, đánh số 1 tới 16, bên dưới mỗi bộ lọc là bản đồ đặc trưng 28 nhân 28 của chữ số 7 sau ReLU, nền đen, nét sáng. Phần lớn bản đồ sáng lên dọc theo nét chữ; một số bản đồ như 1, 7, 15 chủ yếu sáng ở nét ngang phía trên; vài bản đồ như 3, 10 có nền tím nhạt thay vì đen." so="27.2" chuThich="16 bộ lọc 3×3 của lớp tích chập đầu sau 2 epoch (đỏ là trọng số dương, xanh là âm) và bản đồ đặc trưng tương ứng của chữ số 7 đầu tiên trong tập test, sau ReLU.">
+Mỗi bộ lọc là một mẫu nhỏ: có cái đỏ một phía, xanh phía kia (bộ phát hiện cạnh theo một hướng, cùng ý tưởng với bộ lọc cạnh dọc ở trang 1); có cái đỏ gần như toàn bộ (phản ứng với độ sáng nói chung). Bản đồ bên dưới cho thấy bộ lọc đó "nhìn thấy" gì trên chữ số 7: một số bản đồ chủ yếu sáng ở nét ngang trên cùng, số khác sáng dọc cả nét chéo. Không ai bảo mạng phải tìm cạnh: nó tự tìm ra rằng cạnh là thứ có ích để phân biệt chữ số.
+</HinhKetQua>
+
+Lớp đầu chỉ nhìn thấy cửa sổ $3 \times 3$. Lớp tích chập thứ hai nhìn $3 \times 3$ trên bản đồ đã pooling, tức một vùng $8 \times 8$ của ảnh gốc, và ghép 16 loại cạnh thành mẫu phức tạp hơn: góc, đường cong, đầu nét. Vùng ảnh gốc mà một nơ-ron nhìn thấy gọi là **vùng tiếp nhận** (receptive field), và nó lớn dần qua mỗi lớp. Với các mạng sâu trên ảnh tự nhiên, lớp giữa phản ứng với hoa văn, lớp sâu phản ứng với mắt, bánh xe, khuôn mặt (Zeiler và Fergus, 2014): đó là điều Chương 23 hứa sẽ thấy.
+
+## Dịch ảnh đi vài điểm ảnh
+
+Nếu cùng một bộ lọc được dùng ở mọi vị trí, thì dịch chữ số sang phải một chút, bản đồ đặc trưng cũng chỉ dịch theo. Thử trên cả hai mô hình đã huấn luyện ở trang 3, chưa từng thấy ảnh dịch lúc huấn luyện:
+
+```python
+def dich(X, d):                                # dịch ảnh sang phải d điểm ảnh, lấp cột trống bằng 0
+    Y = torch.zeros_like(X)
+    Y[..., d:] = X[..., :-d]
+    return Y
+
+with torch.no_grad():
+    for d in (1, 2, 3, 4):
+        Xd = dich(Xte, d)
+        print(d, round((mlp(Xd).argmax(1) == yte).float().mean().item(), 4),
+              round((cnn(Xd).argmax(1) == yte).float().mean().item(), 4))
+```
+
+```text title="Output"
+1 0.9366 0.9757
+2 0.7431 0.9367
+3 0.4623 0.8054
+4 0.2721 0.6059
+```
+
+**Bảng 27.3.** Độ chính xác test khi dịch ảnh sang phải.
+
+| Dịch | 0 | 1 | 2 | 3 | 4 |
+|:---|---:|---:|---:|---:|---:|
+| MLP | 96,3% | 93,7% | 74,3% | 46,2% | 27,2% |
+| CNN | 98,2% | 97,6% | 93,7% | 80,5% | 60,6% |
+
+Dịch 2 điểm ảnh (7% bề rộng ảnh, mắt người không để ý), MLP mất 22 điểm phần trăm, CNN chỉ mất 4,5. Với MLP, mỗi điểm ảnh có trọng số riêng; chữ số dịch đi là một mẫu hoàn toàn khác. Với CNN, các bộ lọc vẫn tìm ra cùng các cạnh đó, chỉ ở chỗ khác.
+
+Nhưng CNN cũng **không** bất biến hoàn toàn: dịch 4 điểm ảnh còn 60,6%. Lý do là phần cuối. Tích chập chỉ **đồng biến** với phép dịch (ảnh dịch thì bản đồ dịch theo); pooling 2 nhân 2 bù được dịch chuyển trong phạm vi vài điểm ảnh; còn lớp `Linear(1568, 10)` ở cuối lại có trọng số riêng cho từng vị trí trên bản đồ 7 nhân 7, giống MLP. Hai cách chữa:
+
+- **Tăng cường dữ liệu** (data augmentation): lúc huấn luyện, dịch, xoay, phóng ngẫu nhiên mỗi ảnh một chút, để mạng thấy đủ mọi biến thể. Đây là cách chuẩn, `torchvision.transforms` có sẵn.
+- **Pooling toàn cục**: thay lớp dày đặc cuối bằng phép lấy trung bình trên toàn bộ bản đồ, để vị trí không còn quan trọng. Các kiến trúc hiện đại ở Chương 28 đều làm vậy.
+
+<Khung loai="doc-bieu-do">
+**Đọc bảng 27.3 như một bài kiểm tra độ bền.** Độ chính xác trên tập test sạch là một con số; độ chính xác khi dữ liệu lệch đi một chút so với lúc huấn luyện là con số khác, và thường là con số quan trọng hơn khi đưa mô hình ra dùng thật: ảnh chụp bằng điện thoại không bao giờ được căn giữa hoàn hảo như MNIST. Phần VI quay lại chuyện này dưới tên "lệch phân phối" (distribution shift).
+</Khung>
+
+<Khung loai="loi">
+**Dùng `torch.roll` để dịch ảnh.** `roll` đẩy cột bị dịch ra ngoài vòng về phía bên kia, ảnh không còn là chữ số bị dịch nữa. Hàm `dich` ở trên lấp cột trống bằng 0, đúng như nền đen của MNIST.
+
+**Tăng cường dữ liệu cả trên tập test.** Biến đổi ngẫu nhiên chỉ dùng lúc huấn luyện. Tập test phải giữ cố định để các lần đo so sánh được với nhau.
+</Khung>

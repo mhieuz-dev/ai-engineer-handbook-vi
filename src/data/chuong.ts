@@ -53,7 +53,7 @@ const BANG: [number, string, string, string, XuatBan?][] = [
 	[24, 'phan-3', 'Backpropagation tự cài', 'backpropagation', { trangThai: 'xong', notebook: 'ch24_backpropagation.ipynb' }],
 	[25, 'phan-3', 'PyTorch căn bản', 'pytorch-can-ban', { trangThai: 'xong', notebook: 'ch25_pytorch_can_ban.ipynb' }],
 	[26, 'phan-3', 'Huấn luyện mạng sâu', 'huan-luyen-mang-sau', { trangThai: 'xong', notebook: 'ch26_huan_luyen_mang_sau.ipynb' }],
-	[27, 'phan-3', 'CNN', 'cnn'],
+	[27, 'phan-3', 'CNN', 'cnn', { trangThai: 'xong', notebook: 'ch27_cnn.ipynb' }],
 	[28, 'phan-3', 'Kiến trúc CNN và transfer learning', 'kien-truc-cnn'],
 	[29, 'phan-3', 'RNN, LSTM, GRU', 'rnn-lstm-gru'],
 	[30, 'phan-3', 'Autoencoder và VAE', 'autoencoder-vae'],

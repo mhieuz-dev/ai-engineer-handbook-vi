@@ -1,0 +1,93 @@
+---
+title: Bài tập
+description: "Ba bài tập CNN có đáp án chi tiết (đoán shape qua lớp tích chập 5x5 và pooling của LeNet, đếm tham số Conv2d bằng tay, bỏ pooling làm số tham số tăng 12 lần) và câu hỏi phỏng vấn."
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Tính tay trước, rồi chạy code trong notebook để kiểm tra.
+
+<BaiTap so="27.1">
+**Shape qua LeNet.** Lớp đầu của LeNet-5 (LeCun và cộng sự, 1998) là `Conv2d(1, 6, kernel_size=5)` không padding, stride 1, theo sau là `MaxPool2d(2)`. Với ảnh 28 nhân 28, đoán shape sau từng lớp.
+
+<Fragment slot="dap-an">
+
+Công thức ở trang 1: $(28 + 0 - 5)/1 + 1 = 24$, rồi pooling 2 nhân 2 chia đôi còn 12. Có 6 bộ lọc nên 6 kênh.
+
+```python
+lenet = nn.Sequential(nn.Conv2d(1, 6, kernel_size=5), nn.MaxPool2d(2))   # không padding, stride 1
+print(lenet[0](torch.zeros(1, 1, 28, 28)).shape, lenet(torch.zeros(1, 1, 28, 28)).shape)
+```
+
+```text title="Output"
+torch.Size([1, 6, 24, 24]) torch.Size([1, 6, 12, 12])
+```
+
+Bộ lọc $k \times k$ không padding làm mất $k - 1$ điểm ảnh mỗi chiều: 5 nhân 5 mất 4. Đó là lý do các mạng hiện đại hay dùng bộ lọc 3 nhân 3 với `padding=1`: kích thước giữ nguyên, chỉ pooling hay stride mới thu nhỏ, dễ tính hơn nhiều.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="27.2">
+**Đếm tham số bằng tay.** Lớp `Conv2d(16, 32, kernel_size=3)` có bao nhiêu tham số? Kiểm bằng code.
+
+<Fragment slot="dap-an">
+
+32 bộ lọc, mỗi bộ lọc là khối $16 \times 3 \times 3 = 144$ số, cộng 32 hệ số chặn: $32 \times 144 + 32 = 4640$.
+
+```python
+print(sum(p.numel() for p in nn.Conv2d(16, 32, 3).parameters()), 16 * 32 * 9 + 32)
+```
+
+```text title="Output"
+4640 4640
+```
+
+Đây là lớp tích chập thứ hai của CNN ở trang 2 (bảng 27.1). Công thức chung: $c_{\text{ra}} \cdot c_{\text{vào}} \cdot k^2 + c_{\text{ra}}$, không có kích thước ảnh trong đó.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="27.3">
+**Bỏ pooling.** Lấy CNN ở trang 2, bỏ cả hai lớp `MaxPool2d`, giữ `padding=1`. Lớp `Linear` cuối giờ cần bao nhiêu đầu vào? Tổng tham số là bao nhiêu, và lớp cuối chiếm bao nhiêu phần trăm?
+
+<Fragment slot="dap-an">
+
+Không pooling thì bản đồ vẫn 28 nhân 28, nên lớp cuối nhận $32 \times 28 \times 28 = 25\,088$ đầu vào.
+
+```python
+khong_pool = nn.Sequential(nn.Conv2d(1, 16, 3, padding=1), nn.ReLU(),
+                           nn.Conv2d(16, 32, 3, padding=1), nn.ReLU(),
+                           nn.Flatten(), nn.Linear(32 * 28 * 28, 10))
+print(sum(p.numel() for p in khong_pool.parameters()), sum(p.numel() for p in khong_pool[-1].parameters()))
+```
+
+```text title="Output"
+255690 250890
+```
+
+255 690 tham số, gấp **12,5 lần** bản có pooling (20 490), và lớp cuối chiếm 98%. Hai lớp tích chập không đổi (160 và 4640 tham số): pooling không có tham số, nhưng mỗi lần nó chia 4 số giá trị mà lớp dày đặc phía sau phải nối. Mạng không pooling còn nhạy hơn với phép dịch ở trang 4, vì lớp dày đặc giờ có trọng số riêng cho từng điểm trong 784 vị trí.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Vì sao CNN hợp với ảnh hơn MLP?**
+
+<p lang="en"><em>Why are CNNs better suited to images than MLPs?</em></p>
+
+*Gợi ý:* kết nối cục bộ và dùng chung trọng số. Ít tham số hơn nhiều bậc độ lớn, đồng biến với phép dịch, học được đặc trưng phân cấp từ cạnh tới vật thể. Nêu số đo: 20 nghìn tham số thắng 100 nghìn trên MNIST.
+
+**2. Tính kích thước đầu ra của một lớp tích chập.**
+
+<p lang="en"><em>How do you compute the output size of a convolutional layer?</em></p>
+
+*Gợi ý:* $\lfloor (n + 2p - k)/s \rfloor + 1$; số kênh ra bằng số bộ lọc; số tham số $c_{\text{ra}} c_{\text{vào}} k^2 + c_{\text{ra}}$, không phụ thuộc kích thước ảnh.
+
+**3. Pooling dùng để làm gì? Nó có tham số không?**
+
+<p lang="en"><em>What is pooling for? Does it have parameters?</em></p>
+
+*Gợi ý:* giảm kích thước không gian để giảm tính toán và số tham số của các lớp sau, cho mạng chịu được dịch chuyển nhỏ, mở rộng vùng tiếp nhận. Max pooling và average pooling không có tham số; nhiều kiến trúc mới thay pooling bằng tích chập stride 2.
+</Khung>

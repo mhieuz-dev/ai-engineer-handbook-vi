@@ -1,0 +1,115 @@
+---
+title: Lớp tích chập và pooling
+description: "Một lớp Conv2d 16 bộ lọc trên ảnh màu 224x224 chỉ có 448 tham số, lớp dày đặc cùng đầu vào và đầu ra cần 119 tỷ. Nhiều kênh, max pooling, và lần theo shape qua từng lớp của một CNN hoàn chỉnh."
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Nhiều kênh vào, nhiều bộ lọc ra
+
+Ảnh màu có 3 kênh (đỏ, lục, lam). Một bộ lọc cho ảnh màu là một khối $3 \times 3 \times 3$: trượt qua ảnh, ở mỗi vị trí nhân 27 cặp số rồi cộng, cộng thêm một hệ số chặn. Một bộ lọc cho một bản đồ đặc trưng. Một lớp tích chập có **nhiều** bộ lọc, mỗi bộ lọc học phát hiện một mẫu khác nhau, và xếp các bản đồ thành các kênh của đầu ra.
+
+```python
+import torch.nn as nn
+conv = nn.Conv2d(3, 16, kernel_size=3)         # 3 kênh vào (RGB), 16 bộ lọc 3x3
+print(conv.weight.shape, sum(p.numel() for p in conv.parameters()))
+lo = torch.randn(32, 3, 224, 224)              # 32 ảnh màu 224x224
+print(conv(lo).shape)
+vao, ra_ = 3 * 224 * 224, 16 * 222 * 222       # nếu dùng lớp dày đặc cho cùng đầu vào và đầu ra
+print(f"{vao * ra_:.2e}")
+```
+
+```text title="Output"
+torch.Size([16, 3, 3, 3]) 448
+torch.Size([32, 16, 222, 222])
+1.19e+11
+```
+
+Trọng số có shape `(16, 3, 3, 3)`: 16 bộ lọc, mỗi bộ lọc $3 \times 3 \times 3 = 27$ số. Cộng 16 hệ số chặn: $16 \times 27 + 16 = 448$ tham số.
+
+Lô `(32, 3, 224, 224)` là đúng shape Chương 3 đã hứa: 32 ảnh, 3 kênh, 224 nhân 224. Đầu ra `(32, 16, 222, 222)`: vẫn 32 ảnh, giờ mỗi ảnh có 16 kênh, mỗi kênh là một bản đồ đặc trưng 222 nhân 222 (không padding nên mất một vòng mỗi bên).
+
+Một lớp dày đặc nối 150 528 giá trị vào với 788 544 giá trị ra cần $1{,}19 \times 10^{11}$ trọng số, gấp khoảng **265 triệu** lần lớp tích chập. Sự chênh lệch đến từ hai giả định:
+
+- **Kết nối cục bộ.** Mỗi giá trị ra chỉ nhìn một cửa sổ $3 \times 3$ của ảnh, không phải toàn bộ ảnh.
+- **Dùng chung trọng số.** Cùng một bộ lọc ở mọi vị trí.
+
+Hai giả định này đúng với ảnh, nên ta mất rất ít sức biểu diễn mà tiết kiệm khổng lồ. Đây là một **thiên kiến quy nạp** (inductive bias): kiến thức về dữ liệu được cài sẵn vào kiến trúc, thay vì bắt mô hình học lại từ dữ liệu.
+
+## Pooling
+
+<Term id="pooling">Pooling</Term> thu nhỏ bản đồ đặc trưng. **Max pooling** 2 nhân 2 chia bản đồ thành các ô 2 nhân 2 không chồng lên nhau và giữ lại số lớn nhất của mỗi ô:
+
+```python
+a = torch.tensor([[1., 3., 2., 0.],
+                  [4., 2., 1., 1.],
+                  [0., 1., 5., 6.],
+                  [2., 2., 7., 3.]]).reshape(1, 1, 4, 4)
+print(nn.MaxPool2d(2)(a)[0, 0])                # lấy số lớn nhất trong mỗi ô 2x2
+```
+
+```text title="Output"
+tensor([[4., 2.],
+        [2., 7.]])
+```
+
+Ô trên trái $\{1, 3, 4, 2\}$ cho 4; ô trên phải $\{2, 0, 1, 1\}$ cho 2; ô dưới trái $\{0, 1, 2, 2\}$ cho 2; ô dưới phải $\{5, 6, 7, 3\}$ cho 7. Pooling không có tham số nào để học.
+
+Ý nghĩa: bản đồ đặc trưng nói "chỗ này có cạnh mạnh cỡ nào". Max pooling giữ lại "trong vùng 2 nhân 2 này có cạnh mạnh cỡ nào", bỏ đi vị trí chính xác trong vùng. Nhờ vậy mạng ít nhạy với việc nét chữ lệch một điểm ảnh, và mỗi lần pooling giảm số giá trị đi 4 lần, các lớp sau rẻ hơn.
+
+## Một CNN hoàn chỉnh
+
+Mẫu kinh điển: **[tích chập, ReLU, pooling]** lặp lại vài lần, rồi trải phẳng và đưa vào lớp dày đặc để phân loại. Lần theo shape của một ảnh MNIST 28 nhân 28 qua từng lớp:
+
+```python
+torch.manual_seed(0)
+cnn = nn.Sequential(nn.Conv2d(1, 16, 3, padding=1), nn.ReLU(), nn.MaxPool2d(2),
+                    nn.Conv2d(16, 32, 3, padding=1), nn.ReLU(), nn.MaxPool2d(2),
+                    nn.Flatten(), nn.Linear(32 * 7 * 7, 10))
+h = torch.zeros(1, 1, 28, 28)                  # một ảnh MNIST giả
+for lop in cnn:
+    h = lop(h)
+    print(type(lop).__name__, tuple(h.shape))
+print(sum(p.numel() for p in cnn.parameters()))
+```
+
+```text title="Output"
+Conv2d (1, 16, 28, 28)
+ReLU (1, 16, 28, 28)
+MaxPool2d (1, 16, 14, 14)
+Conv2d (1, 32, 14, 14)
+ReLU (1, 32, 14, 14)
+MaxPool2d (1, 32, 7, 7)
+Flatten (1, 1568)
+Linear (1, 10)
+20490
+```
+
+**Bảng 27.1.** Tham số của từng lớp.
+
+| Lớp | Đầu ra | Tham số |
+|:---|:---|---:|
+| Conv2d(1, 16, 3) | 16 × 28 × 28 | $16 \times 9 + 16 = 160$ |
+| MaxPool2d(2) | 16 × 14 × 14 | 0 |
+| Conv2d(16, 32, 3) | 32 × 14 × 14 | $32 \times 16 \times 9 + 32 = 4640$ |
+| MaxPool2d(2) | 32 × 7 × 7 | 0 |
+| Linear(1568, 10) | 10 | $1568 \times 10 + 10 = 15\,690$ |
+| **Tổng** | | **20 490** |
+
+Hai điều đáng để ý. Kích thước không gian **giảm** (28, 14, 7) trong khi số kênh **tăng** (1, 16, 32): mạng đổi thông tin "ở đâu" lấy thông tin "là gì". Và ngay cả ở đây, lớp dày đặc cuối chiếm 77% tham số; các kiến trúc ở Chương 28 thay nó bằng pooling toàn cục để bớt tiếp.
+
+<TuKiemTra
+	cauHoi="Một lớp Conv2d(64, 128, kernel_size=3) có bao nhiêu tham số? Con số đó có phụ thuộc kích thước ảnh không?"
+	luaChon={['128 × 3 × 3 = 1152, có phụ thuộc', '64 × 128 × 9 + 128 = 73 856, không phụ thuộc', '64 × 128 = 8192, không phụ thuộc', 'Phụ thuộc kích thước ảnh nên không tính được']}
+	dapAn={1}
+	giaiThich="Mỗi bộ lọc là khối 64 × 3 × 3 = 576 số, có 128 bộ lọc, cộng 128 hệ số chặn: 73 728 + 128 = 73 856. Bộ lọc trượt qua ảnh bao nhiêu vị trí cũng dùng chung các số đó, nên ảnh 28 × 28 hay 1000 × 1000 đều cùng số tham số."
+/>
+
+<Khung loai="loi">
+**Tính sai kích thước trước lớp Linear.** `nn.Linear(32 * 7 * 7, 10)` chỉ đúng với ảnh vào 28 nhân 28. Đổi kích thước ảnh hay thêm một lớp pooling là báo lỗi `mat1 and mat2 shapes cannot be multiplied`. Cách chắc ăn nhất: cho một ảnh giả đi qua và in shape như ô code trên, hoặc dùng `nn.LazyLinear(10)` để PyTorch tự suy ra số đầu vào.
+
+**Thêm ReLU sau lớp cuối.** Lớp ra phải trả logit (âm hay dương đều được) cho `CrossEntropyLoss`. Một ReLU ở cuối chặn mọi logit âm về 0 và làm mạng học kém.
+</Khung>
