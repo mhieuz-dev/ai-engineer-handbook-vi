@@ -34,7 +34,7 @@ def mong_doi(out, them=""):
 class Chuong:
     def __init__(self, so, ten, slug_chuong, mo_ta, sau, trang, thoi_gian="dưới 1 phút", runtime="CPU là đủ, không cần GPU"):
         self.so, self.trang = so, trang  # trang: list (tên, slug)
-        self.web = f"https://ai-and-robotics.vercel.app/ai-engineer/{slug_chuong}"
+        self.web = f"https://ai-and-robotics-handbook.vercel.app/ai-engineer/{slug_chuong}"
         muc = "\n".join(f"{i}. [Trang {i} · {t}](#trang-{i})" for i, (t, _) in enumerate(trang, 1))
         sau_md = "\n".join(f"- {s}" for s in sau)
         self.cells = [md(f'''<div style="background-color:#0e2233;background-image:linear-gradient(135deg,#0b1a29,#123049);color:#ffffff;padding:26px 28px 24px;border-radius:12px;border:1px solid #2a4a66;">

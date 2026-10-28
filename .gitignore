@@ -8,3 +8,6 @@ dist/
 .astro/
 test-results/
 playwright-report/
+
+# Liên kết Vercel CLI cục bộ
+.vercel

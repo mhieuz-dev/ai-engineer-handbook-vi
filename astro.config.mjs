@@ -9,7 +9,7 @@ import { cauHinhSidebar } from './src/data/chuong.ts';
 
 // https://astro.build/config
 export default defineConfig({
-	site: 'https://ai-and-robotics.vercel.app',
+	site: 'https://ai-and-robotics-handbook.vercel.app',
 	markdown: {
 		processor: unified({ remarkPlugins: [remarkMath], rehypePlugins: [rehypeKatex] }),
 	},

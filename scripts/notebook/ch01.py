@@ -1,7 +1,7 @@
 """Dựng notebooks/ch01_python_tu_dau.ipynb: python3 scripts/notebook/ch01.py notebooks/ch01_python_tu_dau.ipynb"""
 import json, sys
 
-WEB = "https://ai-and-robotics.vercel.app/ai-engineer/ch01-python-tu-dau"
+WEB = "https://ai-and-robotics-handbook.vercel.app/ai-engineer/ch01-python-tu-dau"
 P = '<p style="margin:8px 0 0;color:#2b2b2b;line-height:1.6;">{}</p>'
 MAU = {
     "truc-giac": ("#1F5F8B", "#E9F1F8", "#1F5F8B", "TRỰC GIÁC"),
