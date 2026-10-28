@@ -1,0 +1,89 @@
+---
+title: Dropout, weight decay và dừng sớm
+description: "Mạng 85 nghìn tham số học thuộc 300 ảnh tới loss train 0,0005 trong khi loss test tăng dần. So sánh ba cách chữa trên cùng thí nghiệm - dropout giảm loss test từ 0,32 xuống 0,21, weight decay 0,1 gần như không đổi gì, dừng sớm chọn epoch 42."
+---
+
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Ít dữ liệu, mạng lớn
+
+Để thấy overfitting rõ, chỉ giữ 300 ảnh train đầu tiên (thay vì 1437) và dùng một mạng rộng 64-256-256-10:
+
+```python
+Xit, yit = Xtr[:300], ytr[:300]                # chỉ 300 ảnh train
+def rong(p=0.0):                               # 64 -> 256 -> 256 -> 10, dropout p sau mỗi lớp ẩn
+    return nn.Sequential(nn.Linear(64, 256), nn.ReLU(), nn.Dropout(p),
+                         nn.Linear(256, 256), nn.ReLU(), nn.Dropout(p), nn.Linear(256, 10))
+print(sum(p.numel() for p in rong().parameters()))
+kq = {}
+for ten, p, wd in [("không gì", 0.0, 0.0), ("dropout 0.5", 0.5, 0.0), ("weight decay 0.1", 0.0, 0.1)]:
+    torch.manual_seed(0)
+    m = rong(p)
+    kq[ten] = huan_luyen(m, torch.optim.AdamW(m.parameters(), lr=1e-3, weight_decay=wd), so_epoch=200, X=Xit, y=yit)
+    tr, te, acc = kq[ten][-1]
+    print(ten, round(tr, 4), round(te, 4), round(acc, 4))
+```
+
+```text title="Output"
+85002
+không gì 0.0005 0.3208 0.9361
+dropout 0.5 0.0009 0.2135 0.9417
+weight decay 0.1 0.001 0.2823 0.9333
+```
+
+85 002 tham số cho 300 ảnh: gần 300 tham số cho mỗi ảnh. Sau 200 epoch, loss train của cả ba gần như bằng 0 (0,0005 tới 0,001): mạng đã học thuộc lòng tập train. Khác biệt nằm ở test.
+
+**Bảng 26.2.** Sau 200 epoch trên 300 ảnh train.
+
+| Cách | Loss train | Loss test | Độ chính xác test |
+|:---|---:|---:|---:|
+| Không gì | 0,0005 | 0,3208 | 93,6% |
+| Dropout 0,5 | 0,0009 | **0,2135** | **94,2%** |
+| Weight decay 0,1 | 0,0010 | 0,2823 | 93,3% |
+
+## Dropout
+
+<Term id="dropout">Dropout</Term> (Srivastava và cộng sự, 2014): ở mỗi bước huấn luyện, `nn.Dropout(0.5)` đặt ngẫu nhiên một nửa số nơ-ron của lớp về 0, và nhân nửa còn lại với 2 để tổng tín hiệu giữ nguyên thang đo. Mỗi bước là một mạng con khác nhau, nên không nơ-ron nào được phép là "chuyên gia duy nhất" cho một chi tiết của ảnh train; mạng buộc phải học những đặc trưng dư thừa, bền hơn.
+
+Lúc `m.eval()`, dropout tắt hẳn: mọi nơ-ron đều chạy, không nhân gì thêm. Trên thí nghiệm này, dropout giảm loss test từ 0,3208 xuống 0,2135, tức một phần ba.
+
+## Weight decay
+
+Weight decay là tên của regularization L2 (ridge, Chương 13) trong deep learning: mỗi bước kéo mọi trọng số về 0 một chút. Với `AdamW` (Loshchilov và Hutter, 2019), mỗi bước nhân trọng số với $1 - \text{lr} \cdot \text{wd}$ trước khi cập nhật theo gradient.
+
+Ở đây $1 - 0{,}001 \times 0{,}1 = 0{,}9999$ mỗi bước. 300 ảnh chia lô 64 là 5 bước mỗi epoch, 200 epoch là 1000 bước, nên tổng cộng trọng số chỉ bị co còn $0{,}9999^{1000} \approx 0{,}905$ lần. Lực kéo quá yếu so với gradient, và loss test chỉ giảm từ 0,3208 xuống 0,2823. Đây là bài học thật: **giá trị** của weight decay phải chọn bằng validation như $\alpha$ của ridge ở Chương 13, không có số nào dùng được cho mọi bài.
+
+Sao lại `AdamW` mà không phải `Adam(weight_decay=...)`? `Adam` cộng weight decay vào gradient, rồi chia cho căn của trung bình bình phương gradient như mọi gradient khác (Chương 8); tham số nào có gradient lớn thì bị co ít đi. `AdamW` tách riêng phép co ra, mọi tham số co cùng một tỷ lệ, đúng như ý ban đầu. Đó là lý do `AdamW` là mặc định khi huấn luyện Transformer.
+
+## Dừng sớm
+
+Thay vì đọc kết quả ở epoch 200, xem epoch nào có loss test thấp nhất:
+
+```python
+for ten, ls in kq.items():
+    tot = int(np.argmin([l[1] for l in ls]))   # epoch có loss test thấp nhất
+    print(ten, tot + 1, round(ls[tot][1], 4), round(ls[tot][2], 4))
+```
+
+```text title="Output"
+không gì 42 0.2498 0.9333
+dropout 0.5 174 0.1989 0.9472
+weight decay 0.1 42 0.2467 0.9333
+```
+
+<HinhKetQua src="/hinh/ch26/h2_loss_test.svg" alt="Ba đường loss test theo 200 epoch, trục đứng từ 0,15 tới 0,45. Cả ba rơi nhanh trong 25 epoch đầu. Đường đỏ không regularization chạm đáy khoảng 0,25 quanh epoch 42 rồi tăng đều lên 0,32 ở epoch 200. Đường cam weight decay đi sát ngay dưới đường đỏ, đáy cũng ở epoch 42, cuối khoảng 0,28. Đường xanh dropout dao động quanh 0,2 tới 0,26, điểm thấp nhất khoảng 0,2 ở epoch 174." so="26.2" chuThich="Cross-entropy trên 360 ảnh test theo epoch, mạng 64-256-256-10 huấn luyện trên 300 ảnh. Chấm tròn là epoch có loss test thấp nhất; chấm đỏ ở epoch 42 bị chấm cam che.">
+Đường đỏ là hình mẫu của overfitting: loss test chạm đáy ở epoch 42 rồi **tăng đều** suốt 158 epoch còn lại, trong khi loss train vẫn tiếp tục giảm về 0. Đường xanh của dropout ồn hơn (mỗi bước một mạng con khác) nhưng không có xu hướng đi lên: dropout ngăn mạng học thuộc. Dừng sớm có nghĩa là lấy mô hình tại chấm tròn.
+</HinhKetQua>
+
+Với mạng không regularization, dừng ở epoch 42 cho loss test 0,2498 thay vì 0,3208. Dừng sớm là cách thứ tư trong Chương 13, và là cách rẻ nhất: không đổi mô hình, chỉ cần theo dõi và lưu lại trọng số mỗi khi loss validation đạt mức thấp mới.
+
+Để ý: độ chính xác ở epoch 42 (93,3%) **không** cao hơn ở epoch 200 (93,6%), dù loss khác nhau xa. Từ epoch 42 trở đi, mạng không đoán sai thêm ảnh nào đáng kể, nhưng ngày càng **tự tin quá mức**: đặt xác suất gần 1 cho mọi dự đoán, nên vài ảnh đoán sai bị phạt rất nặng trong cross-entropy. Một mô hình đưa ra xác suất cho người dùng (Chương 12) cần loss thấp, không chỉ độ chính xác cao.
+
+<Khung loai="loi">
+**Dừng sớm theo tập test.** Ở trang này dùng tập test cho gọn, nhưng chọn epoch theo test là rò rỉ dữ liệu (Chương 9): con số 0,2498 đã lạc quan hơn thực tế. Trong dự án thật, tách thêm tập validation, chọn epoch theo validation, báo cáo test một lần cuối.
+
+**Quên tắt dropout lúc đánh giá.** Mỗi lần dự đoán lại ra một kết quả khác và kém hơn. Bài tập 26.3 đo cái giá đó.
+</Khung>

@@ -518,3 +518,18 @@
   tenTiengAnh: automatic differentiation
   giaiThich: Autograd là cơ chế PyTorch ghi lại đồ thị tính toán trong lượt xuôi rồi tự chạy lan truyền ngược khi gọi backward. Người dùng chỉ viết lượt xuôi, gradient của mọi tham số được tính tự động.
   hocKy: ai-engineer/ch25-pytorch-can-ban
+- id: gradient-bien-mat
+  ten: Gradient biến mất
+  tenTiengAnh: vanishing gradient
+  giaiThich: Gradient biến mất là hiện tượng gradient co lại theo cấp số nhân khi lan ngược qua nhiều lớp, vì nó là tích của nhiều số nhỏ hơn 1. Các lớp đầu gần như không được cập nhật nên mạng sâu không học được.
+  hocKy: ai-engineer/ch26-huan-luyen-mang-sau
+- id: batch-norm
+  ten: Batch normalization
+  tenTiengAnh: batch normalization
+  giaiThich: Batch normalization chuẩn hóa đầu ra của một lớp về trung bình 0, độ lệch chuẩn 1 theo từng lô, rồi nhân và cộng hai tham số học được. Nó giữ tín hiệu ở thang đo ổn định qua các lớp, giúp mạng sâu học nhanh và ít phụ thuộc khởi tạo.
+  hocKy: ai-engineer/ch26-huan-luyen-mang-sau
+- id: dropout
+  ten: Dropout
+  tenTiengAnh: dropout
+  giaiThich: Dropout tắt ngẫu nhiên một tỷ lệ nơ-ron ở mỗi bước huấn luyện, buộc mạng không dựa vào một vài nơ-ron riêng lẻ. Lúc đánh giá thì tắt dropout. Đây là một cách chống overfitting.
+  hocKy: ai-engineer/ch26-huan-luyen-mang-sau

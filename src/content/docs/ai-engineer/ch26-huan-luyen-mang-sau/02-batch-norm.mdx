@@ -1,0 +1,97 @@
+---
+title: Batch normalization
+description: "Huấn luyện bốn phiên bản của mạng 10 lớp. Sigmoid kẹt ở 10% như đoán bừa, ReLU mặc định 85%, ReLU với khởi tạo He 96,7%, còn sigmoid thêm batch norm vươn tới 98,1%. Cách batch norm làm việc và hai chế độ train, eval."
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Đo gradient chưa đủ, phải huấn luyện thật
+
+Trang trước chỉ nhìn một lượt ngược. Giờ huấn luyện cả bốn phiên bản 30 epoch bằng Adam, lô 64, rồi xem độ chính xác test sau epoch 1, 10 và 30. Hàm `huan_luyen` dưới đây dùng lại cho cả chương:
+
+```python
+from torch.utils.data import TensorDataset, DataLoader
+
+def huan_luyen(m, opt, so_epoch=30, X=Xtr, y=ytr, lich=None):
+    torch.manual_seed(1)                       # cố định thứ tự xáo trộn
+    dl = DataLoader(TensorDataset(X, y), batch_size=64, shuffle=True)
+    ls = []
+    for ep in range(so_epoch):
+        m.train()                              # chế độ huấn luyện: dropout bật, BN dùng thống kê của lô
+        for xb, yb in dl:
+            opt.zero_grad()
+            ce(m(xb), yb).backward()
+            opt.step()
+        if lich:
+            lich.step()                        # cập nhật learning rate sau mỗi epoch
+        m.eval()                               # chế độ đánh giá
+        with torch.no_grad():
+            ls.append((ce(m(X), y).item(), ce(m(Xte), yte).item(), (m(Xte).argmax(1) == yte).float().mean().item()))
+    return ls                                  # mỗi epoch: loss train, loss test, độ chính xác test
+
+for ten, tao in [("Sigmoid", lambda: sau(nn.Sigmoid)), ("ReLU", lambda: sau(nn.ReLU)),
+                 ("ReLU + He", lambda: he(sau(nn.ReLU))), ("Sigmoid + BN", lambda: sau(nn.Sigmoid, bn=True))]:
+    torch.manual_seed(0)
+    m = tao()
+    ls = huan_luyen(m, torch.optim.Adam(m.parameters(), lr=1e-3))
+    print(ten, [round(ls[i][2], 4) for i in (0, 9, 29)])
+```
+
+```text title="Output"
+Sigmoid [0.1028, 0.1, 0.1028]
+ReLU [0.0972, 0.6306, 0.85]
+ReLU + He [0.5639, 0.9556, 0.9667]
+Sigmoid + BN [0.0972, 0.9611, 0.9806]
+```
+
+**Bảng 26.1.** Độ chính xác test của mạng 10 lớp ẩn trên 360 ảnh chữ số.
+
+| Phiên bản | Epoch 1 | Epoch 10 | Epoch 30 |
+|:---|---:|---:|---:|
+| Sigmoid, khởi tạo mặc định | 10,3% | 10,0% | 10,3% |
+| ReLU, khởi tạo mặc định | 9,7% | 63,1% | 85,0% |
+| ReLU, khởi tạo He | 56,4% | 95,6% | 96,7% |
+| Sigmoid + batch norm | 9,7% | 96,1% | **98,1%** |
+
+Sigmoid đứng yên ở 10%, đúng bằng đoán bừa một trong 10 chữ số: gradient biến mất hoàn toàn. ReLU mặc định học được nhưng chậm. Khởi tạo He cho 95,6% ngay sau 10 epoch. Còn dòng cuối là bất ngờ: vẫn là sigmoid, vẫn khởi tạo mặc định, chỉ thêm một lớp `BatchNorm1d` trước mỗi kích hoạt, mà vượt tất cả, kể cả mạng nông 95,8% của Chương 25.
+
+## Batch norm làm gì
+
+<Term id="batch-norm">Batch normalization</Term> (Ioffe và Szegedy, 2015) chuẩn hóa từng nơ-ron theo lô hiện tại, đúng như `StandardScaler` của Chương 9 làm với đặc trưng:
+
+$$
+\hat z = \frac{z - \mu_{\text{lô}}}{\sqrt{\sigma^2_{\text{lô}} + \varepsilon}}, \qquad \text{đầu ra} = \gamma \hat z + \beta
+$$
+
+$\mu_{\text{lô}}$ và $\sigma^2_{\text{lô}}$ là trung bình và phương sai của nơ-ron đó trên 64 mẫu của lô, $\varepsilon$ là một số rất nhỏ tránh chia cho 0. $\gamma$ và $\beta$ là hai tham số **học được**, cho mạng tự chọn lại thang đo nếu cần.
+
+Nhờ vậy, đầu vào của mỗi sigmoid luôn có trung bình 0, độ lệch chuẩn 1: nằm ngay vùng giữa dốc nhất của đường chữ S, nơi đạo hàm gần 0,25, chứ không trôi ra hai đầu phẳng nơi đạo hàm gần 0. Thang đo không còn phụ thuộc vào khởi tạo hay vào việc các lớp trước đang thay đổi ra sao.
+
+## Hai chế độ: train và eval
+
+Lúc dự đoán một ảnh đơn lẻ thì không có "lô" nào để tính trung bình. Vì thế batch norm có hai chế độ:
+
+- `m.train()`: chuẩn hóa bằng thống kê của **lô hiện tại**, đồng thời cập nhật một trung bình động của $\mu$ và $\sigma^2$.
+- `m.eval()`: chuẩn hóa bằng **trung bình động** đã tích lũy lúc huấn luyện. Kết quả của một ảnh không phụ thuộc ảnh khác cùng lô.
+
+Hàm `huan_luyen` gọi `m.train()` trước mỗi epoch và `m.eval()` trước khi đánh giá. Dropout ở trang sau cũng có hai chế độ y như vậy.
+
+<TuKiemTra
+	cauHoi="Bạn huấn luyện xong mạng có batch norm rồi dự đoán từng ảnh một mà quên gọi model.eval(). Chuyện gì xảy ra?"
+	luaChon={['Không ảnh hưởng gì', 'Mỗi ảnh bị chuẩn hóa bằng thống kê của chính nó, một lô một mẫu, nên đầu ra vô nghĩa hoặc báo lỗi', 'Mô hình chạy nhanh hơn', 'Batch norm tự tắt']}
+	dapAn={1}
+	giaiThich="Ở chế độ train, batch norm tính trung bình và phương sai trên lô hiện tại. Lô một mẫu có phương sai 0, nên PyTorch báo lỗi với BatchNorm1d; với lô nhỏ thì kết quả phụ thuộc ảnh nào đi cùng lô. Gọi model.eval() để dùng trung bình động."
+/>
+
+<Khung loai="dao-sau" tieuDe="KẾT NỐI TẮT">
+Batch norm và khởi tạo He đưa mạng từ vài lớp lên vài chục lớp. Muốn lên hàng trăm lớp cần thêm một ý nữa: **kết nối tắt** (residual connection), đầu ra của một khối là $x + f(x)$ thay vì $f(x)$. Đạo hàm của $x$ theo chính nó là 1, nên gradient luôn có một đường đi thẳng về các lớp đầu mà không bị nhân với gì. Chương 28 dùng nó trong ResNet, và mọi Transformer (Chương 44) đều có nó. Transformer thì dùng layer norm, chuẩn hóa theo các nơ-ron của một mẫu thay vì theo các mẫu của một lô, nên không phụ thuộc cỡ lô.
+</Khung>
+
+<Khung loai="loi">
+**Đánh giá khi còn ở chế độ train.** Độ chính xác test đo được sẽ lệch, và lệch khác nhau tùy cách chia lô. Luôn `model.eval()` trước khi đánh giá, `model.train()` trước khi huấn luyện tiếp.
+
+**Lô quá nhỏ.** Với lô 2 hay 4 mẫu, trung bình và phương sai của lô rất ồn, batch norm làm hại nhiều hơn giúp. Khi bộ nhớ chỉ cho lô nhỏ, dùng layer norm hoặc group norm.
+</Khung>

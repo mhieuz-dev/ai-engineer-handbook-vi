@@ -1,0 +1,128 @@
+---
+title: Gradient biến mất và khởi tạo
+description: "Mạng 10 lớp sigmoid có gradient ở lớp đầu nhỏ hơn lớp cuối 200 triệu lần. Vì sao tích dài các đạo hàm co về 0 hoặc nổ tung, và khởi tạo He giữ tín hiệu ổn định qua mọi lớp."
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+<CanBietTruoc>
+Quy tắc chuỗi và đạo hàm sigmoid (Chương 6). Momentum, Adam và mini-batch (Chương 8). Overfitting và regularization (Chương 13). Lan truyền ngược (Chương 24) và vòng huấn luyện PyTorch (Chương 25).
+
+<Fragment slot="sau-chuong">
+Đo được gradient biến mất trên một mạng 10 lớp và chữa bằng ReLU, khởi tạo He, batch normalization. Chống overfitting bằng dropout, weight decay và dừng sớm. Dùng lịch learning rate và kẹp gradient, biết khi nào gọi `model.train()` và `model.eval()`.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch26_huan_luyen_mang_sau.ipynb" />
+
+## Mạng sâu hơn thì khó huấn luyện hơn
+
+Chương 23 đã gặp một điều lạ: thêm lớp không phải lúc nào cũng tốt hơn, dù về lý thuyết mạng sâu mạnh hơn. Chương này đo tận nơi lý do. Dữ liệu là 1797 ảnh chữ số 8 nhân 8 của Chương 25, mô hình là một mạng **10 lớp ẩn**, mỗi lớp 64 nơ-ron.
+
+```python
+import torch
+import torch.nn as nn
+import numpy as np
+from sklearn.datasets import load_digits
+from sklearn.model_selection import train_test_split
+dg = load_digits()
+A, B, C, E = train_test_split(dg.data / 16.0, dg.target, test_size=0.2, random_state=0, stratify=dg.target)
+Xtr, ytr = torch.tensor(A, dtype=torch.float32), torch.tensor(C)
+Xte, yte = torch.tensor(B, dtype=torch.float32), torch.tensor(E)
+ce = nn.CrossEntropyLoss()
+
+def sau(kich_hoat, bn=False):                 # 10 lớp ẩn, mỗi lớp 64 nơ-ron
+    lop = []
+    for _ in range(10):
+        lop.append(nn.Linear(64, 64))
+        if bn:
+            lop.append(nn.BatchNorm1d(64))
+        lop.append(kich_hoat())
+    lop.append(nn.Linear(64, 10))
+    return nn.Sequential(*lop)
+
+def chuan_grad(m):                             # độ lớn gradient của lớp 1, 3, 5, 7, 9, 11
+    ce(m(Xtr), ytr).backward()
+    lin = [l for l in m if isinstance(l, nn.Linear)]
+    return [f"{l.weight.grad.norm().item():.1e}" for l in lin[::2]]
+
+for kh in (nn.Sigmoid, nn.ReLU):
+    torch.manual_seed(0)
+    print(kh.__name__, chuan_grad(sau(kh)))
+```
+
+```text title="Output"
+Sigmoid ['1.3e-09', '4.1e-08', '2.1e-06', '9.6e-05', '5.2e-03', '2.7e-01']
+ReLU ['6.3e-05', '4.4e-05', '6.5e-05', '2.1e-04', '1.5e-03', '1.3e-02']
+```
+
+Với sigmoid, gradient ở lớp ra (lớp 11) là 0,27, nhưng ở lớp đầu chỉ còn $1{,}3 \times 10^{-9}$: nhỏ hơn khoảng **200 triệu lần**. Một bước gradient descent với learning rate 0,001 sẽ dịch trọng số lớp đầu chừng $10^{-12}$, tức là không dịch gì. Mạng có 11 lớp nhưng chỉ vài lớp cuối thực sự học.
+
+Đó là <Term id="gradient-bien-mat">gradient biến mất</Term>. Lý do là quy tắc chuỗi (Chương 6): gradient ở lớp đầu là **tích** các đạo hàm cục bộ của mọi lớp phía sau. Đạo hàm sigmoid lớn nhất chỉ 0,25, nên mỗi lớp nhân gradient với một số nhỏ hơn 0,25, và 10 lớp cho $0{,}25^{10} \approx 10^{-6}$ trong trường hợp **tốt nhất**.
+
+ReLU có đạo hàm bằng 1 ở mọi chỗ dương, nên đỡ hơn nhiều: lớp đầu $6{,}3 \times 10^{-5}$, lớp ra $1{,}3 \times 10^{-2}$, chênh khoảng 200 lần. Vẫn còn co lại. Thủ phạm lần này là **khởi tạo**.
+
+## Khởi tạo quyết định thang đo của tín hiệu
+
+Cho một lô 512 mẫu ngẫu nhiên đi qua 10 lớp ReLU, mỗi lớp 256 nơ-ron, trọng số rút từ phân phối chuẩn $N(0, \text{std}^2)$ với ba mức std khác nhau:
+
+```python
+torch.manual_seed(0)
+x = torch.randn(512, 256)                      # 512 mẫu, 256 đặc trưng
+for ten, std in [("1", 1.0), ("0.01", 0.01), ("He", (2 / 256) ** 0.5)]:
+    h = x
+    for _ in range(10):                        # 10 lớp ReLU, trọng số N(0, std^2)
+        h = torch.relu(h @ (torch.randn(256, 256) * std))
+    print(ten, f"{h.std().item():.1e}")
+```
+
+```text title="Output"
+1 2.9e+10
+0.01 2.9e-10
+He 7.0e-01
+```
+
+Mỗi đầu ra của một lớp là tổng 256 tích. Phương sai của tổng đó bằng $256 \cdot \text{std}^2$ nhân phương sai đầu vào, rồi ReLU cắt đi một nửa. Vậy mỗi lớp nhân phương sai với khoảng $256 \cdot \text{std}^2 / 2$:
+
+- std 1: nhân 128 lần mỗi lớp. Sau 10 lớp, độ lệch chuẩn cỡ $\sqrt{128}^{\,10} \approx 3{,}4 \times 10^{10}$: **nổ tung**, đúng bậc của $2{,}9 \times 10^{10}$ đo được.
+- std 0,01: nhân 0,0128 mỗi lớp. Sau 10 lớp cỡ $3{,}4 \times 10^{-10}$: **tắt ngấm**.
+- std $\sqrt{2/256} \approx 0{,}088$: nhân đúng 1 mỗi lớp, tín hiệu giữ nguyên thang đo, ra 0,70.
+
+Lựa chọn thứ ba là **khởi tạo He**: $\text{std} = \sqrt{2/d}$, với $d$ là số đầu vào của lớp, số 2 bù cho nửa bị ReLU cắt. Gradient đi ngược qua cùng những ma trận đó, nên cũng nổ hay tắt theo cùng quy luật. Khởi tạo mặc định của `nn.Linear` (Chương 25) cho phương sai $1/(3d)$, nhỏ hơn He 6 lần, nên tín hiệu co dần qua 10 lớp như output trên cho thấy.
+
+```python
+def he(m):                                     # khởi tạo He cho mọi lớp Linear
+    for l in m:
+        if isinstance(l, nn.Linear):
+            nn.init.kaiming_normal_(l.weight, nonlinearity="relu")
+            nn.init.zeros_(l.bias)
+    return m
+
+torch.manual_seed(0)
+print("ReLU + He", chuan_grad(he(sau(nn.ReLU))))
+```
+
+```text title="Output"
+ReLU + He ['5.4e-01', '7.1e-01', '7.8e-01', '6.8e-01', '4.8e-01', '3.3e-01']
+```
+
+Bây giờ mọi lớp có gradient cùng bậc, từ 0,33 tới 0,78. Kaiming là tên của Kaiming He, người đề xuất cách khởi tạo này năm 2015.
+
+<HinhKetQua src="/hinh/ch26/h1_gradient_theo_lop.svg" alt="Độ dài gradient của trọng số theo 11 lớp, trục đứng thang log từ 10 mũ trừ 9 tới 1. Đường sigmoid màu đỏ đi lên thẳng từ khoảng 10 mũ trừ 9 ở lớp 1 tới khoảng 0,3 ở lớp 11. Đường ReLU khởi tạo mặc định màu cam nằm quanh 10 mũ trừ 4 ở năm lớp đầu rồi tăng lên khoảng 0,01 ở lớp 11. Đường ReLU khởi tạo He màu xanh gần như nằm ngang quanh 0,3 tới 0,8 ở mọi lớp." so="26.1" chuThich="Độ dài gradient của trọng số từng lớp sau một lượt ngược trên 1437 ảnh train, mạng 10 lớp ẩn 64 nơ-ron. Trục đứng thang log: mỗi vạch là gấp 100 lần.">
+Trên thang log, một đường thẳng đi lên nghĩa là gradient co lại **cùng một tỷ lệ** sau mỗi lớp đi ngược: đường đỏ mất khoảng 7 lần mỗi lớp, cộng dồn thành 8 bậc độ lớn qua 10 lớp. Đường xanh nằm ngang là điều ta muốn: lớp nào cũng nhận gradient cỡ như nhau, nên lớp nào cũng học với tốc độ như nhau.
+</HinhKetQua>
+
+<Khung loai="vi-sao" tieuDe="XAVIER VÀ HE">
+Với tanh hay sigmoid, không có nửa bị cắt, nên dùng $\text{std} = \sqrt{1/d}$ (khởi tạo Xavier, hay Glorot, năm 2010; bản đầy đủ lấy trung bình số đầu vào và đầu ra). Với ReLU dùng $\sqrt{2/d}$ (He). Cả hai cùng một ý: chọn thang đo sao cho phương sai tín hiệu không đổi khi đi qua một lớp.
+</Khung>
+
+<Khung loai="loi">
+**Nghĩ "gradient nhỏ thì tăng learning rate là xong".** Learning rate là một số chung cho mọi lớp. Tăng nó lên 200 triệu lần để lớp đầu học được thì lớp cuối nổ tung ngay bước đầu. Phải sửa tỷ lệ giữa các lớp, bằng khởi tạo hoặc chuẩn hóa (trang sau).
+
+**Tự viết `nn.init` nhưng quên hệ số chặn.** Khởi tạo He chỉ nói về trọng số. Hệ số chặn để 0 là chuẩn; khởi tạo ngẫu nhiên lớn cho nó làm lệch tín hiệu ngay từ đầu.
+</Khung>

@@ -1,0 +1,93 @@
+---
+title: Lịch learning rate và các mẹo khác
+description: "Giảm learning rate theo đường cosine hạ loss test từ 0,1867 xuống 0,1448 trên cùng mạng và cùng số epoch. Cộng thêm kẹp gradient, mixed precision và một công thức mặc định để bắt đầu mọi bài huấn luyện."
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Bước lớn lúc đầu, bước nhỏ lúc cuối
+
+Chương 8 đã thấy SGD với learning rate cố định cứ nảy quanh đáy mãi vì nhiễu của mini-batch. Cách chữa: **giảm** learning rate theo thời gian. Lịch phổ biến nhất hiện nay là **cosine**:
+
+$$
+\text{lr}_t = \text{lr}_0 \cdot \frac{1 + \cos(\pi t / T)}{2}
+$$
+
+với $t$ là epoch hiện tại và $T$ là tổng số epoch. Ở $t = 0$ ra $\text{lr}_0$; ở $t = T/2$ ra một nửa; ở $t = T$ ra 0. Đường đi xuống chậm lúc đầu, nhanh ở giữa, chậm lại ở cuối.
+
+So sánh trên mạng 10 lớp ReLU khởi tạo He, SGD có momentum 0,9 (Chương 8), learning rate 0,02, 30 epoch:
+
+```python
+for ten in ("cố định", "cosine"):
+    torch.manual_seed(0)
+    m = he(sau(nn.ReLU))
+    opt = torch.optim.SGD(m.parameters(), lr=0.02, momentum=0.9)
+    lich = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=30) if ten == "cosine" else None
+    ls = huan_luyen(m, opt, lich=lich)
+    print(ten, round(ls[-1][0], 4), round(ls[-1][1], 4), round(ls[-1][2], 4), round(opt.param_groups[0]["lr"], 4))
+```
+
+```text title="Output"
+cố định 0.003 0.1867 0.9611 0.02
+cosine 0.0026 0.1448 0.9667 0.0
+```
+
+Cột cuối là learning rate sau 30 epoch: cố định vẫn 0,02, cosine đã về 0. Cùng mạng, cùng khởi tạo, cùng thứ tự lô, chỉ thêm một dòng lịch, loss test giảm từ 0,1867 xuống 0,1448 (giảm 22%), độ chính xác test từ 96,1% lên 96,7%.
+
+Lịch được gọi `lich.step()` **sau mỗi epoch**, sau `opt.step()` của lô cuối. Hàm `huan_luyen` ở trang 2 đã làm sẵn việc này.
+
+Với Transformer, người ta còn thêm một đoạn **khởi động** (warmup) ở đầu: tăng learning rate tuyến tính từ gần 0 lên $\text{lr}_0$ trong vài trăm hay vài nghìn bước đầu, rồi mới đi xuống theo cosine. Lúc đầu trọng số còn ngẫu nhiên và trung bình động của Adam chưa ổn định, bước lớn ngay dễ làm hỏng mô hình.
+
+## Kẹp gradient
+
+Đôi khi một lô bất thường cho gradient rất lớn, một bước nhảy văng mô hình đi xa, loss thành `nan` và không bao giờ trở lại. **Kẹp gradient** (gradient clipping) giới hạn độ dài của cả vector gradient:
+
+```text
+loss.backward()
+nn.utils.clip_grad_norm_(m.parameters(), 1.0)   # gradient dài hơn 1 thì co lại còn đúng 1, giữ nguyên hướng
+opt.step()
+```
+
+Hướng đi giữ nguyên, chỉ bước đi bị giới hạn. Đây là thứ bắt buộc với RNN (Chương 29), nơi gradient nổ tung là chuyện thường, và gần như luôn có trong code huấn luyện LLM. Bài tập 26.2 cho thấy nó cứu một lần huấn luyện bị `nan`.
+
+## Mixed precision
+
+Chương 25 nói `float32` là mặc định. GPU hiện đại tính `float16` hoặc `bfloat16` (16 bit) nhanh hơn nhiều và tốn một nửa bộ nhớ. **Mixed precision** chạy phần lớn phép nhân ma trận ở 16 bit nhưng giữ trọng số và các phép cộng dồn nhạy cảm ở 32 bit:
+
+```text
+with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
+    loss = ce(m(xb), yb)        # lượt xuôi chạy ở 16 bit khi có lợi
+loss.backward()
+```
+
+`float16` chỉ biểu diễn được số tới 65 504 và mất các số rất nhỏ, nên cần thêm `torch.amp.GradScaler` để nhân loss lên trước khi lan ngược. `bfloat16` có cùng khoảng giá trị với `float32` (đổi lại ít chữ số có nghĩa hơn), nên thường không cần bước đó; đây là lựa chọn phổ biến khi huấn luyện LLM. Trên CPU của bài này, mixed precision không giúp gì, nên không có số đo; hãy thử trên GPU Colab.
+
+<Khung loai="vi-sao" tieuDe="CÔNG THỨC KHỞI ĐẦU">
+Khi bắt đầu một bài mới, cấu hình sau hiếm khi sai hoàn toàn, và là điểm xuất phát để chỉnh:
+
+**Bảng 26.3.** Mặc định hợp lý cho một mạng mới.
+
+| Thành phần | Lựa chọn |
+|:---|:---|
+| Kích hoạt | ReLU (hoặc GELU với Transformer) |
+| Khởi tạo | He, hoặc mặc định của PyTorch khi có chuẩn hóa |
+| Chuẩn hóa | batch norm cho CNN, layer norm cho Transformer |
+| Optimizer | AdamW, lr $10^{-3}$ cho mạng nhỏ, nhỏ hơn cho mạng lớn |
+| Lịch | warmup ngắn rồi cosine |
+| Regularization | dừng sớm theo validation, thêm dropout hoặc weight decay khi có overfitting |
+| An toàn | kẹp gradient ở 1,0 |
+
+Quan trọng hơn mọi lựa chọn trên: **trước khi huấn luyện trên cả bộ, cho mô hình học thuộc một lô nhỏ**. Nếu không đưa nổi loss của 64 mẫu về gần 0, có lỗi trong code (shape, nhãn, `zero_grad`), không phải lỗi siêu tham số.
+</Khung>
+
+<Khung loai="dao-sau" tieuDe="DOUBLE DESCENT">
+Chương 13 hứa nhắc lại hiện tượng này. Với mô hình cổ điển, tăng độ phức tạp quá một mức thì lỗi test tăng. Với mạng nơ-ron rất lớn, người ta quan sát thấy (Belkin và cộng sự, 2019; Nakkiran và cộng sự, 2019) lỗi test tăng lên tới quanh điểm mô hình vừa đủ sức học thuộc tập train, rồi **giảm tiếp** khi mô hình lớn hơn nữa. Đó là một phần lý do các mô hình hàng tỷ tham số vẫn tổng quát hóa được. Nó không xóa bỏ overfitting: thí nghiệm ở trang 3 vẫn overfit rõ ràng, và dừng sớm, dropout vẫn là công cụ hằng ngày.
+</Khung>
+
+<Khung loai="loi">
+**Gọi `lich.step()` trong vòng lặp lô thay vì vòng lặp epoch.** Với `CosineAnnealingLR(T_max=30)`, learning rate sẽ về 0 sau 30 **lô** thay vì 30 epoch, rồi lại đi lên theo chu kỳ cosine. Mô hình gần như ngừng học sau epoch đầu. Đặt `T_max` theo đúng đơn vị bạn gọi `step()`.
+
+**Chỉnh nhiều thứ một lúc.** Đổi optimizer, learning rate và kiến trúc cùng một lần thì không biết thứ nào có ích. Đổi từng thứ, giữ seed cố định như mọi thí nghiệm trong chương này.
+</Khung>

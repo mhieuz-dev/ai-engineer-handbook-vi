@@ -1,0 +1,112 @@
+---
+title: Bài tập
+description: "Ba bài tập huấn luyện mạng sâu có đáp án chi tiết (tính std khởi tạo He cho lớp 256 đầu vào, cứu một lần huấn luyện bị nan bằng kẹp gradient, đo cái giá của việc quên model.eval với dropout) và câu hỏi phỏng vấn."
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Đoán kết quả trước, rồi chạy code trong notebook để kiểm tra. Code dùng lại `sau`, `he`, `huan_luyen`, `rong` của các trang trước.
+
+<BaiTap so="26.1">
+**Std của khởi tạo He.** Một lớp `nn.Linear(256, 128)` theo sau là ReLU. Khởi tạo He cho trọng số độ lệch chuẩn bao nhiêu? Số đầu ra 128 có ảnh hưởng không?
+
+<Fragment slot="dap-an">
+
+$\text{std} = \sqrt{2/d}$ với $d$ là số **đầu vào**, nên $\sqrt{2/256} = 1/\sqrt{128} \approx 0{,}0884$:
+
+```python
+print(round((2 / 256) ** 0.5, 4))
+```
+
+```text title="Output"
+0.0884
+```
+
+Số đầu ra 128 không vào công thức: mỗi nơ-ron đầu ra là tổng của 256 tích, và thang đo của tổng chỉ phụ thuộc số số hạng được cộng. (Bản `mode="fan_out"` của `kaiming_normal_` dùng số đầu ra, để giữ thang đo của gradient ở lượt ngược thay vì của tín hiệu ở lượt xuôi.)
+</Fragment>
+</BaiTap>
+
+<BaiTap so="26.2">
+**Cứu một lần huấn luyện bị nan.** Mạng 10 lớp ReLU khởi tạo He ở trang 4, nhưng SGD momentum với learning rate 0,05 thay vì 0,02. Huấn luyện 30 epoch trên 1437 ảnh, có và không có kẹp gradient ở ngưỡng 1,0. In loss và độ chính xác test.
+
+<Fragment slot="dap-an">
+
+```python
+def huan_luyen_kep(m, opt, nguong, so_epoch=30):
+    torch.manual_seed(1)
+    dl = DataLoader(TensorDataset(Xtr, ytr), batch_size=64, shuffle=True)
+    for ep in range(so_epoch):
+        m.train()
+        for xb, yb in dl:
+            opt.zero_grad()
+            ce(m(xb), yb).backward()
+            if nguong:
+                nn.utils.clip_grad_norm_(m.parameters(), nguong)   # kẹp độ dài vector gradient
+            opt.step()
+    m.eval()
+    with torch.no_grad():
+        return round(ce(m(Xte), yte).item(), 4), round((m(Xte).argmax(1) == yte).float().mean().item(), 4)
+
+for nguong in (None, 1.0):
+    torch.manual_seed(0)
+    m = he(sau(nn.ReLU))
+    print(nguong, huan_luyen_kep(m, torch.optim.SGD(m.parameters(), lr=0.05, momentum=0.9), nguong))
+```
+
+```text title="Output"
+None (nan, 0.1)
+1.0 (0.289, 0.9583)
+```
+
+Không kẹp: loss thành `nan`, mọi trọng số hỏng, độ chính xác 10% (khi mọi logit là `nan`, `argmax` trả về lớp 0, và chữ số 0 chiếm 36 trong 360 ảnh test). Có kẹp ở 1,0: cùng learning rate, cùng khởi tạo, test 95,8%. Learning rate 0,05 không quá lớn cho phần lớn các bước, chỉ vài bước có gradient bất thường làm mô hình văng ra; kẹp gradient chặn đúng những bước đó.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="26.3">
+**Quên model.eval với dropout.** Huấn luyện lại mạng dropout 0,5 ở trang 3. Đánh giá trên test hai lần ở chế độ `train()`, rồi một lần ở chế độ `eval()`.
+
+<Fragment slot="dap-an">
+
+```python
+torch.manual_seed(0)
+m = rong(0.5)
+huan_luyen(m, torch.optim.AdamW(m.parameters(), lr=1e-3, weight_decay=0.0), so_epoch=200, X=Xit, y=yit)
+with torch.no_grad():
+    m.train()                                  # quên eval: dropout vẫn bật
+    a1, a2 = (m(Xte).argmax(1) == yte).float().mean().item(), (m(Xte).argmax(1) == yte).float().mean().item()
+    m.eval()
+    a3 = (m(Xte).argmax(1) == yte).float().mean().item()
+print(round(a1, 4), round(a2, 4), round(a3, 4))
+```
+
+```text title="Output"
+0.9306 0.9194 0.9417
+```
+
+Ở chế độ train, hai lần đánh giá **cùng một mô hình** trên **cùng một tập test** ra hai số khác nhau (93,1% và 91,9%), vì mỗi lần dropout tắt một nửa nơ-ron khác nhau. Cả hai đều thấp hơn 94,2% ở chế độ eval, đúng con số của bảng 26.2. Nếu số đo của bạn thay đổi mỗi lần chạy dù đã cố định seed huấn luyện, hãy nghi ngay việc quên `eval()`.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Gradient biến mất là gì và chữa thế nào?**
+
+<p lang="en"><em>What is the vanishing gradient problem and how do you fix it?</em></p>
+
+*Gợi ý:* gradient ở lớp đầu là tích các đạo hàm của mọi lớp sau, co theo cấp số nhân nếu mỗi thừa số nhỏ hơn 1. Chữa bằng ReLU thay sigmoid, khởi tạo He hoặc Xavier, batch norm hoặc layer norm, và kết nối tắt. Nêu được một con số: đạo hàm sigmoid tối đa 0,25.
+
+**2. Batch norm khác gì nhau giữa lúc huấn luyện và lúc suy luận?**
+
+<p lang="en"><em>How does batch normalization behave differently at training and inference time?</em></p>
+
+*Gợi ý:* lúc huấn luyện chuẩn hóa bằng trung bình và phương sai của lô, đồng thời cập nhật trung bình động; lúc suy luận dùng trung bình động đó. Quên `model.eval()` là lỗi kinh điển.
+
+**3. Mô hình của bạn có loss train giảm đều nhưng loss validation tăng sau epoch 40. Bạn làm gì?**
+
+<p lang="en"><em>Your training loss keeps decreasing but validation loss starts increasing after epoch 40. What do you do?</em></p>
+
+*Gợi ý:* đó là overfitting. Dừng sớm và giữ checkpoint tốt nhất; thêm dropout, weight decay, tăng cường dữ liệu; thu thêm dữ liệu; hoặc thu nhỏ mô hình. Chọn mức regularization bằng validation, không bằng test.
+</Khung>
