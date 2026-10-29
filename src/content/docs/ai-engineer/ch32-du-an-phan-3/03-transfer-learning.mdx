@@ -1,0 +1,105 @@
+---
+title: Transfer learning
+description: "ResNet-18 đóng băng, chỉ học lớp cuối, được 90,4% val, thua CNN nhỏ học từ đầu: đặc trưng ImageNet không khớp hẳn với ảnh vệ tinh. Tinh chỉnh toàn bộ mạng 5 epoch thì đạt 98,1%, mô hình tốt nhất trên val và là mô hình được chọn."
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+Chương 28 dùng ResNet-18 đã huấn luyện trên ImageNet cho bài kiến và ong, và thấy đóng băng thân mạng là đủ. Bài đó có 244 ảnh chụp thường, rất giống ảnh ImageNet. Bài này có 18 900 ảnh vệ tinh, nhìn từ trên xuống, 64 nhân 64 điểm ảnh. Liệu bài học cũ còn đúng?
+
+## Chuẩn hóa theo ImageNet
+
+Mạng đã học trên ảnh chuẩn hóa bằng trung bình và độ lệch chuẩn của ImageNet, nên ta đưa ảnh vào theo đúng cách đó, không phải bằng thống kê của EuroSAT ở trang 2. Hàm `chuan_in` còn tùy chọn phóng ảnh lên kích thước khác bằng nội suy song tuyến tính.
+
+```python
+import torch.nn.functional as F
+from torchvision import models
+from sklearn.linear_model import LogisticRegression
+w = models.ResNet18_Weights.IMAGENET1K_V1
+tb_in = torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1)    # thống kê ImageNet mà ResNet đã quen
+dl_in = torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1)
+def chuan_in(kich):
+    def f(xb):
+        x = (xb.float().div(255) - tb_in) / dl_in
+        return x if kich == 64 else F.interpolate(x, size=kich, mode="bilinear", align_corners=False)
+    return f
+```
+
+## Đóng băng: dùng ResNet làm bộ trích đặc trưng
+
+Thay lớp cuối bằng `nn.Identity()` thì mạng trả về vector 512 số ngay trước lớp cuối cho mỗi ảnh. Tính vector đó cho toàn bộ train và val một lần, rồi huấn luyện hồi quy logistic (Chương 11) trên đó. Đây đúng là "đóng băng, chỉ học lớp cuối" của Chương 28, chỉ nhanh hơn vì mỗi ảnh chỉ đi qua mạng một lần. Thử cả ảnh gốc 64 điểm và ảnh phóng lên 128 điểm, gần với cỡ ảnh ImageNet (224) hơn:
+
+```python
+for kich in (64, 128):
+    torch.manual_seed(0)
+    than = models.resnet18(weights=w)
+    than.fc = nn.Identity()                                      # bỏ lớp 1000 lớp ImageNet, giữ vector 512 số
+    F_tr, F_va = du_doan(than, i_tr, chuan_in(kich)).numpy(), du_doan(than, i_va, chuan_in(kich)).numpy()
+    lr_dau = LogisticRegression(max_iter=3000).fit(F_tr, y[i_tr])
+    print(kich, F_tr.shape, round(lr_dau.score(F_va, y[i_va]), 4))
+```
+
+```text title="Output"
+64 (18900, 512) 0.9044
+128 (18900, 512) 0.9264
+```
+
+**90,4%** ở 64 điểm, **92,6%** ở 128 điểm. Hơn baseline màu (83,6%), nhưng **thua CNN nhỏ học từ đầu** (96,35%) ở trang 2. Bài học của Chương 28 không chuyển nguyên sang đây.
+
+Lý do nằm ở chỗ ImageNet khác EuroSAT. Đặc trưng ở các lớp cuối của ResNet được học để phân biệt chó, xe hơi, bông hoa, chụp ngang tầm mắt. Một ô ruộng chụp từ quỹ đạo, nhìn thẳng xuống, không giống thứ gì trong số đó, nên vector 512 số kia chỉ mô tả nó một cách gián tiếp. Phóng ảnh lên 128 giúp được 2,2 điểm vì các vật thể có kích thước gần với những gì mạng đã quen hơn, nhưng mỗi lượt đi qua mạng chậm gấp khoảng 4 lần (2 phút so với 30 giây để tính đặc trưng cho cả train).
+
+## Tinh chỉnh toàn bộ
+
+Cách thứ hai của Chương 28: thay lớp cuối và cho **mọi** tham số học tiếp. Dùng lại `huan_luyen` và `lat_xoay` của trang 2, với ảnh 64 điểm:
+
+```python
+torch.manual_seed(0)
+net = models.resnet18(weights=w)
+net.fc = nn.Linear(512, 10)                                      # lớp cuối mới cho 10 loại đất
+huan_luyen(net, 5, tang=lat_xoay, pre=chuan_in(64))
+```
+
+```text title="Output"
+1 0.5214 0.9323
+2 0.2233 0.9101
+3 0.1463 0.9642
+4 0.0847 0.9741
+5 0.0551 0.9807
+```
+
+Ngay sau epoch đầu đã 93,2%, hơn bản đóng băng tốt nhất. Sau 5 epoch: **98,1%**, cao nhất trong mọi mô hình đã thử. Mỗi epoch mất khoảng 110 giây, gấp đôi CNN nhỏ, vì phải lan ngược qua 11,2 triệu tham số.
+
+Ta dùng learning rate đỉnh $10^{-3}$, lớn hơn mức $10^{-4}$ của Chương 28. Ở đây có warmup: 30% số bước đầu learning rate tăng dần từ rất nhỏ, nên những bước đầu, khi lớp cuối còn ngẫu nhiên và gradient còn lớn, không phá các lớp đã học. Ta không thử mức khác, nên không biết $10^{-3}$ có phải tốt nhất không.
+
+Tinh chỉnh thắng bản đóng băng tốt nhất hơn 5 điểm, vì các lớp tích chập được phép **thích nghi** với ảnh vệ tinh. Trọng số ImageNet vẫn có ích: chúng cho mạng một điểm xuất phát tốt (cạnh, góc, hoa văn ở các lớp đầu dùng được cho mọi loại ảnh), từ đó mạng chỉnh lại phần còn lại. Bài tập 32.2 tách hai công đó ra: ResNet-18 cùng cách huấn luyện nhưng khởi tạo ngẫu nhiên.
+
+## Chọn mô hình
+
+**Bảng 32.2.** Mọi mô hình đã thử, đo trên val (4050 ảnh).
+
+| Mô hình | Tham số học | Val | Thời gian huấn luyện trên CPU |
+|:---|---:|---:|:---|
+| Đoán lớp đông nhất | 0 | 11,1% | |
+| Histogram màu, gradient boosting | | 83,6% | vài giây |
+| MLP trên điểm ảnh | 6,4 triệu | 65,1% | khoảng 1,5 phút |
+| ResNet-18 đóng băng, ảnh 64, hồi quy logistic | 5130 | 90,4% | khoảng 30 giây trích đặc trưng |
+| ResNet-18 đóng băng, ảnh 128, hồi quy logistic | 5130 | 92,6% | khoảng 2 phút trích đặc trưng |
+| CNN nhỏ, lật và xoay | 392 nghìn | 96,0% | khoảng 14 phút |
+| CNN nhỏ | 392 nghìn | 96,35% | khoảng 14 phút |
+| **ResNet-18 tinh chỉnh, lật và xoay** | 11,2 triệu | **98,1%** | khoảng 9 phút |
+
+Chọn **ResNet-18 tinh chỉnh**. Hơn CNN nhỏ 1,7 điểm phần trăm, tức trên 4050 ảnh val, sai 78 ảnh thay vì 148: số ảnh sai giảm gần một nửa. Đổi lại mô hình nặng gấp 28 lần (45 MB so với 1,6 MB khi lưu `float32`), điều có thể quan trọng nếu phải chạy trên thiết bị nhỏ. Ở đây ta không có ràng buộc đó.
+
+Quyết định này dựa **chỉ** trên val. Tập test vẫn chưa mở.
+
+<Khung loai="vi-sao" tieuDe="KHI NÀO ĐÓNG BĂNG, KHI NÀO TINH CHỈNH">
+Hai yếu tố quyết định: dữ liệu của bạn **nhiều hay ít**, và **giống hay khác** dữ liệu mà mạng đã học. Ít và giống (kiến và ong, Chương 28): đóng băng là đủ, tinh chỉnh dễ overfit. Nhiều và khác (EuroSAT): tinh chỉnh thắng rõ, vì có đủ dữ liệu để chỉnh lại đặc trưng mà không học thuộc. Ít và khác là trường hợp khó nhất: tinh chỉnh với learning rate nhỏ, hoặc chỉ mở băng vài khối cuối.
+</Khung>
+
+<Khung loai="loi">
+**Chuẩn hóa sai kiểu cho mạng đã huấn luyện sẵn.** Đưa ảnh chuẩn hóa theo thống kê EuroSAT vào ResNet ImageNet không làm code lỗi, chỉ làm điểm kém đi một cách khó hiểu. Luôn dùng đúng biến đổi của bộ trọng số (`w.transforms()` cho biết).
+
+**Kết luận "transfer learning không giúp" từ bản đóng băng.** Đóng băng thua CNN nhỏ, nhưng tinh chỉnh cùng trọng số đó lại thắng. Một phép thử thất bại chỉ bác bỏ đúng cách làm đó.
+</Khung>

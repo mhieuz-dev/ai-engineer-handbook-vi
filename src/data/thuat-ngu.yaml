@@ -623,3 +623,8 @@
   tenTiengAnh: diffusion model
   giaiThich: Mô hình diffusion học đảo ngược một quá trình thêm nhiễu Gauss dần dần vào dữ liệu cho tới khi thành nhiễu thuần. Một mạng được huấn luyện để đoán phần nhiễu đã thêm; sinh dữ liệu mới bằng cách bắt đầu từ nhiễu và khử nhiễu qua nhiều bước. Đây là nền của Stable Diffusion và các mô hình sinh ảnh hiện nay.
   hocKy: ai-engineer/ch31-gan-diffusion
+- id: tang-cuong-du-lieu
+  ten: Tăng cường dữ liệu
+  tenTiengAnh: data augmentation
+  giaiThich: Tăng cường dữ liệu biến đổi ngẫu nhiên mỗi mẫu lúc huấn luyện (lật, xoay, cắt, đổi màu với ảnh) bằng những phép không làm đổi nhãn, để mô hình thấy nhiều biến thể hơn và khó học thuộc. Phép biến đổi phải hợp với loại dữ liệu, ví dụ ảnh vệ tinh lật dọc được còn ảnh X-quang ngực thì không lật ngang được.
+  hocKy: ai-engineer/ch32-du-an-phan-3

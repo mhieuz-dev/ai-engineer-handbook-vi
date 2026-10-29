@@ -1,0 +1,168 @@
+---
+title: Bài toán và dữ liệu
+description: "Dự án tổng kết Phần III: phân loại 27 000 ảnh vệ tinh Sentinel-2 vào 10 loại đất. Kiểm tra trùng lặp, chia train, val, test cố định theo từng lớp, và đặt hai baseline: đoán lớp đông nhất được 11,1%, histogram màu với gradient boosting được 83,6%."
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+<CanBietTruoc>
+Toàn bộ Phần III, nhất là huấn luyện mạng sâu (Chương 26), CNN (Chương 27) và transfer learning (Chương 28). Cách làm một dự án theo Chương 9 và Chương 22.
+
+<Fragment slot="sau-chuong">
+Đi trọn một dự án deep learning trên ảnh thật: nhìn dữ liệu, đặt baseline bằng công cụ của Phần II, so MLP với CNN, dùng tăng cường dữ liệu đúng với loại ảnh, tinh chỉnh một mạng đã huấn luyện sẵn, chọn mô hình bằng val, đo test một lần, rồi đọc ma trận nhầm lẫn để biết mô hình sai ở đâu.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch32_du_an_phan_3.ipynb" />
+
+## Bài toán
+
+Hai vệ tinh Sentinel-2 trong chương trình Copernicus của châu Âu, do Cơ quan Vũ trụ châu Âu (ESA) vận hành, chụp gần như toàn bộ mặt đất khoảng năm ngày một lần, với độ phân giải tới 10 mét mỗi điểm ảnh, và ảnh được phát **miễn phí** cho mọi mục đích. Bộ dữ liệu <En>EuroSAT</En> (Helber và cộng sự, 2019) cắt từ những ảnh đó ra 27 000 ô vuông 64 nhân 64 điểm ảnh, tức mỗi ô phủ 640 mét nhân 640 mét mặt đất, lấy quanh các thành phố của 34 nước châu Âu. Mọi ô đã được người kiểm tra bằng mắt. Mỗi ô được gán một trong 10 loại sử dụng đất.
+
+**Bài toán.** Từ một ô ảnh, đoán loại đất. Đây là phân loại 10 lớp. Bài toán thật đằng sau: theo dõi đất nông nghiệp, rừng bị chặt, đô thị lan rộng, trên diện rộng và liên tục, mà không cần người đi khảo sát.
+
+**Thước đo.** Chốt trước (Chương 9): **độ chính xác** (accuracy), vì các lớp không lệch nhiều (sẽ thấy ngay dưới đây) và mọi lớp quan trọng như nhau. Báo cáo thêm độ chính xác từng lớp và ma trận nhầm lẫn ở trang 4.
+
+**Mốc tham chiếu.** Bài báo gốc báo cáo **98,57%** trên ảnh RGB, với ResNet-50 đã huấn luyện sẵn trên ImageNet rồi tinh chỉnh, chia 80% train và 20% test theo từng lớp. Ta sẽ xem với CPU và một mạng nhỏ hơn thì đi được tới đâu.
+
+```python
+import os
+import numpy as np
+import torch
+from torch import nn
+from torchvision.datasets import EuroSAT
+ds = EuroSAT(os.path.expanduser("~/.cache/eurosat"), download=True)   # tải 94 MB lần đầu
+X = torch.from_numpy(np.stack([np.array(ds.loader(p)) for p, _ in ds.samples]))   # đọc cả 27 000 ảnh vào RAM
+X = X.permute(0, 3, 1, 2).contiguous()                              # (N, 64, 64, 3) thành (N, 3, 64, 64) cho PyTorch
+y = torch.tensor(ds.targets)
+print(X.shape, X.dtype, round(X.numel() / 1e6), "triệu byte")
+for i, ten in enumerate(ds.classes):
+    print(i, ten, int((y == i).sum()))
+```
+
+```text title="Output"
+torch.Size([27000, 3, 64, 64]) torch.uint8 332 triệu byte
+0 AnnualCrop 3000
+1 Forest 3000
+2 HerbaceousVegetation 3000
+3 Highway 2500
+4 Industrial 2500
+5 Pasture 2000
+6 PermanentCrop 2500
+7 Residential 3000
+8 River 2500
+9 SeaLake 3000
+```
+
+**Bảng 32.1.** Mười lớp.
+
+| Lớp | Nghĩa |
+|:---|:---|
+| `AnnualCrop` | cây trồng hằng năm (lúa mì, ngô, rau) |
+| `Forest` | rừng |
+| `HerbaceousVegetation` | thảm cỏ, cây bụi tự nhiên |
+| `Highway` | đường cao tốc |
+| `Industrial` | khu công nghiệp |
+| `Pasture` | đồng cỏ chăn nuôi |
+| `PermanentCrop` | cây lâu năm (vườn cây ăn quả, nho) |
+| `Residential` | khu dân cư |
+| `River` | sông |
+| `SeaLake` | biển, hồ |
+
+Cả bộ dữ liệu nằm gọn trong 332 triệu byte RAM dưới dạng `uint8`, nên ta đọc một lần rồi cắt batch thẳng từ tensor, không cần `DataLoader` đọc đĩa như Chương 28. Mỗi lớp có từ 2000 tới 3000 ảnh: lệch nhẹ, lớp ít nhất (`Pasture`) bằng hai phần ba lớp nhiều nhất.
+
+<HinhKetQua src="/hinh/ch32/h1_mau.svg" alt="Lưới 10 hàng, mỗi hàng 6 ô ảnh vệ tinh của một lớp. Cây trồng hằng năm là những dải ruộng song song nhiều màu; rừng xanh thẫm đồng đều; cao tốc là một vệt xám cắt chéo qua đồng; khu công nghiệp là những mái nhà lớn sáng màu; khu dân cư là lưới nhà nhỏ dày đặc; sông là một dải tối uốn lượn; biển và hồ gần như một màu xanh đen." so="32.1" chuThich="Sáu ảnh đầu tiên của mỗi lớp trong tập train. Mỗi ô 64 nhân 64 điểm ảnh, phủ 640 nhân 640 mét.">
+**Đọc hình.** Mỗi hàng là một lớp. Ảnh nhìn từ trên xuống, nên không có "phía trên" hay "phía dưới".
+
+**Điều cần thấy.** Vài lớp nhận ra bằng **màu**: rừng xanh thẫm, biển và hồ một màu xanh đen hoặc xanh xám gần như không có chi tiết. Vài lớp cần **hình dạng**: cao tốc và sông đều là một dải chạy qua ảnh, khác nhau ở màu và độ thẳng; cây trồng hằng năm là những dải ruộng song song. Và vài cặp lớp giống nhau thật sự: đồng cỏ chăn nuôi, thảm cỏ tự nhiên và cây trồng có thể chỉ là một mảng xanh vàng không rõ nét. Đó là những chỗ ta nên chờ mô hình nhầm.
+</HinhKetQua>
+
+## Kiểm tra trước khi chia
+
+Hai ảnh giống hệt nhau, một rơi vào train, một rơi vào test, là <Term id="ro-ri-du-lieu">rò rỉ dữ liệu</Term>: mô hình chỉ cần nhớ. Kiểm tra bằng mã băm của từng ảnh:
+
+```python
+import hashlib
+bam = [hashlib.md5(x.numpy().tobytes()).hexdigest() for x in X]   # mã băm của từng mảng điểm ảnh
+print(len(bam), len(set(bam)))
+```
+
+```text title="Output"
+27000 27000
+```
+
+27 000 mã băm khác nhau: không có hai ảnh nào trùng từng điểm ảnh.
+
+<Khung loai="dao-sau">
+Không trùng từng điểm ảnh chưa có nghĩa là không rò rỉ. Mỗi ảnh EuroSAT có tọa độ địa lý, và các ô **cạnh nhau** trên mặt đất (cùng một cánh đồng, cùng một khúc sông) giống nhau hơn hai ô ở hai nước khác nhau. Chia ngẫu nhiên thì hai ô kề nhau có thể rơi vào train và test, và điểm test sẽ cao hơn so với khi mô hình gặp một vùng hoàn toàn mới. Bản RGB ta dùng không kèm tọa độ nên không đo được hiệu ứng này ở đây. Trong một dự án thật về ảnh vệ tinh, cách chia đúng là **theo vùng địa lý**: cả một vùng vào test, không ô nào của vùng đó được vào train.
+</Khung>
+
+## Chia train, val, test một lần
+
+Như Chương 22: 70% train, 15% val để chọn mô hình, 15% test chỉ mở một lần ở trang 4. `stratify=y` giữ đúng tỷ lệ các lớp trong cả ba phần, `random_state=0` để mọi lần chạy chia y hệt nhau.
+
+```python
+from sklearn.model_selection import train_test_split
+chi_so = np.arange(len(y))
+i_tr, i_con = train_test_split(chi_so, test_size=0.3, stratify=y.numpy(), random_state=0)
+i_va, i_te = train_test_split(i_con, test_size=0.5, stratify=y.numpy()[i_con], random_state=0)
+i_tr, i_va, i_te = torch.from_numpy(i_tr), torch.from_numpy(i_va), torch.from_numpy(i_te)
+print(len(i_tr), len(i_va), len(i_te))
+print(torch.bincount(y[i_va]).tolist())
+```
+
+```text title="Output"
+18900 4050 4050
+[450, 450, 450, 375, 375, 300, 375, 450, 375, 450]
+```
+
+18 900 ảnh train, 4050 val, 4050 test. Tập val có đúng 15% mỗi lớp: 450 ảnh cho lớp có 3000, 300 ảnh cho `Pasture`.
+
+## Baseline
+
+**Baseline một: đoán toàn lớp đông nhất của train.**
+
+```python
+lop_dong = torch.bincount(y[i_tr]).argmax()
+print(ds.classes[lop_dong], round((y[i_va] == lop_dong).float().mean().item(), 4))
+```
+
+```text title="Output"
+AnnualCrop 0.1111
+```
+
+11,1%. Mọi mô hình phải hơn con số này rất nhiều.
+
+**Baseline hai: chỉ dùng màu, với công cụ của Phần II.** Hình 32.1 gợi ý màu đã nói lên nhiều điều. Với mỗi ảnh, tính trung bình và độ lệch chuẩn của từng kênh đỏ, lục, lam (6 số), cộng histogram 16 khoảng của từng kênh (48 số): 54 đặc trưng không biết gì về **hình dạng**, chỉ biết ảnh có những màu nào với tỷ lệ bao nhiêu. Rồi dùng gradient boosting của Chương 18.
+
+```python
+from sklearn.ensemble import HistGradientBoostingClassifier
+def dac_trung_mau(X):
+    f = X.float().div(255).flatten(2)                               # (N, 3, 4096): mỗi kênh một hàng 4096 điểm
+    hist = torch.stack([torch.stack([torch.histc(k, bins=16, min=0, max=1) for k in anh]) for anh in f])
+    return torch.cat([f.mean(2), f.std(2), hist.flatten(1) / 4096], 1).numpy()   # 3 + 3 + 48 = 54 số mỗi ảnh
+F_mau = dac_trung_mau(X)
+gb = HistGradientBoostingClassifier(random_state=0).fit(F_mau[i_tr], y[i_tr])
+print(F_mau.shape, round(gb.score(F_mau[i_va], y[i_va]), 4))
+```
+
+```text title="Output"
+(27000, 54) 0.836
+```
+
+**83,6%** trên val, sau vài giây huấn luyện. Đây là baseline thật của dự án: một CNN chỉ đáng dùng nếu hơn hẳn con số này. Phần còn lại, 16,4% ảnh bị đoán sai, là những ảnh mà màu không đủ, và cần nhìn **hình dạng**: đúng thứ CNN giỏi.
+
+<Khung loai="vi-sao" tieuDe="BASELINE MẠNH TRƯỚC, MẠNG SÂU SAU">
+Nhảy thẳng vào ResNet thì ta sẽ thấy gần 98% và nghĩ là tuyệt vời. Có baseline màu, ta biết gần 84 điểm phần trăm trong đó đã đạt được chỉ bằng màu, và phần đóng góp thật của deep learning là đẩy từ 83,6% lên 98,1%: trên 4050 ảnh val, số ảnh sai giảm từ khoảng 660 xuống khoảng 80. Một baseline mạnh cũng là phép thử sức khỏe: nếu CNN của ta thua 83,6%, gần như chắc chắn có lỗi trong code chứ không phải CNN kém.
+</Khung>
+
+<Khung loai="loi">
+**Chuẩn hóa bằng thống kê của cả bộ dữ liệu.** Trung bình và độ lệch chuẩn dùng để chuẩn hóa ảnh (trang 2) phải tính trên train. Tính trên cả 27 000 ảnh là để test lọt vào tiền xử lý, một dạng rò rỉ nhỏ nhưng có thật.
+
+**Quên `stratify`.** Chia ngẫu nhiên không phân tầng, một lớp nhỏ có thể có tỷ lệ trong test khác hẳn trong train, và độ chính xác test dao động theo cách chia.
+</Khung>

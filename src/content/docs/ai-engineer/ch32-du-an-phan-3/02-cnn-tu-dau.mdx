@@ -1,0 +1,211 @@
+---
+title: CNN học từ đầu
+description: "MLP 6,4 triệu tham số trên điểm ảnh thô chỉ được 65,1%, thua cả baseline màu. CNN 392 nghìn tham số đạt 96,35% val. Tăng cường dữ liệu bằng 8 phép lật và xoay xóa được khoảng cách train và val nhưng chưa tăng điểm trong 15 epoch."
+---
+
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+Code trang này nối tiếp trang 1: dùng lại `X`, `y`, `i_tr`, `i_va`.
+
+## Chuẩn bị chung
+
+Chuẩn hóa từng kênh màu về trung bình 0, độ lệch chuẩn 1, với thống kê **chỉ của train**:
+
+```python
+import time
+tb = X[i_tr].float().div(255).mean((0, 2, 3)).view(1, 3, 1, 1)   # trung bình từng kênh đỏ, lục, lam trên train
+dl = X[i_tr].float().div(255).std((0, 2, 3)).view(1, 3, 1, 1)    # độ lệch chuẩn từng kênh trên train
+def chuan(xb):
+    return (xb.float().div(255) - tb) / dl                       # uint8 thành số thực đã chuẩn hóa
+print([round(v, 4) for v in tb.flatten().tolist()], [round(v, 4) for v in dl.flatten().tolist()])
+```
+
+```text title="Output"
+[0.3453, 0.381, 0.4082] [0.2036, 0.1376, 0.1161]
+```
+
+Kênh đỏ tối nhất nhưng biến động nhiều nhất (độ lệch chuẩn gần gấp đôi kênh lam): ảnh vệ tinh phần lớn là thảm thực vật xanh, còn đỏ thì lúc có lúc không (mái nhà, đất trống).
+
+Một hàm huấn luyện dùng cho cả chương, theo đúng công thức khởi đầu của Bảng 26.3: `AdamW`, và lịch <En>OneCycleLR</En>, tức warmup tăng dần learning rate trong 30% số bước đầu rồi giảm theo cosine về gần 0. Lịch này đếm theo **lô** nên gọi `lich.step()` sau mỗi lô (lỗi ở Chương 26).
+
+```python
+ce = nn.CrossEntropyLoss()
+@torch.no_grad()
+def du_doan(m, idx, pre=chuan, bs=500):
+    m.eval()                                                     # batch norm dùng thống kê đã học, dropout tắt
+    return torch.cat([m(pre(X[idx[i:i + bs]])) for i in range(0, len(idx), bs)])
+def do_acc(m, idx, pre=chuan):
+    return round((du_doan(m, idx, pre).argmax(1) == y[idx]).float().mean().item(), 4)
+def huan_luyen(m, so_epoch, lr=1e-3, tang=None, pre=chuan, tham_so=None, bs=128):
+    torch.manual_seed(1)
+    opt = torch.optim.AdamW(tham_so if tham_so is not None else m.parameters(), lr=lr, weight_decay=1e-4,
+                            fused=True)                          # bản gộp: chạy lại ra đúng từng chữ số
+    lich = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=lr, total_steps=so_epoch * ((len(i_tr) + bs - 1) // bs))
+    for ep in range(so_epoch):
+        m.train()
+        thu_tu, tong = i_tr[torch.randperm(len(i_tr))], 0.0      # xáo train mỗi epoch
+        for i in range(0, len(thu_tu), bs):
+            xb, yb = X[thu_tu[i:i + bs]], y[thu_tu[i:i + bs]]
+            if tang is not None:
+                xb = tang(xb)                                    # tăng cường dữ liệu, chỉ lúc huấn luyện
+            loss = ce(m(pre(xb)), yb)
+            opt.zero_grad()
+            loss.backward()
+            opt.step()
+            lich.step()                                          # OneCycleLR đếm theo lô
+            tong += loss.item() * len(xb)
+        print(ep + 1, round(tong / len(i_tr), 4), do_acc(m, i_va, pre))
+```
+
+Mỗi dòng in ra: epoch, loss trung bình trên train, độ chính xác trên val.
+
+<Khung loai="dao-sau" tieuDe="ĐẶT SEED CHƯA ĐỦ">
+Khi viết chương này, cùng một script với cùng seed, chạy hai lần, cho độ chính xác test 97,8% rồi 97,7%. Lần theo dấu thì nguyên nhân nằm ở bước cập nhật của `AdamW` mặc định: trên CPU nhiều luồng của máy viết bài, nó thỉnh thoảng cho kết quả lệch ở chữ số cuối giữa hai lần chạy. Lệch nhỏ đó lớn dần qua hàng nghìn bước, đủ để đổi vài ảnh từ đúng thành sai. Chạy một luồng thì hết lệch nhưng chậm hơn nhiều lần. Bản `fused=True` gộp cả bước cập nhật vào một phép tính; trong 8 lần chạy thử, nó cho kết quả giống hệt nhau từng chữ số. Bài học: đặt seed là cần, nhưng muốn chắc chắn lặp lại được thì phải **chạy lại thật** và so sánh. Trên GPU còn nhiều nguồn lệch hơn; `torch.use_deterministic_algorithms(True)` là chỗ bắt đầu tìm hiểu.
+</Khung>
+
+## MLP trên điểm ảnh thô
+
+Mạng của Chương 23 tới 26: duỗi ảnh thành một vector $3 \times 64 \times 64 = 12\,288$ số rồi cho qua hai lớp ẩn.
+
+```python
+torch.manual_seed(0)
+mlp = nn.Sequential(nn.Flatten(), nn.Linear(3 * 64 * 64, 512), nn.ReLU(),
+                    nn.Linear(512, 256), nn.ReLU(), nn.Linear(256, 10))
+print(sum(p.numel() for p in mlp.parameters()))
+huan_luyen(mlp, 15)
+```
+
+```text title="Output"
+6425866
+1 1.6186 0.5143
+2 1.2844 0.5193
+3 1.2611 0.5556
+4 1.1679 0.5494
+5 1.069 0.5795
+6 0.9668 0.5667
+7 0.821 0.6062
+8 0.7278 0.5968
+9 0.6421 0.618
+10 0.5397 0.6284
+11 0.4466 0.6341
+12 0.3706 0.6472
+13 0.3141 0.6496
+14 0.2782 0.6496
+15 0.2619 0.6509
+```
+
+6,4 triệu tham số, gần như tất cả nằm ở lớp đầu ($12\,288 \times 512$). Sau 15 epoch (khoảng 6 giây mỗi epoch), loss train xuống 0,26 nhưng val chỉ **65,1%**: thua xa baseline màu 83,6% của trang 1, dù baseline đó chỉ có 54 con số mỗi ảnh. MLP coi mỗi điểm ảnh là một đặc trưng riêng ở một vị trí cố định. Một con sông chạy qua góc trái và một con sông chạy qua góc phải là hai mẫu hình hoàn toàn khác với nó, nên nó phải học thuộc từng vị trí, và với 18 900 ảnh thì không đủ.
+
+## CNN
+
+Mạng tích chập của Chương 27 và 28: bốn khối tích chập, batch norm, ReLU, max pooling. Mỗi khối giảm cạnh ảnh một nửa ($64 \to 32 \to 16 \to 8 \to 4$) và tăng số kênh gấp đôi, rồi lấy trung bình toàn cục và một lớp tuyến tính. Dropout 0,2 trước lớp cuối (Chương 26).
+
+```python
+def khoi(vao, ra):
+    return nn.Sequential(nn.Conv2d(vao, ra, 3, padding=1), nn.BatchNorm2d(ra), nn.ReLU(), nn.MaxPool2d(2))
+def tao_cnn():
+    torch.manual_seed(0)
+    return nn.Sequential(khoi(3, 32), khoi(32, 64), khoi(64, 128), khoi(128, 256),
+                         nn.AdaptiveAvgPool2d(1), nn.Flatten(), nn.Dropout(0.2), nn.Linear(256, 10))
+cnn = tao_cnn()
+print(sum(p.numel() for p in cnn.parameters()))
+huan_luyen(cnn, 15)
+```
+
+```text title="Output"
+391946
+1 1.2943 0.7294
+2 0.6912 0.8025
+3 0.5424 0.8301
+4 0.4767 0.8306
+5 0.3822 0.8267
+6 0.3155 0.9207
+7 0.2783 0.8677
+8 0.2379 0.8501
+9 0.2044 0.9212
+10 0.1744 0.9407
+11 0.1557 0.9356
+12 0.1373 0.9548
+13 0.1148 0.962
+14 0.1054 0.9635
+15 0.0943 0.9635
+```
+
+392 nghìn tham số, **ít hơn MLP 16 lần**, và đạt **96,35%** val. Ngay sau epoch đầu đã 72,9%, hơn MLP sau 15 epoch. Cùng một bộ lọc $3 \times 3$ quét qua mọi vị trí, nên sông ở góc trái hay góc phải đều kích hoạt cùng những bộ lọc (Chương 27): mạng học "trông thế nào" một lần, dùng được ở mọi chỗ.
+
+Mỗi epoch mất khoảng 57 giây trên CPU 16 nhân, gấp gần 10 lần MLP dù ít tham số hơn nhiều: phép tích chập ở lớp đầu chạy trên $64 \times 64 = 4096$ vị trí, mỗi vị trí 32 bộ lọc. Số tham số không nói lên lượng tính toán.
+
+<Khung loai="doc-bieu-do">
+Đọc cột val qua các epoch: không đi lên đều mà nhảy (ví dụ 92,1% ở epoch 6, rồi 86,8% ở epoch 7, 85,0% ở epoch 8). Đó là lúc learning rate đang ở đỉnh của OneCycle: bước lớn làm mô hình dao động. Nửa sau, learning rate giảm theo cosine, val ổn định dần và đạt cao nhất ở cuối. Vì thế, với lịch kiểu này, đừng dừng sớm ở giữa chừng chỉ vì val tụt một epoch.
+</Khung>
+
+## Tăng cường dữ liệu đúng với loại ảnh
+
+<Term id="tang-cuong-du-lieu">Tăng cường dữ liệu</Term> (Chương 27, 28) phải giữ nguyên nhãn. Với ảnh chụp thường, lật ngang thì được, lật dọc thì không (con mèo lộn ngược không còn là ảnh bình thường). Ảnh vệ tinh nhìn **từ trên xuống**: lật ngang, lật dọc, xoay 90 độ, khu rừng vẫn là khu rừng. Ba phép lật ngẫu nhiên, mỗi phép với xác suất một nửa, tạo ra đủ $2^3 = 8$ biến thể (bốn góc xoay, mỗi góc có hoặc không lật):
+
+```python
+def lat_xoay(x):
+    x = x.clone()
+    m = torch.rand(len(x)) < 0.5
+    x[m] = x[m].flip(3)                                          # lật ngang một nửa lô
+    m = torch.rand(len(x)) < 0.5
+    x[m] = x[m].flip(2)                                          # lật dọc một nửa lô
+    m = torch.rand(len(x)) < 0.5
+    x[m] = x[m].transpose(2, 3)                                  # đổi hàng thành cột: lật theo đường chéo
+    return x
+cnn_tang = tao_cnn()
+huan_luyen(cnn_tang, 15, tang=lat_xoay)
+```
+
+```text title="Output"
+1 1.2986 0.7257
+2 0.7074 0.779
+3 0.5725 0.8165
+4 0.481 0.8543
+5 0.4068 0.8758
+6 0.3522 0.8926
+7 0.3112 0.8746
+8 0.2791 0.92
+9 0.2418 0.9242
+10 0.2154 0.9375
+11 0.1948 0.9486
+12 0.1731 0.9449
+13 0.1552 0.9583
+14 0.1421 0.9612
+15 0.136 0.96
+```
+
+Kết quả: **96,0%**, ngang bản không tăng cường (96,35%), không hơn. Nhìn hai con số ở cùng một cột thì dễ kết luận "tăng cường dữ liệu vô dụng". Đặt chúng cạnh độ chính xác trên **train** thì thấy chuyện khác:
+
+```python
+for ten, m in [("không tăng cường", cnn), ("lật và xoay", cnn_tang)]:
+    print(ten, do_acc(m, i_tr[:4050]), do_acc(m, i_va))          # 4050 ảnh train đầu, để so ngang với val
+```
+
+```text title="Output"
+không tăng cường 0.9795 0.9635
+lật và xoay 0.9602 0.96
+```
+
+Bản không tăng cường: train 97,95%, val 96,35%, chênh 1,6 điểm phần trăm, một chút overfitting. Bản tăng cường: train 96,02%, val 96,0%, **không chênh**. Tăng cường đã làm đúng việc của một regularization (Chương 26): xóa khoảng cách train và val. Nhưng nó cũng làm bài **khó** hơn, mỗi ảnh mỗi epoch trông một kiểu, nên trong 15 epoch mạng chưa học đủ, và điểm val không lên. Đây là tình huống "regularization nhiều mà huấn luyện ít": cách chữa thông thường là huấn luyện lâu hơn, điều ta không thử ở đây vì mỗi 15 epoch đã mất 14 phút. Bài tập 32.1 thử một cách rẻ hơn: dùng các biến thể lúc **dự đoán**.
+
+<TuKiemTra
+  cauHoi="Bạn làm dự án phân loại ảnh X-quang ngực, trong đó tim nằm bên trái cơ thể. Có nên dùng lat_xoay ở trên làm tăng cường dữ liệu không?"
+  luaChon={[
+    "Có, vì tăng cường dữ liệu luôn chống overfitting",
+    "Không, vì lật ngang biến ảnh thành một cơ thể có tim nằm bên phải, một ảnh bất thường mà dữ liệu thật hầu như không có",
+    "Có, nhưng chỉ dùng lúc đánh giá",
+    "Không, vì X-quang là ảnh đen trắng"
+  ]}
+  dapAn={1}
+  giaiThich="Tăng cường dữ liệu chỉ đúng khi phép biến đổi giữ nguyên nhãn và tạo ra ảnh có thể gặp ngoài thực tế. Ảnh vệ tinh không có hướng nào là trên, nên lật và xoay đều hợp lệ. X-quang ngực có hướng cố định, và tim bên phải (đảo ngược phủ tạng) là một bệnh hiếm: lật ngang dạy mô hình một điều sai về cơ thể người."
+/>
+
+<Khung loai="loi">
+**Tăng cường cả tập val và test.** Biến đổi ngẫu nhiên chỉ dùng lúc huấn luyện. Đánh giá trên ảnh đã biến đổi ngẫu nhiên thì mỗi lần đo ra một số khác.
+
+**So mô hình bằng số tham số.** MLP 6,4 triệu tham số thua CNN 392 nghìn tham số 31 điểm phần trăm, dù CNN mới là mạng tốn phép tính hơn, gần 10 lần. Kiến trúc hợp với dữ liệu quan trọng hơn kích thước.
+</Khung>

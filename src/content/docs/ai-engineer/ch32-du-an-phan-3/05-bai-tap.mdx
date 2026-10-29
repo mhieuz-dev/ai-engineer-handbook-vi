@@ -1,0 +1,115 @@
+---
+title: Bài tập
+description: "Ba bài tập dự án có đáp án chi tiết (trung bình 8 phép lật và xoay lúc dự đoán chỉ giúp mô hình đã học với tăng cường, thêm 11 ảnh đúng; ResNet-18 khởi tạo ngẫu nhiên chỉ 90,1% sau 5 epoch so với 98,1% khi dùng trọng số ImageNet; ngưỡng tin cậy 0,95 cho độ chính xác 99,5% và chuyển 348 ảnh cho người) và câu hỏi phỏng vấn."
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Đoán trước, rồi chạy code trong notebook để kiểm tra. Code dùng lại `cnn`, `cnn_tang`, `du_doan`, `do_acc`, `huan_luyen`, `lat_xoay`, `chuan`, `chuan_in`, `tin`, `dung` của các trang trước.
+
+<BaiTap so="32.1">
+**Tăng cường lúc dự đoán.** Ảnh vệ tinh lật hay xoay vẫn giữ nhãn. Vậy lúc dự đoán, thay vì cho mạng xem một ảnh, cho nó xem cả 8 biến thể lật và xoay của ảnh đó, rồi lấy trung bình 8 phân bố xác suất. Làm vậy với cả hai CNN của trang 2 trên tập val. Mô hình nào được lợi?
+
+<Fragment slot="dap-an">
+
+```python
+def du_doan_8(m, idx):
+    P = 0
+    for a in (0, 1):
+        for b in (0, 1):
+            for c in (0, 1):
+                def bien(xb, a=a, b=b, c=c):                     # một trong 8 phép lật và xoay
+                    if a:
+                        xb = xb.flip(3)
+                    if b:
+                        xb = xb.flip(2)
+                    if c:
+                        xb = xb.transpose(2, 3)
+                    return chuan(xb)
+                P = P + du_doan(m, idx, bien).softmax(1)
+    return P / 8
+for ten, m in [("không tăng cường", cnn), ("lật và xoay", cnn_tang)]:
+    print(ten, do_acc(m, i_va), round((du_doan_8(m, i_va).argmax(1) == y[i_va]).float().mean().item(), 4))
+```
+
+```text title="Output"
+không tăng cường 0.9635 0.9605
+lật và xoay 0.96 0.9627
+```
+
+Kỹ thuật này gọi là <em>test-time augmentation</em>. Với mô hình đã học bằng lật và xoay, nó tăng từ 96,0% lên 96,27%, thêm 11 ảnh đúng trên 4050, đổi lại dự đoán chậm gấp 8 lần. Với mô hình không học bằng tăng cường, nó **giảm** từ 96,35% xuống 96,05%: mô hình đó chưa từng thấy ảnh lật trong lúc học, nên với nó, 7 trong 8 biến thể là ảnh "lạ" hơn ảnh gốc, và trung bình kéo xuống. Tăng cường lúc dự đoán chỉ đúng khi khớp với cách mô hình đã học. Và ở đây, mức lợi nhỏ hơn nhiều so với khoảng cách giữa hai mô hình tốt nhất (96,35% và 98,1%).
+</Fragment>
+</BaiTap>
+
+<BaiTap so="32.2">
+**Trọng số hay kiến trúc.** ResNet-18 tinh chỉnh đạt 98,1% trên val. Bao nhiêu trong đó đến từ trọng số ImageNet? Huấn luyện cùng kiến trúc, cùng 5 epoch, cùng tăng cường, nhưng `weights=None`.
+
+<Fragment slot="dap-an">
+
+```python
+torch.manual_seed(0)
+net_moi = models.resnet18(weights=None)                          # cùng kiến trúc, trọng số ngẫu nhiên
+net_moi.fc = nn.Linear(512, 10)
+huan_luyen(net_moi, 5, tang=lat_xoay, pre=chuan_in(64))
+```
+
+```text title="Output"
+1 1.0187 0.6817
+2 0.7209 0.6183
+3 0.5591 0.7121
+4 0.3972 0.8773
+5 0.2904 0.9012
+```
+
+**90,1%** sau 5 epoch, so với 98,1% khi bắt đầu từ trọng số ImageNet, và thua cả CNN nhỏ 392 nghìn tham số (96,35%). Epoch đầu chỉ được 68,2%, so với 93,2% của bản đã huấn luyện sẵn. Vậy kiến trúc ResNet một mình không làm nên 98,1%: với ngân sách 5 epoch, gần 8 điểm phần trăm đến từ những gì mạng đã học trên ImageNet.
+
+Đừng đọc con số đó là "trọng số ImageNet luôn đáng 8 điểm". Mạng 11,2 triệu tham số học từ đầu cần nhiều epoch hơn hẳn một mạng đã có điểm xuất phát tốt; 5 epoch là quá ngắn cho nó. Bài báo gốc, với cách huấn luyện của họ, báo cáo khoảng cách chỉ **khoảng 2 điểm** giữa bản tinh chỉnh và bản khởi tạo ngẫu nhiên. Ở bài này, điều thấy rõ nhất là trọng số đã học giúp **đến đích nhanh hơn rất nhiều**: 93,2% sau một epoch, trong khi bản khởi tạo ngẫu nhiên sau 5 epoch mới vừa qua 90%.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="32.3">
+**Chọn ngưỡng theo yêu cầu.** Một đơn vị quản lý đất đai đặt yêu cầu: những ảnh mô hình tự quyết phải đúng ít nhất 99,5%. Trong các ngưỡng 0,8, 0,9, 0,95 và 0,97, ngưỡng nào thấp nhất mà vẫn đạt yêu cầu trên tập test, và khi đó bao nhiêu ảnh phải chuyển cho người?
+
+<Fragment slot="dap-an">
+
+```python
+for nguong in (0.8, 0.9, 0.95, 0.97):
+    giu = tin >= nguong
+    print(nguong, int((~giu).sum()), round(dung[giu].float().mean().item(), 4))
+```
+
+```text title="Output"
+0.8 147 0.99
+0.9 238 0.9924
+0.95 348 0.9951
+0.97 475 0.9978
+```
+
+Ngưỡng **0,95**: độ chính xác 99,51% trên những ảnh được giữ, và 348 trên 4050 ảnh (8,6%) chuyển cho người. Ngưỡng 0,9 chỉ được 99,24%. Ngưỡng càng cao, ảnh mô hình tự quyết càng đúng, nhưng người phải xem càng nhiều: từ 0,95 lên 0,97, phải xem thêm 127 ảnh để tăng độ chính xác thêm 0,27 điểm phần trăm.
+
+Lưu ý: chọn ngưỡng trên test là để làm bài tập. Trong dự án thật, ngưỡng là một quyết định, nên phải chọn trên val rồi mới đo lại trên test, đúng như mọi siêu tham số khác.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Khi nào đóng băng một mạng đã huấn luyện sẵn, khi nào tinh chỉnh toàn bộ?**
+
+<p lang="en"><em>When do you freeze a pretrained network, and when do you fine-tune all of it?</em></p>
+
+*Gợi ý:* phụ thuộc vào lượng dữ liệu và độ giống với dữ liệu gốc. Ít dữ liệu, giống ImageNet: đóng băng, chỉ học lớp cuối. Nhiều dữ liệu hoặc khác hẳn (ảnh vệ tinh, ảnh y tế): tinh chỉnh, với warmup hoặc learning rate nhỏ. Luôn thử cả hai trên val.
+
+**2. Vì sao chia ngẫu nhiên có thể cho kết quả quá lạc quan với ảnh vệ tinh?**
+
+<p lang="en"><em>Why can a random split give over-optimistic results on satellite imagery?</em></p>
+
+*Gợi ý:* các ô gần nhau trên mặt đất giống nhau (tự tương quan không gian). Chia ngẫu nhiên đưa hai ô kề nhau vào train và test, nên test đo khả năng nhớ vùng đã thấy chứ không phải khả năng tổng quát sang vùng mới. Chia theo vùng địa lý. Cùng ý tưởng: chia theo bệnh nhân với ảnh y tế, theo người dùng với dữ liệu hành vi.
+
+**3. Mô hình đạt 97,5% trên test. Bạn còn cần biết gì trước khi đưa vào dùng?**
+
+<p lang="en"><em>Your model gets 97.5% test accuracy. What else do you need to know before deploying it?</em></p>
+
+*Gợi ý:* độ chính xác từng lớp và ma trận nhầm lẫn (lớp nào kém), lỗi có lặp lại ở đâu, chi phí của từng loại lỗi, dữ liệu thật có giống dữ liệu test không (mùa khác, nước khác, cảm biến khác), độ tin cậy có dùng làm ngưỡng chuyển cho người được không, tốc độ và kích thước mô hình.
+</Khung>

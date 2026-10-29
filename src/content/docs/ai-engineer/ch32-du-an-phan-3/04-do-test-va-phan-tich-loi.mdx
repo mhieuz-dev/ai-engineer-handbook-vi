@@ -1,0 +1,100 @@
+---
+title: Đo test và phân tích lỗi
+description: "ResNet-18 tinh chỉnh đạt 97,5% trên 4050 ảnh test, sai 100 ảnh, thấp hơn val 0,5 điểm. Một nửa số lỗi dồn vào bốn lớp thực vật dễ lẫn nhau. Với ngưỡng tin cậy 0,9, mô hình tự quyết 94% số ảnh với độ chính xác 99,2% và chuyển phần còn lại cho người."
+---
+
+import En from '../../../../components/En.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+
+## Một lần duy nhất
+
+Mô hình đã chọn ở trang 3, trên 4050 ảnh chưa từng dùng vào bất cứ quyết định nào:
+
+```python
+P_te = du_doan(net, i_te, chuan_in(64)).softmax(1)                # xác suất của 10 lớp cho mỗi ảnh test
+doan = P_te.argmax(1)
+dung = doan == y[i_te]
+print(round(dung.float().mean().item(), 4), int((~dung).sum()), len(i_te))
+```
+
+```text title="Output"
+0.9753 100 4050
+```
+
+**97,5%** trên test, sai 100 trên 4050 ảnh. Val là 98,07%: test thấp hơn 0,54 điểm phần trăm, tức khoảng 22 ảnh. Chênh như vậy có đáng lo không? Mỗi con số đo trên 4050 ảnh tự nó đã dao động: độ lệch chuẩn của một tỷ lệ $p$ đo trên $n$ ảnh là $\sqrt{p(1-p)/n}$, với $p \approx 0{,}98$ và $n = 4050$ là khoảng 0,2 điểm, và của hiệu giữa hai tập độc lập là khoảng 0,33 điểm (Chương 12 đo cùng loại dao động này bằng bootstrap). Khoảng chênh 0,54 điểm bằng chừng 1,7 lần mức đó: chưa phải dấu hiệu bất thường. Nhưng nó cũng nhắc một điều có thật: con số val của **mô hình được chọn** luôn hơi lạc quan, vì ta chọn đúng mô hình may mắn nhất trên val. Đó là lý do phải có test.
+
+So với 98,57% của bài báo gốc: họ dùng ResNet-50 (gấp đôi số tham số), 80% dữ liệu để train thay vì 70%, huấn luyện lớp cuối trước rồi mới tinh chỉnh toàn bộ. Và tập test của họ là một cách chia ngẫu nhiên khác. Chênh khoảng 1 điểm phần trăm với một mạng nhỏ hơn, 5 epoch trên CPU, là hợp lý; muốn biết phần chênh đến từ đâu thì phải thử từng thay đổi một.
+
+## Lỗi nằm ở đâu
+
+```python
+from sklearn.metrics import confusion_matrix
+M = confusion_matrix(y[i_te], doan)                                # hàng: lớp thật, cột: lớp mô hình đoán
+for i, ten in enumerate(ds.classes):
+    print(f"{ten:21s} {M[i, i] / M[i].sum():.4f}")              # tỷ lệ đoán đúng của từng lớp
+cap = sorted(((int(M[i, j]), ds.classes[i], ds.classes[j]) for i in range(10) for j in range(10) if i != j), reverse=True)
+print(cap[:4])
+```
+
+```text title="Output"
+AnnualCrop            0.9756
+Forest                0.9911
+HerbaceousVegetation  0.9756
+Highway               0.9787
+Industrial            0.9867
+Pasture               0.9400
+PermanentCrop         0.9280
+Residential           0.9956
+River                 0.9707
+SeaLake               0.9933
+[(14, 'PermanentCrop', 'HerbaceousVegetation'), (7, 'PermanentCrop', 'AnnualCrop'), (7, 'Pasture', 'HerbaceousVegetation'), (7, 'AnnualCrop', 'PermanentCrop')]
+```
+
+Ba lớp kém nhất là `PermanentCrop` (92,8%), `Pasture` (94,0%) và `River` (97,1%). Hai lớp tốt nhất là `Residential` (99,6%), với lưới nhà dày đặc không giống gì khác, và `SeaLake` (99,3%), mặt nước gần như một màu.
+
+<HinhKetQua src="/hinh/ch32/h2_ma_tran_nham_lan.svg" alt="Ma trận nhầm lẫn 10 nhân 10 trên tập test. Đường chéo đậm màu với các số từ 282 tới 448. Ngoài đường chéo, phần lớn là 0 tới 2; ô lớn nhất là 14 ở hàng cây lâu năm cột thảm cỏ, tiếp theo là ba ô 7: cây lâu năm thành cây hằng năm, cây hằng năm thành cây lâu năm, đồng cỏ thành thảm cỏ." so="32.2" chuThich="Ma trận nhầm lẫn của ResNet-18 tinh chỉnh trên 4050 ảnh test. Ô ngoài đường chéo được tô theo thang riêng để lỗi hiện rõ.">
+**Đọc hình.** Hàng là lớp thật, cột là lớp mô hình đoán (<Term id="ma-tran-nham-lan">ma trận nhầm lẫn</Term>, Chương 12). Ô trên đường chéo là đoán đúng. Ô ngoài đường chéo ở hàng A, cột B là số ảnh A bị đoán thành B.
+
+**Điều cần thấy.** Lỗi không rải đều mà dồn vào một khối: bốn lớp **thực vật** (cây hằng năm, thảm cỏ, đồng cỏ, cây lâu năm) nhầm qua lại với nhau, chiếm 49 trong 100 lỗi. Ngoài khối đó, cặp đáng kể nhất là **sông và cao tốc** (5 ảnh sông bị đoán là cao tốc, 4 ảnh theo chiều ngược lại), cả hai đều là một dải chạy qua ảnh. Trong khối thực vật, cặp cây hằng năm và cây lâu năm nhầm đúng 7 ảnh mỗi chiều: ranh giới giữa hai lớp mờ thật. Các cặp khác lệch về một phía: 14 ảnh cây lâu năm bị đoán là thảm cỏ, chỉ 4 ảnh theo chiều ngược lại; 7 ảnh đồng cỏ thành thảm cỏ, 2 ảnh ngược lại. Mô hình có xu hướng đẩy những ảnh thực vật không rõ ràng về "thảm cỏ".
+</HinhKetQua>
+
+Đọc ma trận ta biết **lỗi loại gì**. Muốn biết **vì sao**, phải nhìn ảnh. Mười ảnh sai mà mô hình tự tin nhất:
+
+<HinhKetQua src="/hinh/ch32/h3_anh_sai.svg" alt="Hai hàng, mỗi hàng 5 ảnh vệ tinh bị đoán sai, mỗi ảnh ghi lớp thật và lớp mô hình đoán. Có một ảnh gắn nhãn rừng nhưng toàn một màu xanh đen như mặt nước; một ảnh sông là một dải thẳng chạy chéo qua ruộng, bị đoán là cao tốc; ba ảnh cây lâu năm trông như đất trống lẫn đá sáng màu, bị đoán là thảm cỏ; vài ảnh là những mảng xanh hoặc nâu mờ, không có cấu trúc rõ." so="32.3" chuThich="Mười ảnh test bị đoán sai với xác suất cao nhất cho lớp đoán. Dòng trên mỗi ảnh là lớp thật, dòng dưới là lớp đoán và xác suất.">
+**Đọc hình.** Mỗi ảnh có hai dòng chữ: nhãn thật, và lớp mô hình chọn kèm xác suất nó gán cho lớp đó.
+
+**Điều cần thấy.** Lỗi rơi vào ba kiểu. **Ô lẫn lộn**: ô 640 mét có cả mảng rừng lẫn đồng cỏ (ảnh cuối), nhãn chỉ chọn được một. **Ranh giới mờ**: những mảng xanh hoặc nâu không có cấu trúc, người nhìn cũng khó nói là đồng cỏ hay thảm cỏ; ba ô "cây lâu năm" trông như đất trống, không thấy hàng cây nào. **Có thể là nhãn sai**: một ô gắn nhãn rừng mà trông toàn một màu như mặt nước; mô hình đoán "biển, hồ" với xác suất 0,998. Không có tọa độ, ta không kiểm chứng được. Lỗi rõ ràng nhất của mô hình là ảnh sông: dòng nước ở đây chạy gần như thẳng, cạnh một con đường, và mô hình gọi nó là cao tốc.
+</HinhKetQua>
+
+Nhãn của EuroSAT lấy từ bản đồ quy hoạch đô thị châu Âu (Urban Atlas), và tác giả cho biết đã kiểm tra bằng mắt cả 27 000 ảnh nhiều lần để loại ảnh sai nhãn, ảnh phủ tuyết hay băng. Kể cả vậy, trong 100 lỗi vẫn có những ảnh mà nhãn đáng ngờ. Ở độ chính xác 97,5%, phần còn lại không chỉ là lỗi của mô hình: một phần là giới hạn của chính dữ liệu.
+
+## Độ tin cậy dùng được không
+
+Dùng thật, ta muốn biết **khi nào tin** mô hình. Ý tưởng: chỉ để mô hình tự quyết khi xác suất cao nhất vượt một ngưỡng, còn lại chuyển cho người xem:
+
+```python
+tin = P_te.max(1).values                                           # xác suất của lớp được chọn
+for nguong in (0.9, 0.99):
+    giu = tin >= nguong
+    print(nguong, round(giu.float().mean().item(), 4), round(dung[giu].float().mean().item(), 4),
+          round(dung[~giu].float().mean().item(), 4))
+```
+
+```text title="Output"
+0.9 0.9412 0.9924 0.7017
+0.99 0.8207 0.9991 0.8664
+```
+
+Ngưỡng 0,9: mô hình tự quyết **94,1%** số ảnh với độ chính xác **99,2%**; 5,9% còn lại (238 ảnh) chuyển cho người, và trong nhóm đó mô hình chỉ đúng 70,2%. Ngưỡng 0,99: tự quyết 82,1% với độ chính xác 99,9%. Xác suất của mô hình **có thông tin**: ảnh nó không chắc đúng là ảnh khó. Nhưng đừng đọc xác suất như tần suất đúng: ở trang trên, có ảnh sai với xác suất 0,999.
+
+<Khung loai="vi-sao" tieuDe="BÁO CÁO DỰ ÁN THẾ NÀO">
+Một con số 97,5% không đủ để người dùng quyết định. Báo cáo đủ gồm: thước đo đã chốt trước, baseline (11,1% và 83,6%), mô hình được chọn và cách chọn (val, Bảng 32.2), kết quả test đo một lần, lỗi dồn ở đâu (khối thực vật, sông với cao tốc), giới hạn đã biết (chia ngẫu nhiên chứ không theo vùng, một số nhãn đáng ngờ), và một cách dùng an toàn (ngưỡng tin cậy). Ai đọc báo cáo đó cũng biết mô hình dùng được cho việc gì, và không nên tin nó ở đâu.
+</Khung>
+
+<Khung loai="loi">
+**Thấy test thấp rồi quay lại chỉnh mô hình.** Lúc đó test đã thành val thứ hai, con số test mới không còn là ước lượng trung thực. Muốn cải tiến tiếp, cần một tập test mới.
+
+**Chỉ nhìn độ chính xác tổng.** 97,5% che mất việc `PermanentCrop` chỉ được 92,8%. Nếu bài toán thật là đếm diện tích vườn cây lâu năm, đó mới là con số quan trọng.
+</Khung>

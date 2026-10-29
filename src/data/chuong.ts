@@ -58,7 +58,7 @@ const BANG: [number, string, string, string, XuatBan?][] = [
 	[29, 'phan-3', 'RNN, LSTM, GRU', 'rnn-lstm-gru', { trangThai: 'xong', notebook: 'ch29_rnn_lstm_gru.ipynb' }],
 	[30, 'phan-3', 'Autoencoder và VAE', 'autoencoder-vae', { trangThai: 'xong', notebook: 'ch30_autoencoder_vae.ipynb' }],
 	[31, 'phan-3', 'GAN và Diffusion', 'gan-diffusion', { trangThai: 'xong', notebook: 'ch31_gan_diffusion.ipynb' }],
-	[32, 'phan-3', 'Dự án Phần III', 'du-an-phan-3'],
+	[32, 'phan-3', 'Dự án Phần III', 'du-an-phan-3', { trangThai: 'xong', notebook: 'ch32_du_an_phan_3.ipynb' }],
 	[33, 'phan-3b', 'Bài toán RL', 'bai-toan-rl'],
 	[34, 'phan-3b', 'Quy hoạch động và Q-learning', 'q-learning'],
 	[35, 'phan-3b', 'Deep Q-Network', 'dqn'],
