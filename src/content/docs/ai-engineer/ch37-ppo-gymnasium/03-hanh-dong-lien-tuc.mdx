@@ -1,0 +1,85 @@
+---
+title: Hành động liên tục
+description: "Pendulum: dựng đứng một con lắc bằng mô-men xoắn là một số thực giữa -2 và 2. DQN không làm được trực tiếp, PPO chỉ cần đổi phân phối Categorical thành phân phối chuẩn. Sau 100 000 bước (khoảng 21 giây), điểm trên 100 tập test từ -1112 của chọn bừa lên -184,7."
+---
+
+import Khung from '../../../../components/Khung.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Pendulum
+
+Mọi môi trường từ Chương 33 tới giờ có hành động **rời rạc**: 4 hướng, 2 hướng đẩy. Robot thật thì điều khiển bằng **số thực**: điện áp động cơ, góc lái, mô-men xoắn ở khớp. `Pendulum-v1` là bài nhỏ nhất kiểu đó: một con lắc treo trên trục, tác tử đặt một mô-men xoắn $\tau \in [-2, 2]$ mỗi bước, muốn giữ con lắc **dựng ngược** thẳng đứng. Động cơ yếu: không thể kéo thẳng lên từ vị trí treo, phải đung đưa lấy đà.
+
+```python
+PE = lambda: gym.make("Pendulum-v1")
+e = PE()
+print(e.observation_space, e.action_space, e.spec.max_episode_steps)
+```
+
+```text title="Output"
+Box([-1. -1. -8.], [1. 1. 8.], (3,), float32) Box(-2.0, 2.0, (1,), float32) 200
+```
+
+Quan sát là $(\cos\theta, \sin\theta, \dot\theta)$: góc viết qua cos và sin để không bị nhảy từ $\pi$ sang $-\pi$, và vận tốc góc. Mỗi tập dài đúng 200 bước, luôn kết thúc bằng `truncated`, không bao giờ `terminated`. Phần thưởng mỗi bước là $-(\theta^2 + 0{,}1\,\dot\theta^2 + 0{,}001\,\tau^2)$, với $\theta$ đo từ vị trí thẳng đứng: luôn âm, bằng 0 khi con lắc đứng yên ở đỉnh mà không tốn lực. Một bước tệ nhất là khoảng $-16{,}3$, nên tổng một tập không thể dưới khoảng $-3254$, và tốt nhất là gần 0.
+
+Mốc chọn bừa, mô-men đều trong $[-2, 2]$:
+
+```python
+rng = np.random.default_rng(0)
+tong = []
+for i in range(20):
+    o, _ = e.reset(seed=10_000 + i)
+    G = 0
+    while True:
+        o, r, ket_thuc, cat_ngang, _ = e.step(rng.uniform(-2, 2, size=1).astype(np.float32))
+        G += r
+        if ket_thuc or cat_ngang:
+            break
+    tong.append(G)
+print(round(np.mean(tong), 1))
+```
+
+```text title="Output"
+-1112.0
+```
+
+## Chính sách chuẩn
+
+DQN cần $\max_a Q(s, a)$ ở mọi bước, mà với $a$ liên tục đó là một bài toán tối ưu riêng. Policy gradient không cần: chính sách chỉ cần là **một phân phối lấy mẫu được và tính được log xác suất**. Với một chiều hành động, dùng phân phối chuẩn: diễn viên xuất trung bình $\mu(s)$, còn độ lệch chuẩn $\sigma$ là một tham số học được riêng (`log_std`, không phụ thuộc trạng thái). Lấy mẫu $a \sim \mathcal{N}(\mu(s), \sigma^2)$ để khám phá; khi đánh giá, dùng thẳng $\mu(s)$. Lớp `TacTu` của trang 2 đã có sẵn nhánh này, bật bằng `lien_tuc=True`. Mẫu nào vượt $[-2, 2]$ thì môi trường tự cắt.
+
+Mục tiêu cắt, GAE, nhà phê bình: không đổi một dòng nào. Chỉ đổi siêu tham số cho hợp bài: lô 512 bước mỗi môi trường, 10 epoch, 32 mini-batch, learning rate $10^{-3}$, không thưởng entropy (độ lệch chuẩn tự học), và $\gamma = 0{,}9$. Với $\gamma = 0{,}9$, tác tử nhìn khoảng 10 bước tới, đủ cho bài này vì phần thưởng đến ngay ở mỗi bước, và giá trị cần học dễ hơn nhiều so với $\gamma = 0{,}99$.
+
+```python
+tt_pe = ppo(PE, 100_000, n_buoc=512, epoch=10, n_lo=32, lr=1e-3, gamma=0.9, he_so_ent=0.0, lien_tuc=True, in_moi=5)
+print(danh_gia(tt_pe, PE, n=100, seed=20_000), round(tt_pe.log_std.exp().item(), 3))
+```
+
+```text title="Output"
+10240 -1261.0
+20480 -1085.1
+30720 -750.9
+40960 -207.7
+51200 -772.8
+61440 -479.7
+71680 -190.6
+81920 -241.7
+92160 -193.5
+-184.7 0.389
+```
+
+Khoảng 21 giây. Điểm trong lúc học lên từ $-1261$ (bước 10 240) tới khoảng $-190$ ở bước 71 680, có lần tụt về $-773$ ở giữa. Chính sách tham lam ($a = \mu(s)$) trên 100 tập test được **$-184{,}7$**, so với $-1112$ của chọn bừa. Với Pendulum, quanh $-150$ tới $-200$ là con lắc được đung lên và giữ đứng ở đỉnh gần như suốt tập; phần âm còn lại chủ yếu là những bước đầu khi nó còn đang đung đưa lấy đà, không tránh được. Độ lệch chuẩn đã học giảm từ 1 xuống khoảng 0,39: tác tử tự bớt khám phá khi đã biết làm.
+
+<TuKiemTra
+	cauHoi="Với hành động có 6 chiều (6 khớp của một cánh tay robot), log xác suất của một hành động trong chính sách chuẩn độc lập từng chiều tính thế nào?"
+	luaChon={['Lấy trung bình log xác suất của 6 chiều', 'Cộng log xác suất của 6 chiều, vì các chiều độc lập nên xác suất nhân với nhau', 'Lấy log xác suất của chiều lớn nhất', 'Phải dùng 6 mạng chính sách riêng']}
+	dapAn={1}
+	giaiThich="Phân phối chuẩn với ma trận hiệp phương sai chéo là tích của các phân phối một chiều, nên log của tích là tổng các log. Đó là lý do log_p_ent gọi .sum(-1) ở nhánh liên tục. Lấy trung bình thì tỷ số rho của PPO bị co lại theo số chiều, và phép cắt mất ý nghĩa."
+/>
+
+<Khung loai="loi">
+**Học `log_std` mà quên nó cũng là tham số.** Phải đưa nó vào optimizer (ở đây nó là `nn.Parameter` của mô-đun nên `tt.parameters()` có nó). Để cố định thì chính sách khám phá với cùng một mức nhiễu mãi mãi.
+
+**Đánh giá bằng hành động lấy mẫu.** Với hành động liên tục, nhiễu khám phá làm điểm thấp hơn hẳn chính sách thật. Đánh giá bằng trung bình $\mu(s)$, như ở đây.
+
+**Để mạng xuất thẳng hành động ngoài khoảng cho phép mà không biết.** Pendulum tự cắt mô-men vào $[-2, 2]$, nhưng mục tiêu PPO vẫn tính log xác suất của mẫu trước khi cắt. Nhiều cài đặt thêm wrapper `ClipAction`, hoặc dùng `tanh` để ép trung bình vào khoảng; với robot thật, hành động ngoài giới hạn có thể làm hỏng phần cứng, nên luôn kiểm giới hạn ở phía môi trường.
+</Khung>

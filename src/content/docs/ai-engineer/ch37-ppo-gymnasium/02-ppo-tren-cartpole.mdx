@@ -1,0 +1,188 @@
+---
+title: PPO trên CartPole
+description: "Cài trọn PPO: 4 môi trường chạy song song bằng gym.vector, GAE với lambda 0,95, mạng diễn viên và nhà phê bình, 4 epoch mỗi lô. 200 000 bước trên CartPole mất khoảng 22 giây một luồng CPU; chính sách tham lam giữ sào trung bình 484,7 bước trên 100 tập test."
+---
+
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Nhiều môi trường cùng lúc
+
+PPO thu dữ liệu theo **lô**: chạy chính sách hiện tại một số bước cố định, học trên lô đó, rồi bỏ lô đi. Để lô đa dạng hơn (nhiều tập ở nhiều giai đoạn khác nhau) mà không phải chờ, Gymnasium có **môi trường vector**: một đối tượng giữ $N$ bản sao môi trường, `step` nhận một mảng $N$ hành động và trả về $N$ kết quả. `SyncVectorEnv` chạy lần lượt trong cùng tiến trình; `AsyncVectorEnv` chạy mỗi bản sao ở một tiến trình riêng, có lợi khi môi trường chậm (một trình mô phỏng vật lý thật), còn với CartPole thì chi phí trao đổi giữa tiến trình lớn hơn lợi ích.
+
+Hai chi tiết của môi trường vector cần nắm:
+
+- **Tự động reset.** Khi một bản sao kết thúc tập, nó tự reset. Với `autoreset_mode=SAME_STEP`, trạng thái trả về đã là trạng thái đầu của tập **mới**, còn trạng thái cuối của tập cũ nằm trong `info["final_obs"]`. Ta cần trạng thái cuối đó để tính $V(s_{t+1})$ khi tập bị cắt ngang.
+- **Wrapper.** Gymnasium bọc môi trường bằng các lớp wrapper để thêm chức năng mà không sửa môi trường. `RecordEpisodeStatistics` ghi tổng phần thưởng và độ dài mỗi tập vào `info`, khỏi phải tự cộng. Còn có wrapper chuẩn hóa quan sát, cắt hành động, ghi video, giới hạn thời gian; `gym.make` tự gắn `TimeLimit` cho CartPole, đó là lý do tập bị cắt ở bước 500.
+
+## GAE
+
+Chương 36 kết thúc ở một đánh đổi: lợi thế tính bằng lợi nhuận thật cả tập (phương sai lớn) hay bằng sai số TD một bước (thiên lệch khi nhà phê bình còn sai). <Term id="gae">GAE</Term> (Schulman và cộng sự, 2016) lấy trung bình có trọng số giảm dần của mọi mức ở giữa. Với sai số TD $\delta_t = r_t + \gamma (1 - d_t) V(s_{t+1}) - V(s_t)$:
+
+$$
+A_t = \delta_t + (\gamma\lambda)\,\delta_{t+1} + (\gamma\lambda)^2\,\delta_{t+2} + \cdots
+$$
+
+$\lambda = 0$ cho đúng sai số TD một bước (actor-critic của Chương 36). $\lambda = 1$ cho lợi nhuận thật trừ $V(s_t)$ (REINFORCE có baseline). $\lambda = 0{,}95$ ở giữa, gần phía REINFORCE. Tính bằng một vòng đi ngược giống lợi nhuận ở Chương 33, dừng tích lũy ở ranh giới tập.
+
+## Cài đặt
+
+Diễn viên và nhà phê bình là hai MLP riêng, 2 lớp ẩn 64 nơ-ron, hàm kích hoạt `tanh`, khởi tạo trực giao. Lớp cuối của diễn viên khởi tạo với độ lớn 0,01, để lúc đầu mọi hành động gần như đồng xác suất. Lớp `TacTu` có sẵn nhánh cho hành động liên tục (trang 3).
+
+```python
+def lop(vao, ra, std=np.sqrt(2)):                    # lớp tuyến tính khởi tạo trực giao
+    l = nn.Linear(vao, ra)
+    nn.init.orthogonal_(l.weight, std)
+    nn.init.zeros_(l.bias)
+    return l
+
+class TacTu(nn.Module):
+    def __init__(self, n_obs, n_ra, lien_tuc=False):
+        super().__init__()
+        self.lien_tuc = lien_tuc
+        self.critic = nn.Sequential(lop(n_obs, 64), nn.Tanh(), lop(64, 64), nn.Tanh(), lop(64, 1, 1.0))
+        self.actor = nn.Sequential(lop(n_obs, 64), nn.Tanh(), lop(64, 64), nn.Tanh(), lop(64, n_ra, 0.01))
+        self.log_std = nn.Parameter(torch.zeros(n_ra)) if lien_tuc else None   # trang 3
+    def phan_phoi(self, o):
+        if self.lien_tuc:
+            mu = self.actor(o)
+            return torch.distributions.Normal(mu, self.log_std.exp().expand_as(mu))
+        return torch.distributions.Categorical(logits=self.actor(o))
+    def log_p_ent(self, o, a):                       # log xác suất và entropy, cộng qua các chiều hành động
+        d = self.phan_phoi(o)
+        if self.lien_tuc:
+            return d.log_prob(a).sum(-1), d.entropy().sum(-1)
+        return d.log_prob(a), d.entropy()
+    def tham_lam(self, o):                           # dùng khi đánh giá: argmax, hoặc trung bình nếu liên tục
+        return self.actor(o) if self.lien_tuc else self.actor(o).argmax(-1)
+
+def gae(R, V, V_sau, ket_thuc, het_tap, gamma, lam):
+    A = torch.zeros_like(R)
+    g = torch.zeros(R.shape[1])
+    for t in reversed(range(R.shape[0])):
+        delta = R[t] + gamma * (1 - ket_thuc[t]) * V_sau[t] - V[t]   # sai số TD; chỉ terminated mới bỏ V_sau
+        g = delta + gamma * lam * (1 - het_tap[t]) * g                # không tích lũy qua ranh giới tập
+        A[t] = g
+    return A
+```
+
+Hàm `ppo` thu lô `n_buoc` bước trên `n_env` môi trường, tính GAE, rồi học `epoch` lượt, mỗi lượt chia lô thành `n_lo` mini-batch. Loss gồm ba phần: mục tiêu cắt của trang 1 (đổi dấu), MSE của nhà phê bình với mục tiêu $A_t + V(s_t)$, và trừ một chút **entropy** của chính sách để nó không chắc chắn quá sớm. Thêm hai chi tiết tiêu chuẩn: chuẩn hóa lợi thế trong mỗi mini-batch (như bài tập 36.3) và giảm learning rate tuyến tính về 0.
+
+```python
+def ppo(tao_mot, tong_buoc, n_env=4, n_buoc=128, epoch=4, n_lo=4, lr=2.5e-4, gamma=0.99, lam=0.95,
+        clip=0.2, he_so_ent=0.01, lien_tuc=False, seed=0, in_moi=40):
+    torch.manual_seed(seed)
+    envs = gym.vector.SyncVectorEnv([lambda: gym.wrappers.RecordEpisodeStatistics(tao_mot()) for _ in range(n_env)],
+                                    autoreset_mode=gym.vector.AutoresetMode.SAME_STEP)
+    n_obs = envs.single_observation_space.shape[0]
+    n_ra = envs.single_action_space.shape[0] if lien_tuc else envs.single_action_space.n
+    tt = TacTu(n_obs, n_ra, lien_tuc)
+    opt = torch.optim.Adam(tt.parameters(), lr=lr, eps=1e-5, fused=True)
+    so_vong = tong_buoc // (n_env * n_buoc)
+    o, _ = envs.reset(seed=seed)
+    o = torch.tensor(o, dtype=torch.float32)
+    diem = []
+    for vong in range(1, so_vong + 1):
+        opt.param_groups[0]["lr"] = lr * (1 - (vong - 1) / so_vong)   # giảm tuyến tính
+        O, A, LP, V, R, V_sau, KT, HT = [], [], [], [], [], [], [], []
+        for t in range(n_buoc):                      # 1. thu một lô bằng chính sách hiện tại
+            with torch.no_grad():
+                d = tt.phan_phoi(o)
+                a = d.sample()
+                lp = d.log_prob(a).sum(-1) if lien_tuc else d.log_prob(a)   # log xác suất CŨ, giữ cố định
+                v = tt.critic(o).squeeze(-1)
+            o2, r, ket_thuc, cat_ngang, info = envs.step(a.numpy())
+            het = ket_thuc | cat_ngang
+            o_cuoi = o2.copy()                       # trạng thái thật sự đến, kể cả khi tập vừa hết
+            for i in np.where(het)[0]:
+                o_cuoi[i] = info["final_obs"][i]
+                diem.append(float(info["final_info"]["episode"]["r"][i]))
+            with torch.no_grad():
+                vs = tt.critic(torch.tensor(o_cuoi, dtype=torch.float32)).squeeze(-1)
+            O.append(o); A.append(a); LP.append(lp); V.append(v); V_sau.append(vs)
+            R.append(torch.tensor(r, dtype=torch.float32))
+            KT.append(torch.tensor(ket_thuc, dtype=torch.float32))
+            HT.append(torch.tensor(het, dtype=torch.float32))
+            o = torch.tensor(o2, dtype=torch.float32)
+        O, A, LP, V, R, V_sau, KT, HT = map(torch.stack, (O, A, LP, V, R, V_sau, KT, HT))
+        with torch.no_grad():                        # 2. lợi thế bằng GAE
+            adv = gae(R, V, V_sau, KT, HT, gamma, lam)
+            muc_tieu_v = adv + V
+        N = n_buoc * n_env
+        O, A, LP, adv, muc_tieu_v = O.flatten(0, 1), A.flatten(0, 1), LP.flatten(0, 1), adv.flatten(0, 1), muc_tieu_v.flatten(0, 1)
+        co_lo = N // n_lo
+        for _ in range(epoch):                       # 3. học nhiều epoch trên cùng một lô
+            thu_tu = torch.randperm(N)
+            for k in range(n_lo):
+                j = thu_tu[k * co_lo:(k + 1) * co_lo]
+                lp, ent = tt.log_p_ent(O[j], A[j])
+                ti_so = (lp - LP[j]).exp()
+                a_j = (adv[j] - adv[j].mean()) / (adv[j].std() + 1e-8)   # chuẩn hóa lợi thế
+                loss_pi = -torch.min(ti_so * a_j, ti_so.clamp(1 - clip, 1 + clip) * a_j).mean()
+                loss_v = ((tt.critic(O[j]).squeeze(-1) - muc_tieu_v[j]) ** 2).mean()
+                loss = loss_pi + 0.5 * loss_v - he_so_ent * ent.mean()
+                opt.zero_grad()
+                loss.backward()
+                nn.utils.clip_grad_norm_(tt.parameters(), 0.5)
+                opt.step()
+        if vong % in_moi == 0:
+            print(vong * N, round(np.mean(diem[-20:]), 1))   # số bước, điểm 20 tập gần nhất
+    return tt
+
+def danh_gia(tt, tao_mot, n=20, seed=10_000):        # chính sách tham lam trên n tập cố định
+    e = tao_mot()
+    tong = []
+    for i in range(n):
+        o, _ = e.reset(seed=seed + i)
+        G = 0
+        while True:
+            with torch.no_grad():
+                a = tt.tham_lam(torch.tensor(o, dtype=torch.float32)).numpy()
+            o, r, ket_thuc, cat_ngang, _ = e.step(a)
+            G += r
+            if ket_thuc or cat_ngang:
+                break
+        tong.append(G)
+    return round(float(np.mean(tong)), 1)
+```
+
+## Huấn luyện
+
+200 000 bước: 4 môi trường, mỗi lô 128 bước một môi trường, tức 512 bước một lô và 390 lô.
+
+```python
+CP = lambda: gym.make("CartPole-v1")
+tt_cp = ppo(CP, 200_000)
+print(danh_gia(tt_cp, CP, n=100, seed=20_000))
+```
+
+```text title="Output"
+20480 118.6
+40960 256.9
+61440 222.4
+81920 273.8
+102400 352.5
+122880 312.7
+143360 342.4
+163840 351.5
+184320 341.5
+484.7
+```
+
+Mỗi dòng là số bước môi trường đã dùng và điểm trung bình 20 tập gần nhất **trong lúc học**, còn lấy mẫu và còn bị đẩy entropy. Điểm lên từ 119 ở bước 20 000 tới khoảng 340 tới 350 về cuối. Dòng cuối là chính sách tham lam trên 100 tập test chưa dùng: **484,7**, khoảng 22 giây trên một luồng CPU.
+
+So với hai chương trước: DQN cần 50 000 bước và khoảng 40 giây, bản tốt nhất đạt 500 nhưng đường học rơi lên rơi xuống; REINFORCE có baseline cần khoảng 1000 tập, cỡ 300 000 bước. PPO dùng nhiều bước môi trường hơn DQN, nhưng mỗi bước rẻ, chạy song song được, và **không có replay buffer**: đó là lý do nó thành lựa chọn mặc định khi môi trường là một trình mô phỏng chạy nhanh. Bài tập 37.1 cho thấy với nhiều epoch hơn, PPO trên CartPole còn đạt 500 chỉ sau khoảng 40 000 bước.
+
+<TuKiemTra
+	cauHoi="Trong gae, vì sao có hai mảng khác nhau ket_thuc và het_tap thay vì một?"
+	luaChon={['Để tiết kiệm bộ nhớ', 'ket_thuc (chỉ terminated) quyết định có cộng V(s_t+1) hay không; het_tap (terminated hoặc truncated) quyết định có dừng tích lũy lợi thế qua ranh giới tập hay không', 'Hai mảng luôn giống nhau, chỉ để code dễ đọc', 'het_tap dùng cho nhà phê bình, ket_thuc dùng cho diễn viên']}
+	dapAn={1}
+	giaiThich="Tập bị cắt ở bước 500 không phải kết thúc thật: V của trạng thái cuối vẫn phải cộng vào sai số TD, nên chỉ ket_thuc mới bỏ phần đó. Nhưng bước tiếp theo trong lô đã thuộc một tập mới (môi trường tự reset), nên lợi thế không được tích lũy qua ranh giới đó, dù tập kết thúc hay bị cắt. Gộp hai mảng làm một là lặp lại lỗi của bài tập 35.3."
+/>
+
+<Khung loai="loi">
+**Lấy `o2` làm trạng thái cuối khi tập vừa hết.** Với tự động reset, `o2` đã là trạng thái đầu của tập mới. Tính $V(s_{t+1})$ trên nó là cộng giá trị của một tập khác vào lợi thế của tập này. Trạng thái cuối thật nằm trong `info["final_obs"]`.
+
+**Quên chuẩn hóa lợi thế, hoặc chuẩn hóa trên cả lô thay vì từng mini-batch rồi so kết quả với code mẫu.** Đây là một trong nhiều chi tiết nhỏ mà PPO nhạy cảm; bài "The 37 Implementation Details of PPO" (Huang và cộng sự, 2022) liệt kê đủ cả. Muốn so với kết quả công bố, phải khớp từng chi tiết.
+</Khung>

@@ -1,0 +1,148 @@
+---
+title: Tự viết môi trường
+description: "Viết một môi trường Gymnasium cho bài toán quản lý kho: mỗi ngày quyết định đặt bao nhiêu thùng hàng khi nhu cầu ngẫu nhiên. Chính sách (s, S) tốt nhất tìm bằng lưới tốn 374,9 cho 60 ngày; PPO không biết gì về cấu trúc đó tốn 377,6, và tự học ra đúng dạng hết hàng thì đặt 7 thùng."
+---
+
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Từ trò chơi sang bài toán thật
+
+Trong công việc, hiếm khi có sẵn một môi trường Gymnasium cho bài toán của bạn. Việc đầu tiên, và thường là việc khó nhất, là **viết môi trường**: chọn trạng thái, hành động, phần thưởng sao cho tối đa phần thưởng đúng là điều doanh nghiệp muốn. Trang này làm trọn từ đầu tới cuối với một bài toán cổ điển của vận trù học.
+
+**Bài toán.** Một cửa hàng bán một mặt hàng. Mỗi sáng chủ cửa hàng quyết định đặt thêm bao nhiêu thùng (0 tới 10), hàng về ngay trong ngày. Trong ngày, khách tới mua một số thùng ngẫu nhiên, trung bình 3 thùng một ngày (phân phối Poisson). Kho chứa tối đa 20 thùng. Chi phí:
+
+- **Mua hàng**: 1 đồng mỗi thùng đặt.
+- **Phí đặt hàng**: 3 đồng mỗi lần đặt, bất kể đặt bao nhiêu (chi phí vận chuyển, giấy tờ).
+- **Lưu kho**: 0,5 đồng mỗi thùng còn trong kho cuối ngày.
+- **Thiếu hàng**: 4 đồng mỗi thùng khách muốn mua mà không có (mất khách, mất uy tín).
+
+Mục tiêu: tổng chi phí 60 ngày nhỏ nhất. Đặt nhiều thì tốn lưu kho, đặt ít thì thiếu hàng, đặt thường xuyên thì tốn phí đặt. Phần thưởng là **âm** của chi phí mỗi ngày.
+
+## Viết lớp môi trường
+
+Một môi trường Gymnasium là một lớp kế thừa `gym.Env` với bốn thứ: `observation_space`, `action_space`, `reset` và `step`. Quan sát gồm tồn kho và số ngày đã qua, cả hai chia về $[0, 1]$ cho mạng dễ học. Số ngày cần có trong quan sát vì bài toán có hạn 60 ngày: gần cuối kỳ thì không nên đặt hàng tồn lại (đúng bài học của bài tập 35.3, thời gian phải nằm trong trạng thái nếu nó quan trọng). Ngẫu nhiên lấy từ `self.np_random`, bộ sinh mà `reset(seed=...)` khởi tạo, để mọi thứ lặp lại được.
+
+```python
+from gymnasium import spaces
+
+class Kho(gym.Env):
+    def __init__(self, so_ngay=60, nhu_cau=3.0, suc_chua=20, phi_luu=0.5, phat_thieu=4.0, phi_dat=3.0, gia_hang=1.0):
+        self.so_ngay, self.nhu_cau, self.suc_chua = so_ngay, nhu_cau, suc_chua
+        self.phi_luu, self.phat_thieu, self.phi_dat, self.gia_hang = phi_luu, phat_thieu, phi_dat, gia_hang
+        self.observation_space = spaces.Box(0.0, 1.0, (2,), np.float32)   # tồn kho, ngày; cả hai chia về [0, 1]
+        self.action_space = spaces.Discrete(11)      # đặt 0 tới 10 thùng
+
+    def _quan_sat(self):
+        return np.array([self.ton / self.suc_chua, self.ngay / self.so_ngay], np.float32)
+
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)                     # khởi tạo self.np_random
+        self.ton, self.ngay = 5, 0
+        return self._quan_sat(), {}
+
+    def step(self, a):
+        dat = min(int(a), self.suc_chua - self.ton)  # không đặt quá sức chứa
+        self.ton += dat
+        cau = int(self.np_random.poisson(self.nhu_cau))
+        ban = min(cau, self.ton)
+        thieu = cau - ban
+        self.ton -= ban
+        self.ngay += 1
+        chi_phi = (self.phi_luu * self.ton + self.phat_thieu * thieu
+                   + (self.phi_dat if dat > 0 else 0) + self.gia_hang * dat)
+        return self._quan_sat(), -chi_phi, False, self.ngay >= self.so_ngay, {"thieu": thieu}
+```
+
+Tập không bao giờ `terminated`: hết 60 ngày là **bị cắt** (`truncated`), cửa hàng vẫn tồn tại sau đó. Gymnasium có sẵn một bộ kiểm môi trường: nó gọi `reset`, `step` với đủ kiểu đầu vào, kiểm kiểu và khoảng của quan sát, kiểm `seed` có làm kết quả lặp lại không.
+
+```python
+import warnings
+from gymnasium.utils.env_checker import check_env
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")                  # cảnh báo duy nhất: không có chế độ vẽ hình
+    check_env(Kho())
+print("hợp lệ")
+```
+
+```text title="Output"
+hợp lệ
+```
+
+## Mốc so sánh: chính sách (s, S)
+
+Vận trù học đã nghiên cứu bài này từ những năm 1950. Với chi phí đặt hàng cố định, một dạng chính sách rất tốt là **(s, S)**: khi tồn kho xuống tới mức $s$ hoặc thấp hơn, đặt đủ để lên mức $S$; còn không thì không đặt. Thử mọi cặp $0 \le s \le 5$, $s < S \le 12$, mỗi cặp 500 tập, rồi đo cặp tốt nhất trên 2000 tập test với seed khác:
+
+```python
+def chinh_sach_sS(s_, S_, n, seed):
+    e = Kho()
+    tong = []
+    for i in range(n):
+        e.reset(seed=seed + i)
+        G = 0
+        while True:
+            _, r, ket_thuc, cat_ngang, _ = e.step(min(10, S_ - e.ton) if e.ton <= s_ else 0)
+            G += r
+            if ket_thuc or cat_ngang:
+                break
+        tong.append(G)
+    return round(float(np.mean(tong)), 1)
+
+luoi = sorted((chinh_sach_sS(s_, S_, 500, 0), s_, S_) for s_ in range(6) for S_ in range(s_ + 1, 13))
+print(luoi[-3:])
+_, s_tot, S_tot = luoi[-1]
+print(chinh_sach_sS(s_tot, S_tot, 2000, 20_000))
+```
+
+```text title="Output"
+[(-379.2, 1, 8), (-376.6, 2, 8), (-376.1, 2, 7)]
+-374.9
+```
+
+Cặp tốt nhất là $(s, S) = (2, 7)$: chi phí trung bình **374,9** cho 60 ngày trên tập test. Riêng tiền mua hàng đã khoảng 180 (60 ngày, 3 thùng một ngày), nên phần chi phí có thể tối ưu được là khoảng 195.
+
+## PPO học chính sách
+
+Môi trường mới, cùng hàm `ppo` của trang 2. `ppo` nhận một hàm tạo môi trường, nên chỉ cần đưa lớp `Kho` vào:
+
+```python
+tt_kho = ppo(Kho, 300_000, n_buoc=512, epoch=10, n_lo=8, lr=1e-3, in_moi=50)
+print(danh_gia(tt_kho, Kho, n=2000, seed=20_000))
+with torch.no_grad():
+    print([int(tt_kho.tham_lam(torch.tensor([t / 20, 0.5]))) for t in range(13)])
+```
+
+```text title="Output"
+102400 -424.2
+204800 -401.2
+-377.6
+[7, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+```
+
+Khoảng 37 giây. Chính sách tham lam tốn **377,6** trên cùng 2000 tập test, chỉ hơn chính sách (s, S) tốt nhất 2,7 đồng, khoảng 0,7%. Dòng cuối là số thùng PPO đặt ở ngày 30 với tồn kho từ 0 tới 12: hết hàng hoặc còn 1 thùng thì đặt 7, còn từ 2 thùng trở lên thì không đặt. PPO không được cho biết gì về chính sách (s, S), mà tự học ra **đúng dạng đó**, với ngưỡng $s = 1$ và mức lên tới 7 hoặc 8 thùng, rất gần cặp $(2, 7)$ tìm bằng lưới.
+
+<HinhKetQua src="/hinh/ch37/h2_kho.svg" alt="Biểu đồ bậc thang, trục ngang là tồn kho đầu ngày từ 0 tới 12, trục dọc là số thùng đặt. Đường cam là chính sách (s, S) bằng (2, 7): đặt 7, 6, 5 thùng khi tồn 0, 1, 2 thùng, rồi 0 từ 3 trở lên. Đường xanh là PPO ở ngày 30: đặt 7 khi tồn 0 và 1, rồi 0 từ 2 trở lên." so="37.2" chuThich="Số thùng đặt theo tồn kho đầu ngày: chính sách (s, S) = (2, 7) tìm bằng lưới, và chính sách tham lam của PPO ở ngày 30.">
+**Đọc hình.** Mỗi đường là một chính sách: với mỗi mức tồn kho trên trục ngang, đặt bao nhiêu thùng.
+
+**Điều cần thấy.** Hai đường có cùng hình dạng: một bậc lớn ở mức tồn thấp, rồi bằng 0. Khác biệt duy nhất là ở tồn kho 2 thùng: (s, S) đặt thêm 5, PPO chờ. Cả hai đều không bao giờ đặt ít thùng một lần, vì phí đặt cố định 3 đồng làm đặt lắt nhắt rất đắt.
+</HinhKetQua>
+
+Điều này đáng giá hơn con số 0,7%. Với bài kho đơn giản này, lý thuyết đã cho đáp án và ta tìm được bằng lưới. Nhưng thêm vài chi tiết thật (hàng về sau 2 ngày, nhu cầu theo mùa, nhiều mặt hàng chung một kho, giá thay đổi) thì không còn công thức nào, và lưới nổ theo số tham số. Môi trường thì vẫn viết được, và PPO vẫn chạy y như vậy. Bài tập 37.3 đổi chi phí thiếu hàng để xem chính sách tự điều chỉnh.
+
+<TuKiemTra
+	cauHoi="Nếu bỏ số ngày khỏi quan sát (chỉ còn tồn kho), điều gì có thể xảy ra ở những ngày cuối kỳ?"
+	luaChon={['Không khác gì, vì tồn kho là đủ', 'Tác tử không biết sắp hết kỳ nên vẫn đặt hàng như mọi ngày, để lại hàng tồn vô ích ở ngày 60', 'Môi trường báo lỗi', 'Tác tử ngừng đặt hàng hoàn toàn']}
+	dapAn={1}
+	giaiThich="Hàng còn trong kho ở cuối ngày 60 chỉ tốn tiền mua và tiền lưu mà không bán được trong kỳ. Một chính sách tốt sẽ đặt ít đi khi gần hết kỳ, nhưng muốn vậy nó phải biết còn bao nhiêu ngày. Thiếu thông tin đó, trạng thái không còn Markov theo nghĩa của Chương 33: cùng một tồn kho mà hành động tốt nhất khác nhau tùy ngày."
+/>
+
+<Khung loai="vi-sao" tieuDe="PHẦN THƯỞNG LÀ HỢP ĐỒNG">
+Toàn bộ trang này phụ thuộc vào bốn con số chi phí. Đặt phạt thiếu hàng quá thấp, tác tử học cách để kho trống và chịu mất khách. Quên phí đặt hàng, nó đặt mỗi ngày một ít. Trong dự án thật, phần lớn thời gian không nằm ở thuật toán RL mà ở việc ngồi với người làm nghiệp vụ để chốt các con số đó, kiểm môi trường có phản ánh đúng thực tế không, và so với chính sách mà doanh nghiệp đang dùng. Một tác tử tối ưu cho một phần thưởng sai sẽ tối ưu rất giỏi điều không ai muốn, như con thuyền CoastRunners ở Chương 33.
+</Khung>
+
+<Khung loai="loi">
+**Dùng `np.random` thay vì `self.np_random`.** Khi đó `reset(seed=...)` không điều khiển được nhu cầu: chạy lại cùng seed ra kết quả khác, và so hai chính sách trên "cùng" 2000 tập test không còn là so trên cùng những ngày khách tới.
+
+**Cho tập `terminated` khi hết kỳ.** Hết 60 ngày không có nghĩa là không còn tương lai; ghi `terminated` thì nhà phê bình học rằng giá trị cuối kỳ bằng 0, dù tồn kho còn lại có giá trị. Ở đây ngày nằm trong quan sát nên có thể chấp nhận, nhưng `truncated` mới đúng nghĩa.
+</Khung>

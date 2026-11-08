@@ -1,0 +1,195 @@
+---
+title: Bài tập
+description: "Ba bài tập có đáp án chi tiết (bỏ phép cắt thì PPO lên 436 rồi sụp còn 134; 30 epoch có cắt đạt 500 từ bước 41 000 và giữ nguyên, không cắt thì rơi xuống 31; lambda 0 hỏng hẳn còn 19,7; phạt thiếu hàng 10 thì PPO tự nâng ngưỡng đặt hàng từ 1 lên 3), câu hỏi phỏng vấn và bảng tổng kết Phần III-B."
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Đoán trước, rồi chạy code trong notebook để kiểm tra. Code dùng lại `ppo`, `danh_gia`, `CP`, `Kho` và `chinh_sach_sS` của các trang trước. Mỗi lần gọi `ppo` trên CartPole mất khoảng 20 tới 60 giây.
+
+<BaiTap so="37.1">
+**Bỏ phép cắt.** (a) Chạy lại PPO trên CartPole với `clip=100.0`: tỷ số không bao giờ chạm ngưỡng, mục tiêu thành $\rho_t A_t$ thuần.
+
+(b) Phép cắt có ích nhất khi dùng lại dữ liệu nhiều lần. Chạy với 30 epoch mỗi lô, một lần có cắt, một lần không.
+
+<Fragment slot="dap-an">
+
+**(a)** ```python
+tt = ppo(CP, 200_000, clip=100.0)
+print(danh_gia(tt, CP, n=100, seed=20_000))
+```
+
+```text title="Output"
+20480 125.0
+40960 225.8
+61440 349.4
+81920 412.8
+102400 436.2
+122880 133.7
+143360 202.7
+163840 214.4
+184320 178.5
+210.8
+```
+
+Điểm lúc học lên đều tới **436** ở bước 102 400, nhanh hơn cả bản có cắt (352,5 cùng thời điểm). Rồi chỉ một lô sau nó **sụp** về 133,7 và không bao giờ lấy lại mức cũ; chính sách tham lam cuối cùng chỉ được 210,8, so với 484,7 khi có cắt.
+
+Đúng kịch bản của bài tập 36.1. Không có phép cắt, 4 epoch trên một lô có thể đẩy xác suất của vài hành động đi rất xa so với chính sách đã thu dữ liệu; ước lượng lấy mẫu theo tầm quan trọng khi đó không còn đáng tin, một bước cập nhật xấu lọt qua, chính sách tệ thu dữ liệu tệ. Lúc mọi thứ đang tốt, bản không cắt trông như học nhanh hơn: đó chính là lúc nguy hiểm nhất.
+
+**(b)** ```python
+for clip in (0.2, 100.0):
+    tt = ppo(CP, 200_000, epoch=30, clip=clip)
+    print("clip", clip, danh_gia(tt, CP, n=100, seed=20_000))
+```
+
+```text title="Output"
+20480 222.1
+40960 500.0
+61440 500.0
+81920 500.0
+102400 500.0
+122880 500.0
+143360 500.0
+163840 500.0
+184320 500.0
+clip 0.2 500.0
+20480 450.4
+40960 260.2
+61440 31.0
+81920 429.2
+102400 123.5
+122880 225.0
+143360 108.6
+163840 500.0
+184320 500.0
+clip 100.0 500.0
+```
+
+Có cắt, 30 epoch là một **cải thiện lớn**: điểm lúc học đạt 500 từ bước 40 960 và **giữ đúng 500** ở mọi lần in sau đó. Mỗi lô được vắt kiệt thông tin, mà phép cắt bảo đảm chính sách không đi quá xa.
+
+Không cắt, 30 epoch là **hỗn loạn**: 450 ngay ở bước 20 480, rồi 260, rồi **31**, rồi 429, 124, 225, 109, rồi 500. Chính sách tham lam cuối cùng tình cờ đạt 500, vì lần chạy dừng đúng lúc tốt; dừng ở bước 61 440 thì nó gần như không giữ được sào. Cùng một số epoch, phép cắt quyết định giữa "ổn định và nhanh" và "may rủi".
+
+Đây là lý do thật sự của PPO: không phải phép cắt làm học **nhanh hơn**, mà nó làm việc **dùng lại dữ liệu nhiều lần trở nên an toàn**, và dùng lại dữ liệu mới là thứ làm học nhanh.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="37.2">
+**Hai đầu của GAE.** Chạy với $\lambda = 0$ (lợi thế là sai số TD một bước) và $\lambda = 1$ (lợi nhuận thật trừ $V$).
+
+<Fragment slot="dap-an">
+
+```python
+for lam in (0.0, 1.0):
+    tt = ppo(CP, 200_000, lam=lam)
+    print("lambda", lam, danh_gia(tt, CP, n=100, seed=20_000))
+```
+
+```text title="Output"
+20480 64.0
+40960 56.6
+61440 33.0
+81920 30.7
+102400 27.8
+122880 22.5
+143360 22.8
+163840 20.8
+184320 19.2
+lambda 0.0 19.7
+20480 89.6
+40960 173.6
+61440 325.2
+81920 325.0
+102400 393.4
+122880 381.2
+143360 291.8
+163840 374.2
+184320 463.3
+lambda 1.0 498.3
+```
+
+$\lambda = 0$: điểm lúc học **giảm dần** từ 64 xuống 19,2, chính sách tham lam cuối cùng chỉ 19,7, kém cả chọn bừa (21,8). $\lambda = 1$: học được, 498,3 trên test, gần bằng 484,7 của $\lambda = 0{,}95$, nhưng đường học gồ ghề hơn (rơi từ 393 xuống 292 giữa chừng).
+
+Kết quả lặp lại Chương 36 ở dạng mạnh hơn. Với $\lambda = 0$, lợi thế hoàn toàn dựa vào nhà phê bình; lúc đầu nhà phê bình sai, lợi thế sai có hệ thống, chính sách học sai, dữ liệu xấu đi, nhà phê bình càng khó học: một vòng xoáy đi xuống. Với $\lambda = 1$, lợi thế dựa vào lợi nhuận thật, không thiên lệch nhưng nhiễu hơn. $\lambda = 0{,}95$ lấy gần hết thông tin thật mà vẫn để nhà phê bình gánh bớt nhiễu ở đuôi. Một lần chạy mỗi giá trị chưa đủ để xếp hạng 0,95 với 1, nhưng đủ để thấy $\lambda = 0$ hỏng.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="37.3">
+**Khách khó tính hơn.** Tăng phạt thiếu hàng từ 4 lên 10 đồng mỗi thùng. Tìm lại (s, S) tốt nhất, huấn luyện lại PPO, và so chính sách mới với trang 4.
+
+<Fragment slot="dap-an">
+
+```python
+Kho10 = lambda: Kho(phat_thieu=10.0)
+
+def chinh_sach_sS_10(s_, S_, n, seed):
+    e = Kho10()
+    tong = []
+    for i in range(n):
+        e.reset(seed=seed + i)
+        G = 0
+        while True:
+            _, r, ket_thuc, cat_ngang, _ = e.step(min(10, S_ - e.ton) if e.ton <= s_ else 0)
+            G += r
+            if ket_thuc or cat_ngang:
+                break
+        tong.append(G)
+    return round(float(np.mean(tong)), 1)
+
+luoi = sorted((chinh_sach_sS_10(s_, S_, 500, 0), s_, S_) for s_ in range(6) for S_ in range(s_ + 1, 13))
+print(luoi[-3:], chinh_sach_sS_10(luoi[-1][1], luoi[-1][2], 2000, 20_000))
+tt10 = ppo(Kho10, 300_000, n_buoc=512, epoch=10, n_lo=8, lr=1e-3, in_moi=50)
+print(danh_gia(tt10, Kho10, n=2000, seed=20_000))
+with torch.no_grad():
+    print([int(tt10.tham_lam(torch.tensor([t / 20, 0.5]))) for t in range(13)])
+```
+
+```text title="Output"
+[(-416.6, 3, 10), (-415.7, 3, 8), (-415.3, 3, 9)] -412.8
+102400 -474.9
+204800 -429.9
+-415.4
+[7, 7, 7, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+```
+
+Với phạt thiếu hàng 10, (s, S) tốt nhất thành **(3, 9)**, chi phí test 412,8 (so với (2, 7) và 374,9 trước đó). PPO tốn **415,4**, kém (s, S) 0,6%. Và chính sách học được đã đổi theo: giờ nó đặt 7 thùng khi tồn kho từ 0 tới **3**, thay vì 0 tới 1. Ngưỡng đặt hàng tăng từ 1 lên 3, đúng hướng mà lưới (s, S) chỉ ra (từ $s = 2$ lên $s = 3$).
+
+Không ai sửa thuật toán hay kiến trúc. Chỉ đổi một con số trong môi trường, PPO tự tìm ra rằng khi thiếu hàng đắt hơn, nên giữ dự trữ cao hơn. Đó là cách RL được dùng trong vận hành thật: thuật toán giữ nguyên, môi trường mô phỏng phản ánh điều kiện kinh doanh, và chính sách được huấn luyện lại khi điều kiện đổi. Một khác biệt nhỏ: PPO luôn đặt đúng 7 thùng (kiểu chính sách số lượng cố định), còn (s, S) đặt cho đủ 9; chênh lệch chi phí chỉ 2,6 đồng.
+</Fragment>
+</BaiTap>
+
+## Tổng kết Phần III-B
+
+| thuật toán | chương | cần mô hình môi trường | on hay off-policy | hành động | dùng khi |
+|---|---|---|---|---|---|
+| policy iteration, value iteration | 34 | có | không áp dụng | rời rạc | biết xác suất chuyển, ít trạng thái: lập kế hoạch |
+| Q-learning, SARSA | 34 | không | off, on | rời rạc | ít trạng thái, học từ trải nghiệm |
+| DQN | 35 | không | off | rời rạc | trạng thái lớn (ảnh), mẫu đắt, muốn dùng lại dữ liệu cũ |
+| REINFORCE, actor-critic | 36 | không | on | rời rạc hoặc liên tục | để hiểu; hiếm khi dùng trực tiếp |
+| PPO | 37 | không | on | rời rạc hoặc liên tục | mặc định khi có trình mô phỏng nhanh; robot, game, RLHF |
+
+**Bảng 37.1.** Các thuật toán của Phần III-B.
+
+Bốn ý xuyên suốt năm chương: phương trình Bellman ở dưới mọi thứ; khám phá quyết định dữ liệu và dữ liệu quyết định việc học; một seed không nói lên gì, phải chạy nhiều seed; và phần thưởng là hợp đồng giữa bạn và tác tử, viết sai thì tác tử tối ưu sai rất giỏi. PPO sẽ trở lại ở Chương 50, khi phần thưởng do một mô hình chấm điểm theo sở thích của người, và "chính sách" là một mô hình ngôn ngữ lớn.
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Mục tiêu cắt của PPO làm gì, và vì sao cần nó?**
+
+<p lang="en"><em>What does the PPO clipped objective do, and why is it needed?</em></p>
+
+*Gợi ý:* PPO học nhiều epoch trên cùng một lô, dùng tỷ số xác suất mới trên cũ để hiệu chỉnh. Phép cắt làm gradient bằng 0 khi tỷ số đã ra ngoài $[1 - \varepsilon, 1 + \varepsilon]$ theo hướng có lợi, nên chính sách không trôi xa khỏi chính sách đã thu dữ liệu; phép min giữ lại phần sửa sai. Là xấp xỉ đơn giản của vùng tin cậy KL trong TRPO.
+
+**2. Bạn phải dùng RL cho một bài toán kinh doanh. Bắt đầu từ đâu?**
+
+<p lang="en"><em>You need to apply RL to a business problem. Where do you start?</em></p>
+
+*Gợi ý:* hỏi có thật cần RL không (quyết định nối tiếp, có ảnh hưởng tới tương lai, không có nhãn đúng); viết môi trường mô phỏng và kiểm nó với dữ liệu lịch sử; chốt phần thưởng với người làm nghiệp vụ; dựng baseline mạnh từ heuristic hay vận trù học; chỉ dùng RL nếu nó thắng baseline trên nhiều seed; triển khai thận trọng, có giám sát và giới hạn an toàn.
+
+**3. On-policy và off-policy khác nhau thế nào, và ảnh hưởng gì tới hiệu quả mẫu?**
+
+<p lang="en"><em>How do on-policy and off-policy methods differ, and how does that affect sample efficiency?</em></p>
+
+*Gợi ý:* on-policy (SARSA, REINFORCE, PPO) học từ dữ liệu của chính sách hiện tại, dữ liệu cũ phải bỏ (PPO dùng lại vài epoch trong giới hạn của phép cắt). Off-policy (Q-learning, DQN, SAC) học được từ dữ liệu của chính sách khác, nên dùng replay buffer và tốn ít bước môi trường hơn, đổi lại kém ổn định hơn. Môi trường rẻ thì on-policy thường đơn giản và ổn định hơn; môi trường đắt (robot thật) thì off-policy.
+</Khung>

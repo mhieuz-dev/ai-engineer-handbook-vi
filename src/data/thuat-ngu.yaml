@@ -758,3 +758,13 @@
   tenTiengAnh: actor-critic
   giaiThich: Actor-critic dùng hai mạng. Diễn viên (actor) là chính sách chọn hành động; nhà phê bình (critic) là hàm giá trị chấm mỗi bước bằng sai số TD, làm trọng số cho gradient của diễn viên. Phương sai thấp hơn REINFORCE, đổi lại thiên lệch khi nhà phê bình còn sai.
   hocKy: ai-engineer/ch36-policy-gradient
+- id: ppo
+  ten: PPO
+  tenTiengAnh: proximal policy optimization
+  giaiThich: PPO là thuật toán actor-critic học nhiều epoch trên mỗi lô dữ liệu, dùng tỷ số xác suất giữa chính sách mới và chính sách đã thu dữ liệu. Tỷ số bị cắt trong khoảng hẹp quanh 1 để chính sách không trôi quá xa sau mỗi lần cập nhật. Đơn giản, ổn định, là lựa chọn mặc định cho robot, game và RLHF.
+  hocKy: ai-engineer/ch37-ppo-gymnasium
+- id: gae
+  ten: GAE
+  tenTiengAnh: generalized advantage estimation
+  giaiThich: GAE ước lượng lợi thế bằng trung bình có trọng số giảm dần của các sai số TD nhiều bước, với tham số lambda. Lambda bằng 0 là sai số TD một bước (phương sai nhỏ, thiên lệch theo critic), lambda bằng 1 là lợi nhuận thật trừ V (không thiên lệch, phương sai lớn). PPO thường dùng lambda 0,95.
+  hocKy: ai-engineer/ch37-ppo-gymnasium

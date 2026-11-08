@@ -1,0 +1,100 @@
+---
+title: Bước an toàn
+description: "Bài tập 36.1 cho thấy một bước gradient quá dài làm hỏng chính sách. PPO giới hạn mỗi lần cập nhật bằng tỷ số xác suất giữa chính sách mới và cũ, cắt ở khoảng 0,8 tới 1,2. Nhờ vậy dùng lại một lô dữ liệu cho nhiều epoch mà chính sách không trôi quá xa."
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+<CanBietTruoc>
+Policy gradient, baseline, lợi thế, actor-critic, đánh đổi thiên lệch và phương sai (Chương 36). Tách terminated với truncated (Chương 34, 35). Adam, gradient clipping (Chương 26).
+
+<Fragment slot="sau-chuong">
+Hiểu vì sao PPO cắt tỷ số xác suất và điều đó cho phép dùng lại dữ liệu nhiều lần. Cài trọn PPO với GAE và môi trường song song của Gymnasium, huấn luyện trên CartPole, trên Pendulum với hành động liên tục, và trên một môi trường quản lý kho do chính bạn viết. Tổng kết Phần III-B: chọn thuật toán nào cho bài toán nào.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch37_ppo_gymnasium.ipynb" />
+
+## Vấn đề của REINFORCE
+
+Chương 36 để lại hai vấn đề. Một: mỗi tập chỉ dùng **một lần** rồi bỏ, vì gradient là kỳ vọng theo chính sách **hiện tại**, và sau một bước cập nhật chính sách đã khác. Hai: bài tập 36.1 cho thấy một bước quá dài làm chính sách tệ đi, rồi chính sách tệ thu dữ liệu tệ, và việc học có thể không gượng lại được.
+
+Cả hai cùng một gốc: ta muốn đi bước dài nhất có thể **mà chính sách mới không quá khác chính sách cũ**. "Khác" ở đây đo trên **hành vi**, tức xác suất chọn hành động, chứ không phải trên tham số: một thay đổi nhỏ của $\theta$ có thể làm xác suất thay đổi lớn ở một số trạng thái.
+
+## Tỷ số xác suất
+
+Giả sử dữ liệu được thu bằng chính sách cũ $\pi_{\text{cũ}}$. Định nghĩa **tỷ số xác suất** của chính sách đang học so với chính sách đã thu dữ liệu:
+
+$$
+\rho_t(\theta) = \frac{\pi_\theta(a_t \mid s_t)}{\pi_{\text{cũ}}(a_t \mid s_t)}
+$$
+
+Ở bước cập nhật đầu tiên, $\theta$ chưa đổi nên $\rho_t = 1$ ở mọi nơi. Mục tiêu $\mathbb{E}[\rho_t A_t]$ có gradient tại $\rho = 1$ đúng bằng policy gradient của Chương 36, vì $\nabla \rho = \nabla \pi_\theta / \pi_{\text{cũ}} = \nabla \log \pi_\theta$ khi $\pi_\theta = \pi_{\text{cũ}}$. Sau vài bước, $\rho_t$ lệch khỏi 1, và nó đóng vai trọng số hiệu chỉnh: hành động mà chính sách mới ưa hơn chính sách cũ được tính nặng hơn. Đó là kỹ thuật **lấy mẫu theo tầm quan trọng** (importance sampling), cho phép dùng dữ liệu của $\pi_{\text{cũ}}$ để ước lượng cho $\pi_\theta$, miễn là hai chính sách không quá xa nhau.
+
+TRPO (Schulman và cộng sự, 2015) tối đa $\mathbb{E}[\rho_t A_t]$ với **ràng buộc** KL divergence (Chương 30) giữa hai chính sách không vượt một ngưỡng nhỏ. Hiệu quả nhưng phải giải một bài toán tối ưu có ràng buộc ở mỗi bước, cài đặt phức tạp.
+
+## Cắt tỷ số
+
+<Term id="ppo">PPO</Term> (proximal policy optimization, Schulman và cộng sự, 2017) thay ràng buộc bằng một phép cắt đơn giản:
+
+$$
+L(\theta) = \mathbb{E}_t\Big[\, \min\big(\rho_t A_t,\ \operatorname{clip}(\rho_t,\ 1 - \varepsilon,\ 1 + \varepsilon)\, A_t\big) \,\Big], \qquad \varepsilon = 0{,}2
+$$
+
+Đọc từng trường hợp:
+
+- **$A_t > 0$** (hành động tốt hơn mong đợi): ta muốn tăng $\rho_t$. Nhưng khi $\rho_t$ đã vượt $1{,}2$, phần bị cắt là hằng số, và lấy min thì mục tiêu không tăng thêm nữa: **gradient bằng 0**. Không có động lực đẩy xác suất của hành động này lên quá 1,2 lần so với lúc thu dữ liệu.
+- **$A_t < 0$** (hành động tệ hơn mong đợi): ta muốn giảm $\rho_t$. Khi đã xuống dưới $0{,}8$, gradient bằng 0, không đẩy xuống thêm.
+- Phép min chọn giá trị **bi quan** hơn. Nếu một bước trước đã lỡ đẩy $\rho_t$ đi sai hướng (ví dụ $A_t < 0$ mà $\rho_t = 1{,}5$), phần không bị cắt nhỏ hơn và được giữ lại, nên gradient vẫn kéo nó về.
+
+Kiểm bằng autograd, với sáu giá trị của $\rho$ và hai dấu của $A$:
+
+```python
+!pip install gymnasium
+```
+
+```python
+import gymnasium as gym
+import numpy as np
+import torch
+import torch.nn as nn
+torch.set_num_threads(1)                             # mạng nhỏ: một luồng, kết quả lặp lại được
+ti_so = torch.tensor([0.5, 0.9, 1.0, 1.1, 1.3, 1.5], requires_grad=True)
+for A in (1.0, -1.0):
+    L = torch.min(ti_so * A, ti_so.clamp(0.8, 1.2) * A)
+    (g,) = torch.autograd.grad(L.sum(), ti_so)
+    print(A, L.detach().numpy().round(2), g.numpy())
+```
+
+```text title="Output"
+1.0 [0.5 0.9 1.  1.1 1.2 1.2] [1. 1. 1. 1. 0. 0.]
+-1.0 [-0.8 -0.9 -1.  -1.1 -1.3 -1.5] [ 0. -1. -1. -1. -1. -1.]
+```
+
+Với $A = 1$: mục tiêu tăng theo $\rho$ tới 1,2 rồi đứng ở 1,2, gradient bằng 1 bên trong và **0** ở $\rho = 1{,}3$ và $1{,}5$. Với $A = -1$: gradient bằng 0 ở $\rho = 0{,}5$ (đã giảm đủ), nhưng vẫn là $-1$ ở $\rho = 1{,}3$ và $1{,}5$, tức vẫn kéo xác suất của hành động tệ đó xuống. Đúng bốn trường hợp ở trên.
+
+<HinhKetQua src="/hinh/ch37/h1_cat.svg" alt="Hai biểu đồ cạnh nhau, trục ngang là tỷ số rho từ 0 tới 2. Trái, lợi thế dương: đường mục tiêu đi lên thẳng từ gốc tới rho bằng 1,2 rồi nằm ngang. Phải, lợi thế âm: đường mục tiêu nằm ngang ở -0,8 khi rho nhỏ hơn 0,8, rồi đi xuống thẳng theo -rho. Vùng 0,8 tới 1,2 được tô nhạt ở cả hai hình." so="37.1" chuThich="Mục tiêu cắt của PPO cho một mẫu, theo tỷ số rho, với epsilon = 0,2. Vùng tô nhạt là khoảng 0,8 tới 1,2.">
+**Đọc hình.** Trục ngang là $\rho$, chính sách mới chọn hành động đó gấp bao nhiêu lần chính sách cũ. Trục dọc là đóng góp của mẫu đó vào mục tiêu.
+
+**Điều cần thấy.** Ở phía có lợi (bên phải với $A > 0$, bên trái với $A < 0$), đường **nằm ngang** ngoài vùng tô: đi xa hơn không được thưởng thêm, nên gradient không đẩy tiếp. Ở phía bất lợi, đường không bị cắt, nên sai lầm luôn bị kéo về.
+</HinhKetQua>
+
+Nhờ phép cắt, PPO dám làm điều REINFORCE không dám: thu một lô dữ liệu rồi **học nhiều epoch** trên lô đó, mỗi epoch nhiều mini-batch, như học có giám sát. Chính sách không thể trôi xa khỏi chính sách đã thu dữ liệu, vì hễ trôi quá $\pm 20\%$ ở mẫu nào thì mẫu đó ngừng đẩy. Bài tập 37.1 cho thấy bỏ phép cắt thì điều gì xảy ra.
+
+<TuKiemTra
+	cauHoi="Ở epoch đầu tiên trên một lô mới, ngay trước bước cập nhật đầu tiên, tỷ số rho của mọi mẫu bằng bao nhiêu và phép cắt có tác dụng không?"
+	luaChon={['Bằng 0, phép cắt chặn mọi gradient', 'Bằng 1, nằm trong khoảng 0,8 tới 1,2 nên phép cắt chưa tác dụng; bước đầu chính là policy gradient bình thường', 'Bằng 1,2, phép cắt chặn một nửa số mẫu', 'Tùy lợi thế dương hay âm']}
+	dapAn={1}
+	giaiThich="Lô vừa được thu bằng đúng chính sách hiện tại, nên pi_theta = pi_cũ và rho = 1 ở mọi mẫu. Phép cắt chỉ có tác dụng từ các bước sau, khi chính sách đã đổi trong cùng một lô. Đó cũng là cách kiểm lỗi cài đặt hay dùng: in tỷ số ở mini-batch đầu tiên, phải đúng bằng 1."
+/>
+
+<Khung loai="loi">
+**Tính log xác suất cũ bằng chính sách đang học.** `LP` phải được ghi lúc **thu** dữ liệu và giữ cố định suốt các epoch. Tính lại nó trong vòng học thì $\rho$ luôn bằng 1, phép cắt không bao giờ tác dụng, và PPO thành policy gradient nhiều epoch không có phanh.
+
+**Cắt cả hai phía bằng `clamp` mà quên `min`.** Chỉ dùng $\operatorname{clip}(\rho)\, A$ thì ngoài khoảng cắt gradient luôn bằng 0, kể cả khi chính sách đã đi sai hướng; phép min mới giữ lại phần sửa sai.
+</Khung>
