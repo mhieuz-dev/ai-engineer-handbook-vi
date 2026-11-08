@@ -1,0 +1,127 @@
+---
+title: Bài tập
+description: "Ba bài tập có đáp án chi tiết (epsilon 0,5 khám phá quá nhiều, chỉ còn 0,77 phần thưởng ở cuối; gamma 0,9 làm giá trị ô xuất phát giảm 3 lần mà ô cạnh đích chỉ giảm 11%; một bước chọn hành động tham lam theo Q của chính sách ngẫu nhiên nâng xác suất tới đích từ 1,4% lên 78%) và câu hỏi phỏng vấn."
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Đoán trước, rồi chạy code trong notebook để kiểm tra. Code dùng lại `env`, `chay`, `bandit`, `T`, `R`, `P`, `danh_gia`, `ngau` và `Q` của các trang trước.
+
+<BaiTap so="33.1">
+**Khám phá nhiều hơn có tốt hơn?** Trang 2 cho thấy $\varepsilon = 0{,}1$ hơn hẳn tham lam. Vậy $\varepsilon = 0{,}5$ thì sao? Đoán phần thưởng trung bình và tỷ lệ chọn đúng tay tốt nhất ở 100 lượt cuối, rồi chạy. So thêm phần thưởng trung bình trên **cả 1000 lượt** của bốn giá trị $\varepsilon$.
+
+<Fragment slot="dap-an">
+
+```python
+th, d, _ = bandit(0.5)
+print(0.5, round(th[-100:].mean(), 3), round(d[-100:].mean(), 3))
+for eps in (0, 0.01, 0.1, 0.5):
+    print(eps, round(bandit(eps)[0].mean(), 3))
+```
+
+```text title="Output"
+0.5 0.77 0.515
+0 1.025
+0.01 1.2
+0.1 1.299
+0.5 0.752
+```
+
+Với $\varepsilon = 0{,}5$, phần thưởng ở cuối chỉ còn **0,77**, thấp hơn cả tác tử tham lam (1,04). Tỷ lệ chọn đúng 51,5% là gần sát trần của nó: một nửa số lượt chọn bừa, nên nhiều nhất chỉ được $0{,}5 + 0{,}5 \times 0{,}1 = 55\%$. Lúc đó nó đã **biết** tay nào tốt nhất, nhưng vẫn phí nửa số lượt để thử tiếp.
+
+Tính trên cả 1000 lượt, thứ tự là 0,1 (1,299), rồi 0,01 (1,2), tham lam (1,025), và cuối cùng 0,5 (0,752). Khám phá có lợi đến một mức, rồi thành gánh nặng. Lối ra tự nhiên là **giảm $\varepsilon$ dần**: khám phá nhiều lúc đầu khi chưa biết gì, ít dần khi ước lượng đã đáng tin. DQN ở Chương 35 làm đúng như vậy.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="33.2">
+**Hệ số chiết khấu đổi giá trị thế nào.** Tính lại giá trị của chính sách ngẫu nhiên ở ô xuất phát (ô 0) và ô cạnh đích (ô 14) với $\gamma = 1$, $0{,}9$ và $0{,}5$. Ô nào mất giá trị nhiều hơn khi $\gamma$ giảm, và vì sao?
+
+<Fragment slot="dap-an">
+
+```python
+for g in (1, 0.9, 0.5):
+    print(g, danh_gia(ngau, g)[[0, 14]].round(4))
+```
+
+```text title="Output"
+1 [0.0139 0.4393]
+0.9 [0.0045 0.3915]
+0.5 [1.000e-04 2.976e-01]
+```
+
+Ô 0 mất nhiều hơn hẳn: từ 0,0139 xuống 0,0045 khi $\gamma = 0{,}9$ (giảm 3 lần), rồi chỉ còn 0,0001 khi $\gamma = 0{,}5$. Ô 14 chỉ giảm 11% (0,4393 xuống 0,3915) rồi còn 0,2976. Lý do: từ ô 14, những lần tới đích phần lớn xảy ra sau một hai bước, nên chiết khấu gần như không chạm tới chúng. Từ ô 0, những lần hiếm hoi tới đích đều sau ít nhất 6 bước, mỗi bước nhân thêm một $\gamma$.
+
+Với $\gamma < 1$, giá trị không còn là xác suất tới đích nữa, mà là xác suất **có cân theo độ nhanh**. Hệ quả cho Chương 34: chính sách tốt nhất với $\gamma = 0{,}9$ có thể chấp nhận một đường nhanh mà rủi ro hơn, trong khi với $\gamma = 1$ nó sẵn sàng đi vòng bao lâu cũng được miễn là an toàn.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="33.3">
+**Một bước cải thiện.** Ở mỗi ô, chọn hành động có $Q^\pi$ lớn nhất, với $\pi$ là chính sách ngẫu nhiên (bảng `Q` của trang 4). Đây là một chính sách tất định mới. Đoán xem nó tới đích bao nhiêu phần trăm số lần, rồi tính chính xác bằng `danh_gia` và đo bằng `chay`. Hai con số có khớp không?
+
+<Fragment slot="dap-an">
+
+```python
+tham = Q.round(10).argmax(1)                         # làm tròn trước: hai hành động bằng nhau thì chọn cái đầu, ổn định trên mọi máy
+print(tham.reshape(4, 4))                            # 0 trái, 1 xuống, 2 phải, 3 lên
+print(round(danh_gia(np.eye(4)[tham])[0], 4))        # chính xác, không giới hạn số bước
+print(chay(lambda s, rng: int(tham[s])))             # mô phỏng, mỗi tập tối đa 100 bước
+```
+
+```text title="Output"
+[[0 3 0 3]
+ [0 0 0 0]
+ [3 1 0 0]
+ [0 2 1 0]]
+0.7805
+(0.736, 41.0014)
+```
+
+Một bước tham lam theo $Q$ của chính sách **ngẫu nhiên** đã cho xác suất tới đích **78,05%**, từ 1,39%, và gấp 16 lần đường ngắn nhất (4,9%). Chính sách mới đầy những hành động người không nghĩ ra: ô 0 đi trái, ô 1 và ô 3 đi lên, tức là đâm vào tường để không bị trượt về phía hố. Ô 6 chọn trái: ở ô 6, đi trái hay đi phải đều có 1/3 rơi vào một trong hai hố hai bên, và `round(10)` giữ cho lựa chọn giữa hai hành động bằng nhau ấy không đổi theo máy.
+
+Mô phỏng chỉ cho **73,6%**. Phần chênh nằm ở `truncated`: chính sách an toàn đi rất chậm, trung bình 41 bước một tập, so với 5,4 của đường ngắn nhất. Đếm số tập bị cắt ngang, với cùng seed như `chay`:
+
+```python
+env.reset(seed=0)
+bi_cat = 0
+for _ in range(10_000):
+    s, _ = env.reset()
+    while True:
+        s, r, ket_thuc, cat_ngang, _ = env.step(int(tham[s]))
+        if ket_thuc or cat_ngang:
+            break
+    bi_cat += cat_ngang
+print(bi_cat)
+```
+
+```text title="Output"
+639
+```
+
+639 trong 10 000 tập, tức 6,4%, đi đủ 100 bước mà chưa tới đích cũng chưa rơi hố. Phương trình Bellman không có giới hạn đó: nó tính cả những tập tới đích ở bước thứ 150. Hai con số đều đúng, chúng trả lời hai câu hỏi khác nhau.
+
+Chương 34 sẽ hỏi tiếp: lấy chính sách mới này, tính lại $Q$, chọn tham lam lần nữa, thì có tốt hơn nữa không? Lặp tới khi không đổi là **policy iteration**, và nó dừng ở chính sách tốt nhất.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Học tăng cường khác học có giám sát ở đâu?**
+
+<p lang="en"><em>How is reinforcement learning different from supervised learning?</em></p>
+
+*Gợi ý:* không có nhãn hành động đúng, chỉ có phần thưởng; phần thưởng có thể đến muộn nhiều bước (bài toán ghi công); dữ liệu do chính chính sách của tác tử thu, không cố định và không độc lập cùng phân phối; phải cân khám phá với khai thác.
+
+**2. Hệ số chiết khấu làm gì, và chọn nó thế nào?**
+
+<p lang="en"><em>What does the discount factor do, and how do you choose it?</em></p>
+
+*Gợi ý:* cân phần thưởng xa so với gần, giữ lợi nhuận hữu hạn với bài toán không có hồi kết. Tầm nhìn hiệu dụng khoảng $1/(1-\gamma)$ bước, nên chọn theo độ dài của chuỗi hành động cần lên kế hoạch; 0,99 là mặc định phổ biến. $\gamma$ quá nhỏ làm tác tử cận thị, quá gần 1 làm ước lượng nhiễu và học chậm.
+
+**3. Giả định Markov là gì? Nếu môi trường không Markov thì làm sao?**
+
+<p lang="en"><em>What is the Markov assumption, and what do you do when it does not hold?</em></p>
+
+*Gợi ý:* tương lai chỉ phụ thuộc trạng thái và hành động hiện tại. Khi quan sát không đủ (một khung hình không có vận tốc), ghép nhiều quan sát gần nhất, hoặc dùng mạng có bộ nhớ như LSTM (Chương 29) để tự tổng hợp lịch sử thành trạng thái.
+</Khung>

@@ -628,3 +628,53 @@
   tenTiengAnh: data augmentation
   giaiThich: Tăng cường dữ liệu biến đổi ngẫu nhiên mỗi mẫu lúc huấn luyện (lật, xoay, cắt, đổi màu với ảnh) bằng những phép không làm đổi nhãn, để mô hình thấy nhiều biến thể hơn và khó học thuộc. Phép biến đổi phải hợp với loại dữ liệu, ví dụ ảnh vệ tinh lật dọc được còn ảnh X-quang ngực thì không lật ngang được.
   hocKy: ai-engineer/ch32-du-an-phan-3
+- id: hoc-tang-cuong
+  ten: Học tăng cường
+  tenTiengAnh: reinforcement learning
+  giaiThich: Học tăng cường là học cách hành động qua thử và sai. Tác tử chọn hành động trong một môi trường, nhận lại phần thưởng, và điều chỉnh cách chọn để tổng phần thưởng về lâu dài lớn nhất. Không ai cho biết hành động đúng là gì, và phần thưởng có thể đến muộn nhiều bước.
+  hocKy: ai-engineer/ch33-bai-toan-rl
+- id: tac-tu
+  ten: Tác tử
+  tenTiengAnh: agent
+  giaiThich: Tác tử là bên ra quyết định trong học tăng cường, ví dụ chương trình chơi cờ hay bộ điều khiển robot. Mỗi bước nó nhận trạng thái từ môi trường, chọn một hành động, rồi nhận về trạng thái mới và một phần thưởng.
+  hocKy: ai-engineer/ch33-bai-toan-rl
+- id: phan-thuong
+  ten: Phần thưởng
+  tenTiengAnh: reward
+  giaiThich: Phần thưởng là con số môi trường trả về sau mỗi hành động, cho biết kết quả tốt hay xấu. Đó là cách duy nhất để nói cho tác tử biết ta muốn gì, nên phần thưởng thiết kế sai sẽ làm tác tử học một hành vi khác hẳn ý định.
+  hocKy: ai-engineer/ch33-bai-toan-rl
+- id: kham-pha-khai-thac
+  ten: Khám phá và khai thác
+  tenTiengAnh: exploration and exploitation
+  giaiThich: Khai thác là chọn hành động mà hiện giờ tác tử tin là tốt nhất; khám phá là thử hành động khác để biết thêm về nó. Chỉ khai thác thì dễ mắc kẹt với một lựa chọn tạm ổn, chỉ khám phá thì không hưởng lợi từ điều đã biết, nên mọi thuật toán học tăng cường phải cân hai việc này.
+  hocKy: ai-engineer/ch33-bai-toan-rl
+- id: epsilon-greedy
+  ten: Epsilon-greedy
+  tenTiengAnh: epsilon-greedy
+  giaiThich: Epsilon-greedy là cách chọn hành động đơn giản nhất có khám phá. Với xác suất epsilon, chọn một hành động ngẫu nhiên; còn lại, chọn hành động có giá trị ước lượng lớn nhất. Epsilon thường giảm dần theo thời gian, khám phá nhiều lúc đầu và ít dần về sau.
+  hocKy: ai-engineer/ch33-bai-toan-rl
+- id: mdp
+  ten: MDP
+  tenTiengAnh: Markov decision process
+  giaiThich: Quá trình quyết định Markov là cách viết một bài toán học tăng cường bằng toán học, gồm tập trạng thái, tập hành động, xác suất chuyển từ trạng thái này sang trạng thái khác khi làm một hành động, và phần thưởng. Giả định Markov là tương lai chỉ phụ thuộc trạng thái và hành động hiện tại, không phụ thuộc đường đã đi.
+  hocKy: ai-engineer/ch33-bai-toan-rl
+- id: he-so-chiet-khau
+  ten: Hệ số chiết khấu
+  tenTiengAnh: discount factor
+  giaiThich: Hệ số chiết khấu gamma, nằm giữa 0 và 1, là số nhân áp lên phần thưởng sau mỗi bước khi tính lợi nhuận, để phần thưởng càng xa càng ít giá trị. Nó giữ tổng phần thưởng hữu hạn với bài toán không có hồi kết, và quyết định tác tử nhìn xa bao nhiêu, khoảng 1 / (1 - gamma) bước.
+  hocKy: ai-engineer/ch33-bai-toan-rl
+- id: chinh-sach
+  ten: Chính sách
+  tenTiengAnh: policy
+  giaiThich: Chính sách là quy tắc tác tử dùng để chọn hành động từ trạng thái, viết là pi(a | s), xác suất chọn hành động a khi ở trạng thái s. Chính sách tất định luôn chọn một hành động cố định ở mỗi trạng thái. Học tăng cường là đi tìm chính sách cho lợi nhuận kỳ vọng lớn nhất.
+  hocKy: ai-engineer/ch33-bai-toan-rl
+- id: ham-gia-tri
+  ten: Hàm giá trị
+  tenTiengAnh: value function
+  giaiThich: Hàm giá trị V(s) của một chính sách là lợi nhuận kỳ vọng nếu bắt đầu ở trạng thái s rồi cứ theo chính sách đó. Hàm giá trị hành động Q(s, a) là lợi nhuận kỳ vọng nếu làm hành động a trước rồi mới theo chính sách. Chọn hành động có Q lớn nhất cho một chính sách tốt hơn.
+  hocKy: ai-engineer/ch33-bai-toan-rl
+- id: phuong-trinh-bellman
+  ten: Phương trình Bellman
+  tenTiengAnh: Bellman equation
+  giaiThich: Phương trình Bellman nói giá trị của một trạng thái bằng phần thưởng kỳ vọng ngay tới cộng giá trị đã chiết khấu của trạng thái kế tiếp. Viết cho mọi trạng thái, nó thành một hệ phương trình mà nghiệm là hàm giá trị, và là nền của mọi thuật toán quy hoạch động và Q-learning.
+  hocKy: ai-engineer/ch33-bai-toan-rl

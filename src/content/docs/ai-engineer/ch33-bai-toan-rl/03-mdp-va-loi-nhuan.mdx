@@ -1,0 +1,108 @@
+---
+title: MDP và lợi nhuận
+description: "Viết bài toán RL thành một quá trình quyết định Markov: trạng thái, hành động, xác suất chuyển và phần thưởng. Đọc bảng chuyển của FrozenLake thành một mảng 16 x 4 x 16, rồi tính lợi nhuận có chiết khấu: phần thưởng 1 nhận ở bước 30 chỉ còn đáng 0,747 với gamma 0,99 và 0,047 với gamma 0,9."
+---
+
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Quá trình quyết định Markov
+
+Để tính được một chính sách tốt thay vì đoán, cần viết bài toán bằng ngôn ngữ toán học. Ngôn ngữ chuẩn của RL là <Term id="mdp">quá trình quyết định Markov</Term> (Markov decision process, MDP), gồm bốn thứ:
+
+- Tập **trạng thái** $\mathcal{S}$. Với FrozenLake: 16 ô.
+- Tập **hành động** $\mathcal{A}$. Với FrozenLake: 4 hướng.
+- **Xác suất chuyển** $p(s' \mid s, a)$: đang ở $s$, làm $a$, thì xác suất tới $s'$ là bao nhiêu.
+- **Phần thưởng** $r(s, a, s')$ nhận được khi chuyển như vậy.
+
+Chữ "Markov" chỉ một giả định: trạng thái tiếp theo và phần thưởng **chỉ phụ thuộc vào trạng thái hiện tại và hành động hiện tại**, không phụ thuộc đường đã đi để tới đây. Trên hồ băng, biết tác tử đang ở ô nào là đủ để nói nó có thể trượt tới đâu; nó đã đi qua những ô nào trước đó không quan trọng. Đây là ràng buộc lên **cách chọn trạng thái**, không phải lên thế giới. Một ảnh chụp đơn lẻ của quả bóng không cho biết bóng đang bay về phía nào, nên một trò chơi bóng mà trạng thái chỉ là một ảnh thì không Markov; ghép hai ảnh liên tiếp (biết được vận tốc) thì gần như Markov. Mạng DQN chơi game Atari (Mnih và cộng sự, 2015, gặp lại ở Chương 35) dùng đúng mẹo đó: ghép 4 khung hình liên tiếp thành một trạng thái.
+
+## Đọc bảng chuyển
+
+FrozenLake đủ nhỏ để công khai toàn bộ MDP của nó. `env.unwrapped.P[s][a]` là danh sách các khả năng khi làm hành động `a` ở trạng thái `s`, mỗi khả năng là bộ bốn (xác suất, trạng thái mới, phần thưởng, có kết thúc không):
+
+```python
+P = env.unwrapped.P
+print(P[14][2])                                      # ô 14, sát đích, đi phải
+print(P[0][1])                                       # ô xuất phát, đi xuống
+print(P[5][0])                                       # đang ở hố 5
+```
+
+```text title="Output"
+[(0.33333333333333337, 14, 0, False), (0.3333333333333333, 15, 1, True), (0.33333333333333337, 10, 0, False)]
+[(0.33333333333333337, 0, 0, False), (0.3333333333333333, 4, 0, False), (0.33333333333333337, 1, 0, False)]
+[(1.0, 5, 0, True)]
+```
+
+Ở ô 14, đi phải: 1/3 tới đích 15 với phần thưởng 1, 1/3 trượt lên ô 10, 1/3 trượt xuống, đụng tường nên vẫn ở 14. Ở ô 0, đi xuống: 1/3 tới ô 4 như ý, 1/3 trượt sang trái, đụng tường nên vẫn ở 0, 1/3 trượt sang phải tới ô 1. Hố và đích là **trạng thái kết thúc**: mọi hành động ở đó giữ nguyên chỗ, không có phần thưởng, và tập chấm dứt.
+
+Danh sách lồng nhau tiện để đọc nhưng chậm để tính. Đổi thành hai mảng NumPy: `T[s, a, s']` là $p(s' \mid s, a)$, và `R[s, a]` là **phần thưởng kỳ vọng** khi làm `a` ở `s`, tức $\sum_{s'} p(s' \mid s, a)\, r(s, a, s')$:
+
+```python
+T = np.zeros((16, 4, 16))
+R = np.zeros((16, 4))
+for s in range(16):
+    for a in range(4):
+        for p, s2, r, xong in P[s][a]:
+            T[s, a, s2] += p                         # cộng dồn: hai khả năng có thể tới cùng một ô
+            R[s, a] += p * r
+print(T.sum(2).min(), T.sum(2).max(), R[14], R[15])
+```
+
+```text title="Output"
+1.0 1.0 [0.         0.33333333 0.33333333 0.33333333] [0. 0. 0. 0.]
+```
+
+Mỗi hàng `T[s, a]` cộng lại đúng bằng 1, như mọi phân phối xác suất phải thế. Phép `+=` ở dòng `T[s, a, s2]` cần thiết: ở ô 0 đi trái, cả cú trượt lên lẫn bước sang trái đều đụng tường và giữ tác tử ở ô 0, nên hai khả năng 1/3 phải cộng thành 2/3. Ô 14 là nơi duy nhất có phần thưởng kỳ vọng khác 0: ba hướng xuống, phải, lên đều có 1/3 khả năng trượt hoặc đi vào đích. Đi trái thì không, vì đi trái chỉ trượt lên hoặc xuống.
+
+## Lợi nhuận và chiết khấu
+
+Tác tử muốn tổng phần thưởng lớn nhất, nhưng tổng từ lúc nào và cân các bước ra sao? Định nghĩa **lợi nhuận** (return) từ bước $t$:
+
+$$
+G_t = r_{t+1} + \gamma\, r_{t+2} + \gamma^2 r_{t+3} + \cdots = \sum_{k=0}^{\infty} \gamma^k\, r_{t+k+1}
+$$
+
+với <Term id="he-so-chiet-khau">hệ số chiết khấu</Term> $\gamma$ (gamma) nằm giữa 0 và 1. Phần thưởng nhận sau $k$ bước bị nhân với $\gamma^k$, tức **càng xa càng ít giá trị**, giống như 100 nghìn đồng nhận hôm nay đáng hơn 100 nghìn đồng nhận sau mười năm. Có ba lý do để chiết khấu:
+
+- **Bài toán không có hồi kết.** Một robot vận hành mãi, một hệ thống gợi ý chạy suốt: tổng phần thưởng không chiết khấu có thể bằng vô cùng. Với $\gamma < 1$ và phần thưởng bị chặn bởi $r_{\max}$, tổng luôn hữu hạn, không quá $r_{\max} / (1 - \gamma)$.
+- **Sớm hơn thì tốt hơn.** Cùng tới đích, đường 6 bước nên được đánh giá cao hơn đường 30 bước.
+- **Tương lai xa ít chắc chắn hơn.** $\gamma$ nhỏ làm tác tử "cận thị", chỉ quan tâm vài bước tới; $\gamma$ gần 1 làm nó nhìn xa.
+
+Lợi nhuận có một dạng đệ quy, sẽ là chìa khóa của trang sau: $G_t = r_{t+1} + \gamma\, G_{t+1}$. Lợi nhuận bây giờ bằng phần thưởng ngay tới, cộng lợi nhuận từ bước sau đã chiết khấu một lần. Dạng này cho cách tính gọn: đi ngược từ cuối tập về đầu.
+
+```python
+def loi_nhuan(thuong, gamma):
+    G = 0.0
+    for r in reversed(thuong):                       # đi ngược: G_t = r_(t+1) + gamma * G_(t+1)
+        G = r + gamma * G
+    return G
+for k in (6, 10, 30):                                # tới đích ở bước thứ k, các bước trước thưởng 0
+    print(k, [round(loi_nhuan([0] * (k - 1) + [1], g), 4) for g in (1, 0.99, 0.9)])
+```
+
+```text title="Output"
+6 [1.0, 0.951, 0.5905]
+10 [1.0, 0.9135, 0.3874]
+30 [1.0, 0.7472, 0.0471]
+```
+
+Mỗi dòng là một tập tới đích sau $k$ bước, ba cột là lợi nhuận từ bước đầu với $\gamma = 1$, $0{,}99$ và $0{,}9$. Với $\gamma = 1$, mọi tập tới đích đều có lợi nhuận 1, bất kể dài ngắn: lợi nhuận của FrozenLake khi đó đúng bằng "có tới đích hay không", và kỳ vọng của nó là **xác suất tới đích**. Với $\gamma = 0{,}9$, tới đích sau 30 bước chỉ còn đáng 0,047, kém tới đích sau 6 bước (0,59) hơn 12 lần. Chọn $\gamma$ là chọn xem tác tử nên đánh đổi độ an toàn lấy tốc độ đến đâu; bài tập 33.2 cho thấy điều đó làm thay đổi cả đánh giá về các ô.
+
+<Khung loai="truc-giac">
+Phần thưởng là **cách duy nhất** bạn nói cho tác tử biết bạn muốn gì. Tác tử không hiểu ý định, nó chỉ tối đa hóa con số. Năm 2016, OpenAI cho một tác tử chơi trò đua thuyền CoastRunners với phần thưởng là điểm số trong game. Tác tử tìm ra một vịnh nhỏ có ba mục tiêu cứ bị ăn là lại xuất hiện, và chạy vòng tròn ở đó mãi, dù liên tục bốc cháy, đâm vào thuyền khác và chạy ngược đường. Điểm trung bình của nó cao hơn người chơi khoảng 20%, mà không bao giờ hoàn thành cuộc đua. Thiết kế phần thưởng khó hơn nhiều so với vẻ ngoài.
+</Khung>
+
+<TuKiemTra
+	cauHoi="Phần thưởng mỗi bước không quá 1 và gamma = 0,99. Lợi nhuận lớn nhất có thể là bao nhiêu, kể cả khi tập kéo dài vô hạn?"
+	luaChon={['1', '99', '100', 'Vô cùng']}
+	dapAn={2}
+	giaiThich="Tổng 1 + 0,99 + 0,99² + ... là cấp số nhân với công bội 0,99, bằng 1 / (1 − 0,99) = 100. Có chiết khấu thì lợi nhuận luôn hữu hạn, nên ta mới so sánh được hai chính sách cho bài toán không có hồi kết. Đại lượng 1 / (1 − gamma) thường được gọi là tầm nhìn hiệu dụng của tác tử: với gamma 0,99, khoảng 100 bước."
+/>
+
+<Khung loai="loi">
+**Bỏ qua phép `+=` khi dựng bảng chuyển.** Viết `T[s, a, s2] = p` thì ở những chỗ hai cú trượt cùng đụng tường và cùng giữ tác tử tại chỗ, một khả năng ghi đè khả năng kia và hàng xác suất không còn cộng lại bằng 1. Luôn kiểm `T.sum(2)` sau khi dựng.
+
+**Chiết khấu cả phần thưởng đầu tiên.** Theo định nghĩa, $r_{t+1}$ có hệ số $\gamma^0 = 1$. Chỉ từ phần thưởng thứ hai trở đi mới bị nhân $\gamma$.
+</Khung>

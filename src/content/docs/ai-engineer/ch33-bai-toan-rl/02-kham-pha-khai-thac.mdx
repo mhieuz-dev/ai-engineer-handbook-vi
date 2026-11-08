@@ -1,0 +1,85 @@
+---
+title: Khám phá và khai thác
+description: "Bài toán bandit 10 tay, thử 2000 lần, mỗi lần 1000 lượt kéo: luôn chọn tay đang tốt nhất chỉ tìm ra tay tốt nhất ở 35,5% số lần, còn dành 10% số lượt để thử ngẫu nhiên (epsilon-greedy) thì tìm ra ở 79,7%, và phần thưởng trung bình ở 100 lượt cuối tăng từ 1,04 lên 1,37."
+---
+
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Bài toán đơn giản nhất có hành động
+
+Bỏ hết trạng thái đi, chỉ còn hành động và phần thưởng. Trước mặt bạn là 10 máy đánh bạc (trong tiếng Anh, máy đánh bạc kéo cần được gọi đùa là *one-armed bandit*, kẻ cướp một tay; nên bài này tên là **bandit nhiều tay**). Mỗi lượt bạn kéo một máy và nhận một số tiền ngẫu nhiên. Mỗi máy có một mức trả trung bình riêng mà bạn không biết. Có 1000 lượt. Chơi sao cho tổng tiền lớn nhất?
+
+Bài toán này không có trạng thái thay đổi, nhưng đã có cái khó cốt lõi của mọi bài RL. Muốn biết máy nào tốt thì phải kéo thử, nhưng mỗi lượt kéo thử một máy kém là một lượt mất tiền. Đó là thế giằng co giữa <Term id="kham-pha-khai-thac">khám phá và khai thác</Term>: **khai thác** (exploit) là chọn máy mà hiện giờ bạn tin là tốt nhất; **khám phá** (explore) là chọn máy khác để biết thêm về nó. Chỉ khai thác thì có thể mắc kẹt mãi với một máy tạm ổn; chỉ khám phá thì không bao giờ hưởng lợi từ điều đã biết.
+
+Chuyện này có ở khắp nơi: chọn quảng cáo để hiện cho người dùng, chọn liều thuốc thử nghiệm, một nhà hàng quen hay thử quán mới. Các công ty quảng cáo và gợi ý dùng thuật toán bandit hằng ngày.
+
+## Dựng một bàn thử
+
+Dựng bàn thử theo sách *Reinforcement Learning: An Introduction* (Sutton và Barto, bản thứ hai, 2018, mục 2.3). Mức trả trung bình thật $q_*(a)$ của mỗi tay lấy ngẫu nhiên từ $\mathcal{N}(0, 1)$; mỗi lần kéo tay $a$ trả về một số lấy từ $\mathcal{N}(q_*(a), 1)$, tức là có nhiễu khá lớn so với khoảng cách giữa các tay. Tác tử ước lượng giá trị mỗi tay bằng **trung bình** các phần thưởng đã nhận từ tay đó, viết dưới dạng cập nhật dần để khỏi lưu lại mọi phần thưởng:
+
+$$
+Q_{n+1} = Q_n + \frac{1}{n}\big(r_n - Q_n\big)
+$$
+
+Đọc công thức như sau: ước lượng mới bằng ước lượng cũ cộng một phần sai số giữa phần thưởng vừa nhận với điều ta đã đoán. Cách viết "ước lượng cũ cộng bước nhân sai số" này sẽ trở lại ở mọi thuật toán RL của Phần III-B.
+
+Chính sách <Term id="epsilon-greedy">epsilon-greedy</Term>: mỗi lượt, với xác suất $\varepsilon$ chọn một tay ngẫu nhiên (khám phá), còn lại chọn tay có $Q$ lớn nhất (khai thác). $\varepsilon = 0$ là **tham lam** (greedy), không bao giờ khám phá. Một lần chạy là một bộ 10 tay mới và 1000 lượt kéo; để kết quả không phụ thuộc may rủi của một bộ tay, chạy 2000 lần độc lập và lấy trung bình. Code xử lý cả 2000 lần chạy cùng lúc, mỗi hàng của ma trận là một lần chạy:
+
+```python
+def bandit(eps, n_lan=2000, n_buoc=1000, k=10, seed=0):
+    rng = np.random.default_rng(seed)
+    q_that = rng.normal(0, 1, (n_lan, k))            # mức trả thật của 10 tay, mỗi lần chạy một bộ mới
+    tot_nhat = q_that.argmax(1)                      # tay tốt nhất thật sự, tác tử không được biết
+    Q = np.zeros((n_lan, k))                         # ước lượng của tác tử, ban đầu 0
+    N = np.zeros((n_lan, k))                         # số lần đã kéo mỗi tay
+    hang = np.arange(n_lan)
+    thuong, dung = np.zeros(n_buoc), np.zeros(n_buoc)
+    for t in range(n_buoc):
+        a = np.where(rng.random(n_lan) < eps, rng.integers(k, size=n_lan), Q.argmax(1))   # epsilon-greedy
+        r = rng.normal(q_that[hang, a], 1)           # kéo tay a, nhận phần thưởng có nhiễu
+        N[hang, a] += 1
+        Q[hang, a] += (r - Q[hang, a]) / N[hang, a]  # cập nhật trung bình
+        thuong[t], dung[t] = r.mean(), (a == tot_nhat).mean()
+    return thuong, dung, q_that.max(1).mean()
+for eps in (0, 0.01, 0.1):
+    th, d, tran = bandit(eps)
+    print(eps, round(th[:100].mean(), 3), round(th[-100:].mean(), 3), round(d[-100:].mean(), 3))
+print("trần", round(tran, 3))
+```
+
+```text title="Output"
+0 0.963 1.039 0.355
+0.01 0.975 1.318 0.587
+0.1 1.005 1.37 0.797
+trần 1.535
+```
+
+Mỗi dòng là một giá trị $\varepsilon$, rồi phần thưởng trung bình ở 100 lượt đầu, ở 100 lượt cuối, và tỷ lệ chọn đúng tay tốt nhất ở 100 lượt cuối. Dòng cuối là **trần**: phần thưởng trung bình nếu biết trước và luôn kéo tay tốt nhất.
+
+Ở 100 lượt đầu, ba chính sách gần như ngang nhau (0,96 tới 1,01). Khác biệt hiện ra về sau. Tác tử tham lam dừng ở **1,04** và chỉ chọn đúng tay tốt nhất **35,5%** số lần: nó kéo một tay, thấy được thưởng dương, và vì mọi tay khác vẫn có ước lượng 0, nó kéo mãi tay đó. Tay tốt nhất có thể chưa từng được kéo lần nào. Với $\varepsilon = 0{,}1$, tác tử chịu "phí" chọn bừa 10% số lượt, nhưng đổi lại tìm ra tay tốt nhất ở **79,7%** số lượt cuối và đạt **1,37**, khá gần trần 1,535.
+
+<HinhKetQua src="/hinh/ch33/h1_bandit.svg" alt="Hai biểu đồ đường theo lượt kéo từ 1 tới 1000, mỗi biểu đồ ba đường cho epsilon bằng 0, 0,01 và 0,1. Trên: phần thưởng trung bình. Cả ba đường cùng xuất phát quanh 0 rồi tăng nhanh trong khoảng 50 lượt đầu. Đường tham lam chững lại sớm quanh 1,0; đường epsilon 0,1 vượt lên, đạt quanh 1,3 ở lượt 300 rồi tăng chậm tới khoảng 1,37; đường epsilon 0,01 tăng chậm và vẫn còn đang tăng ở lượt 1000, quanh 1,3. Dưới: tỷ lệ chọn đúng tay tốt nhất. Đường tham lam đi ngang quanh 35%; đường epsilon 0,1 lên quanh 80%; đường epsilon 0,01 tăng chậm lên gần 60%." so="33.1" chuThich="Bàn thử bandit 10 tay, trung bình trên 2000 lần chạy. Trên: phần thưởng trung bình ở mỗi lượt. Dưới: tỷ lệ lần chạy chọn đúng tay tốt nhất.">
+**Đọc hình.** Trục ngang là lượt kéo. Mỗi điểm là trung bình trên 2000 lần chạy độc lập, nên đường mượt dù mỗi lần kéo rất nhiễu.
+
+**Điều cần thấy.** Đường tham lam phẳng sớm: nó ngừng học từ rất sớm vì không bao giờ thử lại tay khác. $\varepsilon = 0{,}1$ học nhanh nhất nhưng không bao giờ vượt được khoảng 90% chọn đúng, vì 10% số lượt nó vẫn chọn bừa (trong đó 1/10 tình cờ trúng tay tốt nhất, nên trần của nó là $0{,}9 + 0{,}01 = 91\%$). $\varepsilon = 0{,}01$ học chậm hơn nhiều, nhưng về lâu dài sẽ vượt $\varepsilon = 0{,}1$ vì nó lãng phí ít lượt hơn. Không có $\varepsilon$ nào tốt nhất cho mọi ngân sách lượt chơi.
+</HinhKetQua>
+
+<Khung loai="vi-sao" tieuDe="THAM LAM LẠI THUA">
+Tham lam là chọn hành động tốt nhất **theo hiểu biết hiện tại**. Nhưng hiểu biết hiện tại được xây từ chính những lựa chọn trước đó, nên một ước lượng sai mà không bao giờ được kiểm lại sẽ sai mãi. Ở học có giám sát, mô hình kém không làm dữ liệu train tệ đi. Ở RL thì có: chính sách quyết định dữ liệu nào được thu. Khám phá là cái giá để dữ liệu đủ đa dạng.
+</Khung>
+
+<TuKiemTra
+	cauHoi="Với epsilon = 0,1 và 10 tay, về lâu dài tác tử chọn đúng tay tốt nhất nhiều nhất bao nhiêu phần trăm số lượt, giả sử nó đã xác định đúng tay tốt nhất?"
+	luaChon={['100%', '91%', '90%', '10%']}
+	dapAn={1}
+	giaiThich="90% số lượt nó khai thác và chọn đúng tay tốt nhất. 10% số lượt nó chọn ngẫu nhiên đều trong 10 tay, và 1/10 trong số đó tình cờ là tay tốt nhất: thêm 1%. Tổng 91%. Muốn vượt mức đó thì phải giảm epsilon dần theo thời gian."
+/>
+
+<Khung loai="loi">
+**Khởi tạo ước lượng bằng 0 rồi quên rằng điều đó cũng là một lựa chọn.** Ở bàn thử này, $Q = 0$ ngang mức trung bình của các tay. Nếu mọi phần thưởng đều dương (ví dụ doanh thu), một tay vừa được kéo lập tức thành "tốt nhất" so với các tay chưa kéo, và tác tử tham lam không bao giờ thử tay khác.
+
+**Đo một lần chạy.** Một lần chạy bandit rất nhiễu: tác tử tham lam có lúc may mắn kéo trúng tay tốt nhất ngay lượt đầu. So chính sách phải lấy trung bình trên nhiều lần chạy, mỗi lần một bộ tay mới.
+</Khung>

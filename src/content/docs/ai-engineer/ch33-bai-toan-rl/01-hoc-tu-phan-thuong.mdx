@@ -1,0 +1,143 @@
+---
+title: Học từ phần thưởng
+description: "Mở đầu Phần III-B: tác tử hành động trong một môi trường và chỉ nhận lại phần thưởng, không có nhãn đúng. Chạy FrozenLake của Gymnasium: chọn bước ngẫu nhiên tới đích 1,6% số lần, đi theo đường ngắn nhất cũng chỉ 4,95%, vì mặt băng trơn."
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+<CanBietTruoc>
+Xác suất, kỳ vọng, mô phỏng và luật số lớn (Chương 7). Viết hệ phương trình thành $Ax = b$ và giải bằng `np.linalg.solve` (Chương 5). Vòng lặp và hàm của Python (Chương 1), mảng NumPy (Chương 3).
+
+<Fragment slot="sau-chuong">
+Biết một bài toán học tăng cường gồm những gì: tác tử, môi trường, trạng thái, hành động, phần thưởng. Chạy một môi trường Gymnasium và đo một chính sách bằng mô phỏng. Thấy vì sao phải cân giữa khám phá và khai thác qua bài toán bandit nhiều tay. Viết bài toán thành một MDP, tính lợi nhuận có chiết khấu, và tính chính xác hàm giá trị của một chính sách bằng phương trình Bellman.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch33_bai_toan_rl.ipynb" />
+
+## Một kiểu học khác
+
+Từ Chương 9 tới Chương 32, mọi mô hình đều học từ **đáp án có sẵn**: mỗi ảnh có nhãn, mỗi căn nhà có giá. Mô hình đoán, so với đáp án, sửa sai. Phần III-B bàn một kiểu học mà không ai đưa đáp án. <Term id="hoc-tang-cuong">Học tăng cường</Term> (reinforcement learning, RL) là học cách **hành động** chỉ từ việc thử và nhận lại một con số cho biết kết quả tốt hay xấu.
+
+Có hai vai. <Term id="tac-tu">Tác tử</Term> (agent) là bên ra quyết định: một chương trình chơi cờ, bộ điều khiển một cánh tay robot, hệ thống chọn quảng cáo. **Môi trường** (environment) là mọi thứ còn lại. Hai bên trao đổi theo một vòng lặp:
+
+1. Môi trường cho tác tử biết **trạng thái** hiện tại $s_t$ (vị trí quân cờ, góc các khớp của robot).
+2. Tác tử chọn một **hành động** $a_t$.
+3. Môi trường chuyển sang trạng thái mới $s_{t+1}$ và trả về một <Term id="phan-thuong">phần thưởng</Term> $r_{t+1}$, một số thực.
+4. Lặp lại cho tới khi lượt chơi kết thúc. Một lượt chơi trọn vẹn gọi là một **tập** (episode).
+
+Mục tiêu của tác tử: chọn hành động sao cho **tổng phần thưởng** về lâu dài lớn nhất. Ba điều làm RL khó hơn học có giám sát:
+
+- **Không ai nói hành động đúng là gì.** Phần thưởng chỉ cho biết kết quả tốt hay xấu, không cho biết lẽ ra nên làm gì.
+- **Phần thưởng đến muộn.** Một nước cờ ở giữa ván có thể quyết định thắng thua, nhưng phần thưởng chỉ đến ở nước cuối. Tác tử phải tự tìm ra hành động nào trong cả chuỗi đáng được ghi công.
+- **Dữ liệu phụ thuộc vào chính tác tử.** Tác tử chỉ thấy kết quả của những gì nó đã thử. Không bao giờ đi lối này thì không bao giờ biết lối này dẫn tới đâu.
+
+## Hồ băng
+
+Thư viện <En>Gymnasium</En> (của tổ chức Farama, nối tiếp thư viện Gym mà OpenAI phát hành năm 2016) gom nhiều môi trường chuẩn dưới **cùng một cách gọi**, để một thuật toán RL viết một lần chạy được trên mọi môi trường. Môi trường đầu tiên của ta là `FrozenLake`: một hồ băng 4 nhân 4 ô. Tác tử xuất phát ở ô `S`, phải tới ô `G` (goal); ô `F` (frozen) là băng đi được, ô `H` (hole) là hố, rơi xuống là thua.
+
+```python
+!pip install gymnasium
+```
+
+```python
+import gymnasium as gym
+import numpy as np
+env = gym.make("FrozenLake-v1")                      # hồ băng 4x4, mặc định băng trơn
+print(env.unwrapped.desc.astype(str))
+print(env.observation_space, env.action_space, env.spec.max_episode_steps)
+```
+
+```text title="Output"
+[['S' 'F' 'F' 'F']
+ ['F' 'H' 'F' 'H']
+ ['F' 'F' 'F' 'H']
+ ['H' 'F' 'F' 'G']]
+Discrete(16) Discrete(4) 100
+```
+
+Trạng thái là số thứ tự của ô, từ 0 (góc trên trái, ô `S`) tới 15 (góc dưới phải, ô `G`), đếm theo hàng: ô ở hàng $i$, cột $j$ là trạng thái $4i + j$. Bốn hố là trạng thái 5, 7, 11, 12. `Discrete(4)` là bốn hành động: 0 trái, 1 xuống, 2 phải, 3 lên. Một tập tự kết thúc sau 100 bước nếu tác tử vẫn chưa tới đích hay rơi hố.
+
+Phần thưởng rất thưa: **1 khi tới `G`, 0 ở mọi bước khác**, kể cả khi rơi hố. Điều làm hồ này khó là **băng trơn**: chọn một hướng thì chỉ 1/3 số lần đi đúng hướng đó, 2/3 còn lại trượt sang một trong hai hướng vuông góc. Đi vào tường thì đứng yên.
+
+## Vòng lặp tác tử và môi trường
+
+Mọi môi trường Gymnasium có hai hàm. `reset()` bắt đầu một tập mới và trả về trạng thái đầu. `step(a)` thực hiện hành động `a` và trả về năm thứ: trạng thái mới, phần thưởng, `terminated` (tập kết thúc vì một lý do của bài toán: tới đích, rơi hố), `truncated` (tập bị cắt ngang vì quá số bước cho phép), và một từ điển thông tin thêm. Một tập với hành động chọn ngẫu nhiên:
+
+```python
+TEN = ["trái", "xuống", "phải", "lên"]
+rng = np.random.default_rng(0)
+s, info = env.reset(seed=0)                          # seed cho môi trường: lần trượt nào cũng lặp lại được
+while True:
+    a = int(rng.integers(4))                         # tác tử: chọn bừa một trong 4 hướng
+    s_moi, r, ket_thuc, cat_ngang, info = env.step(a)
+    print(s, TEN[a], "->", s_moi, r, ket_thuc, cat_ngang)
+    s = s_moi
+    if ket_thuc or cat_ngang:
+        break
+```
+
+```text title="Output"
+0 lên -> 1 0 False False
+1 phải -> 5 0 True False
+```
+
+Tập này ngắn: hai bước. Ở ô 0, tác tử chọn **lên**, đụng tường lẽ ra phải đứng yên, nhưng băng trượt và nó sang phải, tới ô 1. Ở ô 1 nó chọn **phải**, nhưng trượt xuống, rơi vào hố 5. Phần thưởng 0, `terminated` là `True`.
+
+## Đo một chính sách
+
+Quy tắc tác tử dùng để chọn hành động từ trạng thái gọi là **chính sách** (policy); trang 4 sẽ định nghĩa chặt hơn. Môi trường ngẫu nhiên nên một tập không nói lên gì. Muốn biết một chính sách tốt cỡ nào, chạy nó thật nhiều tập và lấy trung bình, đúng như cách Chương 7 ước lượng xác suất bằng mô phỏng. Hàm dưới đây nhận một chính sách (hàm từ trạng thái ra hành động) và trả về tỷ lệ tập tới đích cùng số bước trung bình mỗi tập:
+
+```python
+def chay(chinh_sach, n=10_000, seed=0):
+    rng = np.random.default_rng(seed)
+    env.reset(seed=seed)                             # seed một lần, các tập sau nối tiếp dãy ngẫu nhiên đó
+    thang = buoc = 0
+    for _ in range(n):
+        s, _ = env.reset()
+        while True:
+            s, r, ket_thuc, cat_ngang, _ = env.step(chinh_sach(s, rng))
+            buoc += 1
+            if ket_thuc or cat_ngang:
+                break
+        thang += r                                   # r của bước cuối: 1 nếu tới đích
+    return thang / n, buoc / n
+print(chay(lambda s, rng: int(rng.integers(4))))     # chính sách ngẫu nhiên
+```
+
+```text title="Output"
+(0.0156, 7.7812)
+```
+
+Chọn bừa thì 10 000 tập chỉ tới đích 1,56% số lần, mỗi tập trung bình 7,8 bước rồi rơi hố. Một người nhìn bản đồ sẽ vạch ngay đường ngắn nhất tránh mọi hố: xuống, xuống, phải, xuống, phải, phải (ô 0, 4, 8, 9, 13, 14 rồi tới 15). Viết thành chính sách: ở mỗi ô trên đường, chọn hướng của đường; lỡ trượt ra khỏi đường thì cứ đi xuống.
+
+```python
+DUONG = {0: 1, 4: 1, 8: 2, 9: 1, 13: 2, 14: 2}       # ô trên đường ngắn nhất: hướng cần đi
+print(chay(lambda s, rng: DUONG.get(s, 1)))          # ngoài đường thì đi xuống
+```
+
+```text title="Output"
+(0.0495, 5.4324)
+```
+
+**4,95%**. Gấp ba lần chọn bừa, nhưng vẫn thua 19 trên 20 lần. Đường ngắn nhất chạy sát hố 5 và hố 12, và trên băng trơn, mỗi bước có 2/3 khả năng trượt ngang. Ở bài tập, bạn sẽ thấy cùng chính sách đó trên băng không trơn tới đích 100% số lần.
+
+Bài học đầu tiên của RL nằm ở đây: khi kết quả của hành động là ngẫu nhiên, **kế hoạch hợp lý với người nhìn bản đồ không phải là chính sách tốt**. Chính sách tốt phải tính tới mọi khả năng trượt, và không ai viết tay nổi điều đó cho mọi ô. Từ trang 3, ta sẽ xây công cụ để tính nó; tới cuối chương, một chính sách tính ra từ chính những công cụ đó tới đích hơn 70% số lần.
+
+<TuKiemTra
+	cauHoi="Một tập FrozenLake kết thúc với terminated = False và truncated = True. Chuyện gì đã xảy ra?"
+	luaChon={['Tác tử tới đích', 'Tác tử rơi hố', 'Tác tử đi đủ 100 bước mà chưa tới đích cũng chưa rơi hố', 'Môi trường bị lỗi']}
+	dapAn={2}
+	giaiThich="terminated báo tập kết thúc vì luật của bài toán (tới G hoặc rơi H). truncated báo tập bị cắt vì giới hạn bên ngoài, ở đây là 100 bước của max_episode_steps. Phân biệt hai trường hợp quan trọng ở các chương sau: tập bị cắt ngang không có nghĩa là trạng thái cuối là trạng thái kết thúc."
+/>
+
+<Khung loai="loi">
+**Chỉ kiểm `terminated`.** Vòng lặp `while not ket_thuc` sẽ chạy mãi khi môi trường cắt ngang tập (với FrozenLake, tác tử có thể đi vòng tránh hố cả trăm bước). Luôn dừng khi `terminated or truncated`.
+
+**Kết luận từ vài tập.** Ở 1,6%, chạy 100 tập thì thường chỉ thấy 1 hay 2 lần thắng, có khi 0. Muốn so hai chính sách, chạy đủ nhiều tập và nhớ rằng tỷ lệ đo được vẫn dao động (trang 4 tính mức dao động đó).
+</Khung>

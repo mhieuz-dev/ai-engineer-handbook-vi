@@ -1,0 +1,135 @@
+---
+title: Chính sách và hàm giá trị
+description: "Hàm giá trị cho biết một chính sách tốt cỡ nào khi xuất phát từ mỗi trạng thái. Ước lượng bằng mô phỏng, rồi tính chính xác bằng phương trình Bellman, một hệ 16 phương trình: chính sách ngẫu nhiên tới đích với xác suất 0,0139 từ ô xuất phát, khớp con số 0,0156 đo bằng 10 000 tập trong phạm vi dao động của mô phỏng."
+---
+
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Chính sách
+
+Một <Term id="chinh-sach">chính sách</Term> $\pi$ là quy tắc chọn hành động: $\pi(a \mid s)$ là xác suất tác tử chọn hành động $a$ khi ở trạng thái $s$. Với bài toán nhỏ như FrozenLake, chính sách là một bảng 16 hàng (trạng thái) nhân 4 cột (hành động), mỗi hàng cộng lại bằng 1. Chính sách ngẫu nhiên của trang 1 có mọi ô bằng 0,25. Chính sách **tất định**, như đường ngắn nhất, có mỗi hàng một số 1 ở hành động được chọn và 0 ở chỗ khác.
+
+## Hàm giá trị
+
+Trang 1 đo chính sách ngẫu nhiên bằng cách chạy 10 000 tập từ ô xuất phát. Đại lượng ta đã ước lượng có tên: <Term id="ham-gia-tri">hàm giá trị</Term> của chính sách,
+
+$$
+V^\pi(s) = \mathbb{E}_\pi\big[\, G_t \mid s_t = s \,\big],
+$$
+
+lợi nhuận kỳ vọng nếu bắt đầu ở trạng thái $s$ và từ đó cứ theo $\pi$. Trong cả trang này $\gamma = 1$, nên theo trang 3, $V^\pi(s)$ của FrozenLake chính là **xác suất tới đích** khi xuất phát từ $s$. Con số 0,0156 ở trang 1 là một ước lượng của $V^\pi(0)$ cho chính sách ngẫu nhiên.
+
+Ước lượng bằng mô phỏng thì có sai số. Mỗi tập là một phép thử thắng hay thua với xác suất $p$, nên tỷ lệ thắng trên $n$ tập dao động quanh $p$ với độ lệch chuẩn $\sqrt{p(1-p)/n}$ (Chương 7). Với $p \approx 0{,}015$ và $n = 10\,000$, độ lệch đó khoảng **0,0012**: con số thứ hai sau dấu phẩy của 0,0156 đã không chắc chắn. Muốn giảm sai số đi 10 lần phải chạy gấp 100 lần số tập. Khi biết bảng chuyển `T`, có cách tính **chính xác**.
+
+## Phương trình Bellman
+
+Dạng đệ quy của lợi nhuận, $G_t = r_{t+1} + \gamma\, G_{t+1}$, lấy kỳ vọng hai vế thì thành một quan hệ giữa giá trị của một trạng thái với giá trị của những trạng thái kề nó. Đó là <Term id="phuong-trinh-bellman">phương trình Bellman</Term> (Richard Bellman, thập niên 1950):
+
+$$
+V^\pi(s) = \sum_a \pi(a \mid s) \sum_{s'} p(s' \mid s, a)\,\big[\, r(s, a, s') + \gamma\, V^\pi(s') \,\big]
+$$
+
+Đọc từ ngoài vào trong: chọn hành động theo $\pi$, môi trường đưa tới $s'$ theo $p$, nhận phần thưởng, rồi từ $s'$ ta có giá trị $V^\pi(s')$. Giá trị bây giờ bằng trung bình có trọng số của "phần thưởng ngay tới cộng giá trị của chỗ đến".
+
+Viết phương trình này cho cả 16 trạng thái thì được **16 phương trình tuyến tính, 16 ẩn**. Gọi $P_\pi[s, s'] = \sum_a \pi(a \mid s)\, p(s' \mid s, a)$ là xác suất đi từ $s$ tới $s'$ sau một bước khi theo $\pi$, và $R_\pi[s] = \sum_a \pi(a \mid s)\, R[s, a]$ là phần thưởng kỳ vọng ở $s$. Khi đó, dạng ma trận là
+
+$$
+V = R_\pi + \gamma\, P_\pi V \quad\Longleftrightarrow\quad (I - \gamma P_\pi)\, V = R_\pi,
+$$
+
+đúng dạng $Ax = b$ của Chương 5. Ở các trạng thái kết thúc, giá trị bằng 0 theo định nghĩa (không còn phần thưởng nào nữa), nên ta xóa trắng hàng của chúng trong $P_\pi$ và $R_\pi$; khi đó phương trình ở hàng ấy chỉ còn $V(s) = 0$.
+
+```python
+CUOI = [5, 7, 11, 12, 15]                            # bốn hố và đích
+def danh_gia(pi, gamma=1.0):
+    P_pi = np.einsum("sa,sat->st", pi, T)            # P_pi[s, s'] = tổng theo a của pi(a|s) p(s'|s,a)
+    R_pi = (pi * R).sum(1)                           # phần thưởng kỳ vọng ở mỗi trạng thái
+    P_pi[CUOI] = 0                                   # trạng thái kết thúc: không đi đâu nữa
+    R_pi[CUOI] = 0
+    return np.linalg.solve(np.eye(16) - gamma * P_pi, R_pi)
+ngau = np.full((16, 4), 0.25)                        # chính sách ngẫu nhiên
+V = danh_gia(ngau)
+print(V.reshape(4, 4).round(4))
+```
+
+```text title="Output"
+[[0.0139 0.0116 0.021  0.0105]
+ [0.0162 0.     0.0408 0.    ]
+ [0.0348 0.0882 0.1421 0.    ]
+ [0.     0.1758 0.4393 0.    ]]
+```
+
+Ô xuất phát có $V^\pi(0) = 0{,}0139$. Mô phỏng ở trang 1 cho 0,0156, lệch 0,0017, khoảng 1,4 lần độ lệch chuẩn đã tính ở trên: hai con số khớp nhau trong phạm vi dao động bình thường của mô phỏng. (Còn một khác biệt nhỏ nữa: phương trình không giới hạn số bước, môi trường thì cắt mỗi tập ở 100 bước. Với chính sách ngẫu nhiên, gần như tập nào cũng kết thúc trước đó rất lâu.)
+
+Một cách kiểm khác là thế ngược nghiệm vào phương trình Bellman ở một trạng thái, ví dụ ô 14, tính vế phải trực tiếp từ bảng `P` gốc:
+
+```python
+s = 14
+ve_phai = sum(ngau[s, a] * sum(p * (r + V[s2]) for p, s2, r, _ in P[s][a]) for a in range(4))
+print(round(V[s], 6), round(ve_phai, 6))
+```
+
+```text title="Output"
+0.439291 0.439291
+```
+
+Hai vế bằng nhau. Cũng hàm đó tính được ngay giá trị chính xác của đường ngắn nhất ở trang 1, mà không cần chạy tập nào:
+
+```python
+pi_duong = np.eye(4)[[DUONG.get(s, 1) for s in range(16)]]   # mỗi hàng một số 1 ở hướng được chọn
+print(round(danh_gia(pi_duong)[0], 4))
+```
+
+```text title="Output"
+0.049
+```
+
+0,049, khớp với 0,0495 đo bằng mô phỏng.
+
+<HinhKetQua src="/hinh/ch33/h2_gia_tri.svg" alt="Hai lưới 4 nhân 4. Trái: bản đồ hồ băng, ô xuất phát S ở góc trên trái, đích G ở góc dưới phải, bốn hố màu tối ở các ô 5, 7, 11, 12, còn lại là băng màu nhạt. Phải: cùng lưới, mỗi ô tô màu theo giá trị của chính sách ngẫu nhiên và ghi số. Hàng trên cùng chỉ khoảng 0,01 tới 0,02; giá trị tăng dần về phía đích: ô 10 là 0,142, ô 13 là 0,176, ô 14 cạnh đích là 0,439. Hố và đích có giá trị 0." so="33.2" chuThich="Trái: bản đồ FrozenLake 4 x 4 với số thứ tự trạng thái. Phải: giá trị của chính sách ngẫu nhiên, tức xác suất tới đích khi xuất phát từ mỗi ô, tính bằng phương trình Bellman.">
+**Đọc hình.** Mỗi ô ở hình phải là $V^\pi(s)$: nếu đặt tác tử ngẫu nhiên vào ô này, nó tới đích với xác suất bao nhiêu. Ô càng đậm, giá trị càng cao.
+
+**Điều cần thấy.** Giá trị **lan ngược** từ đích ra: ô 14 cạnh đích 0,439, rồi ô 13 và ô 10 khoảng 0,14 tới 0,18, rồi giảm nhanh khi đi xa. Cả hàng trên cùng không quá 0,021, vì từ đó tác tử ngẫu nhiên gần như chắc chắn rơi hố trước. Ô 6 (0,041) bị kẹp giữa hai hố 5 và 7, thấp hơn hẳn ô 9 (0,088) dù cả hai đều cách đích 3 bước. Đích có giá trị 0 vì giá trị chỉ tính phần thưởng **từ sau** trạng thái đó; phần thưởng 1 được ghi cho bước đi vào đích.
+</HinhKetQua>
+
+## Giá trị của từng hành động
+
+$V^\pi(s)$ cho biết một trạng thái tốt cỡ nào, nhưng chưa nói nên làm gì ở đó. Định nghĩa thêm **hàm giá trị hành động**: $Q^\pi(s, a)$ là lợi nhuận kỳ vọng nếu ở $s$ ta làm $a$ trước, **rồi sau đó** mới theo $\pi$. Có $V$ rồi thì tính $Q$ chỉ cần nhìn trước một bước:
+
+$$
+Q^\pi(s, a) = \sum_{s'} p(s' \mid s, a)\,\big[\, r(s, a, s') + \gamma\, V^\pi(s') \,\big] = R[s, a] + \gamma \sum_{s'} T[s, a, s']\, V^\pi(s')
+$$
+
+```python
+Q = R + np.einsum("sat,t->sa", T, V)                 # gamma = 1
+Q[CUOI] = 0
+print(Q[14].round(4), Q[0].round(4))                 # thứ tự: trái, xuống, phải, lên
+```
+
+```text title="Output"
+[0.2524 0.5384 0.5271 0.4393] [0.0147 0.0139 0.0139 0.0132]
+```
+
+Ở ô 14, ngay cạnh đích bên phải, hành động tốt nhất **không phải là đi phải** (0,5271) mà là **đi xuống** (0,5384). Đi xuống đụng tường đáy: 1/3 đứng yên, 1/3 trượt phải vào đích, 1/3 trượt trái về ô 13. Đi phải cũng có 1/3 vào đích, nhưng có 1/3 trượt **lên** ô 10, xa đích hơn và gần hố 11. Đụng tường hóa ra là một cách để không bị trượt về chỗ tệ. Ở ô xuất phát cũng vậy: tốt nhất là **đi trái**, vào tường, vì như thế không bao giờ bị trượt sang phải về phía hàng hố.
+
+Không người nào nhìn bản đồ mà chọn "đi xuống" ở ô 14 hay "đi trái" ở ô 0. Bảng $Q$ chọn được, vì nó đã tính hết mọi khả năng trượt. Ý tưởng tiếp theo đã nằm sẵn trong bảng đó: ở mỗi ô, chọn hành động có $Q$ lớn nhất, ta được một chính sách **tốt hơn** chính sách đã dùng để tính $Q$. Bài tập 33.3 làm đúng một bước như vậy; Chương 34 lặp nó tới khi không cải thiện được nữa, rồi học $Q$ mà không cần biết bảng chuyển.
+
+<TuKiemTra
+	cauHoi="Với chính sách ngẫu nhiên, V(14) = 0,4393. Vì sao giá trị đó đúng bằng Q(14, lên) trong output trên?"
+	luaChon={['Trùng hợp', 'Đi lên từ ô 14 đưa tác tử về lại ô 14 với xác suất 1', 'Đi lên có 1/3 trượt phải vào đích, 1/3 trượt trái về 13, 1/3 lên ô 10, và trung bình các giá trị đó tình cờ bằng V(14)', 'V luôn bằng Q của hành động cuối cùng']}
+	dapAn={2}
+	giaiThich="Q(14, lên) = 1/3 × (1 + 0) + 1/3 × V(13) + 1/3 × V(10) = 1/3 × (1 + 0,1758 + 0,1421) = 0,4393. Còn V(14) là trung bình của bốn giá trị Q với trọng số 0,25: (0,2524 + 0,5384 + 0,5271 + 0,4393) / 4 = 0,4393. Không có quy luật nào bắt hai con số bằng nhau; ở đây Q(14, lên) chỉ tình cờ nằm đúng ở mức trung bình."
+/>
+
+<Khung loai="dao-sau" tieuDe="KHI KHÔNG CÓ BẢNG CHUYỂN">
+Giải hệ $(I - \gamma P_\pi)V = R_\pi$ cần hai điều mà bài toán thật hiếm khi có: **biết** $p(s' \mid s, a)$, và số trạng thái **đủ nhỏ** để giải một hệ $|\mathcal{S}|$ ẩn. Cờ vây có khoảng $10^{170}$ trạng thái hợp lệ; một robot có trạng thái là số thực liên tục. Phần còn lại của Phần III-B giải từng hạn chế: Chương 34 học $Q$ chỉ từ các bước đã trải qua, không cần bảng chuyển (Q-learning); Chương 35 thay bảng $Q$ bằng một mạng nơ-ron để xử lý không gian trạng thái lớn (DQN); Chương 36 và 37 bỏ hàm giá trị làm trung tâm, học thẳng chính sách bằng gradient (policy gradient, PPO).
+</Khung>
+
+<Khung loai="loi">
+**Quên đặt giá trị của trạng thái kết thúc bằng 0.** Không xóa hàng của hố và đích trong $P_\pi$, các trạng thái đó tự trỏ về chính nó với xác suất 1, ma trận $I - P_\pi$ suy biến khi $\gamma = 1$, và `np.linalg.solve` báo lỗi hoặc cho số vô nghĩa.
+
+**Nhầm $V^\pi$ với giá trị tốt nhất có thể.** $V^\pi$ là giá trị **của một chính sách cụ thể**. Ô 0 có $V^\pi = 0{,}0139$ không nói rằng từ ô 0 khó tới đích, mà nói rằng **đi bừa** thì khó tới đích.
+</Khung>
