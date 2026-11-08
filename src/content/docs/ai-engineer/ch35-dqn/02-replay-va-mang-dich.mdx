@@ -1,0 +1,142 @@
+---
+title: Replay buffer và mạng đích
+description: "Hai mẹo của DQN. Replay buffer lưu 50 000 bước gần nhất và học từ lô 128 bước rút ngẫu nhiên, phá tương quan giữa các mẫu liên tiếp. Mạng đích là một bản sao đóng băng, chép lại mỗi 100 bước, để nhãn không dịch theo từng bước gradient. Cài trọn DQN trong một hàm."
+---
+
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Vì sao học thẳng từng bước không ổn
+
+Cách tự nhiên nhất: mỗi bước tác tử đi, lấy đúng bước đó làm một mẫu, tính loss, cập nhật mạng. Có hai vấn đề.
+
+**Mẫu liên tiếp tương quan mạnh.** Bước $t$ và bước $t+1$ của CartPole gần như cùng một trạng thái. Huấn luyện bằng một chuỗi mẫu như vậy giống như ở Chương 26 cho mạng xem hết ảnh mèo rồi mới tới ảnh chó, không xáo trộn: gradient liên tục đẩy mạng về một vùng hẹp của không gian trạng thái, và nó quên những gì học ở vùng khác. Mỗi mẫu cũng chỉ được dùng một lần rồi bỏ, phí.
+
+**Mục tiêu chạy theo mạng.** Nhãn $y = r + \gamma \max_{a'} Q(s', a'; \theta)$ đổi mỗi khi $\theta$ đổi. Kéo $Q(s, a)$ lên một chút thì, vì $s'$ rất giống $s$, $Q(s', \cdot)$ cũng lên theo, nên lần sau $y$ cao hơn, lại kéo tiếp. Đó là vòng lặp làm giá trị phân kỳ của tam giác chết.
+
+## Replay buffer
+
+<Term id="replay-buffer">Replay buffer</Term> (Lin, 1992) là một bộ nhớ vòng lưu các bước $(s, a, r, s', \text{kết thúc})$ gần nhất, ở đây 50 000 bước. Mỗi lần cập nhật, rút **ngẫu nhiên** một lô 128 bước từ bộ nhớ. Lô đó trộn những bước từ nhiều tập, nhiều thời điểm khác nhau, nên gần với dữ liệu độc lập cùng phân phối mà gradient descent cần, và mỗi bước được dùng lại nhiều lần.
+
+Chỉ thuật toán **off-policy** mới làm vậy được. Những bước trong bộ nhớ được thu bởi chính sách của tác tử từ nhiều nghìn bước trước, khi nó còn kém hơn. Q-learning không quan tâm: mục tiêu $r + \gamma \max_{a'} Q(s', a')$ đúng cho mọi bộ $(s, a, r, s')$, bất kể ai đã chọn $a$. Đó là lợi thế đã hứa ở Chương 34. SARSA thì không dùng được dữ liệu cũ, vì mục tiêu của nó cần $a'$ do **chính sách hiện tại** chọn.
+
+## Mạng đích
+
+<Term id="mang-dich">Mạng đích</Term> (target network) là một bản sao của mạng Q, ký hiệu tham số $\theta^-$, dùng **chỉ để tính mục tiêu**:
+
+$$
+y = r + \gamma\,(1 - d)\, \max_{a'} Q(s', a'; \theta^-)
+$$
+
+với $d = 1$ nếu $s'$ là trạng thái kết thúc. Bản sao này **đóng băng**: không học, chỉ được chép lại từ mạng chính mỗi $C$ bước (ở đây $C = 100$). Giữa hai lần chép, nhãn đứng yên, và mỗi đoạn $C$ bước là một bài hồi quy bình thường với nhãn cố định. Mạng chính đuổi theo một đích không chạy, rồi đích mới được đặt ra.
+
+Hệ số $(1 - d)$ là chỗ phân biệt `terminated` với `truncated` mà Chương 34 nhấn mạnh. Cây sào đổ là kết thúc thật: không còn phần thưởng nào phía sau, $d = 1$. Tập bị cắt ở bước 500 thì cây sào vẫn đứng và lẽ ra còn ăn điểm tiếp: $d = 0$, vẫn cộng $\gamma \max Q(s', \cdot)$. Bài tập 35.3 cho thấy nhầm hai thứ đó ảnh hưởng ra sao.
+
+## Khám phá giảm dần
+
+Lúc đầu mạng chưa biết gì, nên khám phá nhiều; về sau khám phá ít đi để tận dụng điều đã học. Đây là lối ra đã gợi ý ở bài tập 33.1: $\varepsilon$ giảm tuyến tính từ 1 xuống 0,05 trong 10 000 bước đầu rồi giữ nguyên. 1000 bước đầu chỉ thu dữ liệu, chưa học, để bộ nhớ có đủ mẫu cho lô đầu tiên.
+
+## Cài đặt
+
+Bộ nhớ là năm mảng NumPy cấp sẵn, ghi đè vòng tròn theo chỉ số `n % bo_nho`. Cứ mỗi 5000 bước, hàm đánh giá **chính sách tham lam** (không khám phá) trên 20 tập với seed cố định, in kết quả và giữ lại bản mạng có điểm đánh giá cao nhất. Các tham số `muc_tieu_rieng`, `replay`, `double`, `ket_thuc_khi_cat` dùng cho các thí nghiệm ở trang 4 và bài tập; mặc định là DQN chuẩn.
+
+```python
+def danh_gia(mang, n=20, seed=10_000):               # điểm trung bình của chính sách tham lam, 20 tập cố định
+    e = gym.make("CartPole-v1")
+    tong = []
+    for i in range(n):
+        s, _ = e.reset(seed=seed + i)
+        G = 0
+        while True:
+            with torch.no_grad():
+                a = int(mang(torch.as_tensor(s)).argmax())
+            s, r, ket_thuc, cat_ngang, _ = e.step(a)
+            G += r
+            if ket_thuc or cat_ngang:
+                break
+        tong.append(G)
+    return float(np.mean(tong))
+
+def dqn(n_buoc=50_000, seed=0, muc_tieu_rieng=True, replay=True, double=False, ket_thuc_khi_cat=False,
+        lr=5e-4, cap_nhat_dich=100, bo_nho=50_000, lo=128, gamma=0.99, eps_cuoi=0.05, eps_buoc=10_000,
+        bat_dau=1000, danh_gia_moi=5000):
+    torch.manual_seed(seed)
+    rng = np.random.default_rng(seed)
+    q = tao_mang()
+    q_dich = copy.deepcopy(q)                        # mạng đích: bản sao đóng băng
+    opt = torch.optim.Adam(q.parameters(), lr=lr, fused=True)   # fused: kết quả lặp lại được trên CPU
+    S, S2 = np.zeros((bo_nho, 4), np.float32), np.zeros((bo_nho, 4), np.float32)   # replay buffer
+    A, Rw, D = np.zeros(bo_nho, np.int64), np.zeros(bo_nho, np.float32), np.zeros(bo_nho, np.float32)
+    n, G, diem_tap = 0, 0, []
+    tot_nhat, ban_tot = -1, None
+    s, _ = env.reset(seed=seed)
+    for t in range(1, n_buoc + 1):
+        eps = max(eps_cuoi, 1 - (1 - eps_cuoi) * t / eps_buoc)   # giảm tuyến tính rồi giữ nguyên
+        if rng.random() < eps:
+            a = int(rng.integers(2))
+        else:
+            with torch.no_grad():
+                a = int(q(torch.as_tensor(s)).argmax())
+        s2, r, ket_thuc, cat_ngang, _ = env.step(a)
+        G += r
+        i = n % bo_nho                               # ghi đè vòng tròn
+        S[i], A[i], Rw[i], S2[i] = s, a, r, s2
+        D[i] = float(ket_thuc or (ket_thuc_khi_cat and cat_ngang))   # chỉ kết thúc thật mới bỏ phần tương lai
+        n += 1
+        s = s2
+        if ket_thuc or cat_ngang:
+            diem_tap.append(G)
+            G = 0
+            s, _ = env.reset()
+        if n >= bat_dau:
+            idx = rng.integers(min(n, bo_nho), size=lo) if replay else np.array([i])   # lô ngẫu nhiên, hoặc chỉ bước vừa đi
+            sb, ab, rb, s2b, db = map(torch.as_tensor, (S[idx], A[idx], Rw[idx], S2[idx], D[idx]))
+            with torch.no_grad():                    # mục tiêu không nhận gradient
+                mang_dich = q_dich if muc_tieu_rieng else q
+                if double:                           # Double DQN: mạng chính chọn, mạng đích chấm
+                    q_sau = mang_dich(s2b).gather(1, q(s2b).argmax(1, keepdim=True)).squeeze(1)
+                else:
+                    q_sau = mang_dich(s2b).max(1).values
+                y = rb + gamma * (1 - db) * q_sau
+            q_sa = q(sb).gather(1, ab.unsqueeze(1)).squeeze(1)   # Q của đúng hành động đã làm
+            loss = F.smooth_l1_loss(q_sa, y)
+            opt.zero_grad()
+            loss.backward()
+            opt.step()
+            if t % cap_nhat_dich == 0:
+                q_dich.load_state_dict(q.state_dict())   # chép mạng chính sang mạng đích
+        if t % danh_gia_moi == 0:
+            diem = danh_gia(q)
+            print(t, len(diem_tap), round(np.mean(diem_tap[-20:]), 1), diem)
+            if diem > tot_nhat:
+                tot_nhat, ban_tot = diem, copy.deepcopy(q)
+    return ban_tot, q
+```
+
+Thử hàm đánh giá trên mạng chưa học của trang 1:
+
+```python
+print(danh_gia(q))
+```
+
+```text title="Output"
+91.05
+```
+
+Bất ngờ: mạng **chưa học** đã giữ sào trung bình 91 bước, gấp bốn lần chọn bừa (21,8). Mạng khởi tạo ngẫu nhiên vẫn là một hàm của trạng thái, và `argmax` của nó đổi hướng đẩy khi góc sào hay vận tốc góc đổi dấu; với khởi tạo này, điều đó tình cờ thành một phản xạ giữ thăng bằng thô. "Mạng ngẫu nhiên" và "hành động ngẫu nhiên" là hai mốc khác nhau. Điểm đánh giá ở bước 5000 của các trang sau nên được so với cả hai.
+
+Khi huấn luyện, mỗi dòng in ra gồm số bước, số tập đã chơi, điểm trung bình 20 tập gần nhất **trong lúc học** (còn khám phá), và điểm đánh giá của chính sách tham lam. Hàm trả về hai mạng: bản tốt nhất theo đánh giá, và bản cuối cùng.
+
+<TuKiemTra
+	cauHoi="Đặt cap_nhat_dich = 1 (chép mạng chính sang mạng đích sau mỗi bước) thì DQN giống thuật toán nào?"
+	luaChon={['DQN chuẩn, vì vẫn có replay buffer', 'DQN không có mạng đích nhưng vẫn có replay buffer', 'SARSA', 'Policy iteration']}
+	dapAn={1}
+	giaiThich="Mục tiêu được tính trước bước gradient, khi mạng đích vừa được chép từ mạng chính ở bước trước, nên nó dùng gần như đúng tham số hiện tại: y lại chạy theo mạng ở từng bước. Đó chính là thí nghiệm muc_tieu_rieng = False ở trang 4. Replay buffer vẫn còn, nên vẫn là học off-policy từ lô ngẫu nhiên."
+/>
+
+<Khung loai="loi">
+**Ghi `terminated or truncated` vào cờ kết thúc.** Với CartPole, mỗi lần tác tử giữ sào đủ 500 bước, bước cuối sẽ được dạy là "không còn tương lai", trong khi trạng thái đó tốt nhất trong cả tập. Đúng lúc tác tử giỏi nhất, nhãn của nó sai nhất.
+
+**Đánh giá bằng điểm trong lúc học.** Điểm khi còn khám phá 5% kéo xuống những tập lẽ ra dài 500, và trộn nhiều phiên bản mạng khác nhau. Muốn biết chính sách tốt cỡ nào, chạy riêng chính sách tham lam trên các tập cố định, như `danh_gia`.
+</Khung>

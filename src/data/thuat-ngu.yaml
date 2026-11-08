@@ -718,3 +718,18 @@
   tenTiengAnh: off-policy learning
   giaiThich: Thuật toán off-policy học về một chính sách khác với chính sách đang dùng để thu dữ liệu, ví dụ học chính sách tham lam trong khi hành động có khám phá. Q-learning và DQN là ví dụ. Nhờ vậy nó học được từ dữ liệu cũ hoặc dữ liệu do người khác thu.
   hocKy: ai-engineer/ch34-q-learning
+- id: replay-buffer
+  ten: Replay buffer
+  tenTiengAnh: experience replay
+  giaiThich: Replay buffer là bộ nhớ lưu các bước tác tử đã trải qua (trạng thái, hành động, phần thưởng, trạng thái mới). Mỗi lần cập nhật, thuật toán rút ngẫu nhiên một lô từ bộ nhớ thay vì học từ bước vừa đi, để phá tương quan giữa các mẫu liên tiếp và dùng lại mỗi mẫu nhiều lần. Chỉ thuật toán off-policy như DQN mới dùng được.
+  hocKy: ai-engineer/ch35-dqn
+- id: mang-dich
+  ten: Mạng đích
+  tenTiengAnh: target network
+  giaiThich: Mạng đích là một bản sao đóng băng của mạng Q, chỉ dùng để tính mục tiêu và được chép lại từ mạng chính sau mỗi một số bước. Nhờ vậy nhãn không đổi theo từng bước gradient, và Q-learning với mạng nơ-ron không bị phân kỳ.
+  hocKy: ai-engineer/ch35-dqn
+- id: double-dqn
+  ten: Double DQN
+  tenTiengAnh: Double DQN
+  giaiThich: Double DQN tách việc chọn và chấm hành động ở trạng thái kế tiếp, mạng chính chọn hành động có Q lớn nhất, mạng đích chấm giá trị của hành động đó. Mục đích là giảm việc đánh giá quá cao do lấy max trên các ước lượng có nhiễu. Hiệu quả phụ thuộc vào việc hai mạng có đủ khác nhau hay không.
+  hocKy: ai-engineer/ch35-dqn

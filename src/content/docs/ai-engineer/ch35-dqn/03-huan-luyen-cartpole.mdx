@@ -1,0 +1,76 @@
+---
+title: Huấn luyện trên CartPole
+description: "50 000 bước, khoảng 40 giây trên một luồng CPU. Chính sách tham lam chạm 500 điểm ở bước 40 000, rơi xuống 56 ở bước 45 000, rồi lại lên 500. Đường học của DQN không đi lên đều như học có giám sát; giữ bản tốt nhất theo đánh giá, rồi đo lại trên 100 tập mới."
+---
+
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Một lần chạy
+
+Huấn luyện 50 000 bước với seed 0. Trên một luồng CPU, lần chạy mất khoảng 40 giây.
+
+```python
+ban_tot, ban_cuoi = dqn()
+```
+
+```text title="Output"
+5000 132 62.0 177.35
+10000 193 72.6 95.2
+15000 245 98.0 101.2
+20000 296 100.7 129.95
+25000 349 82.8 90.05
+30000 369 252.4 151.1
+35000 421 78.2 104.2
+40000 458 164.1 500.0
+45000 537 32.6 56.15
+50000 564 220.6 500.0
+```
+
+Đọc từng cột. Số tập tăng rất nhanh lúc đầu (tập ngắn vì sào đổ sớm) rồi chậm dần khi tập dài ra. Điểm trong lúc học (cột 3) cũng lên xuống, từ 32,6 tới 252,4. Cột cuối mới là điều ta quan tâm: chính sách tham lam giữ được sào bao lâu.
+
+Và cột đó **không đi lên đều**. Nó dao động từ 90 tới 177 suốt 35 000 bước đầu, chạm **500** ở bước 40 000, tụt xuống **56** ở bước 45 000, rồi lại 500 ở bước 50 000. Chỉ 5000 bước học, tức 50 lần chép mạng đích, đủ để một chính sách hoàn hảo thành tệ hơn lúc mới học được một chút. Ở học có giám sát, loss trên val có thể lên xuống, nhưng hiếm khi rơi từ hoàn hảo xuống gần đáy chỉ trong một khoảng ngắn như vậy.
+
+## Vì sao bất ổn
+
+Ba lý do chồng lên nhau, đều đến từ đặc điểm của RL mà Chương 33 đã nêu: **dữ liệu phụ thuộc vào chính tác tử**.
+
+- Khi chính sách tốt lên, tập dài ra, và bộ nhớ dần đầy những trạng thái **sào đang đứng vững** ở giữa đường ray. Mạng ít còn thấy những trạng thái nguy hiểm, nên giá trị ở đó trôi đi, cho tới khi chính sách lỡ tay vào một trạng thái như vậy và không biết cứu.
+- Một thay đổi nhỏ của $Q$ làm `argmax` đổi ở một số trạng thái, và với CartPole, một quyết định sai ở đúng lúc là đủ để sào đổ.
+- Mục tiêu tự tham chiếu (bootstrap) nên sai số ở một nơi lan sang nơi khác qua mạng đích.
+
+Đây không phải lỗi của cách cài ở đây. Bài báo DQN báo cáo điểm của **bản mạng tốt nhất** trong quá trình học, và các thư viện RL phổ biến đều có cơ chế lưu mô hình theo đánh giá định kỳ.
+
+## Giữ bản tốt nhất, rồi đo lại cho công bằng
+
+Hàm `dqn` đã giữ bản có điểm đánh giá cao nhất. Nhưng điểm đó được dùng để **chọn**, nên nó lạc quan, đúng như chọn mô hình trên val rồi báo cáo luôn điểm val (Chương 9, Chương 32). Đo lại trên 100 tập với seed **chưa dùng** lần nào, cho cả bản tốt nhất lẫn bản cuối:
+
+```python
+print(danh_gia(ban_tot, n=100, seed=20_000), danh_gia(ban_cuoi, n=100, seed=20_000))
+```
+
+```text title="Output"
+500.0 500.0
+```
+
+Bản tốt nhất (bản đầu tiên đạt 500, ở bước 40 000) giữ được **500 điểm ở cả 100 tập mới**: chính sách hoàn hảo, so với 21,8 của chọn bừa. Bản cuối cùng cũng vậy, vì nó tình cờ dừng đúng lúc tốt. Một seed khác có thể dừng ở lúc xấu.
+
+<HinhKetQua src="/hinh/ch35/h1_duong_hoc.svg" alt="Biểu đồ đường, trục ngang là số bước từ 5000 tới 50 000, trục dọc là điểm đánh giá từ 0 tới 500. Năm đường mảnh cho năm seed, nhảy lên xuống mạnh: có lúc chạm 500 rồi rơi xuống dưới 100 ở lần đánh giá sau. Đường đậm là trung bình năm seed: khoảng 158 ở bước 5000, xuống quanh 110 ở bước 10 000 và 15 000, rồi lên xuống giữa 250 và 370, kết thúc ở 478. Đường ngang đứt nét ở 21,8 là chọn bừa." so="35.1" chuThich="DQN trên CartPole, năm seed, cùng siêu tham số. Mỗi điểm là điểm trung bình của chính sách tham lam trên 20 tập đánh giá cố định.">
+**Đọc hình.** Mỗi đường mảnh là một lần chạy với một seed. Đường đậm là trung bình.
+
+**Điều cần thấy.** Bốn trên năm seed có lúc chạm 500 (seed còn lại cao nhất 421), nhưng không seed nào ở yên đó: seed 0 rơi từ 500 xuống 56, seed 3 từ 500 xuống 104, mỗi lần chỉ trong 5000 bước. Trung bình năm seed đi lên chậm và gập ghềnh, che mất việc từng lần chạy nhảy qua lại giữa hoàn hảo và kém. Nếu chỉ chạy một seed và báo cáo điểm cuối, kết luận phụ thuộc phần lớn vào may rủi. Các bài báo RL nghiêm túc báo cáo trung bình và độ phân tán trên ít nhất 5 tới 10 seed.
+</HinhKetQua>
+
+<TuKiemTra
+	cauHoi="Vì sao không nên báo cáo điểm 500 mà hàm dqn dùng để chọn ban_tot làm kết quả cuối cùng?"
+	luaChon={['Vì điểm đó tính trên chính sách còn khám phá', 'Vì 20 tập đánh giá cố định đã được dùng để chọn trong 10 bản mạng, nên điểm của bản được chọn thiên lạc quan', 'Vì 500 là điểm tối đa nên không có thông tin', 'Vì đánh giá dùng mạng đích chứ không dùng mạng chính']}
+	dapAn={1}
+	giaiThich="Chọn bản tốt nhất trong 10 bản theo cùng 20 tập là một phép chọn mô hình, giống chọn siêu tham số trên val. Bản được chọn có thể chỉ tình cờ hợp với 20 tập đó. Đo lại trên các tập mới (seed 20 000 trở đi) mới là ước lượng trung thực, như tập test chỉ mở một lần ở Chương 32."
+/>
+
+<Khung loai="loi">
+**Kết luận từ một seed.** Ở đây seed 0 kết thúc ở 500, nhưng với cùng siêu tham số, seed 4 kết thúc ở 390, và trước đó có lúc chỉ được 28 (hình 35.1). Muốn so hai cấu hình, chạy nhiều seed cho mỗi cấu hình.
+
+**Học thêm vì "chưa ổn định".** Với DQN, học lâu hơn không bảo đảm tốt hơn. Theo dõi điểm đánh giá, lưu bản tốt nhất, và dừng khi đã đạt mục tiêu.
+</Khung>

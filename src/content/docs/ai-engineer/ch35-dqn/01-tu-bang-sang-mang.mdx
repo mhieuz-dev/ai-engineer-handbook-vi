@@ -1,0 +1,123 @@
+---
+title: Từ bảng sang mạng
+description: "Khi trạng thái là bốn số thực, không còn bảng Q nào chứa nổi. Thay bảng bằng một mạng nơ-ron nhận trạng thái và trả về Q của mỗi hành động. Trên CartPole, chọn bừa giữ được cây sào trung bình 21,8 bước; mục tiêu là 500."
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+<CanBietTruoc>
+Q-learning, epsilon-greedy, phân biệt terminated với truncated, off-policy (Chương 34). PyTorch, MLP, vòng huấn luyện, Adam (Chương 25, 26).
+
+<Fragment slot="sau-chuong">
+Hiểu vì sao Q-learning với mạng nơ-ron dễ phân kỳ, và hai mẹo làm nó chạy được: replay buffer và mạng đích. Tự cài DQN, huấn luyện trên CartPole tới 500 điểm, đọc đúng một đường học bất ổn, và đo xem bỏ từng mẹo thì hỏng tới đâu. Biết Double DQN sửa thiên lệch do lấy max thế nào.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch35_dqn.ipynb" />
+
+## Bảng Q không còn đủ
+
+Chương 34 lưu $Q$ trong một bảng 16 x 4. Bảng chỉ dùng được khi số trạng thái nhỏ và đếm được. Bài toán thật thì không: vị trí và vận tốc của một robot là số thực, một khung hình game có hàng chục nghìn điểm ảnh. Không có bảng nào đủ lớn, và kể cả có, tác tử cũng không bao giờ ghé lại đúng một trạng thái lần thứ hai để học từ nó.
+
+Lối ra là thứ cả Phần III đã làm: thay bảng bằng một **hàm có tham số** học được. Một mạng nơ-ron $Q(s, \cdot\,; \theta)$ nhận trạng thái $s$ và trả về một vector, mỗi phần tử là $Q$ của một hành động. Hai trạng thái gần nhau cho giá trị gần nhau, nên học ở một trạng thái giúp luôn các trạng thái lân cận chưa từng gặp. Đó là **khái quát hóa**, điều bảng không làm được.
+
+## CartPole
+
+Môi trường của chương: `CartPole-v1`. Một chiếc xe chạy trên đường ray, trên xe dựng một cây sào có khớp xoay ở chân. Mỗi bước, tác tử đẩy xe sang **trái hoặc phải** với một lực cố định. Mỗi bước cây sào còn đứng được thưởng 1 điểm. Tập kết thúc (`terminated`) khi sào nghiêng quá 12 độ hoặc xe chạy ra quá 2,4 đơn vị khỏi tâm; tập bị cắt ngang (`truncated`) ở bước 500. Điểm tối đa là 500.
+
+```python
+!pip install gymnasium
+```
+
+```python
+import copy
+import gymnasium as gym
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+torch.set_num_threads(1)                             # mạng nhỏ: một luồng nhanh hơn, và kết quả lặp lại được
+env = gym.make("CartPole-v1")
+print(env.observation_space.shape, env.action_space, env.spec.max_episode_steps)
+s, _ = env.reset(seed=0)
+print(s)
+```
+
+```text title="Output"
+(4,) Discrete(2) 500
+[ 0.01369617 -0.02302133 -0.04590265 -0.04834723]
+```
+
+Trạng thái là bốn số thực: vị trí xe, vận tốc xe, góc sào (radian), vận tốc góc. Bốn số này đủ để biết tương lai, nên bài toán là Markov. Ở Chương 33 ta đã nói một ảnh đơn lẻ thì không đủ, vì không thấy vận tốc. Mạng DQN chơi 49 game Atari (Mnih và cộng sự, *Nature*, 2015) gặp đúng vấn đề đó: đầu vào là ảnh màn hình, nên họ ghép **4 khung hình liên tiếp** thành một trạng thái để mạng tự suy ra hướng và tốc độ chuyển động. Ở CartPole, môi trường đưa thẳng vận tốc cho ta.
+
+Mốc so sánh, như mọi chương: chọn bừa.
+
+```python
+rng = np.random.default_rng(0)
+env.reset(seed=0)
+diem = []
+for _ in range(100):
+    env.reset()
+    G = 0
+    while True:
+        _, r, ket_thuc, cat_ngang, _ = env.step(int(rng.integers(2)))
+        G += r
+        if ket_thuc or cat_ngang:
+            break
+    diem.append(G)
+print(np.mean(diem), np.max(diem))
+```
+
+```text title="Output"
+21.77 72.0
+```
+
+Chọn bừa giữ sào được trung bình 21,8 bước, tốt nhất 72 trong 100 tập. Mục tiêu là 500.
+
+## Mạng Q và loss
+
+Mạng cho CartPole là một MLP nhỏ: 4 số vào, hai lớp ẩn 128 nơ-ron, 2 số ra.
+
+```python
+def tao_mang():
+    return nn.Sequential(nn.Linear(4, 128), nn.ReLU(), nn.Linear(128, 128), nn.ReLU(), nn.Linear(128, 2))
+
+torch.manual_seed(0)
+q = tao_mang()
+print(sum(p.numel() for p in q.parameters()), q(torch.as_tensor(s)).detach().numpy().round(3))
+```
+
+```text title="Output"
+17410 [ 0.013 -0.048]
+```
+
+17 410 tham số. Mạng chưa học nên hai giá trị $Q$ gần 0 và gần nhau.
+
+Học thế nào? Chương 34 kéo $Q(s, a)$ về phía mục tiêu $y = r + \gamma \max_{a'} Q(s', a')$. Với mạng, "kéo về phía" là một bước gradient descent trên loss giữa $Q(s, a; \theta)$ và $y$, đúng như hồi quy ở Chương 10, với $y$ đóng vai nhãn. Hai điểm khác hồi quy thường:
+
+- **Chỉ một đầu ra có nhãn.** Mạng trả về $Q$ cho cả hai hành động, nhưng ta chỉ biết mục tiêu cho hành động đã làm. Lấy đúng đầu ra đó bằng `gather`, loss chỉ tính trên nó.
+- **Nhãn do chính mạng tạo ra.** $y$ chứa $\max_{a'} Q(s', a'; \theta)$, tức là phụ thuộc vào chính tham số đang học. Mỗi bước gradient vừa kéo $Q(s, a)$ về $y$ vừa làm $y$ dịch đi. Ta tính $y$ trong `torch.no_grad()` để gradient không chảy qua nhãn, nhưng nhãn vẫn đổi theo mạng.
+
+Loss thường dùng là <En>Huber</En> (`smooth_l1_loss`): giống MSE khi sai số nhỏ, giống trị tuyệt đối khi sai số lớn, để một mục tiêu bất thường không tạo ra gradient khổng lồ.
+
+<Khung loai="vi-sao" tieuDe="TAM GIÁC CHẾT">
+Sutton và Barto gọi tên một tổ hợp ba thứ mà khi đi chung thì việc học có thể **phân kỳ**, giá trị tăng mãi không dừng: (1) **xấp xỉ hàm** (mạng thay cho bảng), (2) **bootstrap** (mục tiêu dùng chính ước lượng của mình, như $\max Q(s', \cdot)$), (3) **off-policy** (học về chính sách tham lam từ dữ liệu của chính sách khác). Q-learning với mạng nơ-ron có đủ cả ba. Bảng của Chương 34 không bị, vì cập nhật một ô không đụng tới ô khác; mạng thì có, vì mọi trạng thái dùng chung tham số. Trang sau là hai mẹo để sống chung với tam giác đó, và trang 4 cho thấy bỏ một mẹo thì giá trị phân kỳ thật.
+</Khung>
+
+<TuKiemTra
+	cauHoi="Với phần thưởng 1 mỗi bước và gamma = 0,99, giá trị Q đúng của bất kỳ trạng thái nào trong CartPole không thể vượt quá bao nhiêu?"
+	luaChon={['1', '99', '100', '500']}
+	dapAn={2}
+	giaiThich="Lợi nhuận lớn nhất là 1 + 0,99 + 0,99² + ... không quá 1 / (1 − 0,99) = 100 (Chương 33), dù tập có kéo dài tới 500 bước. Đây là một phép kiểm rẻ mà rất hữu ích: nếu mạng Q dự đoán vài nghìn, chắc chắn việc học đã phân kỳ."
+/>
+
+<Khung loai="loi">
+**Rời rạc hóa trạng thái liên tục để dùng lại bảng Q.** Chia mỗi chiều của CartPole thành 10 khoảng đã cho $10^4$ ô; ảnh nhỏ 84 x 84 thì không đếm nổi. Rời rạc hóa thô làm mất thông tin, mịn thì bảng nổ và hầu hết ô không bao giờ được ghé. Đó là lý do cần mạng.
+
+**Để gradient chảy qua mục tiêu.** Không bọc $y$ trong `torch.no_grad()` (hoặc `.detach()`), bước gradient sẽ vừa kéo $Q(s, a)$ lên vừa kéo $Q(s', \cdot)$ xuống để hai bên gặp nhau, và mạng học cách làm loss nhỏ chứ không học giá trị đúng.
+</Khung>

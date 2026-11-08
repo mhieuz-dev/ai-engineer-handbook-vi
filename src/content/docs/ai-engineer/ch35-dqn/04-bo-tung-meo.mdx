@@ -1,0 +1,98 @@
+---
+title: Bỏ từng mẹo
+description: "Thí nghiệm bỏ từng thành phần của DQN. Không có mạng đích, giá trị Q phân kỳ lên hàng trăm triệu, trong khi giá trị thật không thể vượt 100, và tác tử sụp về 9,4 điểm ở cả 5 seed. Không có replay buffer, không seed nào chạm 500. Double DQN tách việc chọn và chấm hành động để giảm thiên lệch do lấy max."
+---
+
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Thí nghiệm bỏ đi
+
+Trang 2 nói replay buffer và mạng đích là cần. Kiểm chứng bằng cách bỏ từng thứ, giữ nguyên mọi thứ khác, như thí nghiệm bỏ từng lớp ở Chương 28.
+
+**Không có mạng đích.** Mục tiêu tính bằng chính mạng đang học. Sau khi học, in thêm $Q$ của mạng cuối ở trạng thái đầu của trang 1:
+
+```python
+_, q_khong_dich = dqn(muc_tieu_rieng=False)
+with torch.no_grad():
+    print(q_khong_dich(torch.as_tensor(s)).numpy())
+```
+
+```text title="Output"
+5000 254 16.9 9.45
+10000 691 9.1 9.45
+15000 1212 9.3 9.45
+20000 1733 9.5 9.45
+25000 2250 9.7 9.45
+30000 2771 9.3 9.45
+35000 3289 9.8 9.45
+40000 3809 9.6 9.45
+45000 4332 9.4 9.45
+50000 4849 9.8 9.45
+[1.9254470e+08 2.6113987e+08]
+```
+
+Điểm đánh giá rơi về **9,4** từ lần đánh giá đầu và đứng yên ở đó: chính sách luôn đẩy xe về một phía, sào đổ sau khoảng 9 bước, kém cả chọn bừa (21,8). Nhìn $Q$ thì thấy lý do: **hàng trăm triệu**, trong khi trang 1 đã tính rằng giá trị thật không thể vượt 100. Việc học đã phân kỳ, đúng vòng lặp của tam giác chết: kéo $Q(s, a)$ lên làm $Q(s', \cdot)$ lên theo, mục tiêu lên theo, cứ thế. Khi mọi giá trị đều khổng lồ, chênh lệch giữa hai hành động chỉ là nhiễu, và `argmax` chọn một hành động cố định.
+
+**Không có replay buffer.** Mỗi bước chỉ học từ đúng bước vừa đi, lô một mẫu, theo thứ tự thời gian. Vẫn giữ mạng đích:
+
+```python
+_ = dqn(replay=False)
+```
+
+```text title="Output"
+5000 193 29.4 19.3
+10000 450 10.2 14.8
+15000 729 56.0 45.7
+20000 1034 31.0 14.1
+25000 1315 13.8 66.2
+30000 1559 51.6 49.45
+35000 1678 56.8 60.7
+40000 1861 28.0 93.5
+45000 2175 9.8 9.45
+50000 2360 13.0 11.9
+```
+
+Không phân kỳ, nhưng học rất kém: điểm nhảy lung tung giữa 9 và 100, chưa bao giờ giữ được sào tới 100 bước ở hai lần đánh giá liền nhau. Mỗi mẫu chỉ dùng một lần, và các mẫu liên tiếp gần như trùng nhau.
+
+Một seed chưa đủ để kết luận (trang 3). Lặp ba cấu hình trên 5 seed, mỗi seed 50 000 bước:
+
+| cấu hình | đánh giá cuối, trung bình 5 seed | số seed từng chạm 500 | điểm cao nhất từng đạt, trung bình 5 seed |
+|---|---|---|---|
+| DQN đầy đủ | 478,1 | 4 / 5 | 484,2 |
+| không mạng đích | 9,4 | 0 / 5 | 9,4 |
+| không replay buffer | 56,8 | 0 / 5 | 158,4 |
+
+**Bảng 35.1.** Thí nghiệm bỏ từng thành phần, CartPole, 5 seed (0 tới 4). Chạy bằng `scripts/hinh/ch35_dqn.py`.
+
+Kết luận đứng vững qua 5 seed. Bỏ mạng đích thì cả 5 seed phân kỳ y như seed 0, $Q$ ở trạng thái đầu trung bình khoảng $2{,}5 \times 10^8$. Bỏ replay thì không seed nào chạm 500, điểm cuối trung bình 56,8 so với 478,1. Cả hai mẹo đều cần; thiếu mạng đích là hỏng hẳn, thiếu replay là học kém.
+
+## Double DQN
+
+Bài tập 34.1 đã thấy Q-learning đánh giá **quá cao**: lấy $\max$ trên các ước lượng có nhiễu thì kết quả thiên lên. Trong DQN, cùng một mạng đích vừa **chọn** hành động tốt nhất ở $s'$ vừa **chấm** giá trị của hành động đó; nếu nhiễu làm một hành động trông cao hơn thật, nó vừa được chọn vừa được chấm cao.
+
+<Term id="double-dqn">Double DQN</Term> (van Hasselt, Guez và Silver, 2016) tách hai việc ra: **mạng chính chọn**, **mạng đích chấm**,
+
+$$
+y = r + \gamma\,(1 - d)\; Q\big(s', \arg\max_{a'} Q(s', a'; \theta);\ \theta^-\big)
+$$
+
+Hai mạng có nhiễu khác nhau, nên một hành động được mạng chính chọn vì nhiễu dương thường không được mạng đích chấm cao theo. Thay đổi chỉ một dòng, đã có sẵn trong hàm `dqn` qua tham số `double=True`. Bài tập 35.1 đo xem trên CartPole nó có làm giảm việc đánh giá quá cao không; câu trả lời không như sách vở.
+
+<Khung loai="dao-sau" tieuDe="TỪ DQN TỚI RAINBOW">
+Sau DQN năm 2015, nhiều cải tiến ra đời, mỗi cái sửa một điểm yếu: Double DQN (đánh giá quá cao), prioritized replay (rút những bước có sai số TD lớn thường hơn), dueling network (tách giá trị của trạng thái khỏi lợi thế của từng hành động), multi-step return (mục tiêu cộng nhiều phần thưởng thật trước khi bootstrap), distributional RL (học cả phân phối của lợi nhuận chứ không chỉ kỳ vọng), noisy nets (khám phá bằng nhiễu trong trọng số). Rainbow (Hessel và cộng sự, 2018) gộp cả sáu và vượt hẳn từng cái riêng lẻ trên Atari. Ý tưởng cốt lõi vẫn là hai mẹo của trang 2.
+</Khung>
+
+<TuKiemTra
+	cauHoi="Một bạn thấy mạng Q dự đoán 3000 ở trạng thái đầu của CartPole (gamma = 0,99). Kết luận nào chắc chắn đúng?"
+	luaChon={['Tác tử đã học rất tốt, giữ được sào 3000 bước', 'Giá trị đã phân kỳ, vì lợi nhuận thật không thể vượt 100', 'Cần tăng gamma', 'Cần học thêm cho Q giảm xuống']}
+	dapAn={1}
+	giaiThich="Với thưởng 1 mỗi bước và gamma = 0,99, lợi nhuận có chiết khấu không thể vượt 1 / (1 − 0,99) = 100. Q = 3000 không phải là một ước lượng lạc quan mà là dấu hiệu chắc chắn của phân kỳ. In Q của vài trạng thái định kỳ trong lúc học là phép kiểm rẻ nhất cho DQN."
+/>
+
+<Khung loai="loi">
+**Bỏ một mẹo rồi kết luận từ một seed.** Lần chạy không replay với seed 1 có lúc đạt 212,6, đủ để một người vội vàng nói "replay không quan trọng lắm". Bảng 35.1 trên 5 seed mới cho thấy khoảng cách thật.
+
+**Chỉ nhìn điểm mà không nhìn giá trị.** Điểm 9,4 có thể do nhiều nguyên nhân. In $Q$ ra mới thấy đó là phân kỳ chứ không phải học chậm, và cách sửa hai trường hợp đó khác hẳn nhau.
+</Khung>
