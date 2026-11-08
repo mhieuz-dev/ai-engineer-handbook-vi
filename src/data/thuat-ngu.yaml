@@ -733,3 +733,28 @@
   tenTiengAnh: Double DQN
   giaiThich: Double DQN tách việc chọn và chấm hành động ở trạng thái kế tiếp, mạng chính chọn hành động có Q lớn nhất, mạng đích chấm giá trị của hành động đó. Mục đích là giảm việc đánh giá quá cao do lấy max trên các ước lượng có nhiễu. Hiệu quả phụ thuộc vào việc hai mạng có đủ khác nhau hay không.
   hocKy: ai-engineer/ch35-dqn
+- id: policy-gradient
+  ten: Policy gradient
+  tenTiengAnh: policy gradient
+  giaiThich: Policy gradient là họ thuật toán học thẳng chính sách, một mạng xuất xác suất của mỗi hành động, bằng cách đi theo gradient của lợi nhuận kỳ vọng. Nhờ mẹo log-đạo hàm, gradient đó ước lượng được từ các tập đã chơi mà không cần đạo hàm qua môi trường. Dùng được cho cả hành động liên tục.
+  hocKy: ai-engineer/ch36-policy-gradient
+- id: reinforce
+  ten: REINFORCE
+  tenTiengAnh: REINFORCE
+  giaiThich: REINFORCE là thuật toán policy gradient đơn giản nhất. Chơi trọn một tập, nhân log xác suất của mỗi hành động với lợi nhuận từ bước đó về sau, rồi đi một bước gradient để những hành động dẫn tới lợi nhuận cao có khả năng xảy ra hơn. Ước lượng không thiên lệch nhưng phương sai lớn.
+  hocKy: ai-engineer/ch36-policy-gradient
+- id: baseline
+  ten: Baseline
+  tenTiengAnh: baseline
+  giaiThich: Trong policy gradient, baseline là một mức tham chiếu trừ khỏi lợi nhuận trước khi nhân với gradient của log xác suất. Nếu nó chỉ phụ thuộc vào trạng thái, không vào hành động, gradient vẫn không thiên lệch mà phương sai giảm. Baseline tốt nhất gần với hàm giá trị V(s).
+  hocKy: ai-engineer/ch36-policy-gradient
+- id: loi-the
+  ten: Lợi thế
+  tenTiengAnh: advantage
+  giaiThich: Lợi thế của một hành động là nó tốt hơn mức mong đợi ở trạng thái đó bao nhiêu, A(s, a) = Q(s, a) − V(s). Trong thực hành ước lượng bằng lợi nhuận thật trừ V(s), hoặc sai số TD. Dương thì hành động được đẩy lên, âm thì bị đẩy xuống.
+  hocKy: ai-engineer/ch36-policy-gradient
+- id: actor-critic
+  ten: Actor-critic
+  tenTiengAnh: actor-critic
+  giaiThich: Actor-critic dùng hai mạng. Diễn viên (actor) là chính sách chọn hành động; nhà phê bình (critic) là hàm giá trị chấm mỗi bước bằng sai số TD, làm trọng số cho gradient của diễn viên. Phương sai thấp hơn REINFORCE, đổi lại thiên lệch khi nhà phê bình còn sai.
+  hocKy: ai-engineer/ch36-policy-gradient

@@ -1,0 +1,129 @@
+---
+title: Học thẳng chính sách
+description: "Thay vì học Q rồi chọn argmax, cho mạng xuất thẳng xác suất của mỗi hành động và đi theo gradient của lợi nhuận kỳ vọng. Mẹo log-đạo hàm biến gradient đó thành một trung bình tính được từ mẫu; trên bandit 2 tay, 10 000 mẫu cho -0,196 so với giá trị chính xác -0,1966."
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+<CanBietTruoc>
+Lợi nhuận có chiết khấu, chính sách, hàm giá trị (Chương 33). Sai khác thời gian (Chương 34). CartPole, mạng Q, tách terminated với truncated (Chương 35). Softmax và cross-entropy (Chương 11), autograd của PyTorch (Chương 25).
+
+<Fragment slot="sau-chuong">
+Hiểu định lý policy gradient qua mẹo log-đạo hàm và kiểm nó bằng số. Tự cài REINFORCE, thêm baseline để giảm phương sai mà không làm lệch gradient, rồi chuyển sang actor-critic, nơi một mạng giá trị chấm từng bước. Thấy hai phía của đánh đổi giữa phương sai và thiên lệch, và vì sao bước cập nhật quá lớn làm hỏng chính sách, là chỗ PPO ở Chương 37 bắt đầu.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch36_policy_gradient.ipynb" />
+
+## Hai cách tìm một chính sách
+
+Chương 34 và 35 đi đường vòng: học **giá trị** $Q(s, a)$, rồi chính sách là "chọn hành động có $Q$ lớn nhất". Chương này đi thẳng: một mạng $\pi_\theta(a \mid s)$ nhận trạng thái và xuất **xác suất** của mỗi hành động, và ta chỉnh $\theta$ sao cho lợi nhuận kỳ vọng tăng lên. Họ thuật toán này gọi là <Term id="policy-gradient">policy gradient</Term>.
+
+Đi thẳng có ba cái lợi:
+
+- **Hành động liên tục.** Chọn $\arg\max_a Q(s, a)$ khi $a$ là một góc lái hay một mô-men xoắn là cả một bài toán tối ưu ở mỗi bước. Mạng chính sách chỉ cần xuất tham số của một phân phối, ví dụ trung bình và độ lệch chuẩn của một phân phối chuẩn, rồi lấy mẫu.
+- **Chính sách ngẫu nhiên.** `argmax` luôn tất định. Có những bài toán mà chính sách tốt nhất phải ngẫu nhiên: oẳn tù tì, hay khi tác tử không phân biệt được hai trạng thái thật ra khác nhau.
+- **Thay đổi mượt.** Một thay đổi nhỏ của $Q$ có thể làm `argmax` nhảy sang hành động khác ở cả loạt trạng thái, đó là một nguồn bất ổn của DQN ở Chương 35. Thay đổi nhỏ của $\theta$ chỉ làm xác suất thay đổi nhỏ.
+
+## Mục tiêu và gradient của nó
+
+Mục tiêu là lợi nhuận kỳ vọng khi đi theo $\pi_\theta$: $J(\theta) = \mathbb{E}_{\tau \sim \pi_\theta}[\,G(\tau)\,]$, với $\tau$ là cả một tập. Muốn đi lên theo gradient, cần $\nabla_\theta J$. Khó ở chỗ $\theta$ nằm trong **phân phối** mà ta lấy kỳ vọng theo, không nằm trong hàm bên trong. Xét trường hợp đơn giản nhất, một bước, phần thưởng kỳ vọng $q(a)$ của mỗi hành động:
+
+$$
+J(\theta) = \sum_a \pi_\theta(a)\, q(a)
+\quad\Rightarrow\quad
+\nabla_\theta J = \sum_a \nabla_\theta \pi_\theta(a)\, q(a) = \sum_a \pi_\theta(a)\, \nabla_\theta \log \pi_\theta(a)\, q(a)
+$$
+
+Bước cuối dùng $\nabla \pi = \pi \nabla \log \pi$, gọi là **mẹo log-đạo hàm**. Nhờ nó, tổng lại có dạng kỳ vọng theo $\pi_\theta$: $\nabla_\theta J = \mathbb{E}_{a \sim \pi_\theta}[\, \nabla_\theta \log \pi_\theta(a)\, r \,]$. Kỳ vọng thì ước lượng được bằng mẫu: chơi theo chính sách, với mỗi hành động đã làm, nhân gradient của log xác suất của nó với phần thưởng nhận được, rồi lấy trung bình. Không cần biết $q$, không cần đạo hàm qua môi trường.
+
+Đọc bằng trực giác: $\nabla_\theta \log \pi_\theta(a)$ là hướng làm hành động $a$ **có khả năng xảy ra hơn**. Nhân với phần thưởng: hành động được thưởng nhiều thì được đẩy lên nhiều. Đây giống cross-entropy của Chương 11 với "nhãn" là chính hành động đã làm, mỗi mẫu có trọng số bằng phần thưởng của nó.
+
+## Kiểm bằng số
+
+Bandit 2 tay, phần thưởng trung bình 1 và 2, chính sách softmax với tham số $\theta = (0{,}5;\ -0{,}5)$. Tay tốt hơn đang bị chọn ít hơn. Gradient chính xác tính bằng autograd trên công thức $J$:
+
+```python
+!pip install gymnasium
+```
+
+```python
+import gymnasium as gym
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+torch.set_num_threads(1)                             # mạng nhỏ: một luồng, kết quả lặp lại được
+q_that = torch.tensor([1.0, 2.0])                    # phần thưởng trung bình của hai tay
+theta = torch.tensor([0.5, -0.5], requires_grad=True)
+J = (theta.softmax(0) * q_that).sum()
+J.backward()
+print(theta.softmax(0).detach().numpy().round(4), round(J.item(), 4), theta.grad.numpy().round(4))
+```
+
+```text title="Output"
+[0.7311 0.2689] 1.2689 [-0.1966  0.1966]
+```
+
+Chính sách chọn tay 1 với xác suất 0,7311, lợi nhuận kỳ vọng 1,2689. Gradient $(-0{,}1966;\ 0{,}1966)$ nói: giảm $\theta_1$, tăng $\theta_2$, tức chuyển sang tay tốt hơn. Giờ giả vờ không biết $q$: lấy mẫu $N$ lần kéo, phần thưởng có nhiễu chuẩn, và ước lượng gradient bằng mẹo log-đạo hàm. Mẹo cài đặt quen thuộc: viết một "loss" là trung bình của $\log \pi(a) \cdot r$ rồi gọi `backward()`, autograd tự tính phần $\nabla \log \pi$.
+
+```python
+def uoc_luong(N, b=0.0, seed=0):                     # ước lượng gradient từ N lần kéo, trừ đi baseline b
+    g = torch.Generator().manual_seed(seed)
+    a = torch.multinomial(theta.softmax(0).detach(), N, replacement=True, generator=g)   # kéo theo chính sách
+    r = q_that[a] + torch.randn(N, generator=g)      # phần thưởng có nhiễu
+    th = theta.detach().clone().requires_grad_(True)
+    log_p = torch.distributions.Categorical(logits=th).log_prob(a)
+    (log_p * (r - b)).mean().backward()              # trung bình của log pi(a) nhân phần thưởng
+    return th.grad
+
+for N in (10, 100, 10_000):
+    print(N, uoc_luong(N).numpy().round(4))
+```
+
+```text title="Output"
+10 [-0.4129  0.4129]
+100 [-0.1461  0.1461]
+10000 [-0.196  0.196]
+```
+
+Với 10 mẫu, ước lượng lệch hơn gấp đôi giá trị thật; với 100 mẫu vẫn lệch 26%; với 10 000 mẫu gần như trùng ($-0{,}196$ so với $-0{,}1966$). Ước lượng **không thiên lệch**, nhưng **phương sai lớn**: cần rất nhiều mẫu mới tin được. Đó là điểm yếu cốt lõi của policy gradient, và trang 3 sẽ tấn công nó.
+
+## Mạng chính sách
+
+Với CartPole, mạng chính sách là MLP 4 vào, 2 ra. Hai số ra là **logit**; softmax của chúng là xác suất đẩy trái và đẩy phải. `torch.distributions.Categorical` gói việc lấy mẫu và tính log xác suất:
+
+```python
+def mlp(so_ra):
+    return nn.Sequential(nn.Linear(4, 128), nn.ReLU(), nn.Linear(128, so_ra))
+
+torch.manual_seed(0)
+pi = mlp(2)
+s = torch.tensor([0.0, 0.0, 0.05, 0.0])              # sào nghiêng phải 0,05 radian
+phan_phoi = torch.distributions.Categorical(logits=pi(s))
+a = phan_phoi.sample()
+print(phan_phoi.probs.detach().numpy().round(3), int(a), round(phan_phoi.log_prob(a).item(), 3))
+```
+
+```text title="Output"
+[0.519 0.481] 0 -0.656
+```
+
+Mạng chưa học nên hai xác suất gần 0,5. Tác tử **lấy mẫu** hành động theo xác suất đó, nên nó tự khám phá; không cần epsilon-greedy như Chương 34, 35. Khi học, xác suất của hành động tốt dần tiến về 1, và khám phá giảm theo một cách tự nhiên.
+
+<TuKiemTra
+	cauHoi="Trong ước lượng gradient bằng mẹo log-đạo hàm, phần thưởng r có cần khả vi theo theta không?"
+	luaChon={['Có, vì phải đạo hàm r theo theta', 'Không, r chỉ là một con số nhân vào; chỉ log pi(a) cần khả vi theo theta', 'Có, nếu không thì phải dùng môi trường khả vi', 'Chỉ khi hành động liên tục']}
+	dapAn={1}
+	giaiThich="Gradient chỉ đi qua log pi_theta(a). Phần thưởng do môi trường trả về là một hằng số trong phép tính đó, nên môi trường có thể là một trò chơi, một robot thật, hay một người chấm điểm, không cần đạo hàm được. Đây là lý do policy gradient dùng được cả để tinh chỉnh mô hình ngôn ngữ theo điểm do người hoặc mô hình khác chấm (RLHF, Chương 50)."
+/>
+
+<Khung loai="loi">
+**Quên dấu trừ.** Optimizer của PyTorch **giảm** loss. Muốn **tăng** lợi nhuận thì loss phải là $-\log \pi(a) \cdot G$. Thiếu dấu trừ, tác tử học cách làm sào đổ nhanh nhất có thể, và học rất giỏi.
+
+**Lấy `argmax` lúc huấn luyện.** Policy gradient cần hành động được **lấy mẫu** từ chính phân phối đang học; mẹo log-đạo hàm chỉ đúng khi $a \sim \pi_\theta$. Chọn `argmax` thì ước lượng gradient sai và tác tử không còn khám phá. `argmax` chỉ dùng khi đánh giá.
+</Khung>

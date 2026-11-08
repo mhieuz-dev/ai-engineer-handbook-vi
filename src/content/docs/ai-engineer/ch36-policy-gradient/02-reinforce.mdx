@@ -1,0 +1,141 @@
+---
+title: REINFORCE
+description: "Thuật toán policy gradient đơn giản nhất: chơi trọn một tập, nhân log xác suất của mỗi hành động với lợi nhuận từ bước đó về sau, rồi đi một bước gradient. Trên CartPole, 1000 tập, khoảng một phút; chính sách tham lam chạm 500 điểm ở tập 300 nhưng điểm trong lúc học vẫn lên xuống thất thường."
+---
+
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Từ một bước tới cả tập
+
+Trang 1 làm với một bước. Với cả một tập dài nhiều bước, định lý policy gradient (Sutton và cộng sự, 2000) cho kết quả cùng dạng:
+
+$$
+\nabla_\theta J = \mathbb{E}_{\pi_\theta}\Big[\, \sum_t \nabla_\theta \log \pi_\theta(a_t \mid s_t)\; G_t \,\Big]
+$$
+
+Mỗi hành động $a_t$ được nhân với $G_t$, lợi nhuận **từ bước $t$ trở đi**, không phải tổng phần thưởng của cả tập. Lý do: hành động ở bước $t$ không thể ảnh hưởng tới phần thưởng đã nhận **trước** nó, nên những phần thưởng đó chỉ thêm nhiễu mà không thêm thông tin. Không cần đạo hàm qua xác suất chuyển $p(s' \mid s, a)$ của môi trường: chúng không phụ thuộc $\theta$, và rơi mất khi lấy đạo hàm của log.
+
+<Term id="reinforce">REINFORCE</Term> (Williams, 1992) là ước lượng trực tiếp công thức đó bằng một tập:
+
+1. Chơi một tập trọn vẹn theo $\pi_\theta$, lấy mẫu mỗi hành động, ghi lại $\log \pi_\theta(a_t \mid s_t)$ và phần thưởng.
+2. Tính $G_t$ cho mọi bước, đi ngược từ cuối như Chương 33.
+3. Loss $= -\sum_t \log \pi_\theta(a_t \mid s_t)\, G_t$, một bước gradient.
+
+Không có replay buffer: dữ liệu phải lấy từ **chính** chính sách hiện tại, vì công thức là kỳ vọng theo $\pi_\theta$. REINFORCE là thuật toán on-policy, mỗi tập dùng một lần rồi bỏ.
+
+## Cài đặt
+
+Một hàm `hoc` dùng cho cả chương, chọn cách tính bằng tham số `cach`: `"reinforce"` ở trang này, `"baseline"` ở trang 3, `"actor_critic"` ở trang 4, `"chuan_hoa"` ở bài tập 36.3. Phần riêng của hai trang sau được viết sẵn ở đây để khỏi lặp lại; trang này chỉ đi qua nhánh `"reinforce"`. Mạng giá trị `v` luôn được tạo để mọi cách bắt đầu từ cùng một trạng thái ngẫu nhiên, dù REINFORCE không dùng nó.
+
+```python
+env = gym.make("CartPole-v1")
+
+def danh_gia(pi, n=20, seed=10_000):                 # như Chương 35: chính sách tham lam, 20 tập cố định
+    e = gym.make("CartPole-v1")
+    tong = []
+    for i in range(n):
+        s, _ = e.reset(seed=seed + i)
+        G = 0
+        while True:
+            with torch.no_grad():
+                a = int(pi(torch.as_tensor(s)).argmax())
+            s, r, ket_thuc, cat_ngang, _ = e.step(a)
+            G += r
+            if ket_thuc or cat_ngang:
+                break
+        tong.append(G)
+    return float(np.mean(tong))
+
+def hoc(cach="reinforce", n_tap=1000, seed=0, lr=1e-3, lr_v=1e-3, gamma=0.99, in_moi=100):
+    torch.manual_seed(seed)
+    pi = mlp(2)                                      # mạng chính sách
+    opt = torch.optim.Adam(pi.parameters(), lr=lr, fused=True)
+    v = mlp(1)                                       # mạng giá trị, dùng ở trang 3 và 4
+    opt_v = torch.optim.Adam(v.parameters(), lr=lr_v, fused=True)
+    env.reset(seed=seed)
+    diem = []
+    for tap in range(1, n_tap + 1):
+        s, _ = env.reset()                           # 1. chơi một tập theo chính sách hiện tại
+        log_p, R, S, S2, D = [], [], [], [], []
+        while True:
+            S.append(torch.as_tensor(s))
+            phan_phoi = torch.distributions.Categorical(logits=pi(S[-1]))
+            a = phan_phoi.sample()                   # lấy mẫu, không argmax
+            log_p.append(phan_phoi.log_prob(a))
+            s, r, ket_thuc, cat_ngang, _ = env.step(int(a))
+            R.append(r)
+            S2.append(torch.as_tensor(s))
+            D.append(float(ket_thuc))
+            if ket_thuc or cat_ngang:
+                break
+        G, loi_nhuan = 0.0, []                       # 2. lợi nhuận từ mỗi bước về sau
+        for r in reversed(R):
+            G = r + gamma * G
+            loi_nhuan.append(G)
+        G_t = torch.tensor(loi_nhuan[::-1], dtype=torch.float32)
+        S, S2, R, D = torch.stack(S), torch.stack(S2), torch.tensor(R), torch.tensor(D)
+        if cach == "reinforce":
+            loi_the = G_t                            # trọng số của mỗi hành động
+        elif cach == "chuan_hoa":                    # bài tập 36.3: chuẩn hóa trong tập
+            loi_the = (G_t - G_t.mean()) / (G_t.std() + 1e-8)
+        else:                                        # trang 3 và 4: học V, trừ nó đi
+            V = v(S).squeeze(1)
+            if cach == "baseline":
+                muc_tieu = G_t                       # V học theo lợi nhuận thật của tập
+            else:
+                with torch.no_grad():
+                    muc_tieu = R + gamma * (1 - D) * v(S2).squeeze(1)   # actor-critic: mục tiêu TD
+            loss_v = F.mse_loss(V, muc_tieu)
+            opt_v.zero_grad()
+            loss_v.backward()
+            opt_v.step()
+            loi_the = muc_tieu - V.detach()          # lợi thế: tốt hơn mong đợi bao nhiêu
+        loss = -(torch.stack(log_p) * loi_the).sum() # 3. một bước gradient, dấu trừ để đi lên
+        opt.zero_grad()
+        loss.backward()
+        opt.step()
+        diem.append(len(R))                          # thưởng 1 mỗi bước: điểm bằng số bước
+        if tap % in_moi == 0:
+            print(tap, round(np.mean(diem[-in_moi:]), 1), danh_gia(pi))
+    return pi
+```
+
+Mỗi 100 tập, hàm in số tập, điểm trung bình của 100 tập vừa chơi (chính sách **có lấy mẫu**, đang học), và điểm của chính sách tham lam trên 20 tập đánh giá cố định như Chương 35.
+
+## Huấn luyện
+
+```python
+pi_reinforce = hoc("reinforce")
+```
+
+```text title="Output"
+100 28.0 94.9
+200 69.5 419.4
+300 205.0 500.0
+400 202.1 209.2
+500 275.5 500.0
+600 404.2 500.0
+700 401.9 421.0
+800 362.6 500.0
+900 455.4 466.75
+1000 433.9 499.1
+```
+
+Một nghìn tập, khoảng một phút trên một luồng CPU. Điểm trong lúc học tăng từ 28 lên trên 400 sau 600 tập. Chính sách tham lam đã chạm **500** ở tập 300, nhưng rơi về 209 ở tập 400 rồi lại lên. Điểm lúc học còn lên xuống rõ hơn: từ 404 ở tập 600 xuống 363 ở tập 800 rồi lên 455.
+
+So với DQN ở Chương 35, đường học này **mượt hơn ở trung bình** (không rơi từ 500 xuống 56), vì mỗi bước cập nhật chỉ làm xác suất nhích một chút. Nhưng mỗi bước dùng một tập duy nhất, và trang 1 đã cho thấy ước lượng từ ít mẫu có phương sai lớn cỡ nào. Có những tập tình cờ dài vì may mắn, đẩy mạnh mọi hành động trong đó, kể cả hành động tệ.
+
+<TuKiemTra
+	cauHoi="Một tập CartPole dài 200 bước. Với gamma = 0,99, hành động ở bước đầu và hành động ở bước 199 nhận trọng số G_t khoảng bao nhiêu?"
+	luaChon={['Cả hai đều 200', 'Bước đầu khoảng 86,6, bước 199 bằng 1', 'Bước đầu bằng 1, bước 199 khoảng 86,6', 'Cả hai đều khoảng 86,6']}
+	dapAn={1}
+	giaiThich="G_0 = 1 + 0,99 + ... + 0,99^199 = (1 − 0,99^200) / 0,01, khoảng 86,6. G_199 chỉ còn phần thưởng của chính bước cuối, bằng 1. Mọi hành động trong tập đều được đẩy lên (G_t luôn dương ở CartPole), nhưng hành động sớm được đẩy mạnh hơn nhiều. Đó là một nguồn phương sai: G_t lớn hay nhỏ phụ thuộc vào vị trí trong tập nhiều hơn là hành động tốt hay xấu. Trang 3 sửa điều đó."
+/>
+
+<Khung loai="loi">
+**Nhân mọi hành động với tổng phần thưởng của cả tập.** Vẫn không thiên lệch, nhưng thêm vào mỗi hành động những phần thưởng nó không thể gây ra, phương sai tăng và học chậm hơn. Dùng $G_t$ tính từ bước $t$.
+
+**Dùng lại tập cũ.** Cất các tập vào một bộ nhớ và rút lại như DQN thì gradient tính theo phân phối của chính sách cũ, không còn là ước lượng của $\nabla J$ hiện tại. Muốn dùng lại dữ liệu cũ một cách an toàn phải hiệu chỉnh bằng tỷ số xác suất, là điều PPO ở Chương 37 làm.
+</Khung>

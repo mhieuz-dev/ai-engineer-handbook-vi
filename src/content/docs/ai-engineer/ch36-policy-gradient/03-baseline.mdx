@@ -1,0 +1,81 @@
+---
+title: Baseline
+description: "Trừ một baseline khỏi lợi nhuận không làm lệch gradient nhưng giảm phương sai. Trên bandit 2 tay, 2000 lần ước lượng với 10 mẫu: trung bình giữ nguyên, độ lệch chuẩn giảm từ 0,282 xuống 0,146. Dùng một mạng giá trị làm baseline, REINFORCE trên CartPole đạt 431 điểm lúc học ở tập 500, so với 276 khi không có baseline."
+---
+
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Trừ đi một hằng số
+
+Trong CartPole mọi $G_t$ đều dương, nên REINFORCE đẩy **mọi** hành động lên, chỉ là đẩy hành động trong tập dài mạnh hơn. Tín hiệu thật nằm ở **chênh lệch**: tập này dài hơn hay ngắn hơn bình thường. Ý tưởng: thay $G_t$ bằng $G_t - b$, với $b$ là một mức "bình thường" nào đó gọi là <Term id="baseline">baseline</Term>. Hành động dẫn tới kết quả tốt hơn mức đó được đẩy lên, tệ hơn thì bị đẩy xuống.
+
+Liệu trừ đi như vậy có làm sai gradient không? Không, vì phần bị trừ có kỳ vọng bằng 0:
+
+$$
+\mathbb{E}_{a \sim \pi_\theta}\big[\nabla_\theta \log \pi_\theta(a)\; b\big] = b \sum_a \pi_\theta(a)\, \frac{\nabla_\theta \pi_\theta(a)}{\pi_\theta(a)} = b\, \nabla_\theta \sum_a \pi_\theta(a) = b\, \nabla_\theta 1 = 0
+$$
+
+Tổng xác suất luôn bằng 1, nên đạo hàm của nó bằng 0. Kết quả vẫn đúng khi $b$ phụ thuộc vào trạng thái $s$, miễn là nó **không phụ thuộc vào hành động** $a$.
+
+## Kiểm bằng số
+
+Dùng lại bandit và hàm `uoc_luong` của trang 1. Lặp 2000 lần, mỗi lần ước lượng gradient chỉ từ 10 lần kéo, không baseline và với $b = 1{,}5$ (khoảng giữa hai mức trả 1 và 2). In trung bình và độ lệch chuẩn của 2000 ước lượng:
+
+```python
+for b in (0.0, 1.5):
+    G = torch.stack([uoc_luong(10, b, seed=k) for k in range(2000)])
+    print(b, G.mean(0).numpy().round(4), G.std(0).numpy().round(4))
+```
+
+```text title="Output"
+0.0 [-0.1944  0.1944] [0.2821 0.2821]
+1.5 [-0.1918  0.1918] [0.1458 0.1458]
+```
+
+Trung bình gần như không đổi và đều sát giá trị chính xác $-0{,}1966$: baseline không làm lệch. Độ lệch chuẩn giảm **gần một nửa**, từ 0,282 xuống 0,146. Phương sai giảm gần 4 lần, tức là 10 mẫu có baseline tốt ngang khoảng 40 mẫu không có baseline. Không có bữa trưa nào miễn phí hơn trong RL.
+
+## Baseline học được
+
+Baseline hằng số chưa đủ cho CartPole: ở bước đầu của một tập, $G_t$ khoảng 80, ở bước cuối chỉ khoảng 1, bất kể hành động tốt hay xấu. Baseline tốt nhất phải **theo trạng thái**: $b(s_t) = V(s_t)$, lợi nhuận mà ta **mong đợi** từ trạng thái đó. Khi đó trọng số của mỗi hành động là
+
+$$
+A_t = G_t - V(s_t),
+$$
+
+gọi là <Term id="loi-the">lợi thế</Term> (advantage): hành động này đưa tới kết quả tốt hơn mức mong đợi ở trạng thái đó bao nhiêu. Tập dài vì may mắn, đi qua những trạng thái vốn đã tốt, sẽ có $A_t$ gần 0 thay vì được thưởng đậm.
+
+$V$ là một mạng thứ hai, học bằng hồi quy MSE với nhãn là $G_t$ thật của tập vừa chơi, đúng như hồi quy ở Chương 10. Hàm `hoc` của trang 2 đã có sẵn nhánh này, `cach="baseline"`. Cùng seed, cùng mọi siêu tham số như trang 2:
+
+```python
+pi_baseline = hoc("baseline")
+```
+
+```text title="Output"
+100 27.7 60.9
+200 85.1 500.0
+300 230.5 500.0
+400 342.0 476.6
+500 431.2 499.95
+600 453.8 488.5
+700 465.2 500.0
+800 487.4 500.0
+900 484.0 500.0
+1000 458.2 449.85
+```
+
+So với REINFORCE trơn ở trang 2: điểm lúc học ở tập 300 là 230,5 so với 205,0; ở tập 500 là **431,2** so với 275,5; từ tập 700 trở đi luôn trên 450. Chính sách tham lam đạt 500 ngay ở tập 200 và ở lại quanh mức đó, chỉ hụt nhẹ ở vài lần đo (476,6 ở tập 400, 449,85 ở tập 1000). Một seed chưa đủ để kết luận; hình 36.1 ở trang sau so trên 5 seed.
+
+<TuKiemTra
+	cauHoi="Một bạn dùng baseline b = V(s, a), tức một mạng nhận cả trạng thái và hành động. Điều gì sai?"
+	luaChon={['Không sai, càng nhiều thông tin càng tốt', 'Baseline phụ thuộc vào hành động thì phần bị trừ không còn kỳ vọng bằng 0, gradient bị lệch', 'Mạng sẽ không học được', 'Chỉ sai khi hành động liên tục']}
+	dapAn={1}
+	giaiThich="Phép chứng minh ở trên rút b ra khỏi tổng theo a. Nếu b đổi theo a thì không rút ra được, và tổng của gradient pi(a) nhân b(a) nói chung khác 0: gradient bị lệch có hệ thống. Baseline chỉ được phụ thuộc vào trạng thái. (Dùng Q(s, a) thì được, nhưng khi đó nó không còn là baseline mà là thay thế cho G_t, như actor-critic ở trang sau.)"
+/>
+
+<Khung loai="loi">
+**Để gradient của loss chính sách chảy vào $V$.** Lợi thế phải dùng `V.detach()`. Không detach, `loss.backward()` của chính sách sẽ chỉnh luôn mạng giá trị theo hướng làm loss chính sách nhỏ đi, tức là kéo $V$ để lợi thế có lợi cho chính sách, không phải để $V$ đúng.
+
+**Chuẩn hóa lợi nhuận rồi tưởng đó là baseline học được.** Một mẹo phổ biến là trừ trung bình và chia độ lệch chuẩn của $G_t$ trong tập. Đó là baseline **hằng số trong tập**, không theo trạng thái, và chia độ lệch chuẩn còn đổi cả độ lớn bước cập nhật. Có ích, nhưng là một thứ khác; bài tập 36.3 so hai cách.
+</Khung>

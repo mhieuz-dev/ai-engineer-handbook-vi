@@ -1,0 +1,124 @@
+---
+title: Bài tập
+description: "Ba bài tập có đáp án chi tiết (learning rate gấp 10 làm REINFORCE học chậm và bất ổn hơn, lên 384,6 rồi rơi về 133,2; chính sách đã học vẫn ngẫu nhiên, xác suất trung bình của hành động được ưa chỉ 0,74; chuẩn hóa lợi nhuận trong tập nằm giữa REINFORCE trơn và baseline học được) và câu hỏi phỏng vấn."
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Đoán trước, rồi chạy code trong notebook để kiểm tra. Code dùng lại `hoc`, `danh_gia`, `env` và `pi_baseline` của các trang trước. Mỗi lần gọi `hoc` mất khoảng một phút.
+
+<BaiTap so="36.1">
+**Bước quá dài.** Chạy lại REINFORCE trơn với learning rate gấp 10, `lr=1e-2`. Đoán: học nhanh hơn, hay hỏng?
+
+<Fragment slot="dap-an">
+
+```python
+_ = hoc("reinforce", lr=1e-2)
+```
+
+```text title="Output"
+100 15.8 16.8
+200 36.0 85.25
+300 33.0 47.75
+400 54.0 89.4
+500 53.4 192.95
+600 85.7 66.4
+700 76.1 59.3
+800 170.5 500.0
+900 384.6 133.75
+1000 133.2 181.9
+```
+
+Không nhanh hơn, mà **tệ hơn** từ đầu tới cuối. Ở tập 500, điểm lúc học chỉ 53,4 so với 275,5 khi `lr=1e-3`. Tới tập 900 nó lên 384,6, rồi một trăm tập sau rơi về 133,2; chính sách tham lam chạm 500 ở tập 800 rồi rơi về 133,75 ngay lần đo sau.
+
+Với học có giám sát, một bước quá dài làm loss tăng ở bước đó, rồi bước sau sửa lại, vì dữ liệu vẫn y nguyên. Với policy gradient, dữ liệu **do chính chính sách thu**. Một bước quá dài làm chính sách tệ đi, chính sách tệ thu về những tập ngắn và nghèo thông tin, gradient từ đó lại kém, và có thể không bao giờ gượng lại được. Học tăng cường cần bước cập nhật **an toàn** trong không gian chính sách, không chỉ trong không gian tham số: thay đổi xác suất hành động ít thôi, dù $\theta$ đổi bao nhiêu. Đó chính xác là ý tưởng của TRPO và PPO ở Chương 37.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="36.2">
+**Chính sách đã chắc chắn tới đâu.** Chính sách sau khi học vẫn là một phân phối xác suất. Chạy 20 tập đánh giá với `pi_baseline` nhưng **lấy mẫu** hành động thay vì argmax, và đo trên mọi trạng thái đã đi qua: xác suất trung bình của hành động được ưa hơn, và tỷ lệ trạng thái mà xác suất đó trên 0,9.
+
+<Fragment slot="dap-an">
+
+```python
+torch.manual_seed(0)
+e = gym.make("CartPole-v1")
+tong, p_max = [], []
+for i in range(20):
+    s, _ = e.reset(seed=10_000 + i)
+    G = 0
+    while True:
+        with torch.no_grad():
+            p = pi_baseline(torch.as_tensor(s)).softmax(0)
+        p_max.append(p.max().item())
+        s, r, ket_thuc, cat_ngang, _ = e.step(int(torch.multinomial(p, 1)))
+        G += r
+        if ket_thuc or cat_ngang:
+            break
+    tong.append(G)
+p_max = np.array(p_max)
+print(np.mean(tong), danh_gia(pi_baseline), round(p_max.mean(), 3), round((p_max > 0.9).mean(), 3))
+```
+
+```text title="Output"
+480.1 449.85 0.74 0.154
+```
+
+Lấy mẫu được **480,1**, còn argmax trên cùng 20 tập được 449,85. Xác suất trung bình của hành động được ưa hơn chỉ **0,74**, và chỉ 15,4% số trạng thái có xác suất đó trên 0,9. Chính sách sau 1000 tập vẫn rất ngẫu nhiên, mà vẫn giữ được sào gần trọn 500 bước.
+
+Lý do: ở phần lớn trạng thái của CartPole, sào đang gần thẳng đứng và đẩy bên nào cũng sửa được ở bước sau. Chính sách không cần chắc chắn ở đó, và policy gradient không có lý do để đẩy xác suất về 1 ở những trạng thái mà hai hành động gần như ngang nhau. Nó chỉ chắc chắn ở những trạng thái nguy hiểm, nơi chọn sai là đổ. Đây là một khác biệt với DQN: `argmax` của Q luôn tất định, còn chính sách ở đây biết mình **không cần** chắc chắn ở đâu.
+
+Đừng đọc 480,1 so với 449,85 là "lấy mẫu tốt hơn argmax": chỉ 20 tập, một mạng, chênh lệch nằm trong mức nhiễu. Điều rút ra được là chính sách ngẫu nhiên này **không kém** chính sách tham lam suy ra từ nó.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="36.3">
+**Chuẩn hóa trong tập.** Mẹo phổ biến: trừ trung bình và chia độ lệch chuẩn của $G_t$ trong từng tập, thay cho mạng giá trị. Chạy `hoc("chuan_hoa")` và so với REINFORCE trơn (trang 2) và có baseline học được (trang 3).
+
+<Fragment slot="dap-an">
+
+```python
+_ = hoc("chuan_hoa")
+```
+
+```text title="Output"
+100 23.0 68.25
+200 57.6 110.45
+300 133.9 301.45
+400 236.3 500.0
+500 346.2 478.55
+600 380.5 500.0
+700 446.5 462.55
+800 472.8 496.05
+900 481.3 466.35
+1000 477.9 500.0
+```
+
+Chuẩn hóa trong tập nằm **giữa** hai cách kia ở giai đoạn đầu: tập 500 được 346,2, so với 275,5 của REINFORCE trơn và 431,2 của baseline học được (cùng seed 0). Về cuối nó bắt kịp: 477,9 ở tập 1000, và chính sách tham lam chạm 500 lần đầu ở tập 400.
+
+Trừ trung bình của $G_t$ trong tập làm khoảng nửa số hành động có trọng số âm, nên tác tử bắt đầu phân biệt tốt và xấu ngay trong một tập, điều REINFORCE trơn không làm. Chia cho độ lệch chuẩn giữ cho độ lớn bước cập nhật ổn định giữa tập ngắn và tập dài. Nhưng nó không biết gì về **trạng thái**: một hành động ở đầu tập luôn có $G_t$ lớn hơn trung bình của tập, nên vẫn bị đẩy lên chỉ vì nó ở đầu. Baseline học được $V(s_t)$ sửa được đúng điều đó. Mẹo chuẩn hóa vẫn rất phổ biến vì nó rẻ, không cần mạng thứ hai, và PPO thường chuẩn hóa cả lợi thế trong mỗi lô.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Khi nào dùng policy gradient thay vì DQN?**
+
+<p lang="en"><em>When would you use a policy gradient method instead of DQN?</em></p>
+
+*Gợi ý:* hành động liên tục hoặc rất nhiều hành động; cần chính sách ngẫu nhiên; muốn chính sách thay đổi mượt. Đổi lại policy gradient thường on-policy nên tốn mẫu hơn (không dùng lại dữ liệu cũ như replay buffer), và ước lượng gradient có phương sai lớn.
+
+**2. Vì sao trừ baseline không làm lệch gradient?**
+
+<p lang="en"><em>Why does subtracting a baseline not bias the policy gradient?</em></p>
+
+*Gợi ý:* kỳ vọng của $\nabla \log \pi(a \mid s)\, b(s)$ theo $a$ bằng $b(s) \nabla \sum_a \pi(a \mid s) = b(s) \nabla 1 = 0$. Điều kiện: $b$ không phụ thuộc vào hành động. Baseline tốt nhất gần với $V(s)$, cho trọng số là lợi thế.
+
+**3. Đánh đổi giữa thiên lệch và phương sai trong ước lượng lợi thế là gì?**
+
+<p lang="en"><em>Explain the bias-variance trade-off in advantage estimation.</em></p>
+
+*Gợi ý:* dùng lợi nhuận Monte Carlo cả tập thì không thiên lệch nhưng phương sai lớn; dùng mục tiêu TD một bước thì phương sai nhỏ nhưng thiên lệch theo sai số của critic. $n$ bước hoặc GAE với $\lambda$ trượt giữa hai đầu; $\lambda$ gần 1 gần Monte Carlo, $\lambda = 0$ là TD một bước.
+</Khung>

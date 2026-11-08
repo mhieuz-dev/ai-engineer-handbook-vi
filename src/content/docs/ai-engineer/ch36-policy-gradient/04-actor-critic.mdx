@@ -1,0 +1,74 @@
+---
+title: Actor-critic
+description: "Thay lợi nhuận thật của cả tập bằng mục tiêu TD một bước r + gamma V(s'): bớt phương sai, nhưng thêm thiên lệch khi V còn sai. Trên CartPole, actor-critic một bước học chậm hơn REINFORCE có baseline ở cả 5 seed. Hai phía của một đánh đổi mà GAE trong PPO sẽ cân lại."
+---
+
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Diễn viên và nhà phê bình
+
+REINFORCE có baseline vẫn phải chờ **hết tập** mới biết $G_t$, và $G_t$ là tổng của hàng trăm phần thưởng ngẫu nhiên, nên vẫn nhiễu. Chương 34 đã có cách tránh cả hai: sai khác thời gian. Thay $G_t$ bằng mục tiêu một bước $r_{t+1} + \gamma V(s_{t+1})$, lợi thế thành
+
+$$
+A_t = r_{t+1} + \gamma\,(1 - d_{t+1})\, V(s_{t+1}) - V(s_t),
+$$
+
+chính là sai số TD của $V$. Thuật toán có hai mạng: mạng chính sách là **diễn viên** (actor) chọn hành động, mạng giá trị là **nhà phê bình** (critic) chấm từng bước xem kết quả tốt hơn hay tệ hơn mong đợi. Gọi chung là <Term id="actor-critic">actor-critic</Term>. Nhà phê bình học bằng chính mục tiêu TD đó.
+
+Đổi $G_t$ lấy mục tiêu một bước là một **đánh đổi**:
+
+- **Phương sai giảm**: mục tiêu chỉ chứa một phần thưởng ngẫu nhiên, phần còn lại là $V(s_{t+1})$, một con số đã được trung bình hóa qua nhiều tập.
+- **Thiên lệch tăng**: nếu $V$ sai, mục tiêu sai theo, và gradient chính sách bị kéo lệch một cách có hệ thống. Lúc đầu $V$ là một mạng ngẫu nhiên, nên lúc đầu nhà phê bình chấm gần như bừa.
+
+REINFORCE đứng ở đầu "không thiên lệch, phương sai lớn"; actor-critic một bước đứng ở đầu kia.
+
+## Chạy thử
+
+Hàm `hoc` đã có nhánh `"actor_critic"`. Nhà phê bình cần học nhanh hơn diễn viên để lời chấm của nó sớm có ý nghĩa, nên đặt `lr_v=1e-2` (thử `1e-3` và `3e-3` trên 3 seed đều kém hơn):
+
+```python
+pi_ac = hoc("actor_critic", lr_v=1e-2)
+```
+
+```text title="Output"
+100 16.8 9.4
+200 45.4 67.15
+300 126.2 119.95
+400 51.0 77.6
+500 157.5 500.0
+600 253.2 174.0
+700 140.3 189.8
+800 223.2 295.0
+900 397.1 500.0
+1000 322.4 144.5
+```
+
+Tập 100, chính sách tham lam chỉ được **9,4**, kém cả mạng chưa học của Chương 35: nhà phê bình còn sai, và lời chấm sai đẩy diễn viên về một hành động cố định. Sau đó nó học dần, có lúc chạm 500 (tập 500 và 900), nhưng điểm lúc học sau 1000 tập mới 322, so với 458 của REINFORCE có baseline ở trang 3.
+
+<HinhKetQua src="/hinh/ch36/h1_ba_cach.svg" alt="Biểu đồ đường, trục ngang là số tập từ 100 tới 1000, trục dọc là điểm trung bình lúc học từ 0 tới 500. Ba đường đậm là trung bình 5 seed, mỗi đường có một dải mờ từ seed thấp nhất tới seed cao nhất. Đường REINFORCE có baseline lên nhanh nhất và cao nhất. Đường REINFORCE trơn lên chậm hơn và dải rộng hơn. Đường actor-critic một bước thấp nhất, bắt đầu gần 18 và chỉ lên khoảng 220 sau 1000 tập." so="36.1" chuThich="Ba cách tính trọng số cho gradient chính sách trên CartPole, 5 seed mỗi cách. Mỗi điểm là điểm trung bình của 100 tập lúc học (chính sách có lấy mẫu). Dải mờ nối seed thấp nhất và cao nhất.">
+**Đọc hình.** Đường đậm là trung bình 5 seed; dải mờ cho biết các seed tản ra tới đâu.
+
+**Điều cần thấy.** Baseline học được thắng rõ trên 5 seed: trung bình 408,8 ở tập 500 so với 291,4 của REINFORCE trơn, và dải của nó hẹp hơn hẳn (ở tập 1000, seed kém nhất 458,2, so với 317,1 của REINFORCE trơn). Phương sai thấp hơn hiện ra cả trong đường học: các seed đi sát nhau. Actor-critic một bước thua ở mọi điểm, và không chỉ trung bình: ở **mọi** mốc 100 tập, seed tốt nhất của nó vẫn thấp hơn seed kém nhất của REINFORCE có baseline. Sau 1000 tập nó mới ở khoảng 221.
+</HinhKetQua>
+
+## Vì sao không chỉ chọn một đầu
+
+Kết quả này **không** có nghĩa actor-critic kém. Trên CartPole, một tập dài nhất 500 bước và phần thưởng không có nhiễu, nên phương sai của REINFORCE có baseline chưa phải vấn đề lớn, còn thiên lệch của nhà phê bình non trẻ thì có. Ở những bài toán tập rất dài hoặc không bao giờ kết thúc (một robot vận hành liên tục), chờ hết tập là không thể, và mục tiêu TD là bắt buộc.
+
+Giữa hai đầu có cả một dải: mục tiêu $n$ bước cộng $n$ phần thưởng thật rồi mới dùng $V$, với $n = 1$ là actor-critic và $n$ bằng cả tập là REINFORCE có baseline. **GAE** (generalized advantage estimation, Schulman và cộng sự, 2016) lấy trung bình có trọng số của mọi $n$, với một tham số $\lambda$ trượt mượt giữa hai đầu. PPO ở Chương 37 dùng GAE với $\lambda = 0{,}95$, gần phía REINFORCE nhưng vẫn để nhà phê bình gánh bớt nhiễu.
+
+<TuKiemTra
+	cauHoi="Ở actor-critic, nếu nhà phê bình V học hoàn hảo (V = V^pi chính xác), thì kỳ vọng của lợi thế TD r + gamma V(s') − V(s) khi a lấy theo pi bằng bao nhiêu?"
+	luaChon={['Bằng V(s)', 'Bằng 0', 'Bằng r', 'Bằng Q(s, a)']}
+	dapAn={1}
+	giaiThich="Kỳ vọng của r + gamma V(s') theo cả a ~ pi lẫn s' chính là V(s) theo phương trình Bellman của Chương 33, nên lợi thế có kỳ vọng 0. Với một a cụ thể, kỳ vọng theo s' là Q(s, a) − V(s): dương nếu a tốt hơn trung bình, âm nếu kém hơn. Đó chính xác là tín hiệu ta muốn: đẩy lên hành động tốt hơn mức thường, đẩy xuống hành động kém hơn."
+/>
+
+<Khung loai="loi">
+**Cho diễn viên và nhà phê bình cùng learning rate rồi kết luận actor-critic hỏng.** Nhà phê bình phải đi trước; ở đây `lr_v=1e-3` cho kết quả kém hơn hẳn `1e-2`. Hai mạng có hai bài toán khác nhau (một bên hồi quy, một bên gradient chính sách), và thường cần hai learning rate khác nhau.
+
+**Quên $(1 - d)$ trong mục tiêu TD.** Khi sào đổ, không có $V(s')$ nào để cộng. Như Chương 35, chỉ `terminated` mới bỏ phần tương lai; tập bị cắt ở bước 500 vẫn cộng $\gamma V(s')$.
+</Khung>
