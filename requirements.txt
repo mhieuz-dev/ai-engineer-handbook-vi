@@ -7,3 +7,5 @@ pandas==3.1.0
 # Phần III trở đi. Bản CPU để output lặp lại được: uv pip install -r requirements.txt --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
 torch==2.14.1+cpu
 torchvision==0.29.1+cpu
+# Phần III-B trở đi: môi trường học tăng cường
+gymnasium==1.4.0

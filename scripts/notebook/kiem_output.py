@@ -4,6 +4,7 @@ g = {}; out = None; ok = bad = 0
 for c in nb["cells"]:
     s = "".join(c["source"])
     if c["cell_type"] == "code":
+        if s.lstrip().startswith("!"): continue   # lệnh cài thư viện của Colab, .venv đã có sẵn
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf): exec(s, g)
         out = buf.getvalue().strip()

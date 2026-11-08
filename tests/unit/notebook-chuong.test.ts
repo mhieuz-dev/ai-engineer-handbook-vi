@@ -38,9 +38,9 @@ for (const ch of CHUONG.filter((c) => c.notebook && c.so !== 10)) {
 			}
 		});
 
-		it('mỗi ô code có một khối "Output mong đợi" ngay sau', () => {
+		it('mỗi ô code có một khối "Output mong đợi" ngay sau (trừ ô cài thư viện bắt đầu bằng "!")', () => {
 			nb.cells.forEach((o, i) => {
-				if (o.cell_type !== 'code') return;
+				if (o.cell_type !== 'code' || nguon(o).trimStart().startsWith('!')) return;
 				expect(nguon(nb.cells[i + 1]), nguon(o).slice(0, 60)).toMatch(/^Output mong đợi[^\n]*:\n+```text\n/);
 			});
 		});
