@@ -1,0 +1,142 @@
+---
+title: Q-learning
+description: "Học bảng Q chỉ từ những bước đã trải qua, không cần bảng chuyển. Trên FrozenLake, với epsilon 0,1 tác tử chỉ tới đích một lần trong 10 000 tập đầu vì phần thưởng quá thưa, còn epsilon 0,5 tới chính sách tối ưu 82,35% ở tập thứ 8000. Trung bình 20 lần chạy, hành động hoàn toàn ngẫu nhiên vẫn học được chính sách tới đích 77%."
+---
+
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Bỏ mô hình đi
+
+Cả hai thuật toán của trang trước đều nhìn vào `T`: tính tổng $\sum_{s'} p(s' \mid s, a)\,[\ldots]$ trên mọi trạng thái có thể tới. Tác tử thật không có bảng đó. Nó chỉ có **trải nghiệm**: đang ở $s$, làm $a$, nhận $r$, thấy mình tới $s'$. Một bộ bốn $(s, a, r, s')$ như vậy là một **mẫu** từ chính phân phối mà tổng kia lấy kỳ vọng.
+
+Viết phương trình tối ưu Bellman cho $Q$ thay vì $V$:
+
+$$
+Q^*(s, a) = \mathbb{E}_{s'}\Big[\, r + \gamma \max_{a'} Q^*(s', a') \,\Big]
+$$
+
+Kỳ vọng thì không tính được nếu không biết $p$. Nhưng trung bình thì ước lượng được bằng mẫu, như bandit ở Chương 33 ước lượng mức trả của mỗi tay. <Term id="q-learning">Q-learning</Term> (Watkins, 1989) làm đúng như vậy: sau mỗi bước, kéo $Q(s, a)$ một chút về phía giá trị mà mẫu vừa thấy gợi ý,
+
+$$
+Q(s, a) \leftarrow Q(s, a) + \alpha\,\Big[\, \underbrace{r + \gamma \max_{a'} Q(s', a')}_{\text{mục tiêu}} - Q(s, a) \,\Big]
+$$
+
+Đây là đúng dạng "ước lượng cũ cộng bước nhân sai số" của bandit, với $\alpha$ thay cho $1/n$. Đại lượng trong ngoặc vuông gọi là <Term id="sai-khac-thoi-gian">sai khác thời gian</Term> (temporal difference, TD): mục tiêu dùng chính ước lượng $Q(s', \cdot)$ của bước sau để sửa ước lượng của bước này. Nếu $s'$ là trạng thái kết thúc, sau đó không còn gì, mục tiêu chỉ là $r$.
+
+## Cài đặt
+
+Hành động chọn theo epsilon-greedy trên $Q$ hiện tại. Để đo tiến độ, cứ mỗi 2000 tập ta chấm **chính sách tham lam** theo $Q$ lúc đó. Việc chấm dùng `T` để tính chính xác xác suất tới đích (lặp $V \leftarrow R_\pi + P_\pi V$ 10 000 lần, tức xác suất tới đích trong 10 000 bước, không còn khác gì không giới hạn), thay cho mô phỏng hàng nghìn tập vừa chậm vừa nhiễu. **Tác tử không bao giờ thấy `T`**: nó chỉ gọi `env.step`.
+
+```python
+def ti_le_toi_dich(Q, so_buoc=10_000):               # chấm chính sách tham lam theo Q; chỉ người chấm dùng T
+    pi = Q.argmax(1)
+    P_pi, R_pi = T[np.arange(16), pi], R[np.arange(16), pi].copy()
+    P_pi[CUOI] = 0
+    R_pi[CUOI] = 0
+    V = np.zeros(16)
+    for _ in range(so_buoc):                         # lặp thay cho giải hệ: đúng cả khi chính sách đi lòng vòng mãi
+        V = R_pi + P_pi @ V
+    return round(V[0], 4)
+
+def q_learning(n_tap, eps, alpha=0.1, gamma=GAMMA, seed=0, moi=2000):
+    rng = np.random.default_rng(seed)
+    Q = np.zeros((16, 4))
+    env.reset(seed=seed)
+    for tap in range(1, n_tap + 1):
+        s, _ = env.reset()
+        while True:
+            a = int(rng.integers(4)) if rng.random() < eps else int(Q[s].argmax())   # epsilon-greedy
+            s2, r, ket_thuc, cat_ngang, _ = env.step(a)
+            muc_tieu = r if ket_thuc else r + gamma * Q[s2].max()   # tới hố hay đích: không còn gì phía sau
+            Q[s, a] += alpha * (muc_tieu - Q[s, a])                 # cập nhật TD
+            s = s2
+            if ket_thuc or cat_ngang:
+                break
+        if tap % moi == 0:
+            print(tap, ti_le_toi_dich(Q))
+    return Q
+Q_01 = q_learning(20_000, eps=0.1)
+```
+
+```text title="Output"
+2000 0.0
+4000 0.0
+6000 0.0
+8000 0.0
+10000 0.0
+12000 0.7805
+14000 0.7805
+16000 0.7568
+18000 0.7805
+20000 0.7805
+```
+
+Với $\varepsilon = 0{,}1$, chính sách tham lam tới đích **0%** suốt 10 000 tập đầu, rồi đột ngột nhảy lên 78%. Lý do nằm ở hai điều đã gặp ở Chương 33. Thứ nhất, phần thưởng **thưa**: chỉ có ở ô đích, và chừng nào tác tử chưa tới đích lần nào thì mọi mục tiêu TD đều bằng 0, bảng $Q$ đứng yên ở 0. Thứ hai, khi mọi $Q$ bằng nhau, `argmax` luôn trả về hành động 0, "trái". Tác tử tham lam 90% số bước đi trái, đâm vào tường cột 0, trượt xuống dần và rơi hố 12; mười phần trăm bước ngẫu nhiên quá ít để nó lạc tới ô 15. Đếm lại trong lần chạy này: 7563 trên 10 000 tập đầu kết thúc ở hố 12, 2435 tập ở hố 5, và tác tử tới đích **đúng một lần**, ở tập 9313. Một lần đó đủ để $Q$ của ô 14 nhích khỏi 0, rồi giá trị bắt đầu lan ngược như ở trang 2.
+
+Tăng khám phá lên $\varepsilon = 0{,}5$:
+
+```python
+Q_05 = q_learning(20_000, eps=0.5)
+```
+
+```text title="Output"
+2000 0.625
+4000 0.7368
+6000 0.7368
+8000 0.8235
+10000 0.8235
+12000 0.8235
+14000 0.8235
+16000 0.8235
+18000 0.8235
+20000 0.8235
+```
+
+Ngay sau 2000 tập đã tới đích 62,5%, và từ tập 8000 trở đi là đúng **82,35%**, chính sách tối ưu mà policy iteration tìm được ở trang 1. Q-learning tìm ra nó mà chưa từng nhìn vào bảng chuyển, chỉ từ khoảng 20 000 tập chơi thử.
+
+## Học từ hành động không phải của mình
+
+Có một điều lạ ở đây. Tác tử với $\varepsilon = 0{,}5$ chọn bừa **nửa số bước**; chính sách nó **thực sự dùng** để chơi kém xa tối ưu. Vậy mà bảng $Q$ nó học lại mô tả chính sách **tham lam**, chính sách không bao giờ chọn bừa. Lý do nằm ở mục tiêu: $r + \gamma \max_{a'} Q(s', a')$ giả định từ $s'$ trở đi ta chọn hành động tốt nhất, bất kể bước sau tác tử thật sự làm gì. Q-learning là thuật toán <Term id="off-policy">off-policy</Term>: nó học về một chính sách (tham lam) trong khi hành động theo một chính sách khác (epsilon-greedy).
+
+Đẩy tới cùng: nếu tác tử **chọn bừa hoàn toàn**, $\varepsilon = 1$, nó vẫn học được. Hình 34.3 so ba mức khám phá, mỗi mức trung bình 20 lần chạy với 20 seed khác nhau, vì một lần chạy rất nhiễu:
+
+<HinhKetQua src="/hinh/ch34/h3_q_learning.svg" alt="Biểu đồ đường, trục ngang là số tập từ 0 tới 20 000, trục dọc là xác suất tới đích của chính sách tham lam, từ 0 tới 0,9. Đường ngang đứt nét ở 0,8235 là chính sách tối ưu. Đường epsilon 0,5 lên rất nhanh, khoảng 0,59 ở tập 1000 và 0,78 ở tập 2000, rồi đi ngang quanh 0,78 tới 0,80. Đường epsilon 1 lên chậm hơn, 0,27 ở tập 1000, 0,67 ở tập 4000, rồi lên dần tới khoảng 0,77. Đường epsilon 0,1 nằm ở 0 trong khoảng 1000 tập đầu rồi tăng chậm, chỉ 0,36 ở tập 10 000 và 0,59 ở tập 20 000." so="34.3" chuThich="Q-learning trên FrozenLake, alpha = 0,1, gamma = 0,99, trung bình 20 lần chạy. Mỗi điểm là xác suất tới đích của chính sách tham lam theo Q, chấm mỗi 500 tập.">
+**Đọc hình.** Mỗi điểm là trung bình của 20 lần chạy độc lập. Trục dọc không phải là phần thưởng tác tử nhận được trong lúc học (khi đó nó còn chọn bừa), mà là chất lượng của chính sách tham lam nếu dừng học ở đó.
+
+**Điều cần thấy.** $\varepsilon = 0{,}1$ chậm nhất xa: trung bình chỉ 0,59 sau 20 000 tập, vì nhiều lần chạy kẹt ở 0 rất lâu như lần chạy ở trên. Chọn bừa hoàn toàn ($\varepsilon = 1$) học **chậm hơn** $\varepsilon = 0{,}5$ ở đầu, vì nó ít khi đi đủ xa trên đường tốt để tới đích, nhưng vẫn lên tới khoảng 0,77. Không đường nào chạm hẳn 0,8235: $\alpha = 0{,}1$ cố định làm $Q$ dao động quanh giá trị đúng, và ở những ô mà hai hành động sát nhau, chính sách tham lam nhảy qua lại. Cuối 20 000 tập, 14 trên 20 lần chạy với $\varepsilon = 0{,}5$ đang ở đúng chính sách tối ưu.
+</HinhKetQua>
+
+## Bảng Q học được gần Q* tới đâu
+
+Value iteration ở trang 2 cho $V^*$, từ đó `q_tu_v(V)` cho $Q^*$. So với bảng học bằng $\varepsilon = 0{,}5$:
+
+```python
+Q_sao = q_tu_v(V)                                    # V của trang 2 là V*
+print(np.abs(Q_05 - Q_sao).max().round(3))
+print(Q_05[0].round(3), Q_sao[0].round(3))
+print(Q_05[14].round(3), Q_sao[14].round(3))
+```
+
+```text title="Output"
+0.207
+[0.549 0.536 0.523 0.524] [0.542 0.528 0.528 0.522]
+[0.715 0.867 0.757 0.811] [0.733 0.863 0.821 0.781]
+```
+
+Ở ô xuất phát, bốn giá trị học được lệch $Q^*$ không quá 0,01, và hành động lớn nhất vẫn là "trái" (0,549). Ở ô 14, sai lệch lớn hơn nhiều (tới 0,064 ở "phải"), dù đó là ô gần đích nhất. Chỗ sai lớn nhất cả bảng là 0,207. Q-learning không cần $Q$ đúng ở mọi nơi; nó chỉ cần **thứ tự** các hành động đúng, như value iteration ở trang 2. Muốn $Q$ hội tụ thật sự, $\alpha$ phải giảm dần theo số lần thăm mỗi cặp $(s, a)$, đúng như $1/n$ của bandit; định lý hội tụ của Watkins và Dayan (1992) đòi điều đó, cùng với việc mọi cặp được thăm vô hạn lần.
+
+<TuKiemTra
+	cauHoi="Một bạn viết muc_tieu = r + gamma * Q[s2].max() ở mọi bước, kể cả khi ket_thuc là True. Trên FrozenLake điều gì xảy ra?"
+	luaChon={['Không khác gì, vì Q của hố và đích luôn bằng 0', 'Code báo lỗi IndexError', 'Q học sai hoàn toàn và không bao giờ tới đích', 'Học nhanh hơn vì mục tiêu lớn hơn']}
+	dapAn={0}
+	giaiThich="Ở FrozenLake, tác tử không bao giờ làm hành động nào ở hố hay đích (tập đã kết thúc), nên Q của các ô đó không bao giờ được cập nhật và giữ nguyên 0. Mục tiêu khi đó vẫn đúng. Nhưng đừng dựa vào điều này: ở môi trường khác, trạng thái kết thúc có thể trùng chỉ số với trạng thái bình thường (ví dụ CartPole, nơi trạng thái là vector số thực), và bỏ kiểm tra terminated sẽ làm giá trị lan sai. Tách bạch terminated (không có tương lai) với truncated (có tương lai, chỉ là bị cắt) là bắt buộc ở DQN, Chương 35."
+/>
+
+<Khung loai="loi">
+**Dùng `ket_thuc or cat_ngang` để quyết định mục tiêu.** Tập bị cắt ở bước 100 không có nghĩa là tác tử đã tới nơi không có tương lai; nó chỉ hết giờ. Đặt mục tiêu bằng $r$ khi `truncated` là dạy tác tử rằng ô đó có giá trị 0, sai. Chỉ `terminated` mới bỏ phần $\gamma \max Q(s', \cdot)$.
+
+**Khởi tạo $Q = 0$ rồi tin `argmax`.** Với phần thưởng thưa, mọi $Q$ bằng 0 rất lâu, và `argmax` luôn chọn hành động đầu tiên. Tác tử "tham lam" khi đó thực ra là một chính sách cố định, ngớ ngẩn. Hoặc tăng khám phá, hoặc phá hòa ngẫu nhiên, hoặc khởi tạo lạc quan ($Q$ ban đầu lớn hơn mọi giá trị thật, để tác tử tự muốn thử mọi hành động).
+</Khung>

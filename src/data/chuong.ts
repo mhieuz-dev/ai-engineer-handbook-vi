@@ -60,7 +60,7 @@ const BANG: [number, string, string, string, XuatBan?][] = [
 	[31, 'phan-3', 'GAN và Diffusion', 'gan-diffusion', { trangThai: 'xong', notebook: 'ch31_gan_diffusion.ipynb' }],
 	[32, 'phan-3', 'Dự án Phần III', 'du-an-phan-3', { trangThai: 'xong', notebook: 'ch32_du_an_phan_3.ipynb' }],
 	[33, 'phan-3b', 'Bài toán RL', 'bai-toan-rl', { trangThai: 'xong', notebook: 'ch33_bai_toan_rl.ipynb' }],
-	[34, 'phan-3b', 'Quy hoạch động và Q-learning', 'q-learning'],
+	[34, 'phan-3b', 'Quy hoạch động và Q-learning', 'q-learning', { trangThai: 'xong', notebook: 'ch34_q_learning.ipynb' }],
 	[35, 'phan-3b', 'Deep Q-Network', 'dqn'],
 	[36, 'phan-3b', 'Policy gradient', 'policy-gradient'],
 	[37, 'phan-3b', 'PPO và Gymnasium', 'ppo-gymnasium'],

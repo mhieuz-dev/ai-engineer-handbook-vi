@@ -1,0 +1,145 @@
+---
+title: Policy iteration
+description: "Đánh giá một chính sách, chọn tham lam theo Q, lặp lại. Trên FrozenLake chỉ cần 3 lần đánh giá: chính sách ngẫu nhiên tới đích 1,39%, sau một vòng 78,05%, sau hai vòng 82,35% rồi dừng. Phương trình tối ưu Bellman cho biết đó là chính sách tốt nhất có thể."
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+<CanBietTruoc>
+Toàn bộ Chương 33: vòng lặp tác tử và môi trường, epsilon-greedy, MDP, lợi nhuận có chiết khấu, hàm giá trị $V^\pi$ và $Q^\pi$, phương trình Bellman.
+
+<Fragment slot="sau-chuong">
+Tìm chính sách tốt nhất khi biết mô hình môi trường, bằng hai thuật toán quy hoạch động: policy iteration và value iteration. Rồi bỏ mô hình đi: học bảng $Q$ chỉ từ những bước đã trải qua bằng Q-learning, và thấy khám phá quyết định thế nào khi phần thưởng thưa. So Q-learning với SARSA trên bài vách đá để hiểu khác biệt giữa học off-policy và on-policy.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch34_q_learning.ipynb" />
+
+## Từ một bước tới nhiều bước
+
+Bài tập 33.3 kết thúc với một phát hiện: lấy chính sách ngẫu nhiên, tính $Q^\pi$, rồi ở mỗi ô chọn hành động có $Q^\pi$ lớn nhất, xác suất tới đích nhảy từ 1,39% lên 78,05%. Chương này hỏi tiếp: làm lại bước đó với chính sách mới thì sao, và khi nào dừng?
+
+Câu trả lời dựa trên một kết quả gọi là **định lý cải thiện chính sách**: nếu $\pi'$ chọn tham lam theo $Q^\pi$, thì $V^{\pi'}(s) \ge V^\pi(s)$ ở **mọi** trạng thái. Lý do trực giác: ở bước đầu, $\pi'$ chọn hành động mà theo chính $Q^\pi$ là ít nhất ngang hành động của $\pi$; ở bước sau lại thế, và cứ thế. Một chính sách không bao giờ tệ đi qua mỗi vòng, mà số chính sách tất định là hữu hạn ($4^{16}$ với FrozenLake), nên vòng lặp phải dừng. Khi nó dừng, chọn tham lam không đổi được gì nữa. Thuật toán gọi là <Term id="quy-hoach-dong">quy hoạch động</Term> (dynamic programming) vì nó giải bài toán lớn bằng cách dùng lại lời giải của các bài con: giá trị của một ô được tính từ giá trị của các ô kề.
+
+## Dựng lại công cụ của Chương 33
+
+Chương này dùng $\gamma = 0{,}99$ thay cho $\gamma = 1$ của Chương 33. Với $\gamma = 1$, một chính sách đi lòng vòng mãi trên vùng an toàn mà không bao giờ tới đích lại có giá trị trông gần như bằng chính sách tới đích, vì lần lữa không bị phạt; bài tập 34.1 sẽ cho thấy điều đó làm hỏng Q-learning ra sao. Với $\gamma = 0{,}99$, mỗi bước chờ làm giá trị nhỏ đi 1%. Để vẫn đọc được kết quả theo nghĩa "tới đích bao nhiêu phần trăm", ta đánh giá thêm mỗi chính sách với $\gamma = 1$.
+
+```python
+!pip install gymnasium
+```
+
+```python
+import gymnasium as gym
+import numpy as np
+env = gym.make("FrozenLake-v1")
+P = env.unwrapped.P
+T = np.zeros((16, 4, 16))                            # T[s, a, s'] = p(s' | s, a), như Chương 33
+R = np.zeros((16, 4))                                # phần thưởng kỳ vọng
+for s in range(16):
+    for a in range(4):
+        for p, s2, r, xong in P[s][a]:
+            T[s, a, s2] += p
+            R[s, a] += p * r
+CUOI = [5, 7, 11, 12, 15]                            # bốn hố và đích
+GAMMA = 0.99
+
+def danh_gia(pi, gamma=GAMMA):                       # giải hệ Bellman, như Chương 33
+    P_pi = np.einsum("sa,sat->st", pi, T)
+    R_pi = (pi * R).sum(1)
+    P_pi[CUOI] = 0
+    R_pi[CUOI] = 0
+    return np.linalg.solve(np.eye(16) - gamma * P_pi, R_pi)
+
+def q_tu_v(V, gamma=GAMMA):                          # nhìn trước một bước: Q = R + gamma T V
+    Q = R + gamma * np.einsum("sat,t->sa", T, V)
+    Q[CUOI] = 0
+    return Q
+```
+
+## Policy iteration
+
+<Term id="policy-iteration">Policy iteration</Term> xen kẽ hai bước cho tới khi chính sách không đổi: **đánh giá** (giải hệ Bellman để có $V^\pi$) và **cải thiện** (chọn tham lam theo $Q^\pi$). Mỗi vòng in ra $V^\pi(0)$ với $\gamma = 0{,}99$, xác suất tới đích (đánh giá lại với $\gamma = 1$), và số ô mà chính sách mới chọn khác chính sách cũ:
+
+```python
+pi = np.full((16, 4), 0.25)                          # bắt đầu từ chính sách ngẫu nhiên
+for vong in range(10):
+    V = danh_gia(pi)                                 # đánh giá
+    tham = q_tu_v(V).round(10).argmax(1)             # cải thiện: tham lam theo Q (làm tròn để hòa thì chọn hành động đầu)
+    pi_moi = np.eye(4)[tham]
+    print(vong, round(V[0], 4), round(danh_gia(pi, 1.0)[0], 4), int((pi_moi != pi).any(1).sum()))
+    if (pi_moi == pi).all():                         # không ô nào đổi: dừng
+        break
+    pi = pi_moi
+```
+
+```text title="Output"
+0 0.0124 0.0139 16
+1 0.5325 0.7805 1
+2 0.542 0.8235 0
+```
+
+Ba lần đánh giá là xong. Vòng 0 là chính sách ngẫu nhiên: tới đích 1,39%, và chọn tham lam đổi cả 16 hàng (từ phân phối đều thành một hành động). Vòng 1 là chính sách của bài tập 33.3, 78,05%; lần này chỉ **một** ô đổi hành động. Vòng 2 đạt **82,35%**, và chọn tham lam không đổi gì nữa.
+
+Chính sách cuối, vẽ thành mũi tên:
+
+```python
+MUI = "←↓→↑"
+desc = env.unwrapped.desc.astype(str).flatten()
+for i in range(4):
+    print(" ".join(desc[4 * i + j] if desc[4 * i + j] in "HG" else MUI[tham[4 * i + j]] for j in range(4)))
+```
+
+```text title="Output"
+← ↑ ↑ ↑
+← H ← H
+↑ ↓ ← H
+H → ↓ G
+```
+
+Ô duy nhất đổi ở vòng cuối là ô 2: từ "trái" thành "lên". Cả hàng trên cùng giờ đều đi lên hoặc đi trái, tức là **đâm vào tường**. Đi lên ở ô 1, 2, 3 không bao giờ đưa tác tử xuống hàng hai, nơi có hố 5 và hố 7; chỉ có trượt sang trái mới đưa nó dần về cột 0, rồi từ ô 0 đi xuống men theo cột trái. Ô 6, bị kẹp giữa hai hố, chọn trái hay phải đều như nhau (1/3 rơi hố); hai hành động bằng nhau nên `round(10)` chọn cái đầu, "trái".
+
+<HinhKetQua src="/hinh/ch34/h1_toi_uu.svg" alt="Lưới 4 nhân 4 của hồ băng. Mỗi ô băng có một mũi tên chỉ hành động của chính sách tối ưu và giá trị tối ưu bên dưới. Hàng trên: ô 0 mũi tên trái, giá trị 0,542; ô 1, 2, 3 mũi tên lên, giá trị 0,499, 0,471, 0,457. Cột trái đi xuống: ô 4 trái 0,558, ô 8 lên 0,592. Hàng ba: ô 9 xuống 0,643, ô 10 trái 0,615. Hàng cuối: ô 13 phải 0,742, ô 14 xuống 0,863. Bốn hố tô tối, đích tô cam." so="34.1" chuThich="Chính sách tối ưu của FrozenLake 4 x 4 trơn với gamma = 0,99 và giá trị tối ưu của mỗi ô. Mũi tên là hướng tác tử chọn, không phải hướng nó chắc chắn đi.">
+**Đọc hình.** Mũi tên là hành động được chọn ở ô đó; số bên dưới là $V^*(s)$, lợi nhuận kỳ vọng có chiết khấu nếu đặt tác tử vào ô này và từ đó theo chính sách tối ưu.
+
+**Điều cần thấy.** Hầu hết mũi tên chỉ vào tường hoặc ra xa hố, gần như không mũi tên nào chỉ thẳng về đích. Trên băng trơn, hành động tốt không phải là hành động đưa tới nơi cần tới, mà là hành động mà **cả ba khả năng trượt** đều an toàn. Ô 4 (0,558) có giá trị cao hơn ô xuất phát (0,542) dù xa đích hơn theo đường thẳng, vì từ ô 4 tác tử đã ở cột an toàn.
+</HinhKetQua>
+
+## Có chắc là tốt nhất
+
+Policy iteration dừng khi chính sách tham lam theo chính hàm giá trị của nó. Khi đó $V$ thỏa:
+
+$$
+V^*(s) = \max_a \sum_{s'} p(s' \mid s, a)\,\big[\, r(s, a, s') + \gamma\, V^*(s') \,\big]
+$$
+
+Đây là <Term id="phuong-trinh-bellman">phương trình tối ưu Bellman</Term>. Khác phương trình của Chương 33 ở đúng một chỗ: trung bình theo $\pi(a \mid s)$ được thay bằng $\max_a$. Người ta chứng minh được nó có **đúng một nghiệm** $V^*$ khi $\gamma < 1$, và chính sách nào tham lam theo $V^*$ cũng là chính sách tối ưu: không chính sách nào cho giá trị lớn hơn ở bất kỳ trạng thái nào. Kiểm lại bằng số: thế $V$ cuối vào vế phải.
+
+```python
+chenh = np.abs(q_tu_v(V).max(1) - V).max()          # vế phải trừ vế trái, lớn nhất trên 16 ô
+print(chenh < 1e-12)
+```
+
+```text title="Output"
+True
+```
+
+Chênh lệch lớn nhất nhỏ hơn $10^{-12}$, tức chỉ còn sai số làm tròn của máy tính (trên máy viết bài là khoảng $10^{-16}$). Vậy **82,35%** là giới hạn của hồ băng này: không có cách chơi nào tới đích thường xuyên hơn. Đường ngắn nhất 4,95% của Chương 33 kém gần 17 lần.
+
+<TuKiemTra
+	cauHoi="Policy iteration trên FrozenLake chỉ cần 3 lần đánh giá. Với một MDP có 1000 trạng thái và 10 hành động, mỗi lần đánh giá theo cách của trang này tốn gì nhất?"
+	luaChon={['Chọn tham lam theo Q, vì phải xét 10 hành động', 'Giải hệ 1000 phương trình 1000 ẩn', 'Dựng bảng T', 'Đếm số ô đổi hành động']}
+	dapAn={1}
+	giaiThich="np.linalg.solve trên ma trận n x n tốn cỡ n³ phép tính, tức khoảng 10⁹ với 1000 trạng thái, trong khi chọn tham lam chỉ cỡ n × số hành động × n. Với hàng triệu trạng thái, giải trực tiếp là không thể. Đó là lý do trang sau giới thiệu value iteration: mỗi vòng chỉ một phép nhân ma trận với vector."
+/>
+
+<Khung loai="loi">
+**So sánh chính sách bằng tên hành động khi có hòa.** Ở ô 6, "trái" và "phải" có cùng $Q$. Không làm tròn, sai số dấu phẩy động có thể làm `argmax` nhảy qua lại giữa hai hành động sau mỗi vòng, và vòng lặp `if (pi_moi == pi).all()` không bao giờ dừng dù giá trị đã hội tụ. Làm tròn trước khi `argmax`, hoặc dừng khi $V$ không còn tăng.
+
+**Đọc $V^*$ như xác suất.** Với $\gamma = 0{,}99$, $V^*(0) = 0{,}542$ là lợi nhuận **có chiết khấu**. Chính sách tối ưu đi trung bình khá nhiều bước, nên chiết khấu ăn mất một phần; xác suất tới đích thật là 82,35%.
+</Khung>

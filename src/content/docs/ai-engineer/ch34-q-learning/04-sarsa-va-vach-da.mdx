@@ -1,0 +1,124 @@
+---
+title: SARSA và vách đá
+description: "Đổi một chữ trong công thức Q-learning thành SARSA, thuật toán học về chính chính sách mình đang theo. Trên bài vách đá, trung bình 50 lần chạy, Q-learning học đúng đường ngắn nhất 13 bước sát mép vực nhưng trong lúc học chỉ được -48,5 mỗi tập, còn SARSA đi đường vòng an toàn và được -25,7."
+---
+
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Bài vách đá
+
+Bài toán này là Ví dụ 6.6 trong sách của Sutton và Barto, và có sẵn trong Gymnasium với tên `CliffWalking`. Một lưới 4 hàng, 12 cột. Tác tử xuất phát ở góc dưới trái, đích ở góc dưới phải; giữa hai ô đó, cả hàng đáy là **vực**. Mỗi bước bị trừ 1 điểm, nên tác tử muốn tới đích nhanh. Bước xuống vực bị trừ 100 điểm và bị đưa về ô xuất phát. Khác FrozenLake, ở đây **không trượt**: đi hướng nào tới đúng ô đó.
+
+```python
+vd = gym.make("CliffWalking-v1")                     # thứ tự hành động khác FrozenLake: 0 lên, 1 phải, 2 xuống, 3 trái
+print(vd.observation_space, vd.action_space)
+print(vd.unwrapped.P[36][1], vd.unwrapped.P[36][0], vd.unwrapped.P[35][2])   # ô xuất phát đi phải, đi lên; ô trên đích đi xuống
+```
+
+```text title="Output"
+Discrete(48) Discrete(4)
+[(1.0, np.int64(36), -100, False)] [(1.0, np.int64(24), -1, False)] [(1.0, np.int64(47), -1, True)]
+```
+
+Ô xuất phát là trạng thái 36 (hàng 3, cột 0). Đi phải từ đó là bước xuống vực: phần thưởng -100, quay về 36. Đi lên tới ô 24 với -1. Đường ngắn nhất là đi lên một ô, chạy dọc hàng sát mép vực 11 bước, rồi đi xuống vào đích: **13 bước**, lợi nhuận -13. Đường an toàn hơn đi xa vực thêm một hai hàng, dài 15 hay 17 bước.
+
+## SARSA: học về chính mình
+
+Q-learning lấy mục tiêu $r + \gamma \max_{a'} Q(s', a')$: giả định bước sau chọn hành động **tốt nhất**. Nhưng tác tử dùng epsilon-greedy, nên bước sau nó có $\varepsilon$ khả năng chọn bừa. Nếu thay $\max$ bằng **đúng hành động $a'$ mà tác tử sẽ làm ở bước sau**, ta được <Term id="sarsa">SARSA</Term> (Rummery và Niranjan đề xuất năm 1994; cái tên do Sutton đặt về sau, theo năm thứ dùng trong một lần cập nhật: $s, a, r, s', a'$):
+
+$$
+Q(s, a) \leftarrow Q(s, a) + \alpha\,\big[\, r + \gamma\, Q(s', a') - Q(s, a) \,\big]
+$$
+
+Một chữ khác nhau, nhưng ý nghĩa khác hẳn. SARSA học giá trị của **chính chính sách nó đang theo**, kể cả những bước chọn bừa: nó là thuật toán <Term id="on-policy">on-policy</Term>. Q-learning học giá trị của chính sách tham lam, chính sách nó không theo.
+
+Hai thuật toán chung một hàm, khác ở đúng một dòng. Thông số theo sách: $\alpha = 0{,}5$, $\varepsilon = 0{,}1$, $\gamma = 1$, 500 tập. Hàm trả về bảng $Q$ và lợi nhuận **thực nhận** ở mỗi tập trong lúc học, tức điểm số khi còn khám phá:
+
+```python
+def hoc_vach(cach, n_tap=500, alpha=0.5, eps=0.1, seed=0):
+    rng = np.random.default_rng(seed)
+    Q = np.zeros((48, 4))
+    vd.reset(seed=seed)
+    def chon(s):
+        return int(rng.integers(4)) if rng.random() < eps else int(Q[s].argmax())
+    tong = []
+    for _ in range(n_tap):
+        s, _ = vd.reset()
+        a = chon(s)
+        G = 0
+        while True:
+            s2, r, ket_thuc, cat_ngang, _ = vd.step(a)
+            G += r
+            a2 = chon(s2)                            # hành động thật sự sẽ làm ở bước sau
+            if ket_thuc:
+                muc_tieu = r
+            elif cach == "sarsa":
+                muc_tieu = r + Q[s2, a2]             # SARSA: theo hành động sẽ làm (gamma = 1)
+            else:
+                muc_tieu = r + Q[s2].max()           # Q-learning: theo hành động tốt nhất
+            Q[s, a] += alpha * (muc_tieu - Q[s, a])
+            s, a = s2, a2
+            if ket_thuc or cat_ngang:
+                break
+        tong.append(G)
+    return Q, np.array(tong)
+```
+
+Một lần chạy rất nhiễu, nên chạy mỗi thuật toán 50 lần với 50 seed. Với mỗi lần, ghi lợi nhuận trung bình ở 100 tập cuối (lúc học đã gần ổn định), và độ dài đường đi nếu sau khi học xong ta bỏ khám phá, đi hoàn toàn tham lam theo $Q$ (`None` nếu sau 60 bước vẫn chưa tới đích):
+
+```python
+from collections import Counter
+
+def duong_tham_lam(Q, toi_da=60):                    # số bước tới đích khi đi tham lam, None nếu không tới
+    s, _ = vd.reset()
+    for buoc in range(1, toi_da + 1):
+        s, r, ket_thuc, cat_ngang, _ = vd.step(int(Q[s].argmax()))
+        if ket_thuc:
+            return buoc
+    return None
+
+ket_qua = {}
+for cach in ("sarsa", "q"):
+    ket_qua[cach] = [hoc_vach(cach, seed=k) for k in range(50)]
+    tong = np.array([t for _, t in ket_qua[cach]])
+    print(cach, tong[:, -100:].mean().round(1), Counter(duong_tham_lam(Q) for Q, _ in ket_qua[cach]))
+```
+
+```text title="Output"
+sarsa -25.7 Counter({17: 38, None: 8, 19: 4})
+q -48.5 Counter({13: 50})
+```
+
+Hai thuật toán, hai kết quả trái ngược nhau tùy câu hỏi.
+
+**Học được gì.** Q-learning tìm đúng đường tối ưu 13 bước ở **cả 50/50** lần chạy. SARSA, nếu bỏ khám phá rồi đi tham lam, đi đường vòng 17 bước ở 38 lần và 19 bước ở 4 lần. Q-learning học được chính sách tốt hơn.
+
+**Chơi thế nào trong lúc học.** Lợi nhuận thực nhận trung bình ở 100 tập cuối: SARSA **-25,7**, Q-learning **-48,5**. Q-learning chơi tệ gần gấp đôi. Lý do: nó đi sát mép vực, đúng như chính sách tối ưu, nhưng 10% số bước nó vẫn chọn bừa, và một bước bừa xuống phía dưới là -100. SARSA biết điều đó, vì mục tiêu của nó tính cả những bước bừa của chính nó: với nó, ô sát mép vực **thật sự** nguy hiểm. Nên nó chọn đi xa vực.
+
+<HinhKetQua src="/hinh/ch34/h4_vach_da.svg" alt="Trên: hai lưới 4 nhân 12 của bài vách đá, hàng đáy giữa là vực màu tối. Mỗi ô tô màu theo số lần tác tử ghé qua trong 100 tập cuối, cộng trên 50 lần chạy. Lưới của Q-learning đậm nhất ở hàng ngay trên vực, chạy thẳng từ trái sang phải. Lưới của SARSA đậm ở hàng trên cùng, tác tử đi lên tới hàng 0 rồi chạy ngang rồi đi xuống ở cột cuối. Dưới: hai đường lợi nhuận mỗi tập theo số tập, trung bình 50 lần chạy, làm mượt. Cả hai bắt đầu rất thấp, dưới -100. Đường SARSA lên nhanh và đi ngang quanh -25; đường Q-learning lên tới quanh -50 và nằm dưới đường SARSA suốt từ khoảng tập 50 trở đi." so="34.4" chuThich="Bài vách đá, alpha = 0,5, epsilon = 0,1, 50 lần chạy mỗi thuật toán. Trên: số lần ghé mỗi ô trong 100 tập cuối. Dưới: lợi nhuận thực nhận mỗi tập, trung bình 50 lần chạy, trung bình trượt 10 tập.">
+**Đọc hình.** Hai lưới trên cho biết tác tử **thật sự đi đâu** khi còn khám phá, cộng trên mọi lần chạy. Hai đường dưới là điểm số mỗi tập trong lúc học.
+
+**Điều cần thấy.** Q-learning đi sát mép vực và trả giá bằng những lần rơi: đường của nó nằm dưới SARSA suốt quá trình học. SARSA đi vòng lên tận hàng trên cùng, cách vực hai hàng ở giữa, chậm hơn 4 bước nhưng ít khi rơi. Nếu giảm $\varepsilon$ dần về 0, cả hai sẽ cùng hội tụ về đường tối ưu (bài tập 34.3 thử $\varepsilon$ nhỏ).
+</HinhKetQua>
+
+Còn 8 trên 50 lần chạy SARSA mà đường tham lam không tới đích sau 60 bước: tác tử kẹt ở hai hàng trên, hoặc đâm mãi vào tường phía trên (6 lần), hoặc đi qua đi lại giữa hai ô (2 lần). Bảng $Q$ của SARSA mô tả chính sách **có khám phá**; ở những ô mà nó hiếm khi phải ra quyết định nghiêm túc, $Q$ với $\alpha = 0{,}5$ cố định còn nhiễu, và bỏ hẳn khám phá đi thì cái nhiễu đó lộ ra. Một bảng $Q$ học on-policy được dùng tốt nhất với chính sách đã sinh ra nó.
+
+## Chọn cái nào
+
+Câu hỏi đúng là: **sai lầm trong lúc học có tốn kém không?** Một robot thật học đi trên mép bàn, một hệ thống giao dịch học với tiền thật, một xe tự lái: mỗi lần "rơi vực" lúc học là một lần hỏng thật, và tính an toàn của SARSA đáng giá. Một tác tử học trong mô phỏng, nơi rơi vực chỉ tốn một lần `reset()`, thì nên lấy chính sách tốt nhất, và đó là Q-learning. Off-policy còn có một lợi thế lớn nữa: học được từ dữ liệu do **chính sách khác** thu, kể cả dữ liệu cũ; DQN ở Chương 35 dựa hẳn vào đó.
+
+<TuKiemTra
+	cauHoi="Nếu đặt epsilon = 0 (không khám phá) cho cả hai, cập nhật của SARSA và Q-learning có khác nhau không?"
+	luaChon={['Khác, vì SARSA dùng a\' còn Q-learning dùng max', 'Giống hệt, vì khi epsilon = 0 hành động a\' sắp làm chính là argmax của Q(s\', ·)', 'SARSA không chạy được khi epsilon = 0', 'Q-learning không chạy được khi epsilon = 0']}
+	dapAn={1}
+	giaiThich="Với epsilon = 0, tác tử luôn chọn a' = argmax Q(s', ·), nên Q(s', a') = max Q(s', ·): hai mục tiêu trùng nhau. Khác biệt giữa on-policy và off-policy nằm hết ở các bước khám phá. Tất nhiên không khám phá thì cả hai đều dễ kẹt, như Q-learning với epsilon nhỏ trên FrozenLake ở trang 3."
+/>
+
+<Khung loai="loi">
+**Chọn $a'$ hai lần trong SARSA.** Phải chọn $a'$ **trước** khi cập nhật, dùng nó trong mục tiêu, rồi **làm đúng** $a'$ ở bước sau. Chọn lại một hành động mới ở đầu vòng lặp tiếp theo thì mục tiêu đã tính theo một hành động tác tử không làm, và thuật toán không còn là SARSA.
+
+**So hai thuật toán bằng một lần chạy.** Ở bài vách đá, một lần chạy SARSA có thể kẹt (8/50 lần) và một lần chạy Q-learning có thể rơi vực nhiều bất thường. Ở RL, kết quả của một seed hầu như không nói lên gì; báo cáo trung bình trên nhiều seed, kèm mức dao động.
+</Khung>

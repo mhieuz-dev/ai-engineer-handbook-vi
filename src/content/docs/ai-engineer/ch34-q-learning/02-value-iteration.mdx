@@ -1,0 +1,107 @@
+---
+title: Value iteration
+description: "Bỏ bước giải hệ phương trình: lặp thẳng phương trình tối ưu Bellman trên một vector giá trị. Giá trị lan ngược từ đích ra, ô xuất phát nhận giá trị khác 0 ở vòng 6; sau 571 vòng chênh lệch dưới một phần mười tỷ, nhưng chính sách tham lam đã đúng là chính sách tối ưu từ vòng 45."
+---
+
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Lặp thẳng phương trình tối ưu
+
+Policy iteration giải trọn một hệ phương trình ở mỗi vòng, chỉ để rồi đổi chính sách và giải lại. <Term id="value-iteration">Value iteration</Term> bỏ bước đó: nó không giữ chính sách nào cả, chỉ giữ một vector giá trị $V_k$ và áp phương trình tối ưu Bellman như một **phép gán**:
+
+$$
+V_{k+1}(s) = \max_a \sum_{s'} p(s' \mid s, a)\,\big[\, r(s, a, s') + \gamma\, V_k(s') \,\big]
+$$
+
+Bắt đầu từ $V_0 = 0$. Mỗi vòng chỉ là một phép nhân mảng và một phép lấy max, không giải hệ nào. Có thể chứng minh rằng với $\gamma < 1$, khoảng cách lớn nhất từ $V_k$ tới $V^*$ co lại ít nhất $\gamma$ lần sau mỗi vòng, nên $V_k$ hội tụ về $V^*$ dù bắt đầu từ đâu. Đổi lại, với $\gamma = 0{,}99$, mỗi vòng chỉ chắc chắn co 1%, nên có thể cần nhiều vòng.
+
+Hàm `q_tu_v` của trang trước đã tính sẵn vế phải trước khi lấy max:
+
+```python
+V = np.zeros(16)
+for k in range(1, 2001):
+    V_moi = q_tu_v(V).max(1)                         # một vòng: nhìn trước một bước, lấy hành động tốt nhất
+    chenh = np.abs(V_moi - V).max()
+    V = V_moi
+    if k in (1, 2, 5, 10, 20, 50, 100, 200) or chenh < 1e-10:
+        print(k, round(V[0], 4), round(V[14], 4), f"{chenh:.1e}")
+    if chenh < 1e-10:
+        break
+```
+
+```text title="Output"
+1 0.0 0.3333 3.3e-01
+2 0.0 0.4433 1.1e-01
+5 0.0 0.6034 5.1e-02
+10 0.0384 0.7113 2.4e-02
+20 0.1742 0.7852 1.4e-02
+50 0.4251 0.8391 4.5e-03
+100 0.5223 0.8586 1.2e-03
+200 0.5414 0.8627 3.7e-05
+571 0.542 0.8628 9.8e-11
+```
+
+Mỗi dòng là số vòng, giá trị của ô xuất phát và ô 14 (sát đích), và chênh lệch lớn nhất so với vòng trước. Vòng 1, chỉ ô 14 có giá trị: 0,3333, đúng xác suất 1/3 tới đích trong một bước. Ô xuất phát vẫn bằng 0 sau 5 vòng: thông tin về đích lan ra **mỗi vòng một bước**, và ô 0 cách đích 6 bước. Từ vòng 100, giá trị ô xuất phát đã ở 0,5223, chỉ còn cách đích cuối 0,542 khoảng 4%. Chênh lệch giảm đều và tới dưới $10^{-10}$ ở vòng 571.
+
+<HinhKetQua src="/hinh/ch34/h2_lan_gia_tri.svg" alt="Năm lưới 4 nhân 4 xếp hàng ngang, là vector giá trị sau 1, 3, 6, 20 và 571 vòng. Vòng 1 chỉ ô 14 có màu. Vòng 3 có thêm các ô 6, 9, 10 và 13. Vòng 6 lan tới hàng trên, ô xuất phát có màu rất nhạt. Vòng 20 mọi ô băng đều có màu, các ô gần đích đậm. Vòng 571 là giá trị tối ưu, ô xuất phát 0,542, ô 14 là 0,863." so="34.2" chuThich="Value iteration trên FrozenLake, gamma = 0,99. Mỗi lưới là vector giá trị sau số vòng ghi ở trên; màu càng đậm giá trị càng cao.">
+**Đọc hình.** Năm lưới là năm thời điểm của cùng một vector giá trị, cùng một thang màu.
+
+**Điều cần thấy.** Giá trị **lan từ đích ra** như vết mực loang, mỗi vòng thêm một bước đi. Đây là phương trình Bellman đang làm việc: một ô chỉ có giá trị khi một ô kề nó đã có giá trị. Lúc đầu giá trị tăng nhanh, về sau tăng chậm dần vì phần còn thiếu đến từ những đường dài và vòng vèo, mỗi đường đóng góp rất ít.
+</HinhKetQua>
+
+## Chính sách hội tụ sớm hơn giá trị
+
+Giá trị cần 571 vòng để đúng tới mười chữ số. Nhưng ta không cần giá trị, ta cần **chính sách**. Ở mỗi vòng, thử chọn tham lam theo $V_k$ và so với chính sách tối ưu `tham` tìm bằng policy iteration ở trang trước:
+
+```python
+V = np.zeros(16)
+for k in range(1, 572):
+    V = q_tu_v(V).max(1)
+    dung = (q_tu_v(V).round(10).argmax(1) == tham).all()
+    if k in (10, 20, 40, 44, 45, 46, 100, 571):
+        print(k, round(V[0], 4), dung)
+```
+
+```text title="Output"
+10 0.0384 False
+20 0.1742 False
+40 0.3712 False
+44 0.3954 False
+45 0.4009 True
+46 0.4061 True
+100 0.5223 True
+571 0.542 True
+```
+
+Từ vòng **45**, chọn tham lam theo $V_k$ đã cho đúng chính sách tối ưu, trong khi $V_{45}(0)$ chỉ mới khoảng 0,40, còn xa 0,542. Không cần biết giá trị **chính xác** của mỗi ô, chỉ cần biết **thứ tự** của các hành động. Đây là lý do thực tế người ta thường dừng value iteration sớm, theo một ngưỡng thô.
+
+## Hai thuật toán, một ý tưởng
+
+Policy iteration và value iteration nằm ở hai đầu của cùng một khung:
+
+| | policy iteration | value iteration |
+|---|---|---|
+| mỗi vòng | đánh giá trọn vẹn chính sách (giải hệ), rồi cải thiện | một bước cập nhật giá trị có lấy max |
+| số vòng trên FrozenLake | 3 | 45 tới khi chính sách đúng, 571 tới khi giá trị đúng $10^{-10}$ |
+| chi phí mỗi vòng với $n$ trạng thái | cỡ $n^3$ (giải hệ) | cỡ $n^2 \times$ số hành động |
+| giữ gì | một chính sách | chỉ một vector giá trị |
+
+**Bảng 34.1.** Hai thuật toán quy hoạch động.
+
+Ở giữa là mọi cách "đánh giá một phần rồi cải thiện": lặp phương trình Bellman của chính sách vài lần thay vì giải trọn hệ. Sutton và Barto gọi chung cả họ này là *generalized policy iteration*: một tiến trình làm giá trị khớp với chính sách, một tiến trình làm chính sách tham lam theo giá trị, hai bên kéo nhau về điểm tối ưu. Q-learning ở trang sau cũng thuộc họ này, chỉ có điều nó không biết `T`.
+
+<TuKiemTra
+	cauHoi="Ô xuất phát cách đích 6 bước. Vì sao V(0) vẫn bằng 0 sau 5 vòng value iteration, rồi khác 0 từ vòng 6?"
+	luaChon={['Vì gamma = 0,99 làm giá trị nhỏ tới mức làm tròn thành 0', 'Vì V_k(s) chỉ tính phần thưởng trong k bước tới, và từ ô 0 không thể tới đích trong ít hơn 6 bước', 'Vì vòng lặp cập nhật các ô theo thứ tự từ 15 về 0', 'Vì ô 0 là ô xuất phát nên được xử lý riêng']}
+	dapAn={1}
+	giaiThich="Bắt đầu từ V_0 = 0, sau k vòng thì V_k(s) là lợi nhuận tốt nhất có thể trong k bước tới. Phần thưởng duy nhất nằm ở bước vào đích, và từ ô 0 cần ít nhất 6 bước (xuống, xuống, phải, xuống, phải, phải), nên trong 5 bước lợi nhuận luôn bằng 0. Đó cũng là lý do giá trị lan ra mỗi vòng một bước."
+/>
+
+<Khung loai="loi">
+**Dừng khi chênh lệch nhỏ mà không nghĩ tới gamma.** Chênh lệch giữa hai vòng nhỏ chưa có nghĩa là đã gần $V^*$: với $\gamma = 0{,}99$, khoảng cách tới $V^*$ có thể lớn gấp $\gamma / (1 - \gamma) = 99$ lần chênh lệch đó. Ngưỡng $10^{-3}$ giữa hai vòng chỉ bảo đảm sai số dưới khoảng 0,1.
+
+**Quên rằng cả hai thuật toán cần `T`.** Quy hoạch động là **lập kế hoạch** trên một mô hình đã biết, không phải học từ trải nghiệm. Robot thật, thị trường thật, người dùng thật không đưa cho ta bảng xác suất chuyển. Trang sau giải đúng chỗ đó.
+</Khung>

@@ -1,0 +1,139 @@
+---
+title: Bài tập
+description: "Ba bài tập có đáp án chi tiết (gamma = 1 làm Q-learning chạm 82,35% rồi sụp về 0% vì lần lữa không bị phạt, và bảng Q vượt cả giá trị lớn nhất có thể; value iteration trên hồ 8 x 8 cho 89,4% nếu không giới hạn bước nhưng chỉ 63,2% trong 100 bước; epsilon 0,01 làm SARSA và Q-learning gần như ngang nhau trên bài vách đá) và câu hỏi phỏng vấn."
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Đoán trước, rồi chạy code trong notebook để kiểm tra. Code dùng lại `env`, `T`, `R`, `CUOI`, `GAMMA`, `q_learning`, `ti_le_toi_dich`, `hoc_vach`, `duong_tham_lam` và `Counter` của các trang trước.
+
+<BaiTap so="34.1">
+**Không chiết khấu thì sao.** Trang 1 nói $\gamma = 1$ làm hỏng Q-learning trên FrozenLake. Chạy `q_learning` với $\varepsilon = 0{,}5$ như trang 3 nhưng `gamma=1.0`, in chính sách tham lam cuối cùng và bốn hàng đầu của bảng $Q$ (ô 0 tới ô 3).
+
+<Fragment slot="dap-an">
+
+```python
+Q_g1 = q_learning(20_000, eps=0.5, gamma=1.0)
+print(Q_g1.argmax(1).reshape(4, 4))
+print(Q_g1[:4].round(3))
+```
+
+```text title="Output"
+2000 0.625
+4000 0.8235
+6000 0.8235
+8000 0.0
+10000 0.0
+12000 0.0
+14000 0.0
+16000 0.0
+18000 0.0
+20000 0.0
+[[3 3 3 3]
+ [0 0 2 0]
+ [3 1 0 0]
+ [0 2 1 0]]
+[[0.875 0.875 0.875 0.876]
+ [0.757 0.605 0.512 0.876]
+ [0.809 0.812 0.743 0.876]
+ [0.594 0.577 0.583 0.876]]
+```
+
+Ở tập 4000 và 6000, chính sách tham lam đạt đúng 82,35%. Rồi từ tập 8000 nó **sụp về 0** và không lên lại. Nhìn chính sách cuối: cả hàng trên cùng chọn 3, "lên". Đi lên ở hàng trên cùng là đâm vào tường, chỉ trượt trái hoặc phải, **không bao giờ xuống hàng dưới**. Tác tử đi lòng vòng trên hàng trên mãi mãi.
+
+Vì sao Q-learning chọn vậy? Với $\gamma = 1$, ở lại hàng trên không tốn gì: tới đích sau 10 bước hay 1000 bước đều được 1 như nhau. Nên giá trị của "lên" ở ô 0 bằng giá trị của chính ô 0, và cả bốn hành động ở hàng trên có $Q$ gần bằng nhau (0,875 tới 0,876). Chênh lệch nhỏ như vậy, nhiễu của $\alpha = 0{,}1$ quyết định `argmax`, và chỉ cần "lên" nhỉnh hơn một chút ở cả bốn ô là tác tử bị nhốt. Với $\gamma = 0{,}99$, mỗi bước lần lữa tốn 1% giá trị, đủ để phân biệt "đi đâu đó" với "đứng yên".
+
+Còn một điều đáng ngờ hơn: $Q = 0{,}876$ ở ô 0, trong khi trang 1 đã chứng minh **không chính sách nào** tới đích quá 82,35%. Bảng $Q$ đánh giá **quá cao**. Nguyên nhân là phép $\max$ trong mục tiêu: lấy max của nhiều ước lượng có nhiễu thì kết quả thiên lên, vì max ưu tiên chính những ước lượng tình cờ bị nhiễu dương. Hiện tượng này gọi là thiên lệch do lấy max (maximization bias), và Double DQN ở Chương 35 được thiết kế để sửa nó.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="34.2">
+**Hồ lớn hơn.** `gym.make("FrozenLake-v1", map_name="8x8")` cho một hồ 8 x 8, 64 trạng thái, 10 hố. Dựng `T` và `R` cho nó, chạy value iteration với $\gamma = 0{,}99$, rồi tính xác suất tới đích của chính sách tối ưu khi không giới hạn số bước, và khi chỉ có 100 bước như môi trường thật.
+
+<Fragment slot="dap-an">
+
+```python
+env8 = gym.make("FrozenLake-v1", map_name="8x8")
+n = 64
+T8, R8 = np.zeros((n, 4, n)), np.zeros((n, 4))
+for s in range(n):
+    for a in range(4):
+        for p, s2, r, xong in env8.unwrapped.P[s][a]:
+            T8[s, a, s2] += p
+            R8[s, a] += p * r
+cuoi8 = [s for s, o in enumerate(env8.unwrapped.desc.astype(str).flatten()) if o in "HG"]
+V8 = np.zeros(n)
+for k in range(1, 5001):
+    Q8 = R8 + GAMMA * T8 @ V8                        # T8 @ V8 có dạng (64, 4): tổng theo s'
+    Q8[cuoi8] = 0
+    chenh = np.abs(Q8.max(1) - V8).max()
+    V8 = Q8.max(1)
+    if chenh < 1e-10:
+        break
+pi8 = Q8.round(10).argmax(1)
+P8, R8_pi = T8[np.arange(n), pi8], R8[np.arange(n), pi8].copy()
+P8[cuoi8] = 0
+R8_pi[cuoi8] = 0
+def toi_dich(so_buoc):                               # xác suất tới đích trong so_buoc bước
+    V = np.zeros(n)
+    for _ in range(so_buoc):
+        V = R8_pi + P8 @ V
+    return round(V[0], 4)
+print(len(cuoi8), k, round(V8[0], 4), toi_dich(10_000), toi_dich(100))
+```
+
+```text title="Output"
+11 662 0.4146 0.8938 0.6317
+```
+
+Hồ có 11 trạng thái kết thúc (10 hố và đích). 64 trạng thái vẫn là chuyện nhỏ: 662 vòng, chưa tới một giây. Chính sách tối ưu tới đích **89,4%** nếu không giới hạn số bước, cao hơn cả hồ 4 x 4, vì hồ lớn có nhiều đường vòng an toàn. Nhưng trong 100 bước, đúng luật của `FrozenLake-v1`, chỉ còn **63,2%**: chính sách an toàn đi rất chậm, và 26 điểm phần trăm chênh lệch là những tập lẽ ra tới đích, nhưng sau bước 100. (Gymnasium có đăng ký riêng `FrozenLake8x8-v1` với giới hạn 200 bước, chính vì vậy.)
+
+Bài học là chính sách "tối ưu" chỉ tối ưu **cho bài toán ta đã viết ra**. Ta tối ưu lợi nhuận chiết khấu với $\gamma = 0{,}99$, không phải xác suất tới đích trong 100 bước. Muốn tối ưu cái sau, phải đưa số bước còn lại vào trạng thái, và MDP thành một bài toán khác.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="34.3">
+**Khám phá ít đi.** Chạy lại bài vách đá của trang 4 với $\varepsilon = 0{,}01$ thay cho 0,1, vẫn 50 lần mỗi thuật toán. Lợi nhuận thực nhận và đường tham lam thay đổi thế nào?
+
+<Fragment slot="dap-an">
+
+```python
+for cach in ("sarsa", "q"):
+    kq = [hoc_vach(cach, seed=k, eps=0.01) for k in range(50)]
+    tong = np.array([t for _, t in kq])
+    print(cach, tong[:, -100:].mean().round(1), Counter(duong_tham_lam(Q) for Q, _ in kq))
+```
+
+```text title="Output"
+sarsa -16.9 Counter({15: 31, 17: 18, None: 1})
+q -16.3 Counter({13: 50})
+```
+
+Khoảng cách gần như biến mất: SARSA **-16,9**, Q-learning **-16,3**, và lần này Q-learning **hơn**. Với 1% bước chọn bừa, đi sát mép vực hiếm khi bị phạt, nên đường tối ưu 13 bước của Q-learning cũng là đường cho điểm cao nhất trong lúc học. SARSA cũng dịch lại gần vực: đường tham lam của nó giờ chủ yếu dài 15 bước (31 lần) thay vì 17, vì ô gần vực bớt nguy hiểm khi chính tác tử ít chọn bừa.
+
+Đây là ý của trang 4: SARSA thận trọng vì nó **biết mình sẽ khám phá**. Giảm khám phá thì sự thận trọng đó giảm theo, và khi $\varepsilon \to 0$ hai thuật toán hội tụ về cùng một chính sách. Cái giá là $\varepsilon$ nhỏ khám phá ít: trên bài vách đá điều đó không sao vì môi trường tất định và nhỏ, nhưng trên FrozenLake ở trang 3, $\varepsilon = 0{,}1$ đã đủ để kẹt hàng nghìn tập.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Q-learning khác SARSA thế nào? Khi nào chọn cái nào?**
+
+<p lang="en"><em>What is the difference between Q-learning and SARSA, and when would you pick each?</em></p>
+
+*Gợi ý:* Q-learning lấy mục tiêu theo $\max_{a'} Q(s', a')$, học chính sách tham lam dù đang hành động epsilon-greedy (off-policy). SARSA lấy theo hành động thật sự sẽ làm, học giá trị của chính chính sách có khám phá (on-policy), nên thận trọng hơn khi khám phá có thể gây hại. Chọn SARSA khi sai lầm lúc học tốn kém thật; chọn Q-learning khi học trong mô phỏng, hoặc khi cần học từ dữ liệu do chính sách khác thu.
+
+**2. Quy hoạch động cần gì mà Q-learning không cần?**
+
+<p lang="en"><em>What does dynamic programming require that Q-learning does not?</em></p>
+
+*Gợi ý:* mô hình đầy đủ của môi trường (xác suất chuyển và phần thưởng), và không gian trạng thái đủ nhỏ để duyệt hết mỗi vòng. Q-learning chỉ cần lấy mẫu chuyển tiếp bằng cách tương tác, đổi lại cần nhiều trải nghiệm và có phương sai. Cả hai cùng dựa trên phương trình Bellman; DP tính kỳ vọng chính xác, Q-learning thay kỳ vọng bằng mẫu.
+
+**3. Vì sao Q-learning hay đánh giá quá cao, và sửa thế nào?**
+
+<p lang="en"><em>Why does Q-learning tend to overestimate values, and how can you fix it?</em></p>
+
+*Gợi ý:* mục tiêu lấy max trên các ước lượng có nhiễu, mà kỳ vọng của max lớn hơn hoặc bằng max của kỳ vọng, nên lệch lên. Double Q-learning dùng hai bảng: một bảng chọn hành động tốt nhất, bảng kia đánh giá hành động đó, để nhiễu của hai bên không cộng dồn. Double DQN áp dụng ý này cho mạng nơ-ron.
+</Khung>

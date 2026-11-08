@@ -678,3 +678,43 @@
   tenTiengAnh: Bellman equation
   giaiThich: Phương trình Bellman nói giá trị của một trạng thái bằng phần thưởng kỳ vọng ngay tới cộng giá trị đã chiết khấu của trạng thái kế tiếp. Viết cho mọi trạng thái, nó thành một hệ phương trình mà nghiệm là hàm giá trị, và là nền của mọi thuật toán quy hoạch động và Q-learning.
   hocKy: ai-engineer/ch33-bai-toan-rl
+- id: quy-hoach-dong
+  ten: Quy hoạch động
+  tenTiengAnh: dynamic programming
+  giaiThich: Quy hoạch động giải một bài toán lớn bằng cách dùng lại lời giải của các bài toán con. Trong học tăng cường, đó là nhóm thuật toán tìm chính sách tối ưu khi đã biết đầy đủ xác suất chuyển và phần thưởng, bằng cách lặp phương trình Bellman, ví dụ policy iteration và value iteration.
+  hocKy: ai-engineer/ch34-q-learning
+- id: policy-iteration
+  ten: Policy iteration
+  tenTiengAnh: policy iteration
+  giaiThich: Policy iteration xen kẽ hai bước cho tới khi chính sách không đổi. Đánh giá chính sách hiện tại bằng cách giải phương trình Bellman, rồi cải thiện bằng cách chọn ở mỗi trạng thái hành động có Q lớn nhất. Mỗi vòng chính sách không tệ đi, và vòng lặp dừng ở chính sách tối ưu.
+  hocKy: ai-engineer/ch34-q-learning
+- id: value-iteration
+  ten: Value iteration
+  tenTiengAnh: value iteration
+  giaiThich: Value iteration lặp phương trình tối ưu Bellman trực tiếp trên một vector giá trị, không giữ chính sách nào. Mỗi vòng, giá trị mỗi trạng thái được thay bằng lợi nhuận tốt nhất khi nhìn trước một bước. Với hệ số chiết khấu nhỏ hơn 1, vector hội tụ về giá trị tối ưu, và chọn tham lam theo nó cho chính sách tối ưu.
+  hocKy: ai-engineer/ch34-q-learning
+- id: q-learning
+  ten: Q-learning
+  tenTiengAnh: Q-learning
+  giaiThich: Q-learning học bảng Q mà không cần biết xác suất chuyển. Sau mỗi bước, nó kéo Q(s, a) về phía mục tiêu r + gamma nhân giá trị Q lớn nhất ở trạng thái mới. Vì mục tiêu giả định bước sau chọn hành động tốt nhất, nó học chính sách tham lam ngay cả khi đang hành động có khám phá.
+  hocKy: ai-engineer/ch34-q-learning
+- id: sai-khac-thoi-gian
+  ten: Sai khác thời gian
+  tenTiengAnh: temporal difference (TD)
+  giaiThich: Sai khác thời gian là hiệu giữa một mục tiêu tính từ bước kế tiếp (phần thưởng vừa nhận cộng giá trị ước lượng của trạng thái mới) và ước lượng hiện tại. Học TD dùng hiệu đó để sửa ước lượng ngay sau mỗi bước, không cần chờ hết tập, tức là dùng một ước lượng để cập nhật một ước lượng khác.
+  hocKy: ai-engineer/ch34-q-learning
+- id: sarsa
+  ten: SARSA
+  tenTiengAnh: SARSA
+  giaiThich: SARSA giống Q-learning nhưng mục tiêu dùng đúng hành động tác tử sẽ làm ở bước sau, thay vì hành động tốt nhất. Tên lấy từ năm thứ dùng trong một lần cập nhật, s, a, r, s', a'. Nó học giá trị của chính chính sách có khám phá, nên thận trọng hơn khi khám phá có thể gây hại.
+  hocKy: ai-engineer/ch34-q-learning
+- id: on-policy
+  ten: On-policy
+  tenTiengAnh: on-policy learning
+  giaiThich: Thuật toán on-policy học giá trị hoặc cải thiện chính chính sách đang dùng để thu dữ liệu, kể cả những bước khám phá của nó. SARSA và PPO là ví dụ. Dữ liệu cũ, do một chính sách khác thu, không dùng lại trực tiếp được.
+  hocKy: ai-engineer/ch34-q-learning
+- id: off-policy
+  ten: Off-policy
+  tenTiengAnh: off-policy learning
+  giaiThich: Thuật toán off-policy học về một chính sách khác với chính sách đang dùng để thu dữ liệu, ví dụ học chính sách tham lam trong khi hành động có khám phá. Q-learning và DQN là ví dụ. Nhờ vậy nó học được từ dữ liệu cũ hoặc dữ liệu do người khác thu.
+  hocKy: ai-engineer/ch34-q-learning
