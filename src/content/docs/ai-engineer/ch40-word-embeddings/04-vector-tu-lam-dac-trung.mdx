@@ -1,0 +1,88 @@
+---
+title: Vector từ làm đặc trưng
+description: "Lấy trung bình vector từ của một câu rồi đưa vào hồi quy logistic để đoán cảm xúc: 87,6% trên val với Word2Vec, 86,8% với SVD, nhưng TF-IDF cùng mô hình đạt 90,6%. Vector dày không tự động thắng: trung bình làm mất thứ tự và phủ định, và từ trái nghĩa nằm gần nhau. fastText và vector theo ngữ cảnh sửa từng chỗ."
+---
+
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Từ vector từ tới vector câu
+
+Phân loại cần một vector cho **cả câu**. Cách đơn giản nhất: lấy **trung bình** vector của các từ trong câu (bỏ qua từ không có trong từ điển). Rồi đưa vào hồi quy logistic (Chương 11), ba lớp cảm xúc. So với cùng mô hình trên TF-IDF của Chương 39. Thước đo: độ chính xác, và F1 trung bình theo lớp (macro-F1, Chương 12), vì lớp trung tính rất hiếm (chỉ 4% số câu) mà độ chính xác không nhìn thấy nó.
+
+```python
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, f1_score
+y_tr, y_va = tr.sentiment.values, va.sentiment.values
+
+def vector_cau(C, E):                                # trung bình vector của các từ có trong từ điển
+    X = np.zeros((len(C), E.shape[1]))
+    for i, c in enumerate(C):
+        ids = [id_[w] for w in c if w in id_]
+        if ids:
+            X[i] = E[ids].mean(0)
+    return X
+
+def cham(X_tr, X_va):
+    p = LogisticRegression(max_iter=2000).fit(X_tr, y_tr).predict(X_va)
+    return round(accuracy_score(y_va, p), 4), round(f1_score(y_va, p, average="macro"), 4)
+
+print("SVD     ", cham(vector_cau(C_tr, E_svd), vector_cau(C_va, E_svd)))
+print("Word2Vec", cham(vector_cau(C_tr, E_w2v), vector_cau(C_va, E_w2v)))
+tv = TfidfVectorizer(analyzer=lambda c: c)           # C_tr đã là danh sách từ
+print("TF-IDF  ", cham(tv.fit_transform(C_tr), tv.transform(C_va)))
+print("lớp đông nhất", round((y_va == 2).mean(), 4))
+```
+
+```text title="Output"
+SVD      (0.868, 0.6256)
+Word2Vec (0.8756, 0.6146)
+TF-IDF   (0.9059, 0.6857)
+lớp đông nhất 0.5085
+```
+
+Đoán toàn "tích cực" được 50,9%. Trung bình vector từ được 86,8% (SVD) và 87,6% (Word2Vec). Nhưng **TF-IDF thắng**: 90,6%, macro-F1 0,686 so với khoảng 0,62.
+
+## Vì sao vector dày thua ở đây
+
+Ba lý do, đều nhìn thấy được từ những gì đã làm:
+
+- **Trung bình xóa thứ tự và phủ định.** "Không nhiệt tình" có vector trung bình nằm giữa "không" và "nhiệt_tình", gần với "nhiệt tình" hơn là với "thờ ơ". TF-IDF giữ "không" như một đặc trưng riêng, và hồi quy logistic học được rằng "không" kéo về tiêu cực (Chương 38 đã thấy "không" có trong 28% câu tiêu cực).
+- **Từ trái nghĩa nằm gần nhau** (trang 3). Câu "phòng tốt" và "phòng tệ" có vector trung bình rất gần nhau.
+- **Dữ liệu ít, từ ngữ hẹp.** Lợi thế lớn nhất của vector dày là **khái quát hóa** sang từ chưa gặp trong dữ liệu có nhãn, nhờ học trên một kho văn bản lớn hơn nhiều. Ở đây vector học trên chính 11 nghìn câu train đó, nên không có thêm thông tin nào; còn TF-IDF với 4009 chiều đã đủ để nhớ những từ quyết định cảm xúc của bộ này.
+
+Kết quả này không có nghĩa vector từ vô dụng. Nó có nghĩa là **cách dùng** quan trọng: vector từ phát huy khi học trên kho văn bản lớn rồi dùng cho bài toán ít nhãn, và khi được đưa vào một mô hình **giữ được thứ tự** (RNN, CNN, Transformer) thay vì lấy trung bình. Chương 41 sẽ thử đúng điều đó.
+
+## fastText và từ chưa gặp
+
+Bộ vector ở đây chỉ có 1208 từ (gặp ít nhất 5 lần). Bao nhiêu token của val không có vector?
+
+```python
+n = sum(len(c) for c in C_va)
+print(round(sum(w not in id_ for c in C_va for w in c) / n, 4), sum(1 for c in C_va if not any(w in id_ for w in c)))
+```
+
+```text title="Output"
+0.0399 6
+```
+
+4% token của val không có vector, và 6 câu không có từ nào có vector: vector trung bình của chúng toàn số 0. <Term id="fasttext">fastText</Term> (Bojanowski và cộng sự, 2017) sửa chuyện này bằng cách biểu diễn mỗi từ là **tổng** vector của các mảnh ký tự của nó (ví dụ các cụm 3 tới 6 ký tự). Một từ chưa gặp, hay một từ gõ sai, hay teencode, vẫn có vector từ những mảnh quen thuộc. Facebook công bố sẵn vector fastText cho 157 ngôn ngữ, trong đó có tiếng Việt, học trên Common Crawl và Wikipedia.
+
+## Một từ, một vector
+
+Giới hạn cuối cùng, sâu nhất: mỗi từ có **một** vector duy nhất, bất kể ngữ cảnh. "Bàn" trong "cái bàn gỗ" và "bàn chuyện học" có cùng vector, là trung bình của hai nghĩa. **Vector theo ngữ cảnh** (contextual embeddings) sửa điều đó: vector của một từ được tính lại cho từng câu, từ cả câu xung quanh. ELMo (2018) làm bằng LSTM, BERT (2018) bằng Transformer; PhoBERT (Chương 46) là BERT cho tiếng Việt. Khi một mô hình như vậy được tinh chỉnh cho phân loại cảm xúc, vector của "tốt" và "tệ" trong câu có thể bị kéo về hai phía, vì nhiệm vụ đòi phân biệt chúng; Chương 46 sẽ đo điều đó trên chính bộ dữ liệu này.
+
+<TuKiemTra
+	cauHoi="Một câu chỉ gồm những từ không có trong từ điển 1208 từ. Vector trung bình của nó và dự đoán của hồi quy logistic sẽ thế nào?"
+	luaChon={['Báo lỗi chia cho 0', 'Vector toàn 0, và mô hình luôn đoán cùng một lớp cho mọi câu như vậy, quyết định bởi hệ số chặn', 'Vector ngẫu nhiên', 'Mô hình bỏ qua câu đó']}
+	dapAn={1}
+	giaiThich="Hàm vector_cau để nguyên hàng toàn 0 khi không có từ nào trong từ điển. Với đầu vào 0, hồi quy logistic chỉ còn hệ số chặn, nên mọi câu như vậy nhận cùng một dự đoán, thường là lớp đông nhất. Đó là lý do cần fastText hoặc từ điển lớn hơn, hoặc ghi rõ cách xử lý câu rỗng."
+/>
+
+<Khung loai="loi">
+**So vector từ với TF-IDF rồi kết luận một bên tốt hơn mãi mãi.** Kết quả phụ thuộc cỡ dữ liệu, độ hẹp của chủ đề, cách gộp vector câu và mô hình phía sau. Trên bộ này TF-IDF thắng; với kho văn bản lớn hơn và mô hình giữ thứ tự, thứ tự thường đảo lại. Đo trên bài toán của mình.
+
+**Dùng vector công bố sẵn mà không kiểm tách từ.** Bộ vector học trên văn bản tách theo âm tiết sẽ không có "nhiệt_tình"; bộ học trên văn bản tách từ bằng công cụ khác có thể ghép khác underthesea. Tỷ lệ token không có vector là con số đầu tiên phải đo.
+</Khung>

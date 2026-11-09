@@ -1,0 +1,136 @@
+---
+title: Từ vector thưa tới vector dày
+description: "Với one-hot, mọi cặp từ khác nhau đều có cosine bằng 0: 'nhiệt tình' và 'tận tâm' xa nhau như 'nhiệt tình' và 'máy chiếu'. Giả thuyết phân bố nói nghĩa của một từ nằm ở ngữ cảnh của nó. Đếm ngữ cảnh trên UIT-VSFC, đổi sang PPMI, nén bằng SVD xuống 50 chiều: hàng xóm gần nhất của 'nhiệt tình' là 'tận tâm' với cosine 0,97."
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+<CanBietTruoc>
+BoW, cosine, PMI và luật Zipf (Chương 38, 39). SVD và giảm chiều (Chương 5, 20). PyTorch, Adam, cross-entropy nhị phân (Chương 11, 25). Hồi quy logistic (Chương 11).
+
+<Fragment slot="sau-chuong">
+Hiểu vì sao cần vector dày cho từ và giả thuyết phân bố đằng sau. Học vector từ bằng hai cách: đếm đồng xuất hiện rồi nén bằng SVD, và Word2Vec skip-gram với negative sampling tự cài bằng PyTorch. Đọc vector từ qua hàng xóm gần nhất và phép tương tự, thấy vì sao từ trái nghĩa lại gần nhau, và đo xem vector từ giúp phân loại cảm xúc tới đâu so với TF-IDF.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch40_word_embeddings.ipynb" />
+
+## Vấn đề của one-hot
+
+BoW và TF-IDF ở Chương 39 thực chất biểu diễn mỗi từ bằng một vector **one-hot**: dài bằng từ điển, một số 1 ở vị trí của từ đó, còn lại là 0. Tích vô hướng của hai vector one-hot khác nhau luôn bằng 0. Với one-hot, "nhiệt_tình" khác "tận_tâm" đúng bằng mức nó khác "máy_chiếu". Máy tìm câu ở Chương 39 vì vậy không bao giờ nối được "thầy nhiệt tình" với "thầy tận tâm", dù người đọc thấy ngay chúng cùng ý.
+
+Ta muốn mỗi từ là một vector **dày** (dense), vài chục tới vài trăm số thực, sao cho từ gần nghĩa có vector gần nhau. Vector như vậy gọi là <Term id="word-embedding">word embedding</Term>, hay vector từ. Câu hỏi là học nó từ đâu, khi không ai cho ta nhãn "hai từ này gần nghĩa".
+
+## Giả thuyết phân bố
+
+Câu trả lời là một ý tưởng của ngôn ngữ học từ những năm 1950: **từ xuất hiện trong ngữ cảnh giống nhau thì có nghĩa giống nhau**. Nhà ngôn ngữ học J. R. Firth viết năm 1957: "You shall know a word by the company it keeps", hãy biết một từ qua những từ đi cùng nó. Đọc hai câu "thầy rất ___, luôn giúp đỡ sinh viên" và "cô rất ___, giải đáp mọi thắc mắc": "nhiệt tình", "tận tâm", "chu đáo" đều điền vừa. Ba từ đó gần nghĩa, và chúng **có cùng hàng xóm**. Đây gọi là **giả thuyết phân bố** (distributional hypothesis), nền của mọi phương pháp học vector từ.
+
+## Đếm ngữ cảnh
+
+Cách trực tiếp nhất: với mỗi từ, đếm xem những từ nào xuất hiện trong một **cửa sổ** quanh nó, ở đây 2 từ mỗi bên. Được một ma trận đồng xuất hiện: hàng là từ, cột là từ ngữ cảnh. Chỉ giữ từ xuất hiện ít nhất 5 lần trong train; từ hiếm hơn có quá ít ngữ cảnh để học gì đáng tin (luật Zipf, Chương 38).
+
+```python
+!pip install underthesea
+```
+
+```python
+import os
+import re
+import time
+import urllib.request
+from collections import Counter
+import numpy as np
+import pandas as pd
+from underthesea import word_tokenize
+
+URL = "https://huggingface.co/api/datasets/uitnlp/vietnamese_students_feedback/parquet/default/{}/0.parquet"
+THU_MUC = os.path.expanduser("~/.cache/vsfc")
+
+def tai(phan):                                       # như Chương 38
+    os.makedirs(THU_MUC, exist_ok=True)
+    tep = os.path.join(THU_MUC, phan + ".parquet")
+    if not os.path.exists(tep):
+        urllib.request.urlretrieve(URL.format(phan), tep)
+    return pd.read_parquet(tep)
+
+tr, va, te = tai("train"), tai("validation"), tai("test")
+tach = lambda s: [w.replace(" ", "_") for w in word_tokenize(s) if re.search(r"\w", w)]   # tách từ, bỏ dấu câu
+C_tr, C_va = [tach(s) for s in tr.sentence], [tach(s) for s in va.sentence]
+
+dem = Counter(w for c in C_tr for w in c)
+tu = [w for w, n in dem.most_common() if n >= 5]     # từ điển: từ gặp ít nhất 5 lần trong train
+id_ = {w: i for i, w in enumerate(tu)}
+V = len(tu)
+
+M = np.zeros((V, V))
+for c in C_tr:
+    ids = [id_[w] for w in c if w in id_]
+    for i, a in enumerate(ids):
+        for j in range(max(0, i - 2), min(len(ids), i + 3)):   # cửa sổ 2 từ mỗi bên
+            if j != i:
+                M[a, ids[j]] += 1
+print(V, int(M.sum()), round((M > 0).mean(), 4))
+```
+
+```text title="Output"
+1208 349962 0.0646
+```
+
+1208 từ đủ thường; tổng cộng khoảng 350 nghìn cặp (từ, ngữ cảnh). Ma trận 1208 x 1208 có 6,5% ô khác 0. Mỗi hàng đã là một vector biểu diễn từ: dài 1208, đếm hàng xóm. Nhưng số đếm thô bị những từ cực phổ biến lấn át: hầu như từ nào cũng hay đứng cạnh "rất", "và", "thầy".
+
+## PPMI
+
+Chương 38 đã có công cụ cho đúng chuyện này: **PMI**, đo hai thứ đi cùng nhau nhiều hơn mức tình cờ bao nhiêu. Thay mỗi ô đếm bằng PMI của cặp (từ, ngữ cảnh), và vì PMI âm (đi cùng **ít hơn** tình cờ) rất nhiễu khi dữ liệu ít, cắt mọi giá trị âm về 0. Kết quả gọi là **PPMI** (positive PMI):
+
+$$
+\text{PPMI}(w, c) = \max\Big(0,\ \log \frac{P(w, c)}{P(w)\, P(c)}\Big)
+$$
+
+Rồi nén mỗi hàng từ 1208 chiều xuống 50 chiều bằng **SVD** (Chương 5, 20): giữ 50 hướng quan trọng nhất của ma trận, bỏ phần còn lại như nhiễu. Chuẩn hóa mỗi vector về độ dài 1 để tích vô hướng là cosine.
+
+```python
+tong = M.sum()
+p_w, p_c = M.sum(1) / tong, M.sum(0) / tong
+with np.errstate(divide="ignore"):
+    pmi = np.log(M / tong / np.outer(p_w, p_c))      # ô bằng 0 cho -vô cùng
+ppmi = np.maximum(pmi, 0)
+U, S, Vt = np.linalg.svd(ppmi)
+E_svd = U[:, :50] * S[:50]                           # 50 chiều đầu
+E_svd /= np.linalg.norm(E_svd, axis=1, keepdims=True)
+
+def gan(w, E, k=6):                                  # k từ gần w nhất theo cosine
+    s = E @ E[id_[w]]
+    return [(tu[i], round(float(s[i]), 2)) for i in s.argsort()[::-1][1:k + 1]]
+
+for w in ("thầy", "nhiệt_tình", "phòng", "điểm"):
+    print(w, gan(w, E_svd))
+```
+
+```text title="Output"
+thầy [('cô', 0.91), ('rất', 0.81), ('dạy', 0.8), ('giảng_viên', 0.76), ('giáo_viên', 0.75), ('hay', 0.73)]
+nhiệt_tình [('tận_tâm', 0.97), ('dễ_thương', 0.95), ('tận_tình', 0.95), ('thân_thiện', 0.94), ('vui_tính', 0.93), ('chu_đáo', 0.91)]
+phòng [('chất_lượng', 0.84), ('máy', 0.8), ('trang_thiết_bị', 0.78), ('thiết_bị', 0.78), ('nâng_cấp', 0.77), ('máy_chiếu', 0.77)]
+điểm [('chấm', 0.77), ('quá_trình', 0.65), ('lấy', 0.63), ('công_bằng', 0.63), ('chuẩn_xác', 0.58), ('cộng', 0.56)]
+```
+
+Chỉ bằng đếm, không nhãn, không mạng nơ-ron: "thầy" gần "cô", "giảng_viên", "giáo_viên"; "nhiệt_tình" gần "tận_tâm", "tận_tình", "thân_thiện", "chu_đáo"; "phòng" gần "trang_thiết_bị", "máy_chiếu"; "điểm" gần "chấm", "công_bằng". Vector 50 chiều đã mang được một phần nghĩa. Lẫn vào đó cũng có những hàng xóm chỉ là hay đứng cạnh ("thầy" gần "rất", "dạy"): đếm cửa sổ thấy cả quan hệ **cùng nghĩa** lẫn quan hệ **đi cùng nhau**.
+
+Phương pháp này có tên: phân tích ngữ nghĩa ẩn (<En>LSA</En>, Deerwester và cộng sự, 1990) dùng đúng ý tưởng đếm rồi SVD. GloVe (Pennington và cộng sự, 2014), một trong những bộ vector từ nổi tiếng nhất, cũng học từ ma trận đồng xuất hiện, chỉ khác ở chỗ tối ưu một hàm mất mát thay vì SVD.
+
+<TuKiemTra
+	cauHoi="Với one-hot trên từ điển 1208 từ, cosine giữa 'nhiệt_tình' và 'tận_tâm' bằng bao nhiêu, và giữa 'nhiệt_tình' với chính nó?"
+	luaChon={['0 và 1', '0,97 và 1', '1 và 1', '0 và 0']}
+	dapAn={0}
+	giaiThich="Hai vector one-hot của hai từ khác nhau có số 1 ở hai vị trí khác nhau, nên tích vô hướng bằng 0. Mỗi vector có độ dài 1, nên cosine với chính nó bằng 1. One-hot chỉ biết 'cùng một từ' hay 'khác từ', không có mức độ giống nhau nào ở giữa. Con số 0,97 là cosine của vector PPMI và SVD ở trên."
+/>
+
+<Khung loai="loi">
+**Học vector từ trên cả tập test.** Vector từ học không cần nhãn, nên dễ quên rằng nó vẫn là thứ học từ dữ liệu. Nếu sau này dùng chúng làm đặc trưng cho một mô hình đánh giá trên test (trang 4), học trên test là để thông tin của test lọt vào. Ở đây chỉ dùng train.
+
+**Không cắt PMI âm.** Với dữ liệu nhỏ, một cặp chưa từng gặp có PMI bằng âm vô cùng, và một cặp gặp ít hơn tình cờ một chút có PMI âm rất nhiễu. Cắt về 0 (PPMI) là bước giúp phương pháp đếm chạy được.
+</Khung>

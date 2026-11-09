@@ -1,0 +1,88 @@
+---
+title: Đọc vector từ
+description: "So hàng xóm gần nhất của hai bộ vector. Word2Vec giải đúng phép tương tự 'thầy : thầy giáo = cô : ?' ra 'cô giáo', còn SVD thì không. Nhưng cả hai cùng mắc một lỗi gốc: từ gần 'tốt' nhất theo Word2Vec là 'tệ', vì từ trái nghĩa đứng trong cùng ngữ cảnh."
+---
+
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Hàng xóm gần nhất
+
+Không có nhãn để chấm vector từ, nên cách đánh giá đầu tiên là **nhìn**: với vài từ chọn sẵn, liệt kê những từ có cosine cao nhất, theo cả hai bộ vector.
+
+```python
+for w in ("thầy", "nhiệt_tình", "slide", "phòng", "điểm", "nhanh", "tốt"):
+    print(w, "| SVD:", [x for x, _ in gan(w, E_svd, 5)], "| W2V:", [x for x, _ in gan(w, E_w2v, 5)])
+```
+
+```text title="Output"
+thầy | SVD: ['cô', 'rất', 'dạy', 'giảng_viên', 'giáo_viên'] | W2V: ['cô', 'giảng_viên', 'giáo_viên', 'thầy_giáo', 'cô_giáo']
+nhiệt_tình | SVD: ['tận_tâm', 'dễ_thương', 'tận_tình', 'thân_thiện', 'vui_tính'] | W2V: ['tận_tình', 'nhiệt_huyết', 'chuyên_tâm', 'dễ_tính', 'tận_tâm']
+slide | SVD: ['bài', 'đọc', 'chép', 'đẹp', 'tài_liệu'] | W2V: ['sách', 'song_ngữ', 'việt', 'chữ', 'tài_liệu']
+phòng | SVD: ['chất_lượng', 'máy', 'trang_thiết_bị', 'thiết_bị', 'nâng_cấp'] | W2V: ['nóng', 'âm_thanh', 'máy', 'trang_thiết_bị', 'thiết_bị']
+điểm | SVD: ['chấm', 'quá_trình', 'lấy', 'công_bằng', 'chuẩn_xác'] | W2V: ['đánh_giá', 'chấm', 'trung_bình', 'điểm_số', 'công_bằng']
+nhanh | SVD: ['khó', 'hơi', 'giảng_hơi', 'đôi_lúc', 'giảng'] | W2V: ['chậm', 'đôi_khi', 'to', 'khó', 'đôi_lúc']
+tốt | SVD: ['truyền_đạt', 'khả_năng', 'cao', 'được', 'giảng_dạy'] | W2V: ['tệ', 'thuyết_phục', 'tận_tâm', 'hết_mình', 'cao']
+```
+
+Với danh từ, cả hai đều tốt, và Word2Vec thường "sạch" hơn: "thầy" gần "cô", "giảng_viên", "giáo_viên", "thầy_giáo", "cô_giáo", không lẫn "rất", "dạy" như SVD; "slide" gần "sách", "tài_liệu"; "điểm" gần "đánh_giá", "chấm", "điểm_số". SVD hay kéo vào những từ chỉ **đứng cạnh** (phòng và "chất_lượng", slide và "đọc", "chép"), Word2Vec nghiêng về những từ **thay được cho nhau**.
+
+Rồi tới hai dòng cuối. Từ gần "nhanh" nhất theo Word2Vec là "**chậm**". Từ gần "tốt" nhất là "**tệ**".
+
+## Từ trái nghĩa gần nhau
+
+Không phải lỗi cài đặt. "Thầy dạy hơi **nhanh**" và "thầy dạy hơi **chậm**", "phòng học **tốt**" và "phòng học **tệ**": từ trái nghĩa có **đúng cùng** ngữ cảnh. Giả thuyết phân bố hứa "cùng ngữ cảnh thì cùng nghĩa", và với từ trái nghĩa, lời hứa đó chỉ đúng một nửa: chúng cùng **loại** (cùng là tính từ chỉ tốc độ, cùng là lời đánh giá) nhưng ngược **chiều**.
+
+```python
+cos_cap = lambda E, a, b: round(float(E[id_[a]] @ E[id_[b]]), 3)
+for a, b in (("tốt", "tệ"), ("tốt", "hay"), ("nhanh", "chậm"), ("nhiệt_tình", "tận_tâm")):
+    print(a, b, cos_cap(E_svd, a, b), cos_cap(E_w2v, a, b))
+```
+
+```text title="Output"
+tốt tệ 0.39 0.588
+tốt hay 0.491 0.477
+nhanh chậm 0.686 0.74
+nhiệt_tình tận_tâm 0.97 0.701
+```
+
+Theo Word2Vec, "tốt" gần "tệ" (0,588) **hơn** gần "hay" (0,477), một từ cùng nghĩa khen. Với SVD thì ngược lại, nhưng chênh lệch nhỏ. "Nhanh" và "chậm" gần nhau ở cả hai bộ (0,686 và 0,74). Với phân tích cảm xúc, đây là một vấn đề thật: một mô hình chỉ nhìn vector từ thấy "phòng tốt" và "phòng tệ" gần như cùng một chỗ. Trang 4 đo cái giá của nó.
+
+## Phép tương tự
+
+Một tính chất nổi tiếng của Word2Vec: **hiệu** giữa hai vector có thể mang một quan hệ. Ví dụ kinh điển trên tiếng Anh là $\mathbf v_{\text{king}} - \mathbf v_{\text{man}} + \mathbf v_{\text{woman}} \approx \mathbf v_{\text{queen}}$. Thử với dữ liệu của ta: "thầy" so với "thầy_giáo" giống "cô" so với gì?
+
+```python
+def tuong_tu(a, b, c, E, k=3):                       # a : b = c : ?
+    v = E[id_[b]] - E[id_[a]] + E[id_[c]]
+    s = E @ (v / np.linalg.norm(v))
+    return [tu[i] for i in s.argsort()[::-1] if tu[i] not in (a, b, c)][:k]
+
+print(tuong_tu("thầy", "thầy_giáo", "cô", E_svd), tuong_tu("thầy", "thầy_giáo", "cô", E_w2v))
+```
+
+```text title="Output"
+['thân_thiện', 'dễ_thương', 'trẻ_trung'] ['cô_giáo', 'giảng_viên', 'giáo_viên']
+```
+
+Word2Vec trả lời đúng ngay vị trí đầu: "**cô_giáo**". SVD trả lời "thân_thiện", "dễ_thương", những từ hay đi với "cô" chứ không phải dạng đầy đủ của nó. Đừng kỳ vọng quá nhiều: với 127 nghìn token, phần lớn các phép tương tự khác sẽ không ra; các bộ vector công bố được học trên hàng tỷ token. Phép tương tự là một minh họa đẹp, không phải một thước đo đáng tin, và các nghiên cứu về sau cho thấy nó nhạy với cách đánh giá (ví dụ việc loại ba từ đầu vào khỏi danh sách trả lời, như ở trên).
+
+<HinhKetQua src="/hinh/ch40/h1_vector_tu.svg" alt="Biểu đồ phân tán hai chiều, 20 từ được chiếu xuống mặt phẳng bằng PCA từ vector Word2Vec, mỗi từ một chấm có nhãn, tô màu theo bốn nhóm. Nhóm người gồm thầy, cô, giảng viên, giáo viên, sinh viên. Nhóm tính cách gồm nhiệt tình, tận tâm, thân thiện, vui tính. Nhóm cơ sở vật chất gồm phòng, máy chiếu, wifi, thiết bị. Nhóm đánh giá gồm tốt, tệ, hay, nhanh, chậm, khó, dễ." so="40.1" chuThich="Hai mươi từ trong bốn nhóm, vector Word2Vec 50 chiều chiếu xuống 2 chiều bằng PCA. Màu chỉ nhóm do người chọn, không phải do mô hình.">
+**Đọc hình.** Mỗi chấm là một từ; vị trí là hai hướng quan trọng nhất (PCA, Chương 20) của 20 vector 50 chiều. Màu là nhóm do người đặt, mô hình không biết.
+
+**Điều cần thấy.** Mô hình tự xếp được ba nhóm rõ: người (thầy, cô, giảng viên, giáo viên) ở dưới, cơ sở vật chất (phòng, máy chiếu, wifi, thiết bị) ở bên phải, tính cách (nhiệt tình, tận tâm, thân thiện, vui tính) ở góc trên trái. "Sinh viên" đứng riêng giữa đường, vì sinh viên là người viết phản hồi chứ không phải đối tượng được đánh giá. Nhóm đánh giá thì không thành một khối: "hay", "dễ" nằm cạnh các từ tính cách (đều là lời khen người dạy), còn "tốt" nằm sát "nhanh", "chậm", "tệ", "khó", đúng như cosine ở trên cho thấy.
+</HinhKetQua>
+
+<TuKiemTra
+	cauHoi="Một bạn muốn dùng vector Word2Vec để biết một từ là khen hay chê. Cách nào hợp lý nhất?"
+	luaChon={['Lấy cosine với vector của từ tốt: cao là khen', 'Học một bộ phân loại có nhãn (ví dụ hồi quy logistic) trên vector từ, vì hướng khen chê không tự nằm trên cosine', 'Không thể, vector từ không chứa thông tin cảm xúc', 'Lấy độ dài vector']}
+	dapAn={1}
+	giaiThich="Cosine với 'tốt' sẽ xếp 'tệ' rất cao, như vừa thấy. Nhưng thông tin khen chê không mất hẳn: nó có thể nằm trên một hướng nào đó trong không gian 50 chiều mà cosine tổng thể không làm nổi bật. Một bộ phân loại tuyến tính có nhãn tìm được hướng đó. Trang 4 làm đúng như vậy ở mức câu."
+/>
+
+<Khung loai="loi">
+**Kết luận từ vài ví dụ đẹp.** Ba hàng xóm hợp lý và một phép tương tự đúng không chứng minh bộ vector tốt. Chọn sẵn danh sách từ trước khi nhìn kết quả, và báo cả những từ cho kết quả xấu (như "tốt" ở trên).
+
+**Tin hình chiếu 2 chiều.** PCA giữ được một phần nhỏ thông tin của 50 chiều; hai từ chồng lên nhau trên hình có thể xa nhau trong không gian gốc và ngược lại. Hình để gợi ý, cosine trong không gian gốc mới là số đo.
+</Khung>

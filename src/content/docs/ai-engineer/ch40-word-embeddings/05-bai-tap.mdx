@@ -1,0 +1,114 @@
+---
+title: Bài tập
+description: "Ba bài tập có đáp án chi tiết (cửa sổ 5 từ kéo hàng xóm về phía cùng chủ đề thay vì cùng chức năng; cộng hai bảng vector của Word2Vec đẩy tệ ra khỏi hàng xóm của tốt nhưng phân loại không tốt hơn; ghép vector từ với TF-IDF không thêm được gì, 90,52% so với 90,59%) và câu hỏi phỏng vấn."
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Đoán trước, rồi chạy code trong notebook để kiểm tra. Code dùng lại `C_tr`, `C_va`, `tu`, `id_`, `V`, `gan`, `vao`, `ra`, `E_w2v`, `vector_cau`, `cham`, `tv`, `y_tr`, `y_va` của các trang trước.
+
+<BaiTap so="40.1">
+**Cửa sổ rộng hơn.** Dựng lại vector PPMI và SVD như trang 1, nhưng cửa sổ 5 từ mỗi bên thay vì 2. Hàng xóm của "thầy", "phòng" và "nhanh" thay đổi thế nào?
+
+<Fragment slot="dap-an">
+
+```python
+def svd_cua_so(r, d=50):
+    M = np.zeros((V, V))
+    for c in C_tr:
+        ids = [id_[w] for w in c if w in id_]
+        for i, a in enumerate(ids):
+            for j in range(max(0, i - r), min(len(ids), i + r + 1)):
+                if j != i:
+                    M[a, ids[j]] += 1
+    tong = M.sum()
+    with np.errstate(divide="ignore"):
+        pmi = np.log(M / tong / np.outer(M.sum(1) / tong, M.sum(0) / tong))
+    U, S, _ = np.linalg.svd(np.maximum(pmi, 0))
+    E = U[:, :d] * S[:d]
+    return E / np.linalg.norm(E, axis=1, keepdims=True)
+
+E5 = svd_cua_so(5)
+for w in ("thầy", "phòng", "nhanh"):
+    print(w, [x for x, _ in gan(w, E5, 5)])
+```
+
+```text title="Output"
+thầy ['cô', 'rất', 'dạy', 'hay', 'giảng_bài']
+phòng ['máy', 'chất_lượng', 'trang_thiết_bị', 'nâng_cấp', 'quạt']
+nhanh ['kịp', 'khó', 'hơi', 'giảng_hơi', 'chậm']
+```
+
+Với cửa sổ 5, hàng xóm nghiêng về **cùng chủ đề**: "thầy" giờ gần "hay", "giảng_bài" (những gì thường được nói về thầy) thay vì "giảng_viên", "giáo_viên"; "phòng" kéo thêm "quạt"; "nhanh" gần "kịp" (từ hay đi trong "nhanh quá không theo kịp"), "khó", và "chậm" vẫn có mặt.
+
+Đây là một quy luật đã được ghi nhận nhiều lần: cửa sổ **hẹp** cho hàng xóm **thay được cho nhau** (cùng loại, cùng chức năng trong câu), cửa sổ **rộng** cho hàng xóm **liên quan về chủ đề**. Không có cửa sổ đúng cho mọi việc: tìm từ đồng nghĩa thì cửa sổ hẹp, gom từ theo chủ đề thì cửa sổ rộng. Word2Vec mặc định dùng cửa sổ 5.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="40.2">
+**Cộng hai bảng.** Word2Vec học hai vector cho mỗi từ (`vao` và `ra`). Lấy tổng của chúng làm vector từ, rồi so hàng xóm của "tốt" và độ chính xác phân loại cảm xúc ở trang 4 với khi chỉ dùng `vao`.
+
+<Fragment slot="dap-an">
+
+```python
+E_tong = (vao.weight + ra.weight).detach().numpy()
+E_tong /= np.linalg.norm(E_tong, axis=1, keepdims=True)
+print([x for x, _ in gan("tốt", E_tong, 5)], round(float(E_tong[id_["tốt"]] @ E_tong[id_["tệ"]]), 3))
+print(cham(vector_cau(C_tr, E_tong), vector_cau(C_va, E_tong)))
+```
+
+```text title="Output"
+['truyền_đạt', 'càng', 'phát_huy', 'chất_lượng', 'thuyết_phục'] 0.369
+(0.868, 0.6256)
+```
+
+Với tổng hai bảng, "tệ" **rời khỏi** năm hàng xóm của "tốt" (giờ là "truyền_đạt", "càng", "phát_huy", "chất_lượng", "thuyết_phục"), và cosine giữa "tốt" và "tệ" giảm từ 0,588 xuống 0,369. Bảng ngữ cảnh `ra` mang thông tin "từ này hay đi với những gì", và cộng vào làm vector bớt giống nhau ở những từ chỉ cùng vị trí.
+
+Nhưng phân loại cảm xúc **không tốt hơn**: 86,8% so với 87,6% khi chỉ dùng `vao`. Tình cờ con số trùng đúng độ chính xác của SVD ở trang 4 (cả hai đúng 1374 trên 1583 câu, dù dự đoán khác nhau ở 5,4% số câu). Hàng xóm đẹp hơn không đồng nghĩa với đặc trưng tốt hơn cho một nhiệm vụ cụ thể: đánh giá vector từ bằng cách nhìn và đánh giá bằng một nhiệm vụ có thể cho hai câu trả lời khác nhau.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="40.3">
+**Ghép hai loại đặc trưng.** Ghép cột TF-IDF (4009 chiều, thưa) với vector trung bình Word2Vec (50 chiều) thành một ma trận, rồi chạy cùng hồi quy logistic. Có hơn TF-IDF một mình (90,6%) không?
+
+<Fragment slot="dap-an">
+
+```python
+from scipy.sparse import hstack, csr_matrix
+X_tr = hstack([tv.transform(C_tr), csr_matrix(vector_cau(C_tr, E_w2v))]).tocsr()
+X_va = hstack([tv.transform(C_va), csr_matrix(vector_cau(C_va, E_w2v))]).tocsr()
+print(cham(X_tr, X_va))
+```
+
+```text title="Output"
+(0.9052, 0.6853)
+```
+
+Không: 90,52% so với 90,59% của TF-IDF một mình, khác nhau đúng một câu, macro-F1 gần như y hệt. Thêm 50 cột không thêm thông tin, vì vector Word2Vec học trên **chính** 11 nghìn câu train mà TF-IDF đã thấy hết, và trung bình còn làm mất thứ tự.
+
+Ghép đặc trưng có ích khi phần thêm vào mang thông tin **mới**: vector học trên một kho văn bản lớn khác (ví dụ vector fastText tiếng Việt học trên Wikipedia), hay đặc trưng từ một nguồn khác hẳn (thời gian, người viết). Câu hỏi trước khi ghép luôn là: phần này biết điều gì mà phần kia chưa biết?
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Word2Vec học vector từ thế nào? Negative sampling để làm gì?**
+
+<p lang="en"><em>How does Word2Vec learn word vectors, and why negative sampling?</em></p>
+
+*Gợi ý:* skip-gram đoán từ ngữ cảnh từ từ trung tâm (CBOW ngược lại), dựa trên giả thuyết phân bố. Softmax trên cả từ điển quá đắt, nên negative sampling đổi thành phân loại nhị phân: cặp thật với vài cặp giả rút theo tần suất mũ 0,75. Vector giữ lại là bảng embedding của từ trung tâm.
+
+**2. Vì sao từ trái nghĩa thường có vector gần nhau?**
+
+<p lang="en"><em>Why do antonyms often have similar word vectors?</em></p>
+
+*Gợi ý:* chúng xuất hiện trong cùng ngữ cảnh ("dạy nhanh", "dạy chậm"), mà vector từ chỉ học từ ngữ cảnh. Muốn tách chúng cần tín hiệu có nhãn (tinh chỉnh cho cảm xúc) hoặc vector theo ngữ cảnh được huấn luyện cho nhiệm vụ cần phân biệt.
+
+**3. Word2Vec, GloVe, fastText và BERT khác nhau thế nào?**
+
+<p lang="en"><em>Compare Word2Vec, GloVe, fastText and BERT embeddings.</em></p>
+
+*Gợi ý:* Word2Vec học bằng dự đoán cục bộ; GloVe học từ ma trận đồng xuất hiện toàn cục; fastText cộng vector mảnh ký tự nên có vector cho từ chưa gặp; cả ba cho mỗi từ một vector cố định. BERT cho vector theo ngữ cảnh, khác nhau ở mỗi câu, nên xử lý được từ nhiều nghĩa, đổi lại cần cả một mô hình lớn để tính.
+</Khung>

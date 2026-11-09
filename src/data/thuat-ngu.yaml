@@ -818,3 +818,18 @@
   tenTiengAnh: perplexity
   giaiThich: Perplexity là e mũ cross-entropy trung bình trên mỗi token của một mô hình ngôn ngữ trên văn bản thật. Có thể hiểu là mô hình phân vân như phải chọn đều giữa bấy nhiêu từ ở mỗi bước. Càng thấp càng tốt; chỉ so được giữa các mô hình dùng cùng cách tách token.
   hocKy: ai-engineer/ch39-bow-tfidf-ngram
+- id: word-embedding
+  ten: Vector từ
+  tenTiengAnh: word embedding
+  giaiThich: Vector từ là một vector số thực dày, vài chục tới vài trăm chiều, đại diện cho một từ, sao cho từ có ngữ cảnh giống nhau có vector gần nhau. Học không cần nhãn từ văn bản thô, bằng cách đếm đồng xuất hiện rồi nén hoặc bằng một bài toán dự đoán như Word2Vec.
+  hocKy: ai-engineer/ch40-word-embeddings
+- id: word2vec
+  ten: Word2Vec
+  tenTiengAnh: Word2Vec
+  giaiThich: Word2Vec học vector từ bằng một bài toán dự đoán giả. Biến thể skip-gram đoán từ ngữ cảnh từ từ trung tâm; negative sampling đổi việc đó thành phân biệt cặp từ thật với vài cặp rút ngẫu nhiên. Vector thu được giữ quan hệ ngữ nghĩa, nhưng từ trái nghĩa thường nằm gần nhau.
+  hocKy: ai-engineer/ch40-word-embeddings
+- id: fasttext
+  ten: fastText
+  tenTiengAnh: fastText
+  giaiThich: fastText biểu diễn mỗi từ bằng tổng vector của các mảnh ký tự của nó, nên có vector cho cả từ chưa gặp, từ gõ sai và teencode. Có sẵn bộ vector học trên kho văn bản lớn cho 157 ngôn ngữ, trong đó có tiếng Việt.
+  hocKy: ai-engineer/ch40-word-embeddings

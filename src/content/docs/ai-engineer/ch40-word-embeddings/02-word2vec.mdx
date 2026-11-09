@@ -1,0 +1,110 @@
+---
+title: Word2Vec
+description: "Thay vì đếm rồi nén, học vector từ bằng một bài toán dự đoán giả: với mỗi cặp (từ, ngữ cảnh) thật, phân biệt nó với 5 cặp ngữ cảnh rút ngẫu nhiên. Cài skip-gram với negative sampling bằng nn.Embedding của PyTorch; 5 epoch trên 350 nghìn cặp mất khoảng 4 giây, loss giảm từ 2,58 xuống 2,17."
+---
+
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Đổi đếm thành dự đoán
+
+<Term id="word2vec">Word2Vec</Term> (Mikolov và cộng sự, 2013) học vector từ bằng cách khác: đặt ra một bài toán dự đoán **giả**, mà để làm tốt bài đó, mạng buộc phải học được vector tốt. Biến thể **skip-gram**: cho một từ, đoán những từ trong cửa sổ quanh nó. Không ai cần kết quả của việc đoán đó; thứ ta giữ lại là vector mà mạng học được trên đường đi.
+
+Mỗi từ có **hai** vector: $\mathbf v_w$ khi nó là từ trung tâm, $\mathbf u_c$ khi nó là ngữ cảnh. Điểm của cặp (từ, ngữ cảnh) là tích vô hướng $\mathbf v_w \cdot \mathbf u_c$: lớn nghĩa là hay đi cùng nhau. Bản gốc dùng softmax trên cả từ điển để đoán ngữ cảnh, tốn kém vì mỗi bước phải tính điểm với mọi từ.
+
+## Negative sampling
+
+Mikolov và cộng sự đổi bài toán thành **phân loại nhị phân**: với mỗi cặp (từ, ngữ cảnh) **thật** lấy từ dữ liệu, rút thêm $K$ từ ngẫu nhiên làm ngữ cảnh **giả**, và dạy mạng nói "thật" với cặp đầu, "giả" với $K$ cặp kia. Loss là cross-entropy nhị phân (Chương 11) với xác suất "thật" bằng sigmoid của điểm:
+
+$$
+L = -\log \sigma(\mathbf v_w \cdot \mathbf u_c) - \sum_{k=1}^{K} \log \sigma(-\mathbf v_w \cdot \mathbf u_{n_k})
+$$
+
+Kéo $\mathbf v_w$ lại gần ngữ cảnh thật, đẩy xa ngữ cảnh giả. Hai từ có cùng hàng xóm thật sẽ bị kéo về cùng một vùng: giả thuyết phân bố của trang 1, ở dạng một hàm mất mát. Từ giả được rút theo tần suất mũ 0,75, một thủ thuật của bài báo gốc: làm từ hiếm được rút thường hơn một chút so với tần suất thật, để mạng không chỉ học phân biệt với "rất" và "thầy".
+
+Năm 2014, Levy và Goldberg chứng minh rằng skip-gram với negative sampling, ở điểm tối ưu, ngầm phân tích một ma trận PMI dịch chuyển: cách học bằng dự đoán và cách đếm của trang 1 gần nhau hơn vẻ ngoài.
+
+## `nn.Embedding`
+
+Trong PyTorch, bảng vector từ là `nn.Embedding(V, d)`: một ma trận $V \times d$ học được, gọi với một tensor chỉ số thì trả về các hàng tương ứng. Nó tương đương nhân one-hot với ma trận trọng số của một lớp `nn.Linear` không bias, nhưng không phải dựng vector one-hot: chỉ là tra bảng. Chương 29 đã hứa giới thiệu lớp này; mọi mô hình ngôn ngữ từ Chương 41 tới mô hình ngôn ngữ lớn đều bắt đầu bằng nó.
+
+```python
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+torch.set_num_threads(1)
+
+bang = nn.Embedding(5, 3)                            # 5 từ, mỗi từ 3 số
+print(bang.weight.shape, bang(torch.tensor([0, 3, 3])).shape)
+```
+
+```text title="Output"
+torch.Size([5, 3]) torch.Size([3, 3])
+```
+
+## Huấn luyện
+
+Dựng mọi cặp (từ, ngữ cảnh) với cùng cửa sổ 2 từ như trang 1, rồi học 5 epoch, lô 1024 cặp, $K = 5$ ngữ cảnh giả mỗi cặp, vector 50 chiều:
+
+```python
+cap = []
+for c in C_tr:
+    ids = [id_[w] for w in c if w in id_]
+    for i, a in enumerate(ids):
+        for j in range(max(0, i - 2), min(len(ids), i + 3)):
+            if j != i:
+                cap.append((a, ids[j]))
+cap = torch.tensor(cap)
+p_gia = torch.tensor([dem[w] for w in tu], dtype=torch.float) ** 0.75   # phân phối rút ngữ cảnh giả
+p_gia /= p_gia.sum()
+
+torch.manual_seed(0)
+vao, ra = nn.Embedding(V, 50), nn.Embedding(V, 50)   # vector trung tâm v, vector ngữ cảnh u
+nn.init.uniform_(vao.weight, -0.5 / 50, 0.5 / 50)
+nn.init.zeros_(ra.weight)
+opt = torch.optim.Adam(list(vao.parameters()) + list(ra.parameters()), lr=0.01, fused=True)
+t0 = time.time()
+for ep in range(5):
+    thu_tu, tong, n = torch.randperm(len(cap)), 0.0, 0
+    for k in range(0, len(cap), 1024):
+        lo = cap[thu_tu[k:k + 1024]]
+        w, c = lo[:, 0], lo[:, 1]
+        gia = torch.multinomial(p_gia, len(lo) * 5, replacement=True).view(len(lo), 5)   # 5 ngữ cảnh giả mỗi cặp
+        v = vao(w)
+        diem_that = (v * ra(c)).sum(1)
+        diem_gia = torch.bmm(ra(gia), v.unsqueeze(2)).squeeze(2)
+        loss = -(F.logsigmoid(diem_that).mean() + F.logsigmoid(-diem_gia).sum(1).mean())
+        opt.zero_grad()
+        loss.backward()
+        opt.step()
+        tong, n = tong + loss.item() * len(lo), n + len(lo)
+    print(ep + 1, round(tong / n, 4))
+print(len(cap), time.time() - t0 < 60)
+E_w2v = vao.weight.detach().numpy()
+E_w2v = E_w2v / np.linalg.norm(E_w2v, axis=1, keepdims=True)
+```
+
+```text title="Output"
+1 2.578
+2 2.2832
+3 2.2176
+4 2.185
+5 2.1657
+349962 True
+```
+
+349 962 cặp; loss giảm từ 2,58 sau epoch đầu xuống 2,17 sau epoch 5, khoảng 4 giây trên một luồng CPU. Loss ban đầu, khi mọi điểm bằng 0, là $6 \log 2 \approx 4{,}16$ (một cặp thật cộng 5 cặp giả, mỗi cặp đoán 50/50). Loss không về 0 được, và không cần về 0: một từ như "rất" đi với hàng trăm ngữ cảnh khác nhau, không thể phân biệt hoàn hảo cặp thật với cặp giả. Như ở Chương 30 và 31, giá trị loss nói ít về chất lượng của thứ ta thật sự cần; trang 3 đọc thẳng các vector.
+
+<TuKiemTra
+	cauHoi="Sau khi học xong, ta giữ vao.weight làm vector từ. Vì sao không dùng ra.weight, hay có thể dùng không?"
+	luaChon={['Không thể dùng ra.weight vì nó toàn số 0', 'ra.weight cũng là vector từ hợp lệ; nhiều cài đặt dùng vao, một số cộng hoặc ghép cả hai', 'ra.weight chỉ chứa từ giả', 'Phải lấy hiệu của hai ma trận']}
+	dapAn={1}
+	giaiThich="ra.weight được khởi tạo bằng 0 nhưng cũng được học suốt quá trình, và mã hóa từ trong vai trò ngữ cảnh. Bài báo gốc giữ vector trung tâm; GloVe lấy tổng hai vector; nhiều nghiên cứu thấy cộng hai vector cho kết quả tốt hơn một chút. Đây là một lựa chọn thiết kế, nên thử trên bài toán của mình."
+/>
+
+<Khung loai="loi">
+**Khởi tạo cả hai bảng bằng 0.** Khi đó mọi điểm bằng 0, gradient của $\mathbf v$ phụ thuộc vào $\mathbf u$ và ngược lại, cả hai bằng 0, và không gì học được. Ít nhất một bảng phải khởi tạo ngẫu nhiên.
+
+**Rút ngữ cảnh giả đúng bằng ngữ cảnh thật.** Thỉnh thoảng $n_k$ trùng $c$, và mạng bị dạy cùng lúc "thật" và "giả" cho một cặp. Với từ điển hàng nghìn từ thì hiếm và vô hại; với từ điển rất nhỏ (thử nghiệm đồ chơi) thì đáng kể, nên loại các mẫu trùng.
+</Khung>
