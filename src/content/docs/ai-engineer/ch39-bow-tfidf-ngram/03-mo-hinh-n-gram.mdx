@@ -1,0 +1,135 @@
+---
+title: Mô hình ngôn ngữ n-gram
+description: "Mô hình ngôn ngữ gán xác suất cho câu. Giả định Markov chỉ nhìn một vài từ trước, rồi đếm: sau chữ 'thầy', 21,1% số lần là 'dạy'. Mô hình bigram trên UIT-VSFC sinh được những câu nghe như phản hồi thật, nhưng gán xác suất 0 cho 58,7% câu test vì gặp cặp từ chưa thấy bao giờ."
+---
+
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Xác suất của một câu
+
+BoW và TF-IDF biến câu thành vector để **so sánh**. Một <Term id="mo-hinh-ngon-ngu">mô hình ngôn ngữ</Term> làm việc khác: gán **xác suất** cho một câu, hay tương đương, đoán từ tiếp theo. "Thầy dạy rất dễ hiểu" phải có xác suất cao hơn "dạy dễ thầy hiểu rất". Bộ gõ trên điện thoại gợi ý từ tiếp theo, nhận dạng giọng nói chọn giữa "đi học" và "đi họp", máy dịch chọn câu tự nhiên nhất: tất cả đều cần một mô hình ngôn ngữ. Chương 29 đã huấn luyện một mô hình ngôn ngữ ký tự bằng LSTM trên Truyện Kiều; trang này làm điều tương tự với từ, chỉ bằng cách đếm. Mô hình ngôn ngữ lớn của Phần V cũng chỉ là một mô hình như vậy, rất lớn.
+
+Theo quy tắc chuỗi của xác suất (Chương 7), với câu $w_1 w_2 \ldots w_m$:
+
+$$
+P(w_1 \ldots w_m) = P(w_1)\, P(w_2 \mid w_1)\, P(w_3 \mid w_1 w_2) \cdots P(w_m \mid w_1 \ldots w_{m-1})
+$$
+
+Đúng, nhưng vô dụng: $P(w_m \mid w_1 \ldots w_{m-1})$ cần đếm xem cả đoạn đầu câu dài $m - 1$ từ đã xuất hiện bao nhiêu lần, mà hầu hết câu dài chưa từng xuất hiện lần nào.
+
+**Giả định Markov** (như Chương 33): từ tiếp theo chỉ phụ thuộc vào $n - 1$ từ ngay trước. Với $n = 2$, mô hình **bigram**:
+
+$$
+P(w_i \mid w_1 \ldots w_{i-1}) \approx P(w_i \mid w_{i-1}) = \frac{\text{đếm}(w_{i-1}\, w_i)}{\text{đếm}(w_{i-1})}
+$$
+
+Phân số bên phải là ước lượng hợp lý cực đại (Chương 7): tỷ lệ lần $w_{i-1}$ được theo sau bởi $w_i$. <Term id="n-gram">N-gram</Term> là chuỗi $n$ từ liền nhau: unigram (1), bigram (2), trigram (3). Thêm ký hiệu `<s>` ở đầu và `</s>` ở cuối mỗi câu, để mô hình biết từ nào hay mở đầu câu và khi nào câu nên dừng.
+
+## Đếm
+
+Dùng các câu train đã tách từ `S_tr` của trang 1. Một hàm đếm mọi n-gram và mọi "lịch sử" ($n - 1$ từ đứng trước):
+
+```python
+def them_dau(s, n):                                  # n - 1 ký hiệu mở đầu, một ký hiệu kết thúc
+    return ["<s>"] * (n - 1) + s.split() + ["</s>"]
+
+def dem(ds, n):
+    c, h = Counter(), Counter()
+    for s in ds:
+        t = them_dau(s, n)
+        for i in range(n - 1, len(t)):
+            g = tuple(t[i - n + 1:i + 1])
+            c[g] += 1                                # đếm n-gram
+            h[g[:-1]] += 1                           # đếm lịch sử của nó
+    return c, h
+
+c1, h1 = dem(S_tr, 1)
+c2, h2 = dem(S_tr, 2)
+c3, h3 = dem(S_tr, 3)
+V = len(c1)                                          # cỡ từ vựng, kể cả </s>
+print(V, len(c2), len(c3))
+sau_thay = [(w, round(n / h2[("thầy",)], 3)) for (a, w), n in c2.most_common() if a == "thầy"]
+print(h2[("thầy",)], sau_thay[:5])
+```
+
+```text title="Output"
+4010 36403 77710
+3039 [('dạy', 0.211), ('rất', 0.082), ('giảng', 0.059), ('nên', 0.037), ('.', 0.027)]
+```
+
+4010 unigram (4009 từ cộng `</s>`), và số bigram, trigram khác nhau tăng rất nhanh theo $n$. "Thầy" làm lịch sử 3039 lần; sau nó, **21,1%** số lần là "dạy", 8,2% là "rất", 5,9% là "giảng". Đó là $P(\text{dạy} \mid \text{thầy}) = 642 / 3039 = 0{,}2113$.
+
+## Sinh câu
+
+Một mô hình ngôn ngữ cũng **sinh** được văn bản: bắt đầu từ `<s>`, lấy mẫu từ tiếp theo theo $P(\cdot \mid \text{từ trước})$, lặp cho tới khi gặp `</s>`. Đây đúng là cách ChatGPT sinh chữ, chỉ khác ở chỗ xác suất do một mạng nơ-ron tính dựa trên hàng nghìn token trước, không phải một bảng đếm dựa trên một từ.
+
+```python
+rng = np.random.default_rng(0)
+tiep = {}                                            # với mỗi từ: danh sách từ theo sau và số lần
+for (a, b), n in c2.items():
+    tiep.setdefault(a, []).append((b, n))
+
+def sinh(toi_da=25):
+    w, ra = "<s>", []
+    for _ in range(toi_da):
+        tu, so = zip(*tiep[w])
+        p = np.array(so, dtype=float) / sum(so)
+        w = tu[rng.choice(len(tu), p=p)]
+        if w == "</s>":
+            break
+        ra.append(w)
+    return " ".join(ra)
+
+for _ in range(4):
+    print(sinh())
+```
+
+```text title="Output"
+bài giảng bài hay liên_hệ kiến_thức chuyên_môn tốt , lôi_cuốn vào slide nhiều bài_tập đầy_đủ .
+những điều gì .
+cách thi cho sinh_viên khó_khăn nhưng với thực_tiễn cho sinh_viên .
+cô rất hay gặp thầy dạy hay và nhiều hơn .
+```
+
+Từng cặp từ liền nhau đều tự nhiên, vì mỗi cặp đã thật sự xuất hiện trong dữ liệu. Nhưng cả câu thì lạc ý: "thực_tiễn cho sinh_viên", "cô rất hay gặp thầy dạy hay". Mô hình chỉ nhớ một từ trước, không có khái niệm câu đang nói về gì.
+
+## Vấn đề số 0
+
+Dùng mô hình bigram đã đếm để tính xác suất các câu **test**. Một câu chỉ cần chứa **một** cặp từ chưa từng gặp trong train là có xác suất 0, vì một thừa số bằng 0:
+
+```python
+def log_p(s, n, c, h, k=0.0):                        # log xác suất của câu, None nếu bằng 0; k dùng ở trang 4
+    t = them_dau(s, n)
+    L = 0.0
+    for i in range(n - 1, len(t)):
+        g = tuple(t[i - n + 1:i + 1])
+        tu_so, mau_so = c[g] + k, h[g[:-1]] + k * V
+        if tu_so == 0:
+            return None
+        L += math.log(tu_so / mau_so)
+    return L
+
+so_0 = sum(log_p(s, 2, c2, h2) is None for s in S_te)
+print(so_0, len(S_te), round(so_0 / len(S_te), 3))
+```
+
+```text title="Output"
+1860 3166 0.587
+```
+
+**58,7%** câu test có xác suất bằng 0. Không phải vì chúng sai ngữ pháp, mà vì 11 nghìn câu train quá ít để đã gặp mọi cặp từ hợp lý. Đây là luật Zipf của Chương 38 ở mức cặp từ: số bigram có thể có là $4010^2$, hơn 16 triệu, mà train chỉ có khoảng 139 nghìn bigram. Một mô hình gán xác suất 0 cho câu bình thường là mô hình hỏng; trang 4 sửa nó.
+
+<TuKiemTra
+	cauHoi="Với mô hình bigram, vì sao phải thêm ký hiệu kết thúc câu vào cuối mỗi câu?"
+	luaChon={['Để câu dài hơn', 'Để mô hình học được khi nào câu kết thúc; không có nó, tổng xác suất của mọi câu dài cố định bằng 1 nhưng không so được câu ngắn với câu dài', 'Để tránh xác suất bằng 0', 'Chỉ để in cho đẹp']}
+	dapAn={1}
+	giaiThich="Có ký hiệu kết thúc, xác suất của một câu gồm cả xác suất 'dừng ở đây', và mô hình định nghĩa một phân phối trên mọi câu với mọi độ dài. Không có nó, câu 'thầy dạy' và câu 'thầy dạy hay' không thể so trên cùng một thang. Khi sinh câu, ký hiệu kết thúc là tín hiệu dừng."
+/>
+
+<Khung loai="loi">
+**Nhân trực tiếp các xác suất.** Một câu 20 từ, mỗi thừa số cỡ 0,05, cho tích cỡ $10^{-26}$; câu 300 từ thì nhỏ hơn số nhỏ nhất máy tính biểu diễn được, thành 0. Luôn **cộng log** xác suất, như `log_p` ở trên.
+
+**Quên thêm `<s>`.** Không có lịch sử cho từ đầu câu, và mô hình mất thông tin quý: trong bộ này, 1971 câu train mở đầu bằng "thầy", 1179 câu bằng "giảng_viên", 785 câu bằng "cô".
+</Khung>

@@ -1,0 +1,138 @@
+---
+title: Bag-of-Words
+description: "Cách đơn giản nhất biến văn bản thành số: đếm mỗi từ xuất hiện bao nhiêu lần, bỏ qua thứ tự. Tự cài trên ba câu, đo độ giống nhau bằng cosine, rồi dựng ma trận 11 426 x 4009 cho UIT-VSFC: chỉ 0,26% ô khác 0, nên lưu dạng thưa thay vì 366 MB."
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+<CanBietTruoc>
+Chuẩn hóa văn bản, tách từ bằng underthesea, từ vựng và luật Zipf, bộ dữ liệu UIT-VSFC (Chương 38). Vector, tích vô hướng, độ dài (Chương 5). Xác suất có điều kiện và quy tắc chuỗi (Chương 7). Logarit.
+
+<Fragment slot="sau-chuong">
+Biểu diễn một câu bằng vector đếm từ (Bag-of-Words) và TF-IDF, tự cài bằng NumPy rồi so với scikit-learn, đo độ giống nhau bằng cosine và dựng một máy tìm câu tương tự. Xây mô hình ngôn ngữ n-gram, thấy vì sao nó cho xác suất 0, làm trơn bằng add-k và nội suy, và đánh giá bằng perplexity.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch39_bow_tfidf_ngram.ipynb" />
+
+## Một túi từ
+
+Mô hình nào cũng cần đầu vào là vector số có độ dài cố định, còn câu thì dài ngắn tùy ý. Cách đơn giản nhất: lập **từ điển** gồm mọi từ đã gặp, rồi biểu diễn mỗi câu bằng một vector dài đúng bằng từ điển, ô thứ $j$ là **số lần** từ thứ $j$ xuất hiện trong câu. Thứ tự từ bị bỏ hết: câu như một cái túi đựng từ, nên gọi là <Term id="bag-of-words">Bag-of-Words</Term> (BoW).
+
+Ba câu ví dụ, tách từ như Chương 38, chữ thường, bỏ dấu câu, và nối âm tiết trong một từ bằng dấu gạch dưới:
+
+```python
+!pip install underthesea
+```
+
+```python
+import math
+import os
+import re
+import urllib.request
+from collections import Counter
+import numpy as np
+import pandas as pd
+from underthesea import word_tokenize
+
+def tach(s):                                         # chữ thường, tách từ, bỏ dấu câu, "bài tập" thành "bài_tập"
+    return [w.replace(" ", "_") for w in word_tokenize(s.lower()) if re.search(r"\w", w)]
+
+cau = ["Thầy giảng bài rất hay.", "Thầy giảng bài khó hiểu.", "Bài tập rất hay và bổ ích."]
+T = [tach(c) for c in cau]
+tu_dien = sorted({w for t in T for w in t})
+X = np.array([[t.count(w) for w in tu_dien] for t in T])
+print(T)
+print(tu_dien)
+print(X)
+```
+
+```text title="Output"
+[['thầy', 'giảng', 'bài', 'rất', 'hay'], ['thầy', 'giảng', 'bài', 'khó', 'hiểu'], ['bài_tập', 'rất', 'hay', 'và', 'bổ_ích']]
+['bài', 'bài_tập', 'bổ_ích', 'giảng', 'hay', 'hiểu', 'khó', 'rất', 'thầy', 'và']
+[[1 0 0 1 1 0 0 1 1 0]
+ [1 0 0 1 0 1 1 0 1 0]
+ [0 1 1 0 1 0 0 1 0 1]]
+```
+
+Từ điển có 10 từ, xếp theo bảng chữ cái. Câu 1 là `[1 0 0 1 1 0 0 1 1 0]`: có "bài", "giảng", "hay", "rất", "thầy", mỗi từ một lần. Để ý "bài" (câu 1, 2) và "bài_tập" (câu 3) là hai cột khác nhau: tách từ quyết định từ điển. Hai phép tự kiểm: mỗi hàng dài bằng cỡ từ điển, và tổng mỗi hàng bằng số token của câu.
+
+## Đo độ giống nhau
+
+Hai câu giống nhau thì hai vector chỉ về gần cùng một hướng. **Độ tương tự cosine** đo cosin của góc giữa hai vector:
+
+$$
+\cos(\mathbf a, \mathbf b) = \frac{\mathbf a \cdot \mathbf b}{\lVert \mathbf a \rVert\, \lVert \mathbf b \rVert}
+$$
+
+bằng 1 khi cùng hướng, bằng 0 khi không chung từ nào (vector đếm không âm nên cosine không bao giờ âm). Chia cho độ dài để câu dài không tự nhiên "giống" mọi thứ hơn câu ngắn.
+
+```python
+def cos(a, b):
+    return a @ b / np.linalg.norm(a) / np.linalg.norm(b)
+
+print(round(cos(X[0], X[1]), 4), round(cos(X[0], X[2]), 4))
+```
+
+```text title="Output"
+0.6 0.4
+```
+
+Câu 1 giống câu 2 (0,6, chung ba từ "thầy", "giảng", "bài") hơn câu 3 (0,4, chung "rất", "hay"). Nhưng về **nghĩa**, câu 1 là khen, câu 2 là chê, còn câu 3 cũng là khen. BoW chỉ thấy từ chung, không thấy từ nào quan trọng: "thầy giảng bài" có mặt trong hầu hết phản hồi nên nói lên rất ít, còn "khó hiểu" mới là thông tin. Trang 2 sửa đúng chỗ đó.
+
+## Trên cả bộ dữ liệu
+
+`CountVectorizer` của scikit-learn làm đúng việc trên cho cả nghìn câu. Văn bản đã tách từ sẵn, nên chỉ cần cắt theo dấu cách (`analyzer=str.split`); để mặc định, nó dùng một biểu thức chính quy cho tiếng Anh và vứt những token một ký tự. Tải lại UIT-VSFC như Chương 38 và tách từ cả ba phần (khoảng 5 giây):
+
+```python
+URL = "https://huggingface.co/api/datasets/uitnlp/vietnamese_students_feedback/parquet/default/{}/0.parquet"
+THU_MUC = os.path.expanduser("~/.cache/vsfc")
+
+def tai(phan):
+    os.makedirs(THU_MUC, exist_ok=True)
+    tep = os.path.join(THU_MUC, phan + ".parquet")
+    if not os.path.exists(tep):
+        urllib.request.urlretrieve(URL.format(phan), tep)
+    return pd.read_parquet(tep)
+
+tr, va, te = tai("train"), tai("validation"), tai("test")
+noi = lambda ds: [" ".join(w.replace(" ", "_") for w in word_tokenize(c)) for c in ds]   # tách từ, nối bằng dấu cách
+S_tr, S_va, S_te = noi(tr.sentence), noi(va.sentence), noi(te.sentence)
+print(S_tr[1])
+```
+
+```text title="Output"
+nhiệt_tình giảng_dạy , gần_gũi với sinh_viên .
+```
+
+```python
+from sklearn.feature_extraction.text import CountVectorizer
+cv = CountVectorizer(analyzer=str.split)
+B = cv.fit_transform(S_tr)                           # học từ điển trên train, rồi đếm
+print(B.shape, B.nnz, round(B.nnz / (B.shape[0] * B.shape[1]), 4), type(B).__name__)
+print(round(B.shape[0] * B.shape[1] * 8 / 1e6), "MB nếu lưu dạng đặc")
+```
+
+```text title="Output"
+(11426, 4009) 118930 0.0026 csr_matrix
+366 MB nếu lưu dạng đặc
+```
+
+Ma trận 11 426 câu x 4009 từ, nhưng chỉ khoảng 119 nghìn ô khác 0, tức **0,26%**: mỗi câu chỉ dùng chừng 10 từ trong 4009. Lưu đủ mọi ô bằng số thực 8 byte tốn 366 MB; scikit-learn trả về **ma trận thưa** (`csr_matrix`), chỉ lưu những ô khác 0 kèm vị trí, chưa tới 2 MB. Mọi mô hình tuyến tính của Phần II (Chương 11, 15, 16) nhận thẳng ma trận thưa, nên Chương 41 sẽ phân loại cảm xúc ngay trên nó.
+
+<TuKiemTra
+	cauHoi="Hai câu 'thầy dạy không hay' và 'không, thầy dạy hay' có vector BoW thế nào?"
+	luaChon={['Khác nhau vì thứ tự từ khác', 'Giống hệt nhau nếu bỏ dấu câu, vì cùng các từ với cùng số lần', 'Khác nhau vì câu thứ hai có dấu phẩy', 'Cosine bằng 0']}
+	dapAn={1}
+	giaiThich="BoW chỉ đếm. Bỏ dấu câu, cả hai câu đều có thầy, dạy, không, hay, mỗi từ một lần, nên vector trùng nhau và cosine bằng 1, dù nghĩa có thể khác. Đó là cái giá của việc bỏ thứ tự. Đếm cả cặp từ liền nhau (bigram, trang 3) giữ lại được một phần thứ tự: 'không hay' và 'không ,' là hai bigram khác nhau."
+/>
+
+<Khung loai="loi">
+**Học từ điển trên cả train lẫn test.** `fit_transform` chỉ chạy trên train; với val và test dùng `transform`, từ lạ bị bỏ qua. Học từ điển trên test là để lọt thông tin của test vào mô hình (Chương 9).
+
+**Đổi ma trận thưa thành đặc cho "dễ nhìn".** `B.toarray()` với 4009 cột thì không sao, nhưng với từ điển 100 nghìn từ và 1 triệu câu là 800 GB. Giữ dạng thưa cho tới khi thật sự cần.
+</Khung>

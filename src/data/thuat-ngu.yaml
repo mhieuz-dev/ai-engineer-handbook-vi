@@ -793,3 +793,28 @@
   tenTiengAnh: out-of-vocabulary (OOV)
   giaiThich: Từ ngoài từ vựng là từ gặp lúc dùng mô hình mà không có trong từ vựng xây từ dữ liệu huấn luyện. Theo luật Zipf, luôn còn từ chưa gặp. Xử lý bằng một token chung như unk, ngưỡng tần suất, hoặc cắt từ lạ thành mảnh nhỏ đã biết.
   hocKy: ai-engineer/ch38-tong-quan-nlp
+- id: bag-of-words
+  ten: Bag-of-Words
+  tenTiengAnh: bag-of-words (BoW)
+  giaiThich: Bag-of-Words biểu diễn một văn bản bằng vector dài bằng từ điển, mỗi ô là số lần một từ xuất hiện, bỏ qua thứ tự. Đơn giản, nhanh, vector rất thưa, và là baseline mạnh cho phân loại văn bản, nhưng không phân biệt được hai câu cùng từ khác thứ tự.
+  hocKy: ai-engineer/ch39-bow-tfidf-ngram
+- id: tf-idf
+  ten: TF-IDF
+  tenTiengAnh: term frequency, inverse document frequency
+  giaiThich: TF-IDF cân mỗi từ trong văn bản bằng tần suất của nó trong văn bản nhân log nghịch đảo số văn bản chứa nó. Từ xuất hiện khắp nơi bị nhẹ đi, từ hiếm mà có mặt thì nặng lên. Có nhiều biến thể công thức, ví dụ scikit-learn làm trơn IDF và chuẩn hóa L2.
+  hocKy: ai-engineer/ch39-bow-tfidf-ngram
+- id: n-gram
+  ten: N-gram
+  tenTiengAnh: n-gram
+  giaiThich: N-gram là chuỗi n từ liền nhau, như bigram hai từ, trigram ba từ. Mô hình ngôn ngữ n-gram giả định từ tiếp theo chỉ phụ thuộc n trừ 1 từ trước và ước lượng xác suất bằng cách đếm. Bậc cao hơn cần nhiều dữ liệu hơn hẳn.
+  hocKy: ai-engineer/ch39-bow-tfidf-ngram
+- id: lam-tron
+  ten: Làm trơn
+  tenTiengAnh: smoothing
+  giaiThich: Làm trơn chia bớt một phần xác suất của những gì đã thấy cho những gì chưa thấy, để mô hình đếm không gán xác suất 0. Add-one (Laplace) cộng 1 vào mọi lần đếm, add-k cộng một số nhỏ hơn; nội suy, backoff và Kneser-Ney dựa vào mô hình bậc thấp hơn.
+  hocKy: ai-engineer/ch39-bow-tfidf-ngram
+- id: perplexity
+  ten: Perplexity
+  tenTiengAnh: perplexity
+  giaiThich: Perplexity là e mũ cross-entropy trung bình trên mỗi token của một mô hình ngôn ngữ trên văn bản thật. Có thể hiểu là mô hình phân vân như phải chọn đều giữa bấy nhiêu từ ở mỗi bước. Càng thấp càng tốt; chỉ so được giữa các mô hình dùng cùng cách tách token.
+  hocKy: ai-engineer/ch39-bow-tfidf-ngram

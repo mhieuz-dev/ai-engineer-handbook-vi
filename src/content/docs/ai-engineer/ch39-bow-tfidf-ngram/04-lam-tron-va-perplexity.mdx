@@ -1,0 +1,100 @@
+---
+title: Làm trơn và perplexity
+description: "Cộng thêm k vào mọi lần đếm để không n-gram nào có xác suất 0, rồi chọn k trên tập val bằng perplexity. Trên UIT-VSFC: unigram khoảng 218 tới 235, bigram với k = 0,01 còn 70,6, còn trigram tốt nhất cũng chỉ khoảng 189, kém xa bigram, vì dữ liệu quá thưa. Bigram được chọn đạt perplexity 81,6 trên test."
+---
+
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Làm trơn add-k
+
+Cách sửa đơn giản nhất cho số 0: giả vờ đã thấy **mọi** n-gram thêm $k$ lần. Với bigram:
+
+$$
+P_{\text{add-}k}(w_i \mid w_{i-1}) = \frac{\text{đếm}(w_{i-1}\, w_i) + k}{\text{đếm}(w_{i-1}) + k\,V}
+$$
+
+Mẫu số cộng thêm $kV$ để tổng xác suất trên cả $V$ từ vẫn bằng 1. Với $k = 1$ gọi là làm trơn **Laplace** (add-one), đúng như làm trơn của Naive Bayes ở Chương 15. Ý tưởng chung gọi là <Term id="lam-tron">làm trơn</Term> (smoothing): lấy bớt một ít xác suất của những gì đã thấy, chia cho những gì chưa thấy.
+
+$k$ bao nhiêu thì tốt? $k = 1$ thường **quá nhiều**: với $V = 4010$, mẫu số được cộng thêm 4010, trong khi "thầy" chỉ làm lịch sử 3039 lần. Hơn một nửa xác suất sau "thầy" bị chia đều cho hàng nghìn từ không bao giờ đi sau nó. Phải chọn $k$ trên dữ liệu, và cần một thước đo.
+
+## Perplexity
+
+Thước đo chuẩn cho mô hình ngôn ngữ là <Term id="perplexity">perplexity</Term>. Với tập văn bản có tổng cộng $N$ token (tính cả `</s>`):
+
+$$
+\text{PP} = \exp\Big(-\frac{1}{N} \sum \log P(w_i \mid \text{lịch sử})\Big)
+$$
+
+Đó là $e$ mũ cross-entropy trung bình trên mỗi token (Chương 11): mô hình càng gán xác suất cao cho văn bản thật, perplexity càng thấp. Đọc trực giác: perplexity 70 nghĩa là trung bình mô hình phân vân **như thể** phải chọn đều giữa 70 từ ở mỗi bước. Một mô hình đoán đều trên cả từ vựng có perplexity bằng đúng $V$.
+
+```python
+def perplexity(ds, n, c, h, k):
+    L, N = 0.0, 0
+    for s in ds:
+        l = log_p(s, n, c, h, k)
+        if l is None:
+            return float("inf")                      # chỉ một câu xác suất 0 là perplexity vô cùng
+        L += l
+        N += len(s.split()) + 1                      # các từ cộng </s>
+    return round(math.exp(-L / N), 2)
+
+for k in (1, 0.1, 0.01, 0.001):
+    print(k, perplexity(S_va, 1, c1, h1, k), perplexity(S_va, 2, c2, h2, k), perplexity(S_va, 3, c3, h3, k))
+```
+
+```text title="Output"
+1 218.18 213.53 896.02
+0.1 222.07 90.46 377.04
+0.01 228.47 70.61 209.43
+0.001 235.26 81.95 197.03
+```
+
+Mỗi dòng là một giá trị $k$, ba cột là unigram, bigram, trigram, đo trên **val**. Ba điều:
+
+- **Unigram** gần như không đổi theo $k$ (218 tới 235): mỗi từ đã có nhiều lần đếm, cộng thêm chút ít không đáng kể. Nó vẫn tốt hơn nhiều so với đoán đều trên 4010 từ.
+- **Bigram** tốt nhất ở $k = 0{,}01$ với perplexity **70,6**, gấp ba lần tốt hơn unigram. Với $k = 1$, nó gần như tệ bằng unigram (213,5): làm trơn Laplace đã xóa gần hết thông tin của các cặp từ.
+- **Trigram** lại **kém hơn bigram** ở mọi $k$: trong bốn giá trị thử, tốt nhất 197 ở $k = 0{,}001$; lưới $k$ mịn hơn ở hình 39.1 xuống được khoảng 189, vẫn gấp 2,7 lần bigram. Lịch sử hai từ hiếm khi đã gặp đủ nhiều lần trong 11 nghìn câu; phần lớn trigram ở val chưa từng thấy, và xác suất của chúng gần như chỉ còn phần $k$ chia đều.
+
+Mô hình được chọn là bigram, $k = 0{,}01$, chọn trên val. Giờ mới đo test, một lần:
+
+```python
+print(perplexity(S_te, 2, c2, h2, 0.01), perplexity(S_te, 1, c1, h1, 1))
+```
+
+```text title="Output"
+81.6 234.97
+```
+
+Test: **81,6**, so với 235,0 của unigram. Cao hơn val (70,6) một chút, như thường lệ khi siêu tham số được chọn trên val.
+
+<HinhKetQua src="/hinh/ch39/h1_perplexity.svg" alt="Biểu đồ đường, trục ngang là k theo thang log từ 0,0001 tới 1, trục dọc là perplexity trên val. Đường unigram gần như nằm ngang quanh 215 tới 240. Đường bigram có dạng chữ U, thấp nhất khoảng 70 ở k bằng 0,01, lên khoảng 210 ở k bằng 1. Đường trigram luôn cao hơn bigram, cũng có dạng chữ U: khoảng 900 ở k bằng 1, thấp nhất khoảng 189 quanh k từ 0,002 tới 0,003, rồi lên lại gần 300 ở k bằng 0,0001; ở đoạn giữa nó thấp hơn đường unigram một chút." so="39.1" chuThich="Perplexity trên tập val UIT-VSFC theo hệ số làm trơn k, cho unigram, bigram và trigram làm trơn add-k.">
+**Đọc hình.** Mỗi đường là một bậc n-gram; trục ngang là $k$ theo thang log. Thấp hơn là tốt hơn.
+
+**Điều cần thấy.** Bigram có một điểm tối ưu rõ: $k$ quá lớn xóa thông tin, $k$ quá nhỏ thì những cặp chưa gặp gần như có xác suất 0 và bị phạt nặng. Trigram không bao giờ thắng bigram khi đứng một mình. Bậc cao hơn chỉ có ích khi có đủ dữ liệu, hoặc khi được **trộn** với bậc thấp hơn (bài tập 39.3).
+</HinhKetQua>
+
+## Hơn add-k
+
+Add-k chia phần xác suất "để dành" **đều** cho mọi từ chưa gặp, dù "thầy giảng_viên" vô lý hơn hẳn "thầy hướng_dẫn". Các phương pháp tốt hơn dựa vào thông tin bậc thấp hơn:
+
+- **Nội suy**: trộn bigram, trigram và unigram với trọng số, $P = \lambda_3 P_3 + \lambda_2 P_2 + \lambda_1 P_1$, các $\lambda$ chọn trên val.
+- **Backoff**: dùng trigram nếu đã gặp, không thì lùi về bigram, rồi unigram.
+- **Kneser-Ney**: tinh tế hơn, đo một từ "hay xuất hiện sau nhiều từ khác nhau" thay vì "hay xuất hiện". Đây là phương pháp làm trơn tốt nhất cho n-gram, được dùng trong nhận dạng giọng nói suốt nhiều năm.
+
+Dù làm trơn khéo tới đâu, mô hình n-gram vẫn chỉ nhìn vài từ trước và không biết "dạy" với "giảng" có nghĩa gần nhau. Mô hình ngôn ngữ nơ-ron, như LSTM của Chương 29 và Transformer của Chương 44, giải quyết cả hai.
+
+<TuKiemTra
+	cauHoi="Một mô hình ngôn ngữ có perplexity bằng 1 trên tập test nghĩa là gì?"
+	luaChon={['Mô hình đoán đều trên mọi từ', 'Mô hình gán xác suất 1 cho đúng từ tiếp theo ở mọi bước: đoán hoàn hảo', 'Mô hình không học gì', 'Perplexity không bao giờ bằng 1']}
+	dapAn={1}
+	giaiThich="PP = exp(cross-entropy). Cross-entropy bằng 0 khi mọi log P bằng 0, tức mọi P = 1. Đó là giới hạn dưới, chỉ đạt được khi văn bản hoàn toàn đoán trước được. Ngược lại, đoán đều trên V từ cho PP = V."
+/>
+
+<Khung loai="loi">
+**So perplexity giữa hai từ vựng khác nhau.** Perplexity theo âm tiết và theo từ, hay với hai cách tách từ khác nhau, không so được: số token $N$ khác nhau và mỗi bước đoán một thứ khác nhau. Chỉ so các mô hình trên **cùng** một cách tách và cùng tập dữ liệu.
+
+**Bỏ qua câu có xác suất 0 khi tính perplexity.** Làm vậy thì mô hình chưa làm trơn trông rất tốt, vì những câu khó nhất bị loại. Một câu xác suất 0 là perplexity vô cùng; phải làm trơn.
+</Khung>

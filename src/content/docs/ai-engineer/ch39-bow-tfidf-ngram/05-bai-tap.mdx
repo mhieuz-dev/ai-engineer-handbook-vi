@@ -1,0 +1,124 @@
+---
+title: Bài tập
+description: "Ba bài tập có đáp án chi tiết (thêm một câu chứa thầy làm TF-IDF của thầy giảm từ 0,0811 xuống 0,0575 còn của khó tăng từ 0,2197 lên 0,2773; BoW và TF-IDF cho kết quả tìm kiếm gần giống nhau nhưng BoW thưởng từ phổ biến; nội suy unigram, bigram, trigram hạ perplexity test từ 81,6 xuống 65,7) và câu hỏi phỏng vấn."
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Đoán trước, rồi chạy code trong notebook để kiểm tra. Code dùng lại `tach`, `T`, `cos`, `S_tr`, `S_va`, `S_te`, `tr`, `noi`, `tv`, `A`, `c1`, `c2`, `c3`, `h2`, `h3`, `V`, `them_dau` của các trang trước.
+
+<BaiTap so="39.1">
+**Tính tay khi thêm một câu.** Thêm câu thứ tư "Thầy rất nhiệt tình." vào ba câu của trang 1. Dùng công thức của trang 2 (TF chia số token, IDF $= \ln(N/\text{df})$), tính tay TF-IDF của "thầy" trong câu 1 và của "khó" trong câu 2, rồi kiểm bằng code. So với khi chỉ có ba câu, hai con số đổi thế nào?
+
+<Fragment slot="dap-an">
+
+```python
+T4 = T + [tach("Thầy rất nhiệt tình.")]
+tu4 = sorted({w for t in T4 for w in t})
+X4 = np.array([[t.count(w) for w in tu4] for t in T4])
+W4 = X4 / X4.sum(1, keepdims=True) * np.log(len(T4) / (X4 > 0).sum(0))
+print(T4[3], round(W4[0, tu4.index("thầy")], 4), round(W4[1, tu4.index("khó")], 4))
+```
+
+```text title="Output"
+['thầy', 'rất', 'nhiệt_tình'] 0.0575 0.2773
+```
+
+Tính tay. Giờ $N = 4$. "Thầy" có mặt trong câu 1, 2 và 4, nên $\text{df} = 3$, $\text{idf} = \ln(4/3) = 0{,}2877$; câu 1 có 5 token nên $\text{tf} = 0{,}2$, TF-IDF $= 0{,}2 \times 0{,}2877 = 0{,}0575$. "Khó" vẫn chỉ có trong câu 2, $\text{df} = 1$, $\text{idf} = \ln 4 = 1{,}3863$, TF-IDF $= 0{,}2 \times 1{,}3863 = 0{,}2773$. Code khớp cả hai.
+
+Với ba câu, hai con số là 0,0811 và 0,2197. Thêm một câu chứa "thầy" làm "thầy" **phổ biến hơn**, nên nhẹ đi; "khó" không có trong câu mới, $N$ tăng mà df giữ nguyên, nên **hiếm hơn** một cách tương đối, và nặng lên. IDF của một từ phụ thuộc vào cả tập văn bản, không chỉ vào câu chứa nó: đó là lý do IDF phải học trên train rồi giữ cố định.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="39.2">
+**Đếm hay TF-IDF.** Dùng cùng truy vấn "thầy dạy nhanh quá không theo kịp", tìm 3 câu gần nhất theo cosine trên vector **đếm** (BoW), rồi so với 3 câu của TF-IDF ở trang 2.
+
+<Fragment slot="dap-an">
+
+```python
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.preprocessing import normalize
+cv = CountVectorizer(analyzer=str.split)
+B = normalize(cv.fit_transform(S_tr).astype(float))  # chia mỗi hàng cho độ dài: tích vô hướng thành cosine
+q = normalize(cv.transform(noi(["thầy dạy nhanh quá không theo kịp"])).astype(float))
+d = (B @ q.T).toarray().ravel()
+for i in d.argsort()[::-1][:3]:
+    print(round(d[i], 3), tr.sentence[i])
+```
+
+```text title="Output"
+0.802 giáo viên dạy nhanh quá theo không kịp .
+0.717 thầy dạy nhanh , nhiều khi theo không kịp .
+0.684 thầy dạy hơi nhanh , đa số sinh viên không theo kịp .
+```
+
+Hai câu đầu giống hệt kết quả TF-IDF, chỉ có cosine thấp hơn (0,802 và 0,717 so với 0,904 và 0,82). Câu thứ ba khác: BoW chọn "thầy dạy hơi nhanh, đa số sinh viên không theo kịp", TF-IDF chọn "dạy nhanh, không thể theo kịp". Câu của BoW chứa "thầy" và "không", hai từ rất phổ biến mà truy vấn cũng có; với vector đếm, mỗi từ chung đóng góp như nhau, nên các từ phổ biến kéo câu đó lên.
+
+Với truy vấn này, khác biệt nhỏ, vì những từ mang nội dung ("nhanh", "kịp", "theo") vốn đã chiếm nhiều trong truy vấn. Khác biệt lớn hơn khi truy vấn dài và chứa nhiều từ phổ biến: khi đó BoW xếp hạng gần như theo độ dài phần chung, còn TF-IDF vẫn bám vào những từ hiếm. Đừng kết luận từ một truy vấn; đánh giá một máy tìm kiếm cần một tập truy vấn có nhãn, như đánh giá mọi mô hình khác.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="39.3">
+**Nội suy.** Trộn ba mô hình chưa làm trơn với một unigram add-one: $P = \lambda_1 P_1 + \lambda_2 P_2 + \lambda_3 P_3$. Thử vài bộ $\lambda$ trên val, chọn bộ tốt nhất, đo test một lần. So với bigram add-k ở trang 4 (val 70,6, test 81,6).
+
+<Fragment slot="dap-an">
+
+```python
+N1 = sum(c1.values())
+
+def p_tron(t, i, lam):
+    w = t[i]
+    p1 = (c1[(w,)] + 1) / (N1 + V)                   # unigram add-one: không bao giờ bằng 0
+    p2 = c2[(t[i - 1], w)] / h2[(t[i - 1],)] if h2[(t[i - 1],)] else 0
+    p3 = c3[(t[i - 2], t[i - 1], w)] / h3[(t[i - 2], t[i - 1])] if h3[(t[i - 2], t[i - 1])] else 0
+    return lam[0] * p1 + lam[1] * p2 + lam[2] * p3
+
+def pp_tron(ds, lam):
+    L, N = 0.0, 0
+    for s in ds:
+        t = them_dau(s, 3)
+        for i in range(2, len(t)):
+            L += math.log(p_tron(t, i, lam))
+            N += 1
+    return round(math.exp(-L / N), 2)
+
+bo = [(0.1, 0.9, 0.0), (0.1, 0.6, 0.3), (0.2, 0.5, 0.3), (0.1, 0.4, 0.5), (0.3, 0.4, 0.3)]
+ket_qua = [(pp_tron(S_va, lam), lam) for lam in bo]
+print(ket_qua)
+tot = min(ket_qua)[1]
+print(tot, pp_tron(S_te, tot))
+```
+
+```text title="Output"
+[(64.41, (0.1, 0.9, 0.0)), (59.81, (0.1, 0.6, 0.3)), (57.16, (0.2, 0.5, 0.3)), (62.62, (0.1, 0.4, 0.5)), (57.83, (0.3, 0.4, 0.3))]
+(0.2, 0.5, 0.3) 65.71
+```
+
+Trên val, bộ $(\lambda_1, \lambda_2, \lambda_3) = (0{,}2;\ 0{,}5;\ 0{,}3)$ tốt nhất với perplexity **57,16**, so với 70,6 của bigram add-k. Trên test, đo một lần: **65,71**, so với 81,6, giảm 19,5%.
+
+Bộ $(0{,}1;\ 0{,}9;\ 0)$, chỉ trộn bigram với unigram, đã được 64,4 trên val, tốt hơn bigram add-k: lùi về unigram khi thiếu thông tin là cách chia xác suất khôn hơn chia đều cho mọi từ. Thêm trigram với trọng số 0,3 hạ tiếp xuống 57,2. Trigram đứng một mình thua bigram (trang 4), nhưng trộn vào thì có ích: ở những chỗ trigram đã gặp, nó chính xác hơn; ở những chỗ chưa gặp, bigram và unigram gánh thay. Đó cũng là ý tưởng của backoff và Kneser-Ney.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. TF-IDF là gì, và hạn chế của nó?**
+
+<p lang="en"><em>What is TF-IDF, and what are its limitations?</em></p>
+
+*Gợi ý:* trọng số của một từ trong văn bản bằng tần suất trong văn bản nhân log nghịch đảo số văn bản chứa nó, nên từ phổ biến khắp nơi nhẹ đi. Hạn chế: bỏ thứ tự từ, không biết từ đồng nghĩa (cosine bằng 0 nếu không chung từ), vector rất dài và thưa, nhiều biến thể công thức khác nhau. Vẫn là baseline rất mạnh cho tìm kiếm và phân loại.
+
+**2. Perplexity đo gì? Có thể so perplexity của hai mô hình dùng tokenizer khác nhau không?**
+
+<p lang="en"><em>What does perplexity measure? Can you compare perplexity across models with different tokenizers?</em></p>
+
+*Gợi ý:* exp của cross-entropy trung bình trên mỗi token, tức mô hình phân vân như chọn đều giữa bao nhiêu khả năng. Không so trực tiếp được khi tokenizer khác, vì số token và đơn vị đoán khác nhau; phải quy về một đơn vị chung như bit trên mỗi ký tự hoặc mỗi byte.
+
+**3. Vì sao mô hình n-gram cần làm trơn, và kể vài cách.**
+
+<p lang="en"><em>Why do n-gram models need smoothing? Name a few methods.</em></p>
+
+*Gợi ý:* n-gram chưa gặp trong train có xác suất 0, làm cả câu có xác suất 0 và perplexity vô cùng; theo luật Zipf, chuyện đó xảy ra thường xuyên. Add-one và add-k, nội suy, backoff, Kneser-Ney. Chọn tham số làm trơn trên val.
+</Khung>

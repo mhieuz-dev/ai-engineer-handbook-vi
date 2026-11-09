@@ -1,0 +1,114 @@
+---
+title: TF-IDF
+description: "Từ nào xuất hiện trong mọi câu thì ít thông tin. TF-IDF nhân tần suất trong câu với log nghịch đảo số câu chứa từ đó. Tự tính trên ba câu, khớp lại công thức hơi khác của scikit-learn, rồi dựng máy tìm câu tương tự trên UIT-VSFC: truy vấn 'thầy dạy nhanh quá không theo kịp' ra câu gần nhất với cosine 0,904."
+---
+
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Hiếm thì quý
+
+Trang 1 dừng ở chỗ BoW coi mọi từ như nhau. <Term id="tf-idf">TF-IDF</Term> (term frequency, inverse document frequency) cân lại mỗi ô bằng hai thừa số:
+
+- **TF** (tần suất từ): từ xuất hiện nhiều trong **câu này** thì quan trọng với câu này. Ở đây dùng $\text{tf}(t, d) = \dfrac{\text{số lần } t \text{ có trong } d}{\text{số token của } d}$.
+- **IDF** (nghịch đảo tần suất văn bản): từ xuất hiện trong **nhiều câu** thì ít phân biệt được câu này với câu khác. Với $N$ câu và $\text{df}(t)$ là số câu chứa $t$: $\text{idf}(t) = \ln \dfrac{N}{\text{df}(t)}$.
+
+$$
+\text{tfidf}(t, d) = \text{tf}(t, d) \cdot \text{idf}(t)
+$$
+
+Từ có trong **mọi** câu có $\text{idf} = \ln 1 = 0$: biến mất khỏi biểu diễn. Từ chỉ có trong một câu có idf lớn nhất. Ý tưởng này của Karen Spärck Jones (1972) là nền của các máy tìm kiếm suốt mấy chục năm.
+
+## Tự tính
+
+Dùng lại ba câu và ma trận đếm `X` của trang 1. Có $N = 3$ câu:
+
+```python
+N = len(T)
+df = (X > 0).sum(0)                                  # số câu chứa mỗi từ
+idf = np.log(N / df)
+tf = X / X.sum(1, keepdims=True)                     # đếm chia số token của câu
+W = tf * idf
+print(df, idf.round(4))
+print(W.round(4))
+```
+
+```text title="Output"
+[2 1 1 2 2 1 1 2 2 1] [0.4055 1.0986 1.0986 0.4055 0.4055 1.0986 1.0986 0.4055 0.4055 1.0986]
+[[0.0811 0.     0.     0.0811 0.0811 0.     0.     0.0811 0.0811 0.    ]
+ [0.0811 0.     0.     0.0811 0.     0.2197 0.2197 0.     0.0811 0.    ]
+ [0.     0.2197 0.2197 0.     0.0811 0.     0.     0.0811 0.     0.2197]]
+```
+
+Từ có trong 2 câu ("bài", "giảng", "hay", "rất", "thầy") có $\text{idf} = \ln(3/2) = 0{,}4055$; từ chỉ có trong 1 câu có $\ln 3 = 1{,}0986$. Mỗi câu ở đây có 5 token, nên $\text{tf} = 1/5 = 0{,}2$ cho mọi từ có mặt, và ô TF-IDF là $0{,}2 \times 0{,}4055 = 0{,}0811$ hoặc $0{,}2 \times 1{,}0986 = 0{,}2197$. Trong câu 2, "khó" và "hiểu" nặng gần gấp ba "thầy", "giảng", "bài": đúng ý muốn.
+
+```python
+print(round(cos(W[0], W[1]), 4), round(cos(W[0], W[2]), 4))
+```
+
+```text title="Output"
+0.3191 0.1825
+```
+
+Cosine giữa câu 1 và câu 2 giảm từ 0,6 (BoW) xuống 0,3191, giữa câu 1 và câu 3 từ 0,4 xuống 0,1825. Phần chung "thầy giảng bài" giờ nặng ít hơn hẳn trước. Với ba câu thì thứ tự chưa đổi; trên dữ liệu lớn, khi những từ như "thầy", "sinh_viên" có mặt khắp nơi, khác biệt rõ hơn nhiều.
+
+## Công thức của scikit-learn
+
+TF-IDF có **nhiều biến thể**, và `TfidfVectorizer` mặc định không dùng đúng công thức trên. Nó dùng TF là **số lần đếm thô**, IDF làm trơn $\ln\dfrac{1 + N}{1 + \text{df}} + 1$, rồi chia mỗi hàng cho độ dài của nó (chuẩn hóa L2):
+
+```python
+from sklearn.feature_extraction.text import TfidfVectorizer
+tv3 = TfidfVectorizer(analyzer=str.split)
+M = tv3.fit_transform([" ".join(t) for t in T]).toarray()
+idf_sk = np.log((1 + N) / (1 + df)) + 1
+tu_lam = X * idf_sk
+tu_lam = tu_lam / np.linalg.norm(tu_lam, axis=1, keepdims=True)
+print(tv3.idf_.round(4), np.allclose(M, tu_lam))
+print(M[1].round(4))
+```
+
+```text title="Output"
+[1.2877 1.6931 1.6931 1.2877 1.2877 1.6931 1.6931 1.2877 1.2877 1.6931] True
+[0.3935 0.     0.     0.3935 0.     0.5174 0.5174 0.     0.3935 0.    ]
+```
+
+Tự làm theo công thức đó khớp từng số với scikit-learn. Ba khác biệt đều có lý do. Cộng 1 trong log làm IDF không bao giờ bằng 0, nên từ có trong mọi câu vẫn còn chút trọng số. Cộng 1 vào tử và mẫu như thể có thêm một câu chứa mọi từ, tránh chia cho 0 khi gặp từ mới. Chuẩn hóa L2 làm mọi hàng dài 1, nên tích vô hướng của hai hàng **chính là** cosine. Khi đọc một bài báo hay một đề thi, luôn xem họ dùng biến thể nào: cùng tên TF-IDF mà con số có thể khác hẳn.
+
+## Máy tìm câu tương tự
+
+Vì các hàng đã có độ dài 1, tìm câu giống một truy vấn nhất chỉ là một phép nhân ma trận thưa:
+
+```python
+tv = TfidfVectorizer(analyzer=str.split)
+A = tv.fit_transform(S_tr)
+truy_van = tv.transform(noi(["thầy dạy nhanh quá không theo kịp"]))
+diem = (A @ truy_van.T).toarray().ravel()           # cosine với mọi câu train
+for i in diem.argsort()[::-1][:5]:
+    print(round(diem[i], 3), tr.sentiment[i], tr.sentence[i])
+```
+
+```text title="Output"
+0.904 0 giáo viên dạy nhanh quá theo không kịp .
+0.82 0 thầy dạy nhanh , nhiều khi theo không kịp .
+0.711 0 dạy nhanh , không thể theo kịp .
+0.706 0 dạy hơi nhanh , sinh viên khó theo kịp .
+0.699 0 bài tập trên lớp làm quá nhanh , có thể không theo kịp .
+```
+
+Năm câu đầu đều đúng ý: giảng nhanh, không theo kịp. Câu đầu tiên dùng "giáo viên" thay "thầy" và đảo "không theo kịp" thành "theo không kịp", vẫn được 0,904 vì những từ hiếm ("nhanh", "kịp", "theo") gánh phần lớn trọng số. Cả năm đều mang nhãn tiêu cực: một máy tìm câu tương tự đã là một bộ phân loại thô, gán nhãn của những câu gần nhất, đúng ý tưởng KNN của Chương 14.
+
+Giới hạn cũng rõ: một câu nói cùng ý mà không dùng chung từ nào với truy vấn thì cosine bằng đúng 0. TF-IDF so **từ**, không so **nghĩa**. Chương 40 học vector cho từ sao cho "nhanh" và "tốc_độ" gần nhau.
+
+<TuKiemTra
+	cauHoi="Theo công thức tf x ln(N/df), một từ xuất hiện trong cả N câu có trọng số bao nhiêu, và theo công thức mặc định của scikit-learn thì sao?"
+	luaChon={['Cả hai đều bằng 0', 'Công thức ln(N/df) cho 0; scikit-learn cho idf = 1 nên từ đó vẫn có trọng số nhỏ', 'Cả hai đều lớn nhất', 'scikit-learn cho 0, công thức kia cho 1']}
+	dapAn={1}
+	giaiThich="Với df = N, ln(N/N) = 0 nên từ đó biến mất. Với scikit-learn, ln((1 + N)/(1 + N)) + 1 = 1: từ đó còn trọng số bằng số lần đếm của nó (trước khi chuẩn hóa L2), chỉ nhẹ hơn các từ hiếm. Đó là lựa chọn có chủ ý: bỏ hẳn từ phổ biến đôi khi mất thông tin, như chữ 'không' ở Chương 38."
+/>
+
+<Khung loai="loi">
+**So con số TF-IDF giữa hai công cụ rồi tưởng một bên sai.** Có ít nhất ba chỗ hay khác: TF thô hay chia độ dài (hay log), IDF có làm trơn và cộng 1 không, có chuẩn hóa L2 không. Ghi rõ biến thể khi báo cáo.
+
+**Tính IDF trên cả tập test.** IDF là thống kê học từ dữ liệu, như trung bình khi chuẩn hóa ở Chương 21. Chỉ `fit` trên train.
+</Khung>
