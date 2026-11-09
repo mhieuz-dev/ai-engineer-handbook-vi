@@ -1,0 +1,116 @@
+---
+title: Unicode và chuẩn hóa
+description: "Cùng chữ 'Hòa' có thể là 3 hoặc 4 ký tự Unicode, và máy coi hai cách viết là khác nhau. Chuẩn hóa NFC sửa được, nhưng không sửa được kiểu bỏ dấu cũ 'hoà' và kiểu mới 'hòa': trong UIT-VSFC, 39 câu dùng kiểu cũ, chữ 'hoà' xuất hiện 15 lần bên cạnh 94 lần 'hòa'. Viết hàm chuẩn hóa dấu, cẩn thận với 'quý'."
+---
+
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Một chữ, hai cách viết
+
+Máy tính không lưu chữ, nó lưu **số**. Unicode gán cho mỗi ký tự một số gọi là **code point**: "a" là 97 (viết hệ 16 là `0x61`), "ò" là `0xf2`. Chữ có dấu của tiếng Việt có **hai** cách biểu diễn hợp lệ:
+
+- **Dựng sẵn** (precomposed): "ò" là một code point `0xf2`.
+- **Tổ hợp** (decomposed): "o" (`0x6f`) theo sau là dấu huyền tổ hợp (`0x300`), hai code point mà màn hình vẽ chồng lên nhau.
+
+Trên màn hình hai cách trông y hệt. Với máy, đó là hai chuỗi khác nhau:
+
+```python
+a = "Hòa"
+b = unicodedata.normalize("NFD", a)                  # tách thành chữ gốc cộng dấu tổ hợp
+print(a == b, len(a), len(b), [hex(ord(c)) for c in b])
+print(a == unicodedata.normalize("NFC", b))          # gộp lại thành dạng dựng sẵn
+```
+
+```text title="Output"
+False 3 4 ['0x48', '0x6f', '0x300', '0x61']
+True
+```
+
+Cùng chữ "Hòa", một bên 3 ký tự, một bên 4, và `==` trả về `False`. Khi đếm từ, hai cách viết thành hai từ khác nhau; khi tìm kiếm, gõ "Hòa" không ra kết quả viết kiểu kia. Văn bản lấy từ nhiều nguồn (web, Word, macOS, bộ gõ khác nhau) rất hay lẫn hai kiểu. <Term id="chuan-hoa-unicode">Chuẩn hóa Unicode</Term> dạng **NFC** đưa mọi chữ về dạng dựng sẵn, và luôn là bước **đầu tiên** của mọi xử lý văn bản tiếng Việt. Dạng **NFKC** còn đi xa hơn: đổi cả những ký tự "tương đương" về một dạng, ví dụ chữ và số toàn khổ hay gặp khi gõ trên máy Nhật, Trung:
+
+```python
+print("Đà Nẵng".lower(), "ＡＩ２０２６".lower(), unicodedata.normalize("NFKC", "ＡＩ２０２６"))
+```
+
+```text title="Output"
+đà nẵng ａｉ２０２６ AI2026
+```
+
+`lower()` của Python xử lý đúng chữ có dấu, kể cả "Đ" thành "đ", nhưng giữ nguyên chữ toàn khổ; NFKC đổi "ＡＩ２０２６" thành "AI2026" bình thường. Cẩn thận: NFKC cũng đổi những ký tự như "²" thành "2", có thể làm mất thông tin trong văn bản khoa học.
+
+## Đặt dấu kiểu cũ, kiểu mới
+
+NFC không giải quyết được một vấn đề riêng của tiếng Việt: **vị trí dấu thanh**. "Hoà" (dấu trên "a") và "hòa" (dấu trên "o") là cùng một từ, theo hai quy tắc đặt dấu khác nhau, cả hai đều phổ biến. Với Unicode, đó là hai chuỗi khác hẳn nhau, không phải hai cách biểu diễn của cùng một chuỗi:
+
+```python
+print("hoà" == "hòa", unicodedata.normalize("NFC", "hoà") == "hòa")
+```
+
+```text title="Output"
+False False
+```
+
+Phải tự viết quy tắc. Với các vần "oa", "oe", "uy" **không có âm cuối**, kiểu cũ đặt dấu ở chữ thứ hai, kiểu mới ở chữ thứ nhất. Ta chọn kiểu mới và đổi theo một bảng. Hai cái bẫy:
+
+- **Có âm cuối thì không đổi.** "Hoàng", "khoảng", "loẹt": dấu đặt ở chữ thứ hai theo **cả hai** kiểu. Biểu thức chính quy chỉ đổi khi sau vần không còn chữ cái nào (`(?!\w)`).
+- **"Qu" là một phụ âm.** Trong "quý", "u" thuộc phụ âm "qu", vần chỉ là "y", nên dấu luôn ở "y". Đổi máy móc thành "qúy" là sai. Biểu thức bỏ qua khi trước "u" là "q" (`(?<!q)`).
+
+```python
+CU_MOI = {"oà": "òa", "oá": "óa", "oả": "ỏa", "oã": "õa", "oạ": "ọa",
+          "oè": "òe", "oé": "óe", "oẻ": "ỏe", "oẽ": "õe", "oẹ": "ọe",
+          "uỳ": "ùy", "uý": "úy", "uỷ": "ủy", "uỹ": "ũy", "uỵ": "ụy"}
+mau = re.compile(r"(?<!q)(" + "|".join(CU_MOI) + r")(?!\w)")
+
+def dau_moi(s):                                      # đổi kiểu đặt dấu cũ sang kiểu mới
+    return mau.sub(lambda m: CU_MOI[m.group(1)], s)
+
+print([dau_moi(w) for w in ["hoà", "thuý", "quý", "khoẻ", "hoàng", "hoà bình", "loè loẹt", "Quỳnh"]])
+```
+
+```text title="Output"
+['hòa', 'thúy', 'quý', 'khỏe', 'hoàng', 'hòa bình', 'lòe loẹt', 'Quỳnh']
+```
+
+"Quý" và "Quỳnh" giữ nguyên, "hoàng" và "loẹt" giữ nguyên, các chữ còn lại đổi đúng. Bảng chỉ có chữ thường, nên phải chạy **sau** bước chữ thường (hoặc thêm các dạng chữ hoa vào bảng). Dữ liệu thật có lẫn hai kiểu không?
+
+```python
+tat_ca = pd.concat([tr, va, te]).sentence
+cu = tat_ca[tat_ca.map(lambda s: dau_moi(s) != s)]
+khac = Counter(w for s in cu for w in s.split() if dau_moi(w) != w)
+print(len(cu), khac.most_common(5))
+print(Counter(w for s in tat_ca for w in s.split() if w in {dau_moi(x) for x in khac}).most_common(5))
+```
+
+```text title="Output"
+39 [('hoà', 15), ('khoá', 14), ('hoạ', 8), ('hoá', 4), ('thoả', 1)]
+[('hòa', 94), ('họa', 52), ('khóa', 48), ('hóa', 15), ('thỏa', 6)]
+```
+
+39 câu trong UIT-VSFC dùng kiểu cũ. "Hoà" xuất hiện 15 lần, "hòa" 94 lần; "khoá" 14 lần, "khóa" 48 lần. Không chuẩn hóa thì mô hình thấy hai từ khác nhau, mỗi từ có ít dữ liệu hơn, và một câu chứa "khoá học" không được hưởng gì từ 48 câu chứa "khóa học".
+
+## Thứ tự các bước
+
+Một quy trình làm sạch hợp lý cho tiếng Việt, theo đúng thứ tự:
+
+1. **NFC** (hoặc NFKC nếu có ký tự toàn khổ), trước mọi thứ khác: các bước sau so khớp chuỗi, mà so khớp chỉ đúng khi mọi chữ cùng một dạng.
+2. **Chữ thường**, nếu chữ hoa không mang thông tin cho bài toán. Với nhận diện tên riêng (Chương 42), chữ hoa là đặc trưng quan trọng; đừng bỏ.
+3. **Đặt dấu kiểu mới**, sau chữ thường, vì bảng chỉ có chữ thường.
+4. **Dọn ký tự**: bỏ hoặc tách dấu câu, thay đường dẫn, email, số điện thoại bằng một ký hiệu chung (giống `wzjwz208` của bộ dữ liệu này).
+5. **Tách từ** (trang 3), rồi mới đếm.
+
+Không có quy trình nào đúng cho mọi bài: bỏ dấu câu thì mất "!" và "?" vốn mang cảm xúc; bỏ số thì mất "điểm 10". Mỗi bước là một quyết định, và nên kiểm bằng mắt trên vài chục câu thật trước khi chạy trên cả bộ.
+
+<TuKiemTra
+	cauHoi="Một bạn chạy dau_moi trước rồi mới đổi chữ thường. Chữ 'HOÀ' sẽ ra sao?"
+	luaChon={['Thành hòa, đúng', 'Thành hoà, vì bảng chỉ có chữ thường nên dau_moi không nhận ra HOÀ, rồi lower() mới đổi', 'Báo lỗi', 'Thành HÒA']}
+	dapAn={1}
+	giaiThich="Bảng CU_MOI chỉ chứa 'oà' viết thường. Chuỗi 'HOÀ' không khớp nên giữ nguyên, rồi lower() biến nó thành 'hoà', kiểu cũ. Đó là lý do thứ tự các bước quan trọng: chữ thường trước, đặt dấu sau."
+/>
+
+<Khung loai="loi">
+**So sánh chuỗi tiếng Việt chưa chuẩn hóa NFC.** Lỗi khó thấy nhất: in ra trông giống hệt, `==` vẫn sai. Khi một từ "biến mất" khỏi kết quả đếm hay tìm kiếm, kiểm `len()` của nó trước.
+
+**Bỏ dấu tiếng Việt để "cho gọn".** "Ma, má, mà, mả, mã, mạ" thành một chữ "ma". Bỏ dấu chỉ hợp lý khi chính người dùng gõ không dấu (ô tìm kiếm), và khi đó nên làm ở cả hai phía, không làm với dữ liệu huấn luyện.
+</Khung>

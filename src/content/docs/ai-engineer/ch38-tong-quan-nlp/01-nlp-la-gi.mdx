@@ -1,0 +1,108 @@
+---
+title: NLP là gì
+description: "Mở đầu Phần IV: xử lý ngôn ngữ tự nhiên là dạy máy làm việc với văn bản. Vì sao tiếng Việt khó theo cách riêng: dấu cách tách âm tiết chứ không tách từ, và một câu có thể đọc theo hai nghĩa. Tải bộ UIT-VSFC, 16 175 câu phản hồi của sinh viên, dùng suốt Phần IV."
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+<CanBietTruoc>
+Chuỗi, list, dict và Counter của Python (Chương 1, 2). Pandas (Chương 4). Quy trình một dự án ML, chia train, val, test (Chương 9). Biểu đồ log-log (Chương 4, 6).
+
+<Fragment slot="sau-chuong">
+Biết NLP giải những bài toán gì và vì sao tiếng Việt khó theo cách riêng. Hiểu Unicode đủ để không bị hai chữ "hòa" trông giống hệt mà máy coi là khác nhau. Chuẩn hóa văn bản tiếng Việt, tách từ bằng underthesea, đếm từ vựng, thấy luật Zipf trên dữ liệu thật, và biết vì sao không nên bỏ stopword một cách máy móc.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch38_tong_quan_nlp.ipynb" />
+
+## Văn bản là dữ liệu
+
+<Term id="nlp">Xử lý ngôn ngữ tự nhiên</Term> (natural language processing, NLP) là mọi thứ liên quan tới việc cho máy đọc, hiểu và tạo ra ngôn ngữ của người. Những bài toán quen thuộc:
+
+- **Phân loại văn bản**: một bình luận là khen hay chê, một email có phải thư rác, một bài báo thuộc chủ đề gì (Chương 41).
+- **Gán nhãn chuỗi**: mỗi từ trong câu là danh từ hay động từ, cụm nào là tên người, tên địa điểm (Chương 42).
+- **Sinh văn bản**: dịch máy, tóm tắt, trả lời câu hỏi (Chương 43 trở đi), và cuối cùng là mô hình ngôn ngữ lớn của Phần V.
+
+Mọi mô hình từ Chương 9 tới giờ đều nhận **số**: ảnh là mảng điểm ảnh, nhà là vector đặc trưng. Văn bản là một chuỗi ký tự dài ngắn tùy ý. Phần IV đi một đường dài để biến chuỗi đó thành số mà vẫn giữ được nghĩa: đếm từ (Chương 39), vector từ (Chương 40), rồi tới Transformer (Chương 44). Chương này lo bước đầu tiên, thường bị xem nhẹ mà lại hay gây lỗi nhất: **đưa văn bản về một dạng sạch và nhất quán**, rồi cắt nó thành từng đơn vị để đếm.
+
+## Vì sao tiếng Việt khó theo cách riêng
+
+Tiếng Anh viết "machine learning": hai từ, hai khoảng trắng. Tiếng Việt viết "học máy": cũng hai khối chữ, nhưng đó là **một từ** gồm hai **âm tiết**. Dấu cách trong tiếng Việt tách **âm tiết**, không tách từ. "Sinh viên", "giảng viên", "nhiệt tình" mỗi từ hai âm tiết; "cơ sở vật chất" bốn âm tiết. Muốn đếm từ thì phải **tách từ** (word segmentation) trước, một bước mà tiếng Anh gần như không cần.
+
+Và tách từ không phải lúc nào cũng có một đáp án. Câu "Ông già đi nhanh quá" đọc được hai cách:
+
+- "Ông già / đi / nhanh / quá": một ông cụ đang đi rất nhanh.
+- "Ông / già đi / nhanh quá": ông ấy lão hóa nhanh quá.
+
+Hai cách tách cho hai nghĩa, và chỉ ngữ cảnh mới quyết định được. Đó là **mơ hồ** (ambiguity), đặc điểm của mọi ngôn ngữ tự nhiên, ở mọi tầng: tách từ, từ loại ("bàn" là danh từ cái bàn hay động từ bàn bạc), cấu trúc câu, và nghĩa ("Lan nói với Hoa là cô ấy sai": ai sai?). Ngôn ngữ lập trình được thiết kế để không mơ hồ; ngôn ngữ người thì không.
+
+## Bộ dữ liệu của Phần IV
+
+<En>UIT-VSFC</En> (Vietnamese Students' Feedback Corpus, Nguyễn Văn Kiệt và cộng sự, 2018) gồm hơn 16 000 câu phản hồi của sinh viên về môn học và giảng viên, do Trường Đại học Công nghệ Thông tin, ĐHQG TP.HCM thu thập. Mỗi câu có hai nhãn: **cảm xúc** (tiêu cực, trung tính, tích cực) và **chủ đề** (giảng viên, chương trình đào tạo, cơ sở vật chất, khác). Bộ dữ liệu được phát hành để phục vụ nghiên cứu, có sẵn trên Hugging Face. Ta tải ba tệp parquet một lần rồi lưu ở `~/.cache/vsfc`:
+
+```python
+!pip install underthesea
+```
+
+```python
+import os
+import re
+import unicodedata
+import urllib.request
+from collections import Counter
+import numpy as np
+import pandas as pd
+
+URL = "https://huggingface.co/api/datasets/uitnlp/vietnamese_students_feedback/parquet/default/{}/0.parquet"
+THU_MUC = os.path.expanduser("~/.cache/vsfc")
+
+def tai(phan):                                       # tải một lần, lần sau đọc từ ổ đĩa
+    os.makedirs(THU_MUC, exist_ok=True)
+    tep = os.path.join(THU_MUC, phan + ".parquet")
+    if not os.path.exists(tep):
+        urllib.request.urlretrieve(URL.format(phan), tep)
+    return pd.read_parquet(tep)
+
+tr, va, te = tai("train"), tai("validation"), tai("test")
+print(len(tr), len(va), len(te), list(tr.columns))
+print(tr.sentiment.value_counts().sort_index().tolist(), tr.topic.value_counts().sort_index().tolist())
+```
+
+```text title="Output"
+11426 1583 3166 ['sentence', 'sentiment', 'topic']
+[5325, 458, 5643] [8166, 2201, 497, 562]
+```
+
+11 426 câu train, 1583 val, 3166 test, chia sẵn bởi tác giả; ta giữ nguyên cách chia để so được với các nghiên cứu khác. Nhãn cảm xúc 0, 1, 2 là tiêu cực, trung tính, tích cực; trung tính rất hiếm, chỉ 458 câu. Nhãn chủ đề 0, 1, 2, 3 là giảng viên, chương trình đào tạo, cơ sở vật chất, khác; hơn 70% câu nói về giảng viên. Vài câu:
+
+```python
+for i in (0, 3, 6, 7):
+    print(tr.sentiment[i], tr.topic[i], tr.sentence[i])
+```
+
+```text title="Output"
+2 1 slide giáo trình đầy đủ .
+0 0 chưa áp dụng công nghệ thông tin và các thiết bị hỗ trợ cho việc giảng dạy .
+1 3 em sẽ nợ môn này , nhưng em sẽ học lại ở các học kỳ kế tiếp .
+0 1 thời lượng học quá dài , không đảm bảo tiếp thu hiệu quả .
+```
+
+Nhìn kỹ thì dữ liệu **đã được xử lý một phần**: chữ thường hết, dấu câu tách khỏi chữ bằng dấu cách (`đầy đủ .`), tên giảng viên được thay bằng mã như `wzjwz208` để ẩn danh, và dấu hai chấm được viết thành chữ `doubledot`. Biết dữ liệu đã qua những bước nào là việc đầu tiên trước khi tự xử lý tiếp: chạy chữ thường lần nữa thì vô hại, nhưng nếu ta định dùng chữ hoa làm đặc trưng thì bộ này không còn chữ hoa nào.
+
+<TuKiemTra
+	cauHoi="Câu 'Ông già đi nhanh quá' có bao nhiêu âm tiết, và theo cách đọc 'ông cụ đang đi nhanh' thì có bao nhiêu từ?"
+	luaChon={['5 âm tiết, 5 từ', '5 âm tiết, 4 từ', '4 âm tiết, 4 từ', '5 âm tiết, 3 từ']}
+	dapAn={1}
+	giaiThich="Năm khối chữ cách nhau bởi dấu cách là năm âm tiết. Theo cách đọc 'ông cụ đang đi nhanh', 'ông già' là một từ, còn 'đi', 'nhanh', 'quá' mỗi cái một từ: 4 từ. Theo cách đọc 'ông ấy lão hóa nhanh', 'già đi' mới là một cụm: 'ông', 'già đi', 'nhanh', 'quá', cũng 4 đơn vị nhưng ranh giới khác."
+/>
+
+<Khung loai="loi">
+**Đếm khoảng trắng để đếm từ tiếng Việt.** Ra số âm tiết, nhiều hơn số từ khoảng 28% trên bộ này (trang 3). Mọi thống kê theo "từ" (tần suất, từ vựng, TF-IDF ở Chương 39) đều lệch nếu bỏ qua bước tách từ.
+
+**Tự chia lại train và test của một bộ dữ liệu chuẩn.** Kết quả khi đó không so được với bài báo nào, và dễ vô tình để câu gần trùng lọt sang cả hai bên. Dùng cách chia của tác giả, trừ khi có lý do rõ ràng.
+</Khung>

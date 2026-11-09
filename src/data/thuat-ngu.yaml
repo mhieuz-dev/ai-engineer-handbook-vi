@@ -768,3 +768,28 @@
   tenTiengAnh: generalized advantage estimation
   giaiThich: GAE ước lượng lợi thế bằng trung bình có trọng số giảm dần của các sai số TD nhiều bước, với tham số lambda. Lambda bằng 0 là sai số TD một bước (phương sai nhỏ, thiên lệch theo critic), lambda bằng 1 là lợi nhuận thật trừ V (không thiên lệch, phương sai lớn). PPO thường dùng lambda 0,95.
   hocKy: ai-engineer/ch37-ppo-gymnasium
+- id: nlp
+  ten: Xử lý ngôn ngữ tự nhiên
+  tenTiengAnh: natural language processing (NLP)
+  giaiThich: Xử lý ngôn ngữ tự nhiên là lĩnh vực cho máy đọc, hiểu và tạo ra ngôn ngữ của người, gồm phân loại văn bản, gán nhãn từ, dịch máy, tóm tắt, hỏi đáp và mô hình ngôn ngữ lớn. Bước đầu tiên luôn là biến văn bản thành dãy đơn vị rời rạc rồi thành số.
+  hocKy: ai-engineer/ch38-tong-quan-nlp
+- id: chuan-hoa-unicode
+  ten: Chuẩn hóa Unicode
+  tenTiengAnh: Unicode normalization
+  giaiThich: Một chữ có dấu như ò có thể viết bằng một ký tự dựng sẵn hoặc bằng chữ o cộng dấu tổ hợp; trông giống hệt nhưng máy coi là khác nhau. Chuẩn hóa NFC đưa mọi chữ về dạng dựng sẵn, NFKC còn đổi các ký tự tương đương như chữ số toàn khổ. Luôn là bước đầu tiên khi xử lý tiếng Việt.
+  hocKy: ai-engineer/ch38-tong-quan-nlp
+- id: token
+  ten: Token
+  tenTiengAnh: token
+  giaiThich: Token là đơn vị rời rạc mà mô hình xử lý, có thể là ký tự, âm tiết, từ hay mảnh từ tùy cách cắt. Cắt văn bản thành token gọi là tokenization. Với tiếng Việt, dấu cách chỉ tách âm tiết, nên muốn token là từ thì phải tách từ.
+  hocKy: ai-engineer/ch38-tong-quan-nlp
+- id: tach-tu
+  ten: Tách từ
+  tenTiengAnh: word segmentation
+  giaiThich: Tách từ là gộp các âm tiết thành từ, ví dụ sinh viên hay cơ sở vật chất. Tiếng Việt cần bước này vì dấu cách tách âm tiết chứ không tách từ. Thường làm bằng một mô hình gán nhãn chuỗi, như trong thư viện underthesea, và có thể sai khi câu mơ hồ.
+  hocKy: ai-engineer/ch38-tong-quan-nlp
+- id: oov
+  ten: Từ ngoài từ vựng
+  tenTiengAnh: out-of-vocabulary (OOV)
+  giaiThich: Từ ngoài từ vựng là từ gặp lúc dùng mô hình mà không có trong từ vựng xây từ dữ liệu huấn luyện. Theo luật Zipf, luôn còn từ chưa gặp. Xử lý bằng một token chung như unk, ngưỡng tần suất, hoặc cắt từ lạ thành mảnh nhỏ đã biết.
+  hocKy: ai-engineer/ch38-tong-quan-nlp

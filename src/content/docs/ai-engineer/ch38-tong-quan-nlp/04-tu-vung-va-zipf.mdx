@@ -1,0 +1,113 @@
+---
+title: Từ vựng và luật Zipf
+description: "Trên UIT-VSFC, 10 từ thường gặp nhất chiếm 27,7% số token, 100 từ đầu chiếm 67,7%, còn gần một nửa từ vựng chỉ xuất hiện đúng một lần. Tần suất theo hạng giảm theo luật lũy thừa với độ dốc -1,39. Từ 'không' có trong 28% câu tiêu cực và 4,1% câu tích cực, nên bỏ stopword máy móc là bỏ đúng tín hiệu cần nhất."
+---
+
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Một ít từ chiếm phần lớn văn bản
+
+Xếp 4009 từ của tập train theo số lần xuất hiện:
+
+```python
+print(dem_tu.most_common(12))
+f = np.array(sorted(dem_tu.values(), reverse=True))
+print(round(f[:10].sum() / f.sum(), 3), round(f[:100].sum() / f.sum(), 3), int((f == 1).sum()))
+```
+
+```text title="Output"
+[('.', 11009), (',', 6836), ('thầy', 3039), ('sinh viên', 2697), ('dạy', 2155), ('và', 2068), ('không', 2033), ('rất', 1961), ('nhiệt tình', 1839), ('cho', 1713), ('có', 1695), ('hiểu', 1654)]
+0.277 0.677 1932
+```
+
+Hai "từ" đứng đầu là dấu chấm và dấu phẩy. Rồi tới "thầy", "sinh viên", "dạy", "và", "không", "rất", "nhiệt tình": đúng giọng của một bộ phản hồi về giảng dạy. **10 từ** đầu chiếm **27,7%** số token, **100 từ** đầu chiếm **67,7%**. Ở đầu kia, **1932 từ**, gần một nửa từ vựng, chỉ xuất hiện đúng **một lần**; những từ như vậy gọi là hapax.
+
+## Luật Zipf
+
+Năm 1949, George Zipf ghi nhận rằng trong mọi ngôn ngữ, tần suất của một từ tỷ lệ nghịch gần đúng với **hạng** của nó: từ thứ hai xuất hiện khoảng một nửa số lần của từ thứ nhất, từ thứ ba khoảng một phần ba. Tổng quát, $f(r) \propto r^{-\alpha}$ với $\alpha$ quanh 1. Lấy log hai vế, $\log f = c - \alpha \log r$: trên trục log-log, đó là một **đường thẳng** có độ dốc $-\alpha$. Ước lượng $\alpha$ bằng hồi quy tuyến tính (Chương 10) trên các hạng từ 10 tới 1000, bỏ hai đầu vốn lệch khỏi luật:
+
+```python
+hang = np.arange(1, len(f) + 1)
+giua = (hang >= 10) & (hang <= 1000)
+print(np.polyfit(np.log(hang[giua]), np.log(f[giua]), 1).round(3))
+```
+
+```text title="Output"
+[-1.387 11.744]
+```
+
+Độ dốc **-1,39**, dốc hơn mức 1 cổ điển. Một bộ dữ liệu hẹp về chủ đề, câu ngắn và lặp ý (phản hồi về giảng dạy) dồn tần suất vào ít từ hơn văn bản tổng quát. Ở bài tập 38.2 bạn sẽ thấy điều đó ảnh hưởng trực tiếp tới việc chọn cỡ từ vựng.
+
+## Từ vựng tăng mãi
+
+Một hệ quả của đuôi dài: càng đọc thêm văn bản, càng gặp thêm từ mới, và không bao giờ dừng. Đếm số từ khác nhau đã gặp khi đi dần qua tập train:
+
+```python
+da_gap, n, diem = set(), 0, []
+for c in tu_tr:
+    for x in c:
+        n += 1
+        da_gap.add(x)
+    diem.append((n, len(da_gap)))
+print([diem[k - 1] for k in (1000, 3000, 6000, 11426)])
+```
+
+```text title="Output"
+[(11075, 1236), (33107, 2079), (66621, 2896), (127413, 4009)]
+```
+
+Sau 11 nghìn token đã có 1236 từ khác nhau; sau 127 nghìn token, gấp 11,5 lần, chỉ có 4009, gấp 3,2 lần. Từ vựng tăng **chậm dần** nhưng không dừng, theo đúng một quy luật khác gọi là luật Heaps: cỡ từ vựng tỷ lệ với một lũy thừa nhỏ hơn 1 của số token.
+
+<HinhKetQua src="/hinh/ch38/h1_zipf.svg" alt="Hai biểu đồ cạnh nhau. Trái: trục log-log, trục ngang là hạng của từ từ 1 tới 4009, trục dọc là số lần xuất hiện từ 1 tới khoảng 11 000. Các điểm từ hạng khoảng 80 tới 1000 nằm sát một đường thẳng khớp với độ dốc -1,39; khoảng 15 từ đầu nằm thấp hơn hẳn đường đó; ở cuối có một dãy bậc thang dài nằm ngang ở tần suất 1 và 2. Phải: trục ngang là số token đã đọc từ 0 tới 127 000, trục dọc là số từ khác nhau từ 0 tới 4000; đường cong tăng nhanh lúc đầu rồi thoải dần nhưng vẫn đi lên ở cuối." so="38.1" chuThich="Từ vựng của tập train UIT-VSFC sau khi tách từ. Trái: tần suất theo hạng, trục log-log. Phải: số từ khác nhau theo số token đã đọc.">
+**Đọc hình.** Hình trái: mỗi điểm là một từ, đặt theo hạng và số lần xuất hiện; trên trục log-log, luật lũy thừa thành đường thẳng. Hình phải: đi dần qua dữ liệu, đếm xem đã gặp bao nhiêu từ khác nhau.
+
+**Điều cần thấy.** Đường thẳng ở hình trái khớp tốt ở giữa, lệch ở hai đầu. Ở đầu, những từ phổ biến nhất xuất hiện **ít hơn** đường thẳng dự đoán: kéo đường đó về hạng 1 thì được hơn 100 000 lần, trong khi dấu chấm chỉ 11 009. Ở đuôi là những bậc thang của các từ chỉ gặp 1, 2 lần, vì số lần xuất hiện là số nguyên. Luật Zipf mô tả tốt phần thân, không phải mọi hạng. Hình phải không bao giờ nằm ngang: luôn còn từ chưa gặp.
+</HinhKetQua>
+
+## Từ ngoài từ vựng
+
+Hệ quả thực tế: mô hình học trên train sẽ gặp ở test những từ nó **chưa từng thấy**, gọi là từ <Term id="oov">ngoài từ vựng</Term> (out of vocabulary, OOV). Đo tỷ lệ token OOV của tập test, ở mức âm tiết và mức từ:
+
+```python
+tu_te = [word_tokenize(c) for c in te.sentence]
+am_tiet_te = [c.split() for c in te.sentence]
+oov = lambda ds, tu_vung: sum(x not in tu_vung for c in ds for x in c) / sum(map(len, ds))
+print(round(oov(am_tiet_te, dem_am_tiet), 4), round(oov(tu_te, dem_tu), 4))
+```
+
+```text title="Output"
+0.0065 0.0156
+```
+
+Ở mức âm tiết, 0,65% token của test là âm tiết chưa gặp trong train; ở mức từ, 1,56%, gấp 2,4 lần. Từ vựng mức từ lớn hơn nên đuôi dài hơn, và từ ghép mới dễ xuất hiện hơn âm tiết mới. Các mô hình hiện đại xử lý OOV bằng cách cắt từ hiếm thành **mảnh nhỏ hơn** đã biết (Chương 45), để không có từ nào hoàn toàn lạ.
+
+## Bỏ stopword: cẩn thận
+
+Stopword là những từ rất phổ biến mà ít mang nghĩa riêng: "và", "của", "thì", "là". Nhiều hướng dẫn khuyên bỏ chúng để giảm nhiễu. Nhưng danh sách stopword tiếng Việt phổ biến thường có cả "không", "chưa", "rất". Với phân loại cảm xúc:
+
+```python
+tieu_cuc, tich_cuc = tr[tr.sentiment == 0].sentence, tr[tr.sentiment == 2].sentence
+print(round(tieu_cuc.str.contains(r"\bkhông\b").mean(), 3), round(tich_cuc.str.contains(r"\bkhông\b").mean(), 3))
+```
+
+```text title="Output"
+0.28 0.041
+```
+
+"Không" có mặt trong **28%** câu tiêu cực, chỉ **4,1%** câu tích cực: gần gấp 7 lần. Nó là một trong những tín hiệu mạnh nhất của cả bộ. Bỏ nó đi thì "giảng viên không nhiệt tình" thành "giảng viên nhiệt tình". Quy tắc an toàn: đừng bỏ stopword theo một danh sách có sẵn; nếu muốn bỏ, kiểm từng từ có quan trọng với bài toán không, và đo xem bỏ có cải thiện điểm trên val không. Với các mô hình từ Chương 41 trở đi, thường **không** bỏ gì cả.
+
+<TuKiemTra
+	cauHoi="Theo luật Zipf với alpha = 1, nếu từ đứng đầu xuất hiện 12 000 lần thì từ hạng 100 xuất hiện khoảng bao nhiêu lần?"
+	luaChon={['1200', '120', '12', '12 000']}
+	dapAn={1}
+	giaiThich="f(r) tỷ lệ với 1/r, nên f(100) = f(1)/100 = 120. Với alpha = 1,39 như bộ này, f(100) = f(1)/100^1,39, khoảng f(1)/600: dốc hơn, từ hiếm còn hiếm hơn."
+/>
+
+<Khung loai="loi">
+**Xây từ vựng trên cả train lẫn test.** Tỷ lệ OOV khi đó bằng 0 một cách giả tạo, và mọi đánh giá trên test lạc quan hơn thực tế. Từ vựng, như mọi thứ học từ dữ liệu, chỉ được xây từ train (Chương 9).
+
+**Giữ mọi từ trong từ vựng.** Gần một nửa từ vựng chỉ xuất hiện một lần; mô hình không học được gì đáng tin từ một mẫu, mà mỗi từ lại tốn thêm tham số. Thường đặt ngưỡng tần suất tối thiểu và gộp phần còn lại vào một token `<unk>`. Bài tập 38.2 đo cái giá của ngưỡng đó.
+</Khung>

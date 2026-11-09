@@ -1,0 +1,103 @@
+---
+title: Tách từ tiếng Việt
+description: "Tách 11 426 câu train bằng underthesea mất khoảng 4 giây: 163 492 âm tiết thành 127 413 từ, trung bình 1,28 âm tiết một từ. Từ vựng tăng từ 2514 âm tiết lên 4009 từ. Không cần từ điển cũng tìm được từ ghép: 29 trong 30 cặp âm tiết có PMI cao nhất là từ mà underthesea cũng tách ra."
+---
+
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Token
+
+Mọi mô hình NLP xử lý văn bản như một dãy đơn vị rời rạc gọi là <Term id="token">token</Term>. Cắt văn bản thành token là **tokenization**. Token có thể là ký tự, âm tiết, từ, hay một mảnh từ (Chương 45 sẽ thấy các mô hình lớn dùng mảnh từ). Với tiếng Việt, hai lựa chọn tự nhiên nhất là **âm tiết** (cắt theo dấu cách, miễn phí) và **từ** (cần tách từ).
+
+## underthesea
+
+<Term id="tach-tu">Tách từ</Term> tiếng Việt là một bài toán học máy riêng: với mỗi âm tiết, quyết định nó **bắt đầu** một từ mới hay **nối tiếp** từ trước, một bài gán nhãn chuỗi như Chương 42 sẽ học. `underthesea` (Vũ Anh và cộng sự) là thư viện mã nguồn mở cho tiếng Việt, có sẵn mô hình tách từ đã huấn luyện:
+
+```python
+from underthesea import word_tokenize
+print(word_tokenize("Bác sĩ khám bệnh cho bệnh nhân"))
+print(word_tokenize("Ông già đi nhanh quá"))
+print(word_tokenize("học sinh học sinh học", format="text"))
+```
+
+```text title="Output"
+['Bác sĩ', 'khám', 'bệnh', 'cho', 'bệnh nhân']
+['Ông già', 'đi', 'nhanh', 'quá']
+học_sinh học_sinh học
+```
+
+"Bác sĩ", "bệnh nhân" được nhận đúng là từ ghép, trong khi "bệnh" đứng một mình. Câu mơ hồ ở trang 1 được tách theo cách đọc phổ biến hơn, "Ông già" là một từ. Với `format="text"`, các âm tiết trong một từ được nối bằng dấu gạch dưới, tiện để đưa vào công cụ tách theo khoảng trắng. Câu "học sinh học sinh học" (học sinh thì học môn sinh học) cho thấy giới hạn: mô hình tách thành "học_sinh học_sinh học", trong khi cách đúng là "học_sinh học sinh_học". Mô hình chỉ nhìn ngữ cảnh gần, không hiểu nghĩa.
+
+## Trên cả bộ dữ liệu
+
+Tách cả 11 426 câu train, đếm số âm tiết, số từ, và cỡ từ vựng ở hai mức:
+
+```python
+import time
+t0 = time.time()
+tu_tr = [word_tokenize(c) for c in tr.sentence]
+giay = time.time() - t0
+am_tiet_tr = [c.split() for c in tr.sentence]
+n_am_tiet, n_tu = sum(map(len, am_tiet_tr)), sum(map(len, tu_tr))
+dem_am_tiet = Counter(x for c in am_tiet_tr for x in c)
+dem_tu = Counter(x for c in tu_tr for x in c)
+print(n_am_tiet, n_tu, round(n_am_tiet / n_tu, 3), len(dem_am_tiet), len(dem_tu), giay < 30)
+print([w for w, _ in dem_tu.most_common(40) if " " in w])
+```
+
+```text title="Output"
+163492 127413 1.283 2514 4009 True
+['sinh viên', 'nhiệt tình', 'giảng viên', 'bài tập', 'giảng dạy', 'kiến thức', 'thực hành', 'môn học']
+```
+
+163 492 âm tiết gộp thành 127 413 từ: trung bình **1,28** âm tiết một từ. Từ vựng thì ngược lại: chỉ 2514 âm tiết khác nhau, nhưng 4009 từ khác nhau, vì cùng các âm tiết đó ghép thành nhiều từ. Tách 11 nghìn câu mất khoảng 4 giây trên máy viết bài. Trong 40 từ thường gặp nhất có 8 từ ghép, đúng những gì sinh viên hay nói về một môn học: sinh viên, nhiệt tình, giảng viên, bài tập, giảng dạy, kiến thức, thực hành, môn học.
+
+Chọn âm tiết hay từ làm token là một đánh đổi. Âm tiết: từ vựng nhỏ, không cần công cụ, không có lỗi tách, nhưng "sinh" trong "sinh viên" và "sinh" trong "sinh học" thành một token. Từ: nghĩa rõ hơn, nhưng từ vựng lớn hơn, nhiều từ hiếm hơn (trang 4), và mang theo lỗi của mô hình tách từ. Chương 41 sẽ đo xem tách từ giúp phân loại cảm xúc bao nhiêu trên chính bộ dữ liệu này. Với các mô hình như PhoBERT (Chương 46), văn bản **phải** được tách từ trước, vì mô hình được huấn luyện trên văn bản đã tách.
+
+## Tìm từ ghép không cần từ điển
+
+Ý tưởng: hai âm tiết hay đi **cùng nhau** hơn mức tình cờ thì có lẽ là một từ. Đo bằng **PMI** (pointwise mutual information):
+
+$$
+\operatorname{PMI}(a, b) = \log_2 \frac{P(a\, b)}{P(a)\, P(b)}
+$$
+
+với $P(a\, b)$ là tần suất cặp âm tiết liền nhau, $P(a)$, $P(b)$ là tần suất từng âm tiết. Nếu $a$ và $b$ độc lập thì $P(a\,b) = P(a)P(b)$ và PMI bằng 0; PMI càng lớn, cặp càng "dính". Chỉ xét cặp xuất hiện ít nhất 20 lần, vì cặp hiếm có PMI cao một cách tình cờ:
+
+```python
+import math
+d1 = Counter(x for c in am_tiet_tr for x in c)
+d2 = Counter((a, b) for c in am_tiet_tr for a, b in zip(c, c[1:]))
+N1, N2 = sum(d1.values()), sum(d2.values())
+
+def pmi(a, b):
+    return math.log2((d2[(a, b)] / N2) / ((d1[a] / N1) * (d1[b] / N1)))
+
+cap = sorted(((round(pmi(a, b), 2), a + " " + b) for (a, b), n in d2.items()
+              if n >= 20 and a.isalpha() and b.isalpha()), reverse=True)
+print(cap[:8])
+top30 = [w for _, w in cap[:30]]
+print(sum(w in dem_tu for w in top30), [w for w in top30 if w not in dem_tu])
+```
+
+```text title="Output"
+[(12.72, 'tinh thần'), (12.67, 'khô khan'), (12.61, 'đơn giản'), (12.57, 'sẵn sàng'), (12.38, 'mơ hồ'), (12.38, 'giới thiệu'), (12.28, 'ảnh hưởng'), (12.27, 'trách nhiệm')]
+29 ['sở vật']
+```
+
+Tám cặp đầu đều là từ ghép thật: tinh thần, khô khan, đơn giản, sẵn sàng... Trong 30 cặp có PMI cao nhất, **29** cặp là từ mà underthesea cũng tách ra. Cặp còn lại, "sở vật", là mảnh giữa của "cơ sở vật chất", một từ bốn âm tiết mà phép đo theo cặp không thấy trọn. Chỉ bằng đếm, không từ điển, không nhãn, ta đã tìm ra từ. Ý tưởng "đếm xem cái gì hay đi cùng nhau" sẽ trở lại ở Chương 40, khi đếm ngữ cảnh của từ để học nghĩa của nó.
+
+<TuKiemTra
+	cauHoi="Một cặp âm tiết xuất hiện đúng 1 lần trong cả bộ, và mỗi âm tiết cũng chỉ xuất hiện đúng 1 lần. PMI của nó so với 'sinh viên' thế nào?"
+	luaChon={['Thấp hơn nhiều, vì cặp hiếm', 'Rất cao, thường cao hơn cả sinh viên, vì P(a) và P(b) rất nhỏ ở mẫu số', 'Bằng 0', 'Không tính được']}
+	dapAn={1}
+	giaiThich="Với cặp đó, P(ab) khoảng 1/N và P(a)P(b) khoảng 1/N², nên tỷ số khoảng N, PMI khoảng log2(N), cực đại. Hai âm tiết hiếm tình cờ đứng cạnh nhau một lần được PMI cao nhất bộ. Đó là lý do phải đặt ngưỡng số lần xuất hiện (ở đây 20) trước khi xếp hạng theo PMI."
+/>
+
+<Khung loai="loi">
+**Tách từ trên văn bản chưa chuẩn hóa.** Mô hình tách từ học trên văn bản chuẩn; gặp "hoà" kiểu cũ, chữ tổ hợp NFD hay chữ viết tắt, nó dễ tách sai. Chuẩn hóa (trang 2) trước, tách từ sau.
+
+**Tách từ hai lần.** Chạy `word_tokenize` trên văn bản đã có dấu gạch dưới từ lần trước, hoặc trên văn bản mà bộ dữ liệu đã tách sẵn, có thể ghép thêm những âm tiết không nên ghép. Đọc mô tả của bộ dữ liệu xem nó đã qua bước nào.
+</Khung>

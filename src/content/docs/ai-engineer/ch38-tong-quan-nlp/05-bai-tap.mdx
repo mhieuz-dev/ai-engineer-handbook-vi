@@ -1,0 +1,105 @@
+---
+title: Bài tập
+description: "Ba bài tập có đáp án chi tiết (một hàm làm sạch đúng thứ tự cho câu lẫn NFD, chữ hoa và kiểu dấu cũ; ngưỡng tần suất 2 cắt từ vựng một nửa mà OOV chỉ tăng từ 1,56% lên 2,29%; bỏ 15 stopword làm 20 câu thành giống hệt nhau mà mang cả nhãn khen lẫn chê) và câu hỏi phỏng vấn."
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Đoán trước, rồi chạy code trong notebook để kiểm tra. Code dùng lại `tr`, `te`, `dau_moi`, `word_tokenize`, `dem_tu`, `tu_te`, `oov` của các trang trước.
+
+<BaiTap so="38.1">
+**Một hàm làm sạch.** Viết hàm `lam_sach(s)` theo đúng thứ tự của trang 2: NFKC, chữ thường, đặt dấu kiểu mới, tách dấu câu khỏi chữ bằng dấu cách, gộp nhiều khoảng trắng thành một. Thử trên một câu được dựng cố ý cho bẩn: chữ "Hoà" viết ở dạng tổ hợp NFD, chữ hoa, chữ số toàn khổ, dấu câu dính liền chữ.
+
+<Fragment slot="dap-an">
+
+```python
+def lam_sach(s):
+    s = unicodedata.normalize("NFKC", s)             # 1. dạng chuẩn, kể cả ký tự toàn khổ
+    s = s.lower()                                    # 2. chữ thường
+    s = dau_moi(s)                                   # 3. đặt dấu kiểu mới (bảng chỉ có chữ thường)
+    s = re.sub(r"([.,!?;:()])", r" \1 ", s)          # 4. tách dấu câu
+    return re.sub(r"\s+", " ", s).strip()            # 5. gộp khoảng trắng
+
+ban = unicodedata.normalize("NFD", "Thầy HOÀ dạy môn Toán ２ rất hay,dễ hiểu!!") + "  Khoẻ   không?"
+print(len(ban), [lam_sach(ban)], len(lam_sach(ban)))
+print(lam_sach(ban).split() == word_tokenize(lam_sach(ban)))
+```
+
+```text title="Output"
+68 ['thầy hòa dạy môn toán 2 rất hay , dễ hiểu ! ! khỏe không ?'] 58
+False
+```
+
+Câu bẩn dài 68 ký tự vì mọi chữ có dấu ở dạng tổ hợp, mỗi chữ hai hoặc ba code point; sau khi làm sạch còn 58. Chữ thường, "hoà" và "khoẻ" về kiểu mới "hòa", "khỏe", số "２" về "2", dấu câu đứng riêng (hai dấu chấm than thành hai token `! !`, có thể giữ vì chúng mang cảm xúc). Dòng cuối so cắt theo dấu cách với tách từ: khác nhau, vì "dễ hiểu" là một từ hai âm tiết. Thứ tự là then chốt: chạy `dau_moi` trước `lower()` thì "HOÀ" giữ kiểu cũ (câu hỏi Tự kiểm tra ở trang 2); chạy `dau_moi` trước NFKC thì nó không nhận ra "oà" đang ở dạng tổ hợp.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="38.2">
+**Chọn cỡ từ vựng.** Chỉ giữ từ xuất hiện ít nhất $k$ lần trong train, còn lại coi là OOV. Với $k = 1, 2, 5$, cỡ từ vựng và tỷ lệ OOV trên test thay đổi thế nào?
+
+<Fragment slot="dap-an">
+
+```python
+for k in (1, 2, 5):
+    tu_vung = {w for w, n in dem_tu.items() if n >= k}
+    print(k, len(tu_vung), round(oov(tu_te, tu_vung), 4))
+```
+
+```text title="Output"
+1 4009 0.0156
+2 2077 0.0229
+5 1217 0.0371
+```
+
+$k = 2$ cắt từ vựng gần **một nửa** (4009 xuống 2077) mà OOV chỉ tăng từ 1,56% lên 2,29%. $k = 5$ còn 1217 từ, OOV 3,71%. Đây là luật Zipf ở dạng thực dụng: phần lớn từ vựng là đuôi hiếm, gánh rất ít token. Một mô hình có một vector cho mỗi từ (Chương 40) tiết kiệm gần nửa số tham số với $k = 2$, đổi lại cứ khoảng 140 token thêm một token `<unk>`. Không có $k$ đúng cho mọi bài; chọn trên val, như mọi siêu tham số.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="38.3">
+**Cái giá của stopword.** Bỏ một danh sách 15 stopword hay gặp (gồm cả "không", "rất" và hai dấu câu) khỏi các câu train đã tách từ. Đếm xem bao nhiêu câu, sau khi bỏ, trở thành **giống hệt** một câu khác mang nhãn cảm xúc ngược lại (tiêu cực và tích cực). So với khi không bỏ gì.
+
+<Fragment slot="dap-an">
+
+```python
+from collections import defaultdict
+STOP = {"và", "của", "thì", "là", "không", "rất", "cho", "có", "được", "các", "những", "với", "này", ".", ","}
+
+def xung_dot(bo):
+    nhom = defaultdict(set)
+    for c, y in zip(tr.sentence, tr.sentiment):
+        nhom[" ".join(w for w in word_tokenize(c) if w not in bo)].add(y)
+    return [k for k, v in nhom.items() if {0, 2} <= v]
+
+print(len(xung_dot(set())), len(xung_dot(STOP)), xung_dot(STOP)[:6])
+```
+
+```text title="Output"
+1 20 ['nhiệt tình sinh viên', 'thầy vui tính', 'thầy dạy hiệu quả', 'nhàm chán', 'thầy dạy tâm', 'giảng viên nhiệt tình tận tâm']
+```
+
+Không bỏ gì: chỉ **1** câu có cả nhãn tiêu cực lẫn tích cực, một lỗi nhãn sẵn có của bộ dữ liệu. Bỏ 15 stopword: **20** câu. "Thầy vui tính", "giảng viên nhiệt tình tận tâm" vừa là khen, vừa là chê, vì bản gốc của một trong hai là "thầy **không** vui tính". Sau khi bỏ stopword, **không mô hình nào** phân biệt được những câu đó, dù giỏi tới đâu: thông tin đã bị xóa trước khi mô hình kịp nhìn. Đó là loại lỗi tiền xử lý tệ nhất, vì nó không làm code báo lỗi, chỉ lặng lẽ hạ trần của độ chính xác.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Tiền xử lý văn bản tiếng Việt cần những bước gì, theo thứ tự nào?**
+
+<p lang="en"><em>What preprocessing steps does Vietnamese text need, and in what order?</em></p>
+
+*Gợi ý:* chuẩn hóa Unicode NFC hoặc NFKC trước tiên; chữ thường nếu chữ hoa không mang thông tin; thống nhất vị trí dấu thanh (hòa và hoà); thay URL, email, số điện thoại bằng token chung; tách từ vì dấu cách chỉ tách âm tiết. Mỗi bước là một quyết định phụ thuộc bài toán, kiểm bằng mắt và đo trên val.
+
+**2. Từ ngoài từ vựng là gì và xử lý thế nào?**
+
+<p lang="en"><em>What are out-of-vocabulary words and how do you handle them?</em></p>
+
+*Gợi ý:* từ ở lúc dùng mà không có trong từ vựng xây từ train. Theo luật Zipf, luôn có từ mới. Cách xử lý: token `<unk>` chung, ngưỡng tần suất, mô hình theo ký tự hoặc âm tiết, và hiện nay chủ yếu là tokenizer mảnh từ (BPE, WordPiece) cắt từ lạ thành mảnh đã biết.
+
+**3. Có nên bỏ stopword không?**
+
+<p lang="en"><em>Should you remove stopwords?</em></p>
+
+*Gợi ý:* tùy bài toán. Với tìm kiếm theo từ khóa hay chủ đề, bỏ có thể giảm nhiễu. Với cảm xúc, phủ định ("không", "chưa") là tín hiệu chính, bỏ là mất thông tin. Với mô hình hiện đại (Transformer), gần như không bao giờ bỏ. Luôn đo trên val.
+</Khung>
