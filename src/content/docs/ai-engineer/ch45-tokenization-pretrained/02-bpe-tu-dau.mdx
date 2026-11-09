@@ -1,0 +1,141 @@
+---
+title: BPE từ đầu
+description: "Byte Pair Encoding: bắt đầu từ ký tự, lặp lại việc gộp cặp kề nhau thường gặp nhất thành một token mới. Tự cài khoảng 30 dòng, học 3000 lần gộp trên UIT-VSFC trong vài giây. Từ thường gặp thành một token, từ tiếng Anh và lỗi gõ được cắt thành mảnh, không có gì là lạ hoàn toàn."
+---
+
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Thuật toán
+
+<Term id="bpe">BPE</Term> (Byte Pair Encoding) vốn là một thuật toán nén dữ liệu, được Sennrich và cộng sự đưa vào dịch máy năm 2016. Ý tưởng rất đơn giản:
+
+1. Viết mỗi từ trong kho huấn luyện thành dãy ký tự, thêm một ký hiệu `_` đánh dấu cuối từ (để "an" cuối từ khác "an" giữa từ).
+2. Đếm mọi cặp token **kề nhau** trên cả kho, có nhân với tần suất của từ.
+3. Gộp cặp thường gặp nhất thành một token mới, ghi lại quy tắc gộp đó.
+4. Lặp lại bước 2 và 3 cho tới khi đủ số lần gộp mong muốn.
+
+Từ điển cuối cùng là các ký tự ban đầu cộng một token mới cho mỗi lần gộp. Số lần gộp là **siêu tham số** quyết định cỡ từ điển. Để cắt một từ mới, áp dụng lần lượt các quy tắc gộp theo đúng thứ tự đã học.
+
+```python
+import time
+
+dem = Counter(w for s in tr.sentence for w in s.split())   # tần suất âm tiết trên train
+
+def gop(t, a, b):                                    # gộp mọi cặp (a, b) kề nhau trong dãy t
+    ra, i = [], 0
+    while i < len(t):
+        if i < len(t) - 1 and t[i] == a and t[i + 1] == b:
+            ra.append(a + b)
+            i += 2
+        else:
+            ra.append(t[i])
+            i += 1
+    return tuple(ra)
+
+def hoc_bpe(dem, so_lan):
+    tach = {w: tuple(w) + ("_",) for w in dem}       # mỗi từ thành dãy ký tự, thêm dấu cuối từ
+    quy_tac = []
+    for _ in range(so_lan):
+        cap = Counter()
+        for w, n in dem.items():                     # đếm cặp kề nhau, nhân tần suất từ
+            t = tach[w]
+            for a, b in zip(t, t[1:]):
+                cap[a, b] += n
+        if not cap:
+            break
+        (a, b), n = cap.most_common(1)[0]
+        quy_tac.append((a, b))
+        tach = {w: gop(t, a, b) for w, t in tach.items()}
+    return quy_tac
+
+t0 = time.time()
+quy_tac = hoc_bpe(dem, 3000)
+print(round(time.time() - t0) < 60, len(quy_tac))
+print(quy_tac[:8])
+print(quy_tac[99], quy_tac[999])
+```
+
+```text title="Output"
+True 3000
+[('n', '_'), ('n', 'g'), ('ng', '_'), ('n', 'h'), ('i', '_'), ('t', 'h'), ('.', '_'), ('c', '_')]
+('t', 'iế') ('qu', 'át_')
+```
+
+Vài giây cho 3000 lần gộp. Những lần gộp đầu tiên là các cặp phổ biến nhất của chính tả tiếng Việt: "n" với dấu cuối từ (âm tiết kết thúc bằng "n"), rồi "n" với "g", rồi "ng" với dấu cuối từ, "n" với "h"... Thuật toán **tự phát hiện** các phụ âm ghép "ng", "nh", "th" mà không ai dạy. Càng về sau, các lần gộp tạo ra cả âm tiết.
+
+## Cắt từ mới
+
+```python
+def ma_hoa(w, quy_tac):
+    t = tuple(w) + ("_",)
+    for a, b in quy_tac:                             # áp các quy tắc theo đúng thứ tự đã học
+        if a in t:
+            t = gop(t, a, b)
+    return t
+
+for w in ["giảng", "nhiệt", "ngoái", "rât", "centrality", "betweenness", "chatgpt"]:
+    print(w, ma_hoa(w, quy_tac))
+```
+
+```text title="Output"
+giảng ('giảng_',)
+nhiệt ('nhiệt_',)
+ngoái ('ngo', 'ái_')
+rât ('r', 'â', 't_')
+centrality ('c', 'e', 'n', 'tra', 'li', 'ty_')
+betweenness ('be', 't', 'we', 'e', 'n', 'ne', 'ss_')
+chatgpt ('cha', 't', 'g', 'p', 't_')
+```
+
+Âm tiết thường gặp ("giảng", "nhiệt") thành **một** token. Âm tiết hiếm "ngoái" thành hai mảnh; lỗi gõ "rât" và các từ tiếng Anh rơi về gần mức ký tự, vì kho phản hồi tiếng Việt có ít quy tắc gộp hợp với chúng. Không từ nào thành token lạ: mô hình vẫn thấy các mảnh của từ, thay vì một ký hiệu chung cho mọi thứ chưa biết. Từ điển chỉ có các ký tự đã gặp cộng 3000 token, nhưng mã hóa được mọi từ viết bằng những ký tự đó.
+
+## Cỡ từ điển và độ dài dãy
+
+Mỗi lần gộp làm từ điển to thêm một và dãy ngắn đi. Đo trên val, mỗi âm tiết thành bao nhiêu token (kể cả dấu cuối từ) theo số lần gộp:
+
+```python
+am_va = [w for s in va.sentence for w in s.split()]
+dem_va = Counter(am_va)
+for k in (0, 100, 500, 1000, 2000, 3000):
+    tong = sum(n * len(ma_hoa(w, quy_tac[:k])) for w, n in dem_va.items())
+    print(k, round(tong / len(am_va), 3))
+```
+
+```text title="Output"
+0 4.196
+100 1.96
+500 1.207
+1000 1.056
+2000 1.013
+3000 1.01
+```
+
+<HinhKetQua src="/hinh/ch45/h1_bpe.svg" alt="Đồ thị đường, trục ngang là số lần gộp BPE từ 0 tới 3000, trục dọc là số token trung bình cho mỗi âm tiết của val. Đường bắt đầu ở khoảng 4,2 khi chưa gộp, giảm rất nhanh xuống khoảng 2 sau 100 lần gộp, khoảng 1,2 sau 500, rồi gần như nằm ngang sát 1 từ khoảng 1000 lần gộp trở đi." so="45.1" chuThich="Số token trên mỗi âm tiết của UIT-VSFC val theo số lần gộp BPE học trên train.">
+**Đọc hình.** Ở 0 lần gộp, mỗi âm tiết là dãy ký tự của nó cộng dấu cuối từ. Mỗi điểm là cùng tập val, cắt bằng một số lần gộp đầu tiên.
+
+**Điều cần thấy.** Vài trăm lần gộp đầu cho lợi ích lớn nhất, vì chúng là các cặp ký tự phổ biến nhất. Sau khoảng 1000 lần gộp, gần như mọi âm tiết đã là một token; thêm gộp chủ yếu chỉ làm từ điển to ra. Với tiếng Việt, một từ điển vài nghìn mảnh đã bao gần hết âm tiết; các mô hình đa ngôn ngữ dùng từ điển hàng trăm nghìn mảnh vì phải chia chỗ cho hàng trăm ngôn ngữ.
+</HinhKetQua>
+
+## Các biến thể
+
+BPE có vài người anh em, khác nhau ở cách chọn cặp gộp và cách xử lý dấu cách:
+
+- **WordPiece** (BERT gốc): như BPE, nhưng chọn cặp làm tăng nhiều nhất xác suất của kho theo một mô hình ngôn ngữ đơn giản, thay vì cặp đếm được nhiều nhất.
+- **SentencePiece** (thư viện của Google, dùng trong XLM-R, T5, Llama): làm việc thẳng trên câu thô, coi dấu cách là một ký tự thường (viết thành `▁`), nên không cần tách từ trước và giải mã ngược lại chính xác. Có cả BPE lẫn một thuật toán khác gọi là Unigram.
+- **BPE mức byte** (GPT-2 và nhiều LLM sau này): bắt đầu từ 256 byte thay vì ký tự, nên mọi chuỗi đều mã hóa được, kể cả emoji và chữ chưa từng thấy. Cái giá với tiếng Việt sẽ thấy ở trang 3.
+
+<TuKiemTra
+	cauHoi="Huấn luyện BPE trên một kho chỉ có văn bản tiếng Anh, rồi dùng để cắt một câu tiếng Việt có dấu. Điều gì xảy ra?"
+	luaChon={['Câu bị cắt thành ít token vì từ điển lớn', 'Câu bị cắt thành rất nhiều mảnh nhỏ, gần như từng ký tự, vì các quy tắc gộp học từ tiếng Anh hiếm khi khớp với chữ tiếng Việt', 'Mọi chữ có dấu thành token lạ', 'BPE từ chối mã hóa']}
+	dapAn={1}
+	giaiThich="Các quy tắc gộp phản ánh thống kê của kho huấn luyện. Chữ có dấu và các cặp ký tự đặc trưng của tiếng Việt hầu như không có trong kho tiếng Anh, nên rất ít quy tắc áp dụng được; câu rơi về gần mức ký tự. Với BPE mức ký tự, chữ có dấu chưa từng gặp còn có thể thành token lạ; với BPE mức byte thì không, nhưng mỗi chữ có dấu tốn 2 tới 3 token."
+/>
+
+<Khung loai="loi">
+**Huấn luyện tokenizer trên cả tập test.** Tokenizer cũng là một phần của mô hình: học nó từ dữ liệu test là để lộ thông tin test, như chuẩn hóa dữ liệu bằng thống kê của test (Chương 9). Học trên train, như ở trên.
+
+**Đổi tokenizer mà giữ trọng số mô hình.** Mỗi chỉ số token ứng với một hàng trong bảng vector của mô hình. Đổi tokenizer thì chỉ số đổi nghĩa, và mô hình đã tiền huấn luyện thành vô dụng. Luôn tải tokenizer **cùng** với mô hình, từ cùng một chỗ và cùng một phiên bản.
+</Khung>

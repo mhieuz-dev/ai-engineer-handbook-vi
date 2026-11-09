@@ -1,0 +1,123 @@
+---
+title: Mô hình tiền huấn luyện
+description: "Hai cách học từ văn bản không nhãn: che từ rồi đoán lại (BERT) và đoán từ tiếp theo (GPT). PhoBERT đoán 'Hà_Nội là thủ_đô của ...' ra 'Việt_Nam' với xác suất 0,84. Dùng PhoBERT đóng băng làm bộ trích đặc trưng, thêm hồi quy logistic: UIT-VSFC val ngang mô hình tốt nhất của Chương 41, không cần huấn luyện mạng nào."
+---
+
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Học từ văn bản không nhãn
+
+Chương 44 kết thúc ở một kết quả thua: Transformer học từ đầu trên 11 nghìn câu có nhãn không hơn SVM. Văn bản **có nhãn** thì hiếm, nhưng văn bản **không nhãn** thì gần như vô hạn. <Term id="tien-huan-luyen">Tiền huấn luyện</Term> tận dụng điều đó: đặt ra một nhiệm vụ mà nhãn nằm sẵn trong chính văn bản, huấn luyện một Transformer lớn trên kho khổng lồ, rồi dùng lại cho bài toán của mình. Hai nhiệm vụ phổ biến nhất:
+
+- **Đoán từ bị che** (<Term id="mlm">masked language modeling</Term>, BERT, 2018): che ngẫu nhiên 15% token, bắt mô hình đoán lại từ cả hai phía của câu. Mô hình là một **bộ mã hóa** (self-attention không mặt nạ, Chương 44). Rất hợp để **hiểu** văn bản: phân loại, gán nhãn, tìm kiếm.
+- **Đoán từ tiếp theo** (mô hình ngôn ngữ nhân quả, GPT, 2018): như mô hình n-gram của Chương 39 và mô hình ký tự của Chương 29, nhưng là Transformer với mặt nạ nhân quả. Mô hình là một **bộ giải mã**. Hợp để **sinh** văn bản; mọi mô hình ngôn ngữ lớn của Phần V là loại này.
+
+Ngoài ra còn kiểu **mã hóa - giải mã** như T5 (che cả đoạn rồi sinh lại đoạn đó), hợp cho dịch và tóm tắt, cùng kiến trúc với Chương 43.
+
+PhoBERT là một bộ mã hóa kiểu RoBERTa (một biến thể của BERT huấn luyện lâu hơn, bỏ một nhiệm vụ phụ), tiền huấn luyện bằng cách đoán từ bị che trên khoảng 20 GB văn bản tiếng Việt đã tách từ (Wikipedia và tin tức).
+
+## PhoBERT đoán từ bị che
+
+Tải bản đã tiền huấn luyện cùng phần đầu ra đoán từ (khoảng 540 MB, một lần):
+
+```python
+os.environ["DISABLE_SAFETENSORS_CONVERSION"] = "1"   # không tải thêm bản chuyển đổi 540 MB
+import torch
+from transformers import AutoModel, AutoModelForMaskedLM
+torch.set_num_threads(4)
+R = PHIEN_BAN["vinai/phobert-base"]
+mlm = AutoModelForMaskedLM.from_pretrained("vinai/phobert-base", revision=R).eval()
+print(sum(p.numel() for p in mlm.parameters()))
+
+def doan(cau, k=5):
+    x = pho(cau, return_tensors="pt")
+    with torch.no_grad():
+        p = mlm(**x).logits[0].softmax(-1)
+    vt = (x["input_ids"][0] == pho.mask_token_id).nonzero().item()   # vị trí bị che
+    xs, ids = p[vt].topk(k)
+    return [(pho.convert_ids_to_tokens(i.item()), round(v.item(), 3)) for v, i in zip(xs, ids)]
+
+for c in ["Hà_Nội là thủ_đô của <mask> .",
+          "Môn này khó quá , em không <mask> gì cả .",
+          "Thầy giảng_dạy rất <mask> , sinh_viên dễ hiểu ."]:
+    print(doan(c))
+```
+
+```text title="Output"
+135127810
+[('Việt_Nam', 0.837), ('hoà_bình', 0.036), ('đất_nước', 0.031), ('thế_giới', 0.012), ('quốc_gia', 0.009)]
+[('biết', 0.504), ('nghĩ', 0.069), ('hiểu', 0.05), ('suy_nghĩ', 0.047), ('làm', 0.046)]
+[('hay', 0.068), ('kỹ', 0.067), ('khoa_học', 0.049), ('rõ_ràng', 0.048), ('thoải_mái', 0.038)]
+```
+
+Khoảng 135 triệu tham số. "Hà_Nội là thủ_đô của" thì gần như chắc chắn là "Việt_Nam". "Em không ... gì cả" thì "biết" chiếm khoảng một nửa, sau đó là "nghĩ", "hiểu": đều đúng ngữ pháp, và hợp nghĩa với "môn này khó quá". Câu thứ ba thì xác suất trải đều cho nhiều từ khen: "hay", "kỹ", "rõ_ràng", "thoải_mái"; không từ nào quá 7%, vì có nhiều cách điền đều hợp lý.
+
+Không ai dạy PhoBERT ngữ pháp hay kiến thức địa lý. Để đoán đúng từ bị che trên hàng tỷ câu, mô hình buộc phải học những điều đó, và chúng nằm trong các vector ẩn của nó.
+
+## PhoBERT làm bộ trích đặc trưng
+
+Cách đơn giản nhất để dùng các vector ẩn đó: **đóng băng** PhoBERT, cho mỗi câu đi qua một lần, lấy trung bình vector đầu ra của các token làm vector câu 768 chiều (như vector câu ở Chương 40, nhưng theo ngữ cảnh), rồi huấn luyện một hồi quy logistic trên đó. Không cập nhật trọng số nào của PhoBERT.
+
+```python
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, f1_score
+
+pho_ma_hoa = AutoModel.from_pretrained("vinai/phobert-base", revision=R).eval()   # chỉ phần mã hóa, không có đầu đoán từ
+
+def vector_cau(cau, lo=64):
+    ra = []
+    for k in range(0, len(cau), lo):
+        x = pho([word_tokenize(s, format="text") for s in cau[k:k + lo]],
+                padding=True, truncation=True, max_length=64, return_tensors="pt")
+        with torch.no_grad():
+            h = pho_ma_hoa(**x).last_hidden_state     # (lô, số token, 768)
+        m = x["attention_mask"][..., None]
+        ra.append(((h * m).sum(1) / m.sum(1)).numpy())   # trung bình các token thật
+    return np.concatenate(ra)
+
+t0 = time.time()
+V_tr, V_va, V_te = (vector_cau(d.sentence.tolist()) for d in (tr, va, te))
+print(V_tr.shape, round(time.time() - t0) < 1200)
+for C in (0.03, 0.1, 0.3):
+    lr = LogisticRegression(C=C, max_iter=3000).fit(V_tr, tr.sentiment)
+    p = lr.predict(V_va)
+    print(C, round(accuracy_score(va.sentiment, p), 4), round(f1_score(va.sentiment, p, average="macro"), 4))
+```
+
+```text title="Output"
+(11426, 768) True
+0.03 0.9292 0.7755
+0.1 0.9324 0.797
+0.3 0.9311 0.7844
+```
+
+Trích vector cho cả 16 nghìn câu mất khoảng 6 phút trên CPU của máy viết sách (nhanh hơn nhiều nếu chọn GPU trong Colab). Với C = 0,1: **độ chính xác val khoảng 93,2%, macro-F1 khoảng 0,797**. So với Chương 41 trên cùng val: SVM bigram 91,9% / 0,778, BiLSTM 92,0% / 0,799, SVM cân bằng 91,85% / 0,801. Độ chính xác cao nhất trên UIT-VSFC từ trước tới giờ, macro-F1 ngang mô hình tốt nhất, chỉ bằng một mô hình tuyến tính trên vector của PhoBERT. Đo test một lần với C đã chọn:
+
+```python
+lr = LogisticRegression(C=0.1, max_iter=3000).fit(V_tr, tr.sentiment)
+p = lr.predict(V_te)
+print(round(accuracy_score(te.sentiment, p), 4), round(f1_score(te.sentiment, p, average="macro"), 4))
+```
+
+```text title="Output"
+0.9217 0.7733
+```
+
+Trên test: **92,17%, macro-F1 0,773**. Mô hình được chọn ở Chương 41 (SVM cân bằng) đạt 89,67% và 0,753; Transformer học từ đầu của Chương 44 đạt 88,79% và 0,728. Hơn SVM 2,5 điểm độ chính xác, lớn hơn mức nhiễu khoảng 1,4 điểm đo trên 1583 câu val ở Chương 41 (test có 3166 câu nên mức nhiễu còn nhỏ hơn). Lần đầu tiên trên UIT-VSFC, một mạng nơ-ron thắng rõ mô hình tuyến tính trên n-gram. Và PhoBERT ở đây **không học gì** từ UIT-VSFC: mọi trọng số của nó đóng băng, chỉ hồi quy logistic được huấn luyện. Vector của nó tốt là nhờ 20 GB văn bản đã đọc trước khi gặp bài toán này.
+
+Đây mới là cách dùng **yếu nhất** của một mô hình tiền huấn luyện: các vector được học cho nhiệm vụ đoán từ, không phải cho cảm xúc, và ta không đụng vào chúng. Chương 46 sẽ **tinh chỉnh** cả PhoBERT trên UIT-VSFC: cập nhật mọi trọng số theo đúng nhiệm vụ phân loại, như transfer learning với ResNet ở Chương 28.
+
+<TuKiemTra
+	cauHoi="Bạn cần một mô hình viết tiếp đoạn văn bản người dùng đang gõ. Nên bắt đầu từ mô hình tiền huấn luyện kiểu nào?"
+	luaChon={['Bộ mã hóa đoán từ bị che như BERT, PhoBERT', 'Bộ giải mã đoán từ tiếp theo như GPT', 'Bất kỳ, vì cả hai đều là Transformer', 'Mô hình phân loại cảm xúc']}
+	dapAn={1}
+	giaiThich="Bộ giải mã nhân quả được huấn luyện đúng việc đoán token tiếp theo từ những token trước, nên sinh văn bản tự nhiên từng token một. Bộ mã hóa như BERT nhìn cả hai phía và đoán từ ở giữa câu; nó rất tốt để hiểu và biểu diễn câu, nhưng không được huấn luyện để sinh văn bản từ trái sang phải."
+/>
+
+<Khung loai="loi">
+**Lấy vector của token đầu tiên làm vector câu khi chưa tinh chỉnh.** Token đặc biệt đầu câu của BERT chỉ thật sự tóm tắt câu sau khi được tinh chỉnh cho một nhiệm vụ. Với mô hình đóng băng, trung bình các token thường tốt hơn; bài tập 45.3 đo điều đó.
+
+**Quên chế độ đánh giá.** Gọi `.eval()` để tắt dropout, và `torch.no_grad()` để không lưu đồ thị tính gradient; không có hai thứ đó, vector đổi mỗi lần chạy và bộ nhớ tăng vọt.
+</Khung>

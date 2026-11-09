@@ -1,0 +1,110 @@
+---
+title: Tokenizer của mô hình thật
+description: "Cùng một câu tiếng Việt qua ba tokenizer: PhoBERT (BPE trên văn bản đã tách từ) 8 token, XLM-R (SentencePiece đa ngôn ngữ) 11, GPT-2 (BPE mức byte học trên tiếng Anh) 46. Trên UIT-VSFC val, GPT-2 tốn gấp 3,6 lần số âm tiết. Và một chi tiết làm PhoBERT cắt vụn chữ 'khóa': kiểu bỏ dấu."
+---
+
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Ba tokenizer, một câu
+
+Mỗi mô hình tiền huấn luyện đi kèm <Term id="tokenizer">tokenizer</Term> của riêng nó, học từ kho văn bản của nó. Thư viện `transformers` của Hugging Face tải cả hai từ cùng một chỗ. Ta so ba tokenizer tiêu biểu, mỗi cái ghim một phiên bản cố định để kết quả lặp lại được:
+
+- **PhoBERT** (VinAI, 2020): mô hình cho tiếng Việt. BPE học trên văn bản **đã tách từ**, nên đầu vào phải tách từ trước (Chương 38); mảnh chưa phải cuối từ có đuôi `@@`.
+- **XLM-R** (Meta, 2019): mô hình đa ngôn ngữ, 100 ngôn ngữ. SentencePiece trên câu thô, `▁` đánh dấu đầu một từ.
+- **GPT-2** (OpenAI, 2019): mô hình tiếng Anh. BPE mức byte.
+
+```python
+!pip install transformers sentencepiece
+```
+
+```python
+from transformers import AutoTokenizer
+from underthesea import word_tokenize
+
+PHIEN_BAN = {"vinai/phobert-base": "01daacda68afe13d83023d16ec647239e344a1e6",
+             "FacebookAI/xlm-roberta-base": "e73636d4f797dec63c3081bb6ed5c7b0bb3f2089",
+             "openai-community/gpt2": "607a30d783dfa663caf39e06633721c8d4cfcd7e"}
+bo_tach = {ten: AutoTokenizer.from_pretrained(ten, revision=rev) for ten, rev in PHIEN_BAN.items()}
+
+cau = "Thầy giảng dạy rất nhiệt tình, slide đầy đủ."
+cau_tach = word_tokenize(cau, format="text")         # PhoBERT cần câu đã tách từ
+print(cau_tach)
+for ten, t in bo_tach.items():
+    vao = cau_tach if "phobert" in ten else cau
+    print(ten, len(t), t.tokenize(vao))
+```
+
+```text title="Output"
+Thầy giảng_dạy rất nhiệt_tình , slide đầy_đủ .
+vinai/phobert-base 64001 ['Thầy', 'giảng_dạy', 'rất', 'nhiệt_tình', ',', 'slide', 'đầy_đủ', '.']
+FacebookAI/xlm-roberta-base 250002 ['▁Thầy', '▁giảng', '▁dạy', '▁rất', '▁nhiệt', '▁tình', ',', '▁slide', '▁đầy', '▁đủ', '.']
+openai-community/gpt2 50257 ['Th', 'á', 'º', '§', 'y', 'Ġg', 'i', 'á', 'º', '£', 'ng', 'Ġd', 'á', 'º', '¡', 'y', 'Ġr', 'á', 'º', '¥', 't', 'Ġn', 'hi', 'á', '»', 'ĩ', 't', 'Ġt', 'Ã', '¬', 'n', 'h', ',', 'Ġslide', 'ĠÄ', 'ĳ', 'á', 'º', '§', 'y', 'ĠÄ', 'ĳ', 'á', '»', '§', '.']
+```
+
+Cùng một câu 9 âm tiết cộng hai dấu câu:
+
+- PhoBERT: 8 token, mỗi **từ** một token; "giảng_dạy", "nhiệt_tình", "đầy_đủ" đều là một token; 64 nghìn token trong từ điển.
+- XLM-R: 11 token, mỗi âm tiết một token cộng dấu câu; từ điển 250 nghìn token chia cho 100 ngôn ngữ.
+- GPT-2: 46 token, cắt vụn mọi chữ có dấu thành nhiều mảnh byte (các ký tự lạ như `á`, `º` là cách GPT-2 **hiển thị** từng byte, không phải chữ thật). Chỉ "slide", một từ tiếng Anh, là một token gọn.
+
+## Thuế token của tiếng Việt
+
+Một câu không nói được nhiều. Đo trên cả UIT-VSFC val, số token trung bình mỗi câu, không tính token đặc biệt:
+
+```python
+cau_va = va.sentence.tolist()
+tach_va = [word_tokenize(s, format="text") for s in cau_va]
+print("âm tiết", round(np.mean([len(s.split()) for s in cau_va]), 2))
+for ten, t in bo_tach.items():
+    vao = tach_va if "phobert" in ten else cau_va
+    print(ten, round(np.mean([len(t.tokenize(s)) for s in vao]), 2))
+```
+
+```text title="Output"
+âm tiết 13.67
+vinai/phobert-base 10.94
+FacebookAI/xlm-roberta-base 15.56
+openai-community/gpt2 49.77
+```
+
+PhoBERT dùng **ít** token hơn số âm tiết, vì nó gộp từ ghép. XLM-R nhiều hơn một chút, vì một lý do rất cụ thể: UIT-VSFC đặt dấu cách trước dấu câu ("đầy đủ ."), và XLM-R mã hóa dấu cách đó thành một token `▁` riêng trước "." hay ","; cắt riêng từng đơn vị của val thì 2476 trên 2983 token dư đến từ đây, phần còn lại là vài âm tiết hiếm bị cắt đôi. (Dòng "âm tiết" ở trên là số đơn vị cách nhau bởi dấu cách, kể cả dấu câu.) GPT-2 dùng gấp khoảng **3,6 lần** số âm tiết. Điều đó không chỉ là chuyện thẩm mỹ:
+
+- **Ngữ cảnh**: một mô hình có giới hạn 1024 token chứa được ít văn bản tiếng Việt hơn nhiều lần so với tiếng Anh.
+- **Chi phí**: các API mô hình ngôn ngữ tính tiền theo token, nên cùng nội dung bằng tiếng Việt có thể đắt hơn nhiều lần.
+- **Học**: mô hình phải ghép nhiều byte thành một chữ trước khi hiểu được nó.
+
+Các mô hình ngôn ngữ lớn về sau học tokenizer trên kho đa ngôn ngữ với từ điển lớn hơn, nên khoảng cách này nhỏ đi nhiều, nhưng tiếng Việt vẫn thường tốn token hơn tiếng Anh cho cùng một nội dung. Muốn biết chính xác thì đo bằng tokenizer của đúng mô hình mình dùng, như ô code trên.
+
+## Kiểu bỏ dấu: "khóa" hay "khoá"
+
+Một chi tiết riêng của tiếng Việt. Với vần "oa", "oe", "uy" không có phụ âm cuối, có hai kiểu đặt dấu thanh đều được dùng: kiểu mới đặt dấu lên nguyên âm chính ("khóa", "hòa", "thủy"), kiểu cũ đặt lên nguyên âm sau ("khoá", "hoà", "thuỷ"). Với máy tính, đó là hai chuỗi khác nhau, kể cả sau khi chuẩn hóa NFC. UIT-VSFC dùng kiểu mới. Còn PhoBERT:
+
+```python
+pho = bo_tach["vinai/phobert-base"]
+for w in ["khóa_học", "khoá_học", "hòa_bình", "hoà_bình"]:
+    print(w, pho.tokenize(w), pho.unk_token_id in pho.convert_tokens_to_ids(pho.tokenize(w)))
+```
+
+```text title="Output"
+khóa_học ['khó@@', 'a_học'] True
+khoá_học ['khoá@@', '_học'] False
+hòa_bình ['hò@@', 'a_@@', 'bình'] False
+hoà_bình ['hoà_bình'] False
+```
+
+Từ điển của PhoBERT học trên kho văn bản dùng nhiều kiểu cũ: "hoà_bình" là **một** token, còn "hòa_bình" bị cắt thành ba mảnh; "khóa_học" còn sinh ra một mảnh không có trong từ điển (token lạ). Mô hình vẫn chạy, nhưng nhìn thấy một chuỗi mảnh vụn thay vì từ nó đã gặp hàng triệu lần. Bài tập 45.2 đo xem đổi kiểu bỏ dấu của UIT-VSFC về kiểu cũ thay đổi bao nhiêu token.
+
+<TuKiemTra
+	cauHoi="Bạn dùng một mô hình tiền huấn luyện cho tiếng Việt mà tokenizer học trên văn bản đã tách từ bằng một công cụ A. Bạn tách từ dữ liệu của mình bằng một công cụ B khác. Rủi ro là gì?"
+	luaChon={['Không rủi ro gì, tách từ nào cũng như nhau', 'Ranh giới từ khác với lúc tiền huấn luyện, nên một số từ ghép bị cắt thành mảnh lạ với mô hình, làm giảm chất lượng một chút', 'Mô hình không chạy được', 'Mô hình chạy chậm hơn nhiều']}
+	dapAn={1}
+	giaiThich="PhoBERT được tiền huấn luyện trên văn bản tách từ bằng RDRSegmenter của VnCoreNLP; chương này dùng underthesea cho gọn. Hai công cụ đồng ý ở phần lớn các từ, nhưng chỗ nào khác thì PhoBERT nhận một từ ghép nó chưa thấy và phải cắt thành mảnh. Trên UIT-VSFC val, chỉ 7 token lạ trên hàng chục nghìn token, nhưng nguyên tắc chung là: xử lý đầu vào đúng như lúc mô hình được huấn luyện."
+/>
+
+<Khung loai="loi">
+**Đưa câu chưa tách từ vào PhoBERT.** Mô hình không báo lỗi; nó cắt từng âm tiết theo BPE và cho ra kết quả kém hơn một cách lặng lẽ. Đọc kỹ thẻ mô hình (model card) để biết đầu vào phải được xử lý thế nào.
+
+**Không ghim phiên bản mô hình và tokenizer.** Kho mô hình trên Hugging Face có thể được cập nhật; tải theo tên mà không ghim `revision` thì một ngày nào đó kết quả đổi mà không rõ vì sao.
+</Khung>

@@ -1,0 +1,113 @@
+---
+title: Cắt văn bản thành đơn vị nào
+description: "Từ, ký tự hay mảnh từ. Trên UIT-VSFC, âm tiết chưa gặp chỉ chiếm 0,78% val, phần lớn là từ tiếng Anh và lỗi gõ; ký tự thì không bao giờ lạ nhưng câu dài gấp 4 lần. Mảnh từ nằm giữa hai cực. Và một cái bẫy trước khi cắt: cùng chữ 'tiếng' có thể là 5 hay 7 ký tự Unicode."
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import Khung from '../../../../components/Khung.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+<CanBietTruoc>
+Token, tách từ, OOV và luật Zipf (Chương 38). Mô hình ngôn ngữ (Chương 39). Phân loại cảm xúc trên UIT-VSFC (Chương 41). Transformer, attention có mặt nạ (Chương 44).
+
+<Fragment slot="sau-chuong">
+Biết vì sao các mô hình hiện đại cắt văn bản thành mảnh từ. Tự cài BPE từ đầu và huấn luyện trên UIT-VSFC. Đọc được đầu ra tokenizer của PhoBERT, XLM-R, GPT-2 và biết vì sao GPT-2 tốn gấp 3,6 lần token cho tiếng Việt. Hiểu hai cách tiền huấn luyện (đoán từ bị che, đoán từ tiếp theo), dùng PhoBERT đoán từ, và dùng nó như một bộ trích đặc trưng đóng băng trên UIT-VSFC.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch45_tokenization_pretrained.ipynb" />
+
+## Ba lựa chọn
+
+Mọi mô hình ngôn ngữ nhìn văn bản như một dãy token lấy từ một **từ điển cố định**. Chọn token là gì là một đánh đổi giữa hai thứ: cỡ từ điển và độ dài của dãy.
+
+- **Từ** (hay âm tiết): dãy ngắn, mỗi token mang nghĩa. Nhưng từ điển phải dừng ở đâu đó, và theo luật Zipf (Chương 38) luôn có từ chưa gặp. Mọi từ lạ thành một token `<unk>` chung: mất thông tin.
+- **Ký tự** (hay byte): từ điển rất nhỏ, không bao giờ có token lạ. Nhưng dãy dài gấp nhiều lần, mà chi phí attention tăng theo bình phương độ dài (Chương 44), và mô hình phải tự học ghép chữ thành từ.
+- **Mảnh từ** (subword): từ thường gặp là một token, từ hiếm được cắt thành vài mảnh đã biết, và trong trường hợp xấu nhất thì rơi xuống ký tự. Đây là lựa chọn của gần như mọi mô hình hiện nay.
+
+Đo trên UIT-VSFC xem hai cực cách nhau bao xa:
+
+```python
+!pip install pyarrow underthesea
+```
+
+```python
+import os
+import unicodedata
+import urllib.request
+from collections import Counter
+import numpy as np
+import pandas as pd
+
+URL = "https://huggingface.co/api/datasets/uitnlp/vietnamese_students_feedback/parquet/default/{}/0.parquet"
+THU_MUC = os.path.expanduser("~/.cache/vsfc")
+
+def tai(phan):                                       # như Chương 38
+    os.makedirs(THU_MUC, exist_ok=True)
+    tep = os.path.join(THU_MUC, phan + ".parquet")
+    if not os.path.exists(tep):
+        urllib.request.urlretrieve(URL.format(phan), tep)
+    return pd.read_parquet(tep)
+
+tr, va, te = tai("train"), tai("validation"), tai("test")
+dem = Counter(w for s in tr.sentence for w in s.split())
+tu = {w for w, n in dem.items() if n >= 2}           # từ điển âm tiết như Chương 41
+am_va = [w for s in va.sentence for w in s.split()]
+la = [w for w in am_va if w not in tu]
+print(len(dem), len(tu), len(am_va), len(la), round(100 * len(la) / len(am_va), 2))
+print(Counter(la).most_common(8))
+```
+
+```text title="Output"
+2514 1533 21642 169 0.78
+[('tạm', 4), ('ngoái', 3), ('centrality', 2), ('bát', 2), ('mập', 2), ('he', 2), ('ngơi', 1), ('rât', 1)]
+```
+
+Train có 2514 âm tiết khác nhau; giữ 1533 âm tiết gặp ít nhất 2 lần (thêm hai token đặc biệt là đúng 1535 của Chương 41). Trong 21 642 âm tiết của val, chỉ 169 là lạ: **0,78%**. Tiếng Việt viết theo âm tiết, và số âm tiết là một tập gần như đóng, nên OOV ở mức âm tiết **nhỏ hơn nhiều** so với tiếng Anh ở mức từ. Nhìn những âm tiết lạ thường gặp nhất: có âm tiết tiếng Việt hiếm, nhưng cũng có từ tiếng Anh ("centrality", một khái niệm của môn phân tích mạng) và lỗi gõ ("rât"). Trong phản hồi của sinh viên, đúng những chỗ đó thường chứa thông tin: tên một khái niệm, một công cụ.
+
+Còn độ dài của dãy:
+
+```python
+print(round(np.mean([len(s.split()) for s in va.sentence]), 2),   # âm tiết mỗi câu
+      round(np.mean([len(s) for s in va.sentence]), 2),           # ký tự
+      round(np.mean([len(s.encode("utf-8")) for s in va.sentence]), 2))   # byte
+print([(ch, len(ch.encode("utf-8"))) for ch in "aăệ"])
+```
+
+```text title="Output"
+13.67 56.36 73.94
+[('a', 1), ('ă', 2), ('ệ', 3)]
+```
+
+Một câu trung bình có khoảng 14 đơn vị cách nhau bởi dấu cách (âm tiết và dấu câu, vì UIT-VSFC đã tách dấu câu ra), nhưng 56 ký tự (kể cả dấu cách) và 74 byte. Chữ "a" là 1 byte trong UTF-8, "ă" là 2 byte, "ệ" là 3 byte: tiếng Việt có dấu tốn byte hơn tiếng Anh. Cắt theo byte thì câu dài hơn 5 lần so với âm tiết, và ma trận attention lớn hơn khoảng 29 lần (tính theo độ dài trung bình).
+
+## Một cái bẫy trước khi cắt: chuẩn hóa Unicode
+
+Chữ "ế" có thể lưu bằng **một** ký tự Unicode (dạng dựng sẵn, NFC), hoặc bằng chữ "e" cộng hai dấu kết hợp riêng là mũ và sắc (dạng tổ hợp, NFD). Trên màn hình hai cách giống hệt nhau; với máy tính, chúng là hai chuỗi khác nhau:
+
+```python
+a, b = unicodedata.normalize("NFC", "tiếng"), unicodedata.normalize("NFD", "tiếng")
+print(a, b, len(a), len(b), a == b)
+print(sum(s != unicodedata.normalize("NFC", s) for s in tr.sentence))
+```
+
+```text title="Output"
+tiếng tiếng 5 7 False
+0
+```
+
+Cùng chữ "tiếng", một bản 5 ký tự, một bản 7, và so sánh bằng cho kết quả `False`. Văn bản chép từ Word, từ macOS, hay gõ bằng bộ gõ khác nhau có thể trộn lẫn hai dạng; khi đó "tiếng" của câu này và "tiếng" của câu kia thành hai token khác nhau trong từ điển. UIT-VSFC đã ở dạng NFC hoàn toàn (0 câu khác), nhưng dữ liệu tự thu thập thì phải chuẩn hóa về một dạng, thường là NFC, **trước** mọi thứ khác.
+
+<TuKiemTra
+	cauHoi="Một mô hình cắt văn bản theo từ với từ điển 30 000 từ thường gặp nhất. Gặp tên một thư viện lập trình mới chưa có trong từ điển, mô hình thấy gì?"
+	luaChon={['Các ký tự của tên đó', 'Một token chung cho mọi từ lạ, giống hệt mọi từ lạ khác', 'Từ gần nghĩa nhất trong từ điển', 'Mô hình báo lỗi']}
+	dapAn={1}
+	giaiThich="Với từ điển cố định ở mức từ, mọi từ ngoài từ điển đều thành một token lạ duy nhất, nên tên thư viện, lỗi gõ và từ tiếng nước ngoài đều thành cùng một vector. Mảnh từ sửa điều đó bằng cách cắt từ lạ thành các mảnh đã biết."
+/>
+
+<Khung loai="loi">
+**So sánh hai chuỗi tiếng Việt mà không chuẩn hóa Unicode.** Lỗi này không báo gì: tìm kiếm không ra, từ điển có hai bản của cùng một từ, độ chính xác giảm một chút mà không rõ lý do. Chuẩn hóa NFC ngay khi đọc dữ liệu vào.
+
+**Kết luận "tiếng Việt không có OOV" từ con số 0,78%.** Đó là ở mức âm tiết trên một bộ dữ liệu đã chuẩn hóa chữ thường. Ở mức từ, OOV cao hơn khoảng 2,4 lần (Chương 38); với văn bản mạng có viết tắt, không dấu, tiếng lóng, còn cao hơn nhiều.
+</Khung>

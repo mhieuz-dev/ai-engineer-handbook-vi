@@ -1,0 +1,132 @@
+---
+title: Bài tập
+description: "Ba bài tập có đáp án chi tiết (BPE bằng tay trên kho bốn từ; đổi kiểu bỏ dấu của UIT-VSFC về kiểu cũ cho PhoBERT; vector token đầu câu so với trung bình các token khi PhoBERT đóng băng) và câu hỏi phỏng vấn."
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Đoán trước, rồi chạy code trong notebook để kiểm tra. Code dùng lại `hoc_bpe`, `ma_hoa`, `pho`, `pho_ma_hoa`, `V_tr`, `V_va`, `word_tokenize` và các import của các trang trước.
+
+<BaiTap so="45.1">
+**BPE bằng tay.** Kho huấn luyện có bốn từ với tần suất: "hoa" 5 lần, "hoan" 3, "loan" 4, "lo" 2. Thêm dấu cuối từ `_` như trang 2. Tính tay 4 lần gộp đầu tiên (đếm cặp kề nhau có nhân tần suất). Rồi cắt "hoan", "lo", "toan" bằng 4 quy tắc đó. Kiểm bằng code.
+
+<Fragment slot="dap-an">
+
+```python
+dem2 = Counter({"hoa": 5, "hoan": 3, "loan": 4, "lo": 2})
+qt2 = hoc_bpe(dem2, 4)
+print(qt2)
+print([ma_hoa(w, qt2) for w in ["hoan", "lo", "toan"]])
+```
+
+```text title="Output"
+[('o', 'a'), ('h', 'oa'), ('n', '_'), ('hoa', '_')]
+[('hoa', 'n_'), ('l', 'o', '_'), ('t', 'oa', 'n_')]
+```
+
+**Lần 1.** Các cặp: "o a" xuất hiện trong hoa, hoan, loan: $5 + 3 + 4 = 12$, nhiều nhất ("h o" 8, "a n" 7, "n _" 7, "l o" 6, "a _" 5, "o _" 2). Gộp thành "oa".
+
+**Lần 2.** Giờ các từ là "h oa _", "h oa n _", "l oa n _", "l o _". Cặp "h oa": $5 + 3 = 8$; "oa n" và "n _" đều 7; "l oa" 4. Gộp "hoa".
+
+**Lần 3.** "n _" có $3 + 4 = 7$ (trong hoan và loan), "hoa _" 5, "oa n" 4, "l oa" 4, "hoa n" 3. Gộp "n_".
+
+**Lần 4.** "hoa _" 5, nhiều nhất. Gộp "hoa_".
+
+"hoan" thành "hoa" + "n_"; "lo" không có quy tắc nào áp được, giữ nguyên "l", "o", "_"; "toan" chưa từng gặp nhưng vẫn cắt được thành "t", "oa", "n_", nhờ các mảnh đã học từ những từ khác.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="45.2">
+**Kiểu bỏ dấu cho PhoBERT.** Viết hàm đổi vần "oa", "oe", "uy" không có phụ âm cuối từ kiểu bỏ dấu mới sang kiểu cũ ("khóa" thành "khoá", "thủy" thành "thuỷ", nhưng "hoàn", "toán", "quý" giữ nguyên). Áp lên UIT-VSFC val đã tách từ: bao nhiêu câu bị đổi, tổng số token PhoBERT và số token lạ thay đổi thế nào? Đoán trước: nhiều hay ít?
+
+<Fragment slot="dap-an">
+
+```python
+import re
+DAU = "̣̀́̃̉"               # huyền, sắc, ngã, hỏi, nặng dưới dạng dấu kết hợp
+MAU = re.compile(f"(o)([{DAU}])([ae])(?![^\\W_])|(u)([{DAU}])(y)(?![^\\W_])")   # dấu ở nguyên âm đầu, hết âm tiết
+
+def kieu_cu(s):
+    s = unicodedata.normalize("NFD", s)              # tách dấu thanh thành ký tự riêng
+    s = MAU.sub(lambda m: m.group(1) + m.group(3) + m.group(2) if m.group(1)
+                else m.group(4) + m.group(6) + m.group(5), s)   # chuyển dấu ra sau nguyên âm thứ hai
+    return unicodedata.normalize("NFC", s)
+
+print([kieu_cu(w) for w in ["khóa", "hòa_bình", "khỏe", "thủy", "quý", "hoặc", "hoàn", "toán"]])
+tach_cu = [kieu_cu(s) for s in tach_va]
+print(sum(a != b for a, b in zip(tach_va, tach_cu)))
+for ten, D in (("kiểu mới", tach_va), ("kiểu cũ", tach_cu)):
+    ids = [pho(s, add_special_tokens=False)["input_ids"] for s in D]
+    print(ten, sum(map(len, ids)), sum(i.count(pho.unk_token_id) for i in ids))
+```
+
+```text title="Output"
+['khoá', 'hoà_bình', 'khoẻ', 'thuỷ', 'quý', 'hoặc', 'hoàn', 'toán']
+33
+kiểu mới 17319 7
+kiểu cũ 17274 5
+```
+
+Hàm làm việc trên dạng NFD, nơi dấu thanh là một ký tự riêng đứng sau nguyên âm mang nó, nên "chuyển dấu" chỉ là đổi chỗ hai ký tự. Điều kiện "hết âm tiết" (không có chữ cái nào theo sau) giữ nguyên "hoàn", "toán", vì có phụ âm cuối thì cả hai kiểu đều đặt dấu ở "a". "quý" không bị đổi vì dấu đã ở "y".
+
+Kết quả: chỉ 33 trên 1583 câu bị đổi, tổng số token giảm 45 (khoảng 0,3%), số token lạ từ 7 xuống 5. Trên bộ dữ liệu này, ảnh hưởng **nhỏ**, vì phản hồi sinh viên ít dùng các vần đó. Ta không đo việc này có làm thay đổi độ chính xác phân loại không; với văn bản có nhiều "hòa", "khỏe", "thủy" (tin tức, tên riêng), khác biệt sẽ lớn hơn. Bài học chung: nhìn vào cách tokenizer cắt dữ liệu **của mình**, đừng mặc định là ổn.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="45.3">
+**Token đầu câu hay trung bình?** Trang 4 lấy trung bình vector các token. Một cách khác hay gặp: lấy vector của token đặc biệt đầu câu (`<s>` của PhoBERT, tương đương `[CLS]` của BERT). Trên 3000 câu train đầu tiên, so hai cách bằng hồi quy logistic với C = 0,1 và C = 1, đo macro-F1 trên val.
+
+<Fragment slot="dap-an">
+
+```python
+def vector_dau(cau, lo=64):
+    ra = []
+    for k in range(0, len(cau), lo):
+        x = pho([word_tokenize(s, format="text") for s in cau[k:k + lo]],
+                padding=True, truncation=True, max_length=64, return_tensors="pt")
+        with torch.no_grad():
+            ra.append(pho_ma_hoa(**x).last_hidden_state[:, 0].numpy())   # vector của token đầu câu
+    return np.concatenate(ra)
+
+D_tr, D_va = vector_dau(tr.sentence[:3000].tolist()), vector_dau(va.sentence.tolist())
+for ten, A, B in (("đầu câu", D_tr, D_va), ("trung bình", V_tr[:3000], V_va)):
+    for C in (0.1, 1):
+        lr = LogisticRegression(C=C, max_iter=3000).fit(A, tr.sentiment[:3000])
+        print(ten, C, round(f1_score(va.sentiment, lr.predict(B), average="macro"), 4))
+```
+
+```text title="Output"
+đầu câu 0.1 0.7428
+đầu câu 1 0.7617
+trung bình 0.1 0.7715
+trung bình 1 0.7642
+```
+
+Trên cùng 3000 câu train, trung bình các token tốt hơn: macro-F1 val tốt nhất **0,772** (C = 0,1), so với **0,762** của token đầu câu (C = 1). Token đầu câu của PhoBERT chưa từng được huấn luyện để tóm tắt câu: nhiệm vụ đoán từ bị che không đặt câu hỏi nào lên nó (RoBERTa bỏ nhiệm vụ phụ "hai câu có liền nhau không" từng dùng token đó trong BERT gốc). Trung bình các token thì gom thông tin từ mọi từ của câu. Sau khi tinh chỉnh (Chương 46), đầu ra phân loại đặt ngay trên token đầu câu, và gradient sẽ dạy nó tóm tắt câu theo đúng nhiệm vụ.
+
+Cũng để ý: với 3000 câu thay vì 11 426, macro-F1 của cách trung bình giảm từ 0,797 xuống 0,772. Thêm dữ liệu có nhãn vẫn giúp, kể cả khi đặc trưng đã tốt.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Vì sao các mô hình ngôn ngữ dùng mảnh từ thay vì từ hay ký tự?**
+
+<p lang="en"><em>Why do language models use subword tokenization instead of words or characters?</em></p>
+
+*Gợi ý:* từ điển mức từ luôn có từ lạ (luật Zipf) và mọi từ lạ thành một token chung; mức ký tự hay byte thì không có từ lạ nhưng dãy dài gấp nhiều lần, mà attention tốn theo bình phương độ dài. Mảnh từ (BPE, WordPiece, Unigram) giữ từ thường gặp nguyên vẹn, cắt từ hiếm thành mảnh đã biết, cân bằng cỡ từ điển và độ dài dãy.
+
+**2. BPE mức byte là gì, và nó ảnh hưởng thế nào tới các ngôn ngữ không phải tiếng Anh?**
+
+<p lang="en"><em>What is byte-level BPE, and how does it affect non-English languages?</em></p>
+
+*Gợi ý:* BPE bắt đầu từ 256 byte thay vì ký tự, nên mã hóa được mọi chuỗi, không bao giờ có token lạ. Nhưng nếu tokenizer học chủ yếu trên tiếng Anh, chữ của ngôn ngữ khác (tiếng Việt có dấu tốn 2 tới 3 byte mỗi chữ) bị cắt thành nhiều mảnh: GPT-2 dùng gấp khoảng 3,6 lần số âm tiết trên UIT-VSFC. Hệ quả là ngữ cảnh hiệu dụng ngắn hơn, chi phí API cao hơn, và mô hình học khó hơn.
+
+**3. So sánh tiền huấn luyện kiểu BERT và kiểu GPT. Khi nào dùng loại nào?**
+
+<p lang="en"><em>Compare BERT-style and GPT-style pretraining. When would you use each?</em></p>
+
+*Gợi ý:* BERT là bộ mã hóa, che khoảng 15% token và đoán lại từ cả hai phía; biểu diễn tốt cho hiểu văn bản (phân loại, gán nhãn, truy hồi), thường tinh chỉnh thêm một đầu ra nhỏ. GPT là bộ giải mã nhân quả, đoán token tiếp theo; dùng để sinh văn bản, và khi đủ lớn thì làm được nhiều việc chỉ qua câu lệnh. Với phân loại có vài nghìn nhãn và cần rẻ, nhanh, một bộ mã hóa cỡ trăm triệu tham số thường là lựa chọn hợp lý.
+</Khung>

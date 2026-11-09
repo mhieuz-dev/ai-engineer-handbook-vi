@@ -903,3 +903,23 @@
   tenTiengAnh: Transformer
   giaiThich: Transformer là kiến trúc mạng chỉ dựa trên attention, không dùng RNN, gồm các khối self-attention nhiều đầu và mạng truyền thẳng từng token, có kết nối tắt và LayerNorm, cộng mã hóa vị trí ở đầu vào. Tính song song được trên cả chuỗi và mở rộng tốt, là nền của BERT, GPT và mọi mô hình ngôn ngữ lớn.
   hocKy: ai-engineer/ch44-transformer
+- id: bpe
+  ten: BPE
+  tenTiengAnh: Byte Pair Encoding
+  giaiThich: BPE là cách học từ điển mảnh từ. Bắt đầu từ ký tự (hoặc byte), lặp lại việc gộp cặp token kề nhau thường gặp nhất trong kho huấn luyện thành một token mới. Từ thường gặp thành một token, từ hiếm được cắt thành vài mảnh đã biết, nên không có từ nào lạ hoàn toàn.
+  hocKy: ai-engineer/ch45-tokenization-pretrained
+- id: tokenizer
+  ten: Tokenizer
+  tenTiengAnh: tokenizer
+  giaiThich: Tokenizer là bộ cắt văn bản thành dãy token và đổi mỗi token thành một chỉ số trong từ điển cố định của mô hình. Mỗi mô hình tiền huấn luyện đi kèm tokenizer riêng, học từ kho văn bản của nó, và phải dùng đúng tokenizer đó cùng phiên bản.
+  hocKy: ai-engineer/ch45-tokenization-pretrained
+- id: tien-huan-luyen
+  ten: Tiền huấn luyện
+  tenTiengAnh: pretraining
+  giaiThich: Tiền huấn luyện là huấn luyện một mô hình lớn trên kho dữ liệu khổng lồ không nhãn, với nhiệm vụ mà nhãn nằm sẵn trong dữ liệu (đoán từ bị che, đoán từ tiếp theo), rồi dùng lại mô hình đó cho các bài toán có ít nhãn, bằng cách trích đặc trưng hoặc tinh chỉnh.
+  hocKy: ai-engineer/ch45-tokenization-pretrained
+- id: mlm
+  ten: Mô hình ngôn ngữ che từ
+  tenTiengAnh: masked language modeling
+  giaiThich: Mô hình ngôn ngữ che từ là nhiệm vụ tiền huấn luyện của BERT và PhoBERT. Che ngẫu nhiên khoảng 15% token của câu rồi bắt mô hình đoán lại từ cả hai phía, nên mô hình là một bộ mã hóa nhìn cả câu, hợp cho hiểu văn bản hơn là sinh văn bản.
+  hocKy: ai-engineer/ch45-tokenization-pretrained
