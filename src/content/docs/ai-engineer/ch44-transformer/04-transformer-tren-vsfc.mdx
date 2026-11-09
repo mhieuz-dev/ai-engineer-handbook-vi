@@ -1,0 +1,149 @@
+---
+title: Transformer trên UIT-VSFC
+description: "Cùng bài cảm xúc ba lớp của Chương 41, cùng từ điển âm tiết. Transformer hai khối học khoảng một phút; macro-F1 val tốt nhất khoảng 0,765, thua SVM có trọng số lớp cân bằng (0,801), test 88,8% so với 89,7%. Bỏ mã hóa vị trí gần như không đổi gì: trên bài này, túi từ đã gần đủ. Transformer thắng nhờ tiền huấn luyện, không nhờ kiến trúc một mình."
+---
+
+import Khung from '../../../../components/Khung.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Cùng bài toán, cùng thước đo
+
+Quay lại bài phân loại cảm xúc ba lớp của Chương 41, để so công bằng: cùng UIT-VSFC, cùng từ điển âm tiết (âm tiết gặp ít nhất 2 lần trong train), cùng thước đo đã chốt (độ chính xác và macro-F1 trên val; test chỉ đo một lần). Mốc của Chương 41 trên val: SVM bigram 0,778, BiLSTM 0,799, SVM với trọng số lớp cân bằng 0,801 (macro-F1).
+
+```python
+import copy
+import os
+import time
+import urllib.request
+from collections import Counter
+import pandas as pd
+from torch.nn.utils.rnn import pad_sequence
+from sklearn.metrics import accuracy_score, f1_score
+
+URL = "https://huggingface.co/api/datasets/uitnlp/vietnamese_students_feedback/parquet/default/{}/0.parquet"
+THU_MUC = os.path.expanduser("~/.cache/vsfc")
+
+def tai(phan):                                       # như Chương 38
+    os.makedirs(THU_MUC, exist_ok=True)
+    tep = os.path.join(THU_MUC, phan + ".parquet")
+    if not os.path.exists(tep):
+        urllib.request.urlretrieve(URL.format(phan), tep)
+    return pd.read_parquet(tep)
+
+tr, va, te = tai("train"), tai("validation"), tai("test")
+D_tr, D_va, D_te = ([s.split() for s in ds.sentence] for ds in (tr, va, te))
+dem = Counter(w for c in D_tr for w in c)
+tu = ["<pad>", "<unk>"] + [w for w, n in dem.items() if n >= 2]
+id_ = {w: i for i, w in enumerate(tu)}
+ma_hoa = lambda D: [torch.tensor([id_.get(w, 1) for w in c[:64]] or [1]) for c in D]   # cắt ở 64 âm tiết
+X_tr, X_va, X_te = ma_hoa(D_tr), ma_hoa(D_va), ma_hoa(D_te)
+y_tr, y_va, y_te = torch.tensor(tr.sentiment.values), va.sentiment.values, te.sentiment.values
+print(len(tu), max(len(c) for c in D_tr), sum(len(c) > 64 for c in D_tr))
+```
+
+```text title="Output"
+1535 159 44
+```
+
+1535 âm tiết, như Chương 41. Câu dài nhất của train có 159 âm tiết, nhưng chỉ 44 trên 11 426 câu vượt 64; ta cắt ở 64 để ma trận attention không quá lớn.
+
+## Huấn luyện
+
+AdamW, lô 64, 8 epoch, giữ bản có macro-F1 val cao nhất. Huấn luyện hai lần: có và không có mã hóa vị trí.
+
+```python
+def du_doan(m, X):
+    m.eval()
+    with torch.no_grad():
+        return m(pad_sequence(X, batch_first=True)).argmax(1).numpy()
+
+def cham(y, p):
+    return round(accuracy_score(y, p), 4), round(f1_score(y, p, average="macro"), 4)
+
+def hoc_vsfc(vt, so_epoch=8, seed=0):
+    torch.manual_seed(seed)
+    m = Transformer(len(tu), vt=vt)
+    opt = torch.optim.AdamW(m.parameters(), lr=1e-3, weight_decay=0.01, fused=True)
+    tot, ban_tot = -1, None
+    for ep in range(1, so_epoch + 1):
+        m.train()
+        thu_tu = torch.randperm(len(X_tr))
+        for k in range(0, len(thu_tu), 64):
+            idx = thu_tu[k:k + 64]
+            x = pad_sequence([X_tr[i] for i in idx], batch_first=True)
+            loss = F.cross_entropy(m(x), y_tr[idx])
+            opt.zero_grad()
+            loss.backward()
+            opt.step()
+        acc, f1 = cham(y_va, du_doan(m, X_va))
+        print(vt, ep, acc, f1)
+        if f1 > tot:
+            tot, ban_tot = f1, copy.deepcopy(m)
+    return ban_tot
+
+t0 = time.time()
+tf_vt = hoc_vsfc(vt=True)
+tf_khong = hoc_vsfc(vt=False)
+print(sum(p.numel() for p in tf_vt.parameters()), time.time() - t0 < 600)
+```
+
+```text title="Output"
+True 1 0.8781 0.6607
+True 2 0.9084 0.7305
+True 3 0.9109 0.7401
+True 4 0.9046 0.7547
+True 5 0.9078 0.7536
+True 6 0.9059 0.7635
+True 7 0.9021 0.7466
+True 8 0.8964 0.7418
+False 1 0.8774 0.6684
+False 2 0.909 0.7271
+False 3 0.9109 0.7443
+False 4 0.909 0.7587
+False 5 0.909 0.7475
+False 6 0.9002 0.7411
+False 7 0.9002 0.7463
+False 8 0.9052 0.7652
+462083 True
+```
+
+Khoảng hai phút cho cả hai lần, 462 083 tham số. Có mã hóa vị trí: macro-F1 val cao nhất **0,764** (epoch 6). Không có: **0,765** (epoch 8). Bỏ mã hóa vị trí **không làm gì kém đi**, đúng điều ngược với bài "A trước B". Độ chính xác của cả hai dao động quanh 90 tới 91%. Và cả hai đều **thua** SVM với trọng số lớp cân bằng (0,801) lẫn BiLSTM (0,799) của Chương 41 về macro-F1: trên 11 nghìn câu ngắn, mô hình học từ đầu này không có lợi thế nào so với túi n-gram.
+
+## Đo test một lần
+
+Chọn bản Transformer có macro-F1 val cao hơn, đo test một lần. Để so: mô hình được chọn ở Chương 41 (SVM cân bằng) đạt 89,67% và macro-F1 0,753 trên cùng tập test.
+
+```python
+ung_vien = {"có vị trí": tf_vt, "không vị trí": tf_khong}
+chon = max(ung_vien, key=lambda k: f1_score(y_va, du_doan(ung_vien[k], X_va), average="macro"))
+print("chọn:", chon, cham(y_te, du_doan(ung_vien[chon], X_te)))
+```
+
+```text title="Output"
+chọn: không vị trí (0.8879, 0.7278)
+```
+
+Bản được chọn là bản **không** mã hóa vị trí (macro-F1 val 0,765 so với 0,764, một chênh lệch nằm hoàn toàn trong mức nhiễu). Trên test: **88,79%, macro-F1 0,728**, kém mô hình đã chọn ở Chương 41 (89,67%, 0,753). Kết luận trung thực: trên bộ dữ liệu này, một Transformer nhỏ học từ đầu không đáng dùng thay SVM.
+
+## Vậy Transformer hơn ở đâu
+
+Kết quả này không mâu thuẫn với việc Transformer thống trị NLP. Nó cho thấy **lý do** thống trị không nằm ở chỗ một Transformer nhỏ học từ đầu trên 11 nghìn câu sẽ thắng một SVM. Ba lợi thế thật của nó là:
+
+- **Song song hóa**: không có vòng lặp theo thời gian như RNN, nên huấn luyện trên GPU nhanh hơn rất nhiều với cùng lượng dữ liệu. Đó là điều cho phép học trên hàng trăm tỷ token.
+- **Đường đi ngắn giữa mọi cặp token**: từ đầu câu tới cuối câu chỉ cách một bước attention, không phải hàng trăm bước RNN.
+- **Mở rộng tốt**: chất lượng tăng đều khi tăng cỡ mô hình và dữ liệu.
+
+Cả ba chỉ phát huy khi có rất nhiều dữ liệu, mà dữ liệu **có nhãn** thì hiếm. Lối ra là **tiền huấn luyện**: học trước trên kho văn bản khổng lồ không nhãn (đoán từ bị che, đoán từ tiếp theo), rồi tinh chỉnh trên vài nghìn câu có nhãn. Chương 45 bàn tokenizer và các mô hình tiền huấn luyện; Chương 46 tinh chỉnh PhoBERT, một Transformer được tiền huấn luyện trên 20 GB văn bản tiếng Việt, trên đúng bộ UIT-VSFC này.
+
+<TuKiemTra
+	cauHoi="Vì sao bỏ mã hóa vị trí gần như không làm thay đổi kết quả trên UIT-VSFC, trong khi ở bài 'A trước B' nó làm mô hình sụp về đoán bừa?"
+	luaChon={['Vì UIT-VSFC dùng âm tiết', 'Vì cảm xúc trong các câu phản hồi ngắn phần lớn quyết định bởi những từ có mặt (túi từ), nên thông tin thứ tự chỉ giúp ở một số ít câu; còn bài A trước B thì toàn bộ thông tin nằm ở thứ tự', 'Vì mô hình trên VSFC dùng dropout', 'Vì VSFC có ít câu hơn']}
+	dapAn={1}
+	giaiThich="Chương 41 đã thấy mô hình túi n-gram đạt 91,9%. Thứ tự giúp ở những câu như phủ định đứng xa tính từ, nhưng đó là thiểu số. Mức quan trọng của một thành phần phụ thuộc vào bài toán: phải đo, như thí nghiệm bỏ đi ở Chương 35."
+/>
+
+<Khung loai="loi">
+**Kết luận "Transformer tốt hơn LSTM" hay ngược lại từ một lần chạy trên một bộ dữ liệu nhỏ.** Với 1583 câu val, khác biệt dưới khoảng 1,4 điểm độ chính xác nằm trong mức nhiễu (Chương 41), và mỗi mạng còn dao động theo seed.
+
+**Bỏ qua baseline đơn giản.** Một SVM huấn luyện dưới một giây đứng ngang hoặc trên Transformer ở đây. Trong dự án thật, nếu mô hình đơn giản đạt yêu cầu, nó rẻ hơn để chạy, dễ giải thích hơn và dễ bảo trì hơn.
+</Khung>

@@ -1,0 +1,140 @@
+---
+title: Self-attention
+description: "Bỏ RNN, cho mọi token attention tới mọi token khác trong cùng câu. Mỗi token sinh ra ba vector: query (đang tìm gì), key (có gì), value (mang gì). Tự cài attention có tỷ lệ bằng NumPy trên 3 token, khớp với hàm của PyTorch tới sai số làm tròn, rồi thêm mặt nạ nhân quả để token không nhìn được tương lai."
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+<CanBietTruoc>
+Attention trong encoder-decoder (Chương 43). Nhân ma trận, softmax (Chương 5, 11). LayerNorm, kết nối tắt, dropout (Chương 26, 28). nn.Embedding, phân loại cảm xúc trên UIT-VSFC (Chương 40, 41).
+
+<Fragment slot="sau-chuong">
+Tự cài self-attention bằng NumPy và hiểu vì sao chia cho căn bậc hai số chiều. Hiểu multi-head, vì sao self-attention không biết thứ tự và mã hóa vị trí sin, cos sửa điều đó. Lắp một khối Transformer hoàn chỉnh bằng PyTorch, huấn luyện trên UIT-VSFC, và so trung thực với các mô hình của Chương 41.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch44_transformer.ipynb" />
+
+## Attention của mọi token tới mọi token
+
+Ở Chương 43, attention là một **phụ tùng** gắn vào RNN: bộ giải mã nhìn lại câu nguồn. RNN vẫn phải đọc câu tuần tự, từng từ một, nên không song song được, và thông tin giữa hai từ xa nhau phải đi qua mọi bước ở giữa. Năm 2017, bài báo "Attention Is All You Need" (Vaswani và cộng sự) bỏ hẳn RNN. Mỗi token của câu nhìn **trực tiếp** tới mọi token khác của **chính câu đó** bằng attention, gọi là <Term id="self-attention">self-attention</Term>. Mọi cặp token được nối trong một bước, và cả câu tính song song bằng phép nhân ma trận.
+
+## Query, key, value
+
+Mỗi token có một vector $\mathbf x_i$ (vector từ, Chương 40). Ba ma trận học được biến nó thành ba vector với ba vai trò, như tra cứu trong một từ điển:
+
+- **Query** $\mathbf q_i = \mathbf x_i W_Q$: token $i$ đang **tìm** gì.
+- **Key** $\mathbf k_j = \mathbf x_j W_K$: token $j$ **có** gì để được tìm thấy.
+- **Value** $\mathbf v_j = \mathbf x_j W_V$: nếu được chọn, token $j$ **đưa** gì vào.
+
+Điểm hợp giữa $i$ và $j$ là $\mathbf q_i \cdot \mathbf k_j$; softmax theo $j$ cho trọng số; đầu ra của token $i$ là trung bình có trọng số của các value. Viết cho cả câu cùng lúc, với $Q, K, V$ là ma trận mỗi hàng một token:
+
+$$
+\operatorname{Attention}(Q, K, V) = \operatorname{softmax}\Big(\frac{Q K^\top}{\sqrt{d_k}}\Big)\, V
+$$
+
+So với Chương 43: ở đó, query là trạng thái của bộ giải mã, key và value đều là trạng thái của bộ mã hóa. Ở đây cả ba đến từ cùng một câu, và mỗi thứ có ma trận riêng để học.
+
+## Tự cài bằng NumPy
+
+Ba token, mỗi token 4 số, ma trận ngẫu nhiên:
+
+```python
+!pip install pyarrow
+```
+
+```python
+import math
+import numpy as np
+np.set_printoptions(suppress=True)
+rng = np.random.default_rng(0)
+X = rng.normal(size=(3, 4))                          # 3 token, mỗi token 4 chiều
+W_Q, W_K, W_V = (rng.normal(size=(4, 4)) for _ in range(3))
+Q, K, V = X @ W_Q, X @ W_K, X @ W_V
+
+def softmax(z):
+    z = z - z.max(-1, keepdims=True)                 # trừ max cho ổn định số
+    e = np.exp(z)
+    return e / e.sum(-1, keepdims=True)
+
+diem = Q @ K.T / math.sqrt(4)                        # 3 x 3: hàng i là token i nhìn mọi token
+A = softmax(diem)
+ra = A @ V
+print(A.round(3))
+print(A.sum(1), ra.shape)
+```
+
+```text title="Output"
+[[0.384 0.3   0.315]
+ [0.321 0.206 0.473]
+ [0.053 0.008 0.939]]
+[1. 1. 1.] (3, 4)
+```
+
+Ma trận trọng số $3 \times 3$, mỗi hàng cộng lại bằng 1: hàng $i$ là phân phối "token $i$ nhìn ai". Đầu ra vẫn là 3 vector 4 chiều, cùng hình dạng với đầu vào, nên có thể chồng nhiều lớp lên nhau. Kiểm với hàm có sẵn của PyTorch:
+
+```python
+import torch
+import torch.nn.functional as F
+torch_ra = F.scaled_dot_product_attention(*(torch.tensor(M)[None] for M in (Q, K, V)))[0].numpy()
+print(np.abs(torch_ra - ra).max() < 1e-6)
+```
+
+```text title="Output"
+True
+```
+
+Khớp tới sai số làm tròn.
+
+## Vì sao chia cho căn số chiều
+
+Nếu các thành phần của $\mathbf q$ và $\mathbf k$ độc lập, trung bình 0, phương sai 1, thì tích vô hướng $\mathbf q \cdot \mathbf k$ là tổng của $d_k$ số hạng, phương sai $d_k$. Với $d_k = 64$ (cỡ thường dùng), điểm dao động cỡ $\pm 8$ trở lên, softmax gần như dồn hết vào một ô, và gradient qua softmax gần bằng 0 ở mọi ô còn lại (Chương 26 đã thấy hiện tượng bão hòa tương tự). Chia cho $\sqrt{d_k}$ đưa phương sai về 1:
+
+```python
+q, k = rng.normal(size=(10000, 64)), rng.normal(size=(10000, 64))
+tich = (q * k).sum(1)
+print(round(tich.std(), 2), round((tich / 8).std(), 2))
+print(softmax(rng.normal(size=8) * 8).round(3), softmax(rng.normal(size=8)).round(3))
+```
+
+```text title="Output"
+8.06 1.01
+[0.001 0.042 0.001 0.029 0.    0.    0.    0.927] [0.003 0.137 0.099 0.085 0.031 0.021 0.596 0.028]
+```
+
+Độ lệch chuẩn của tích vô hướng là khoảng 8, đúng $\sqrt{64}$; chia cho 8 thì về khoảng 1. Dòng thứ hai so softmax của 8 điểm có độ lệch chuẩn 8 (gần như toàn bộ trọng số vào một ô) với độ lệch chuẩn 1 (trọng số còn trải ra, gradient còn chảy được).
+
+## Mặt nạ nhân quả
+
+Một mô hình ngôn ngữ (Chương 39) đoán token tiếp theo, nên lúc huấn luyện token $i$ **không được nhìn** token $j > i$; nếu không, nó chỉ việc chép đáp án. Ta đặt điểm của mọi ô phía trên đường chéo bằng $-\infty$ trước softmax; trọng số ở đó thành 0:
+
+```python
+mat_na = np.triu(np.ones((3, 3), dtype=bool), k=1)   # True ở ô token nhìn về tương lai
+A_nq = softmax(np.where(mat_na, -np.inf, diem))
+print(A_nq.round(3))
+```
+
+```text title="Output"
+[[1.    0.    0.   ]
+ [0.609 0.391 0.   ]
+ [0.053 0.008 0.939]]
+```
+
+Token đầu chỉ nhìn chính nó (trọng số 1); token thứ hai chia trọng số cho hai token đầu; token cuối nhìn cả ba. Đó là self-attention của **bộ giải mã** (GPT và mọi mô hình ngôn ngữ lớn của Phần V); không có mặt nạ là self-attention của **bộ mã hóa** (BERT, Chương 45, 46), nơi mỗi token thấy cả câu.
+
+<TuKiemTra
+	cauHoi="Một câu 1000 token qua một lớp self-attention. Ma trận trọng số attention có bao nhiêu ô?"
+	luaChon={['1000', '1 triệu', '2000', '1000 nhân số chiều d']}
+	dapAn={1}
+	giaiThich="Mỗi token nhìn mọi token: 1000 x 1000 = 1 triệu ô cho mỗi đầu attention. Chi phí tính và bộ nhớ tăng theo bình phương độ dài câu. Đó là lý do mô hình ngôn ngữ có giới hạn độ dài ngữ cảnh, và là chủ đề của bài tập 44.2."
+/>
+
+<Khung loai="loi">
+**Quên chia cho căn số chiều.** Mô hình vẫn chạy, nhưng với số chiều lớn, softmax bão hòa ngay từ đầu, gradient gần 0, và việc học chậm hoặc kẹt. Lỗi kiểu này không báo gì, chỉ làm mô hình học kém.
+
+**Đặt mặt nạ bằng 0 thay vì âm vô cùng.** Điểm 0 qua softmax vẫn cho trọng số dương, nên token vẫn nhìn được tương lai một chút. Mặt nạ phải đặt **trước** softmax, bằng một số rất âm.
+</Khung>

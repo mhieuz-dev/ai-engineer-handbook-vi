@@ -1,0 +1,132 @@
+---
+title: Bài tập
+description: "Ba bài tập có đáp án chi tiết (self-attention bằng tay trên hai token; ma trận điểm attention của một lớp chiếm 8,6 GB khi câu dài 8192 token; vị trí học được đạt 100% trên bài A trước B) và câu hỏi phỏng vấn."
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Đoán trước, rồi chạy code trong notebook để kiểm tra. Code dùng lại `softmax`, `Transformer`, `X_ab`, `y_ab`, `X_ab_va`, `y_ab_va` và các import của các trang trước.
+
+<BaiTap so="44.1">
+**Self-attention bằng tay.** Hai token, $d_k = 2$. Sau khi nhân với $W_Q, W_K, W_V$: $Q = \begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix}$, $K = \begin{bmatrix} 2 & 0 \\ 0 & 2 \end{bmatrix}$, $V = \begin{bmatrix} 1 & 2 \\ 3 & 4 \end{bmatrix}$. Tính tay ma trận điểm đã chia $\sqrt{2}$, trọng số sau softmax, và đầu ra của token thứ nhất. Rồi kiểm bằng code.
+
+<Fragment slot="dap-an">
+
+```python
+Q2, K2, V2 = np.array([[1, 0], [0, 1.0]]), np.array([[2, 0], [0, 2.0]]), np.array([[1, 2], [3, 4.0]])
+diem2 = Q2 @ K2.T / math.sqrt(2)
+A2 = softmax(diem2)
+print(diem2.round(4), A2.round(4), (A2 @ V2).round(4), sep="\n")
+```
+
+```text title="Output"
+[[1.4142 0.    ]
+ [0.     1.4142]]
+[[0.8044 0.1956]
+ [0.1956 0.8044]]
+[[1.3911 2.3911]
+ [2.6089 3.6089]]
+```
+
+Điểm: $QK^\top = \begin{bmatrix} 2 & 0 \\ 0 & 2 \end{bmatrix}$, chia $\sqrt 2$ thành $\begin{bmatrix} 1{,}4142 & 0 \\ 0 & 1{,}4142 \end{bmatrix}$. Hàng thứ nhất qua softmax: $e^{1{,}4142} / (e^{1{,}4142} + e^0) = 4{,}113 / 5{,}113 = 0{,}8044$, và $0{,}1956$. Đầu ra của token thứ nhất: $0{,}8044 \times (1, 2) + 0{,}1956 \times (3, 4) = (1{,}3911;\ 2{,}3911)$.
+
+Token thứ nhất nhìn chủ yếu vào chính nó, vì query của nó hợp nhất với key của chính nó; nhưng vẫn lấy 20% từ token kia. Không chia $\sqrt 2$ thì điểm là 2 và 0, trọng số thành 0,8808 và 0,1192: softmax nhọn hơn. Với $d_k$ lớn, khác biệt đó thành bão hòa.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="44.2">
+**Cái giá của độ dài.** Với lô 8 câu, 4 đầu, số thực 4 byte, ma trận điểm attention của **một** lớp chiếm bao nhiêu MB khi câu dài 512, 2048, 8192 token? So với số tham số của một khối Transformer $d = 512$ (lớp ẩn truyền thẳng 2048).
+
+<Fragment slot="dap-an">
+
+```python
+for n in (512, 2048, 8192):
+    print(n, round(8 * 4 * n * n * 4 / 1e6, 1), "MB")
+d, f = 512, 2048
+print("tham số một khối:", 4 * d * d + 4 * d + 2 * d * f + d + f + 4 * d)
+```
+
+```text title="Output"
+512 33.6 MB
+2048 536.9 MB
+8192 8589.9 MB
+tham số một khối: 3152384
+```
+
+512 token: 33,6 MB. 2048 token: 537 MB. 8192 token: **8,6 GB**, chỉ riêng ma trận điểm của **một** lớp, cho một lô 8 câu. Nhân độ dài 4 lần thì bộ nhớ nhân 16 lần. Trong khi đó một khối $d = 512$ chỉ có khoảng 3,15 triệu tham số, 12,6 MB. Với ngữ cảnh dài, thứ đắt nhất không phải là tham số, mà là ma trận attention.
+
+Đó là lý do FlashAttention (Dao và cộng sự, 2022) ra đời: nó tính attention theo từng khối nhỏ trong bộ nhớ nhanh của GPU mà không bao giờ lưu cả ma trận $n \times n$, kết quả y hệt nhưng bộ nhớ chỉ tăng tuyến tính theo $n$. Phép tính thì vẫn bình phương.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="44.3">
+**Vị trí học được.** Thay mã hóa sin, cos bằng một bảng vector vị trí **học được** (`nn.Embedding(64, 128)`, như BERT và GPT-2), huấn luyện lại trên bài "A trước B" của trang 3. Kết quả thế nào so với sin, cos?
+
+<Fragment slot="dap-an">
+
+```python
+class TransformerViTriHoc(Transformer):
+    def __init__(self, V, **kw):
+        super().__init__(V, **kw)
+        self.vt_hoc = nn.Embedding(64, 128)          # một vector học được cho mỗi vị trí
+    def forward(self, x):
+        mask = x != 0
+        z = self.emb(x) * math.sqrt(128) + self.vt_hoc(torch.arange(x.shape[1]))
+        for k in self.khoi:
+            z = k(z, mask)
+        z = self.n(z)
+        return self.ra((z * mask[..., None]).sum(1) / mask.sum(1, keepdim=True))
+
+torch.manual_seed(0)
+m = TransformerViTriHoc(22, so_lop=2, vt=False)
+opt = torch.optim.AdamW(m.parameters(), lr=1e-3, fused=True)
+for ep in range(1, 11):
+    m.train()
+    thu_tu = torch.randperm(5000)
+    for k in range(0, 5000, 64):
+        idx = thu_tu[k:k + 64]
+        loss = F.cross_entropy(m(X_ab[idx]), y_ab[idx])
+        opt.zero_grad()
+        loss.backward()
+        opt.step()
+    m.eval()
+    with torch.no_grad():
+        acc = (m(X_ab_va).argmax(1) == y_ab_va).float().mean().item()
+    if ep in (1, 5, 10):
+        print(ep, round(acc, 3))
+```
+
+```text title="Output"
+1 0.527
+5 1.0
+10 1.0
+```
+
+Vị trí học được đạt **100%** từ epoch 5, nhanh hơn và cao hơn sin, cos (99,4% ở epoch 10) trên bài này. Với độ dài cố định 12 và 5000 chuỗi, mô hình dễ dàng học một vector riêng cho từng vị trí.
+
+Đổi lại, vector vị trí học được chỉ có cho những vị trí đã thấy lúc huấn luyện: bảng `nn.Embedding(64, 128)` không có gì cho vị trí 65 trở đi. Sin, cos định nghĩa được cho mọi vị trí. Trên bài toán thật, hai cách cho kết quả gần như nhau (bài báo gốc báo cáo điều đó), nên lựa chọn thường dựa vào việc có cần ngoại suy độ dài hay không; các mô hình ngôn ngữ lớn hiện nay chủ yếu dùng mã hóa tương đối như RoPE.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Giải thích scaled dot-product attention. Vì sao chia cho căn của d_k?**
+
+<p lang="en"><em>Explain scaled dot-product attention. Why divide by the square root of d_k?</em></p>
+
+*Gợi ý:* softmax của QKᵀ chia căn d_k, nhân V; mỗi query lấy trung bình có trọng số của các value theo độ hợp với các key. Tích vô hướng của hai vector ngẫu nhiên d_k chiều có phương sai tỷ lệ d_k; không chia thì softmax bão hòa và gradient gần 0.
+
+**2. Vì sao Transformer cần mã hóa vị trí?**
+
+<p lang="en"><em>Why do Transformers need positional encodings?</em></p>
+
+*Gợi ý:* self-attention hoán vị đồng biến: xáo đầu vào thì đầu ra chỉ bị xáo theo, nên không phân biệt thứ tự. Cộng mã hóa vị trí cố định (sin, cos) hoặc học được, hoặc dùng mã hóa tương đối như RoPE, ALiBi.
+
+**3. Độ phức tạp của self-attention theo độ dài chuỗi là bao nhiêu? Người ta xử lý ngữ cảnh dài thế nào?**
+
+<p lang="en"><em>What is the complexity of self-attention in sequence length, and how do models handle long contexts?</em></p>
+
+*Gợi ý:* O(n²) cả tính toán lẫn bộ nhớ cho ma trận điểm. Cách xử lý: FlashAttention (không lưu cả ma trận, tính theo khối), attention thưa hoặc cửa sổ trượt, KV cache khi sinh (Chương 57), và mã hóa vị trí ngoại suy được.
+</Khung>

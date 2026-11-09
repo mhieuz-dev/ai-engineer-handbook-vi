@@ -1,0 +1,111 @@
+---
+title: Multi-head và mã hóa vị trí
+description: "Nhiều đầu attention chạy song song, mỗi đầu một kiểu quan hệ. Self-attention không biết thứ tự: xáo các token thì đầu ra chỉ bị xáo theo, kiểm bằng số. Mã hóa vị trí bằng sin và cos ở nhiều tần số cộng vào mỗi token một dấu vân tay vị trí, mà tích vô hướng giữa hai vị trí chỉ phụ thuộc vào khoảng cách giữa chúng."
+---
+
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Nhiều đầu
+
+Một lớp attention cho mỗi token **một** phân phối trọng số. Nhưng một từ có nhiều kiểu quan hệ cùng lúc: "nhiệt tình" trong "thầy không nhiệt tình" liên quan tới "thầy" (ai nhiệt tình) và tới "không" (phủ định). <Term id="multi-head">Multi-head attention</Term> chạy $h$ attention song song, mỗi đầu với $W_Q, W_K, W_V$ riêng và số chiều nhỏ hơn $d/h$; ghép đầu ra của các đầu lại rồi qua một lớp tuyến tính. Tổng số phép tính gần như không đổi so với một đầu lớn, nhưng mô hình có $h$ cách "nhìn" khác nhau.
+
+Cài bằng PyTorch: một lớp tuyến tính tạo cả Q, K, V cho mọi đầu cùng lúc, rồi tách theo đầu bằng `view` và `permute`. Mặt nạ ở đây che các ô đệm của câu ngắn trong một lô (như Chương 41, 43), chứ không phải mặt nạ nhân quả:
+
+```python
+import torch.nn as nn
+torch.set_num_threads(4)
+
+class MultiHead(nn.Module):
+    def __init__(self, d, h):
+        super().__init__()
+        self.h = h
+        self.qkv = nn.Linear(d, 3 * d)               # Q, K, V cho mọi đầu trong một phép nhân
+        self.ra = nn.Linear(d, d)
+    def forward(self, x, mask):                      # x: (lô, n, d); mask: (lô, n), True ở token thật
+        B, n, d = x.shape
+        q, k, v = self.qkv(x).view(B, n, 3, self.h, d // self.h).permute(2, 0, 3, 1, 4)   # mỗi cái (lô, h, n, d/h)
+        diem = q @ k.transpose(-1, -2) / math.sqrt(d // self.h)
+        diem = diem.masked_fill(~mask[:, None, None, :], -1e9)   # không nhìn vào ô đệm
+        return self.ra((diem.softmax(-1) @ v).transpose(1, 2).reshape(B, n, d))
+
+torch.manual_seed(0)
+mh = MultiHead(8, 2)
+x = torch.randn(1, 5, 8)
+print(mh(x, torch.ones(1, 5, dtype=torch.bool)).shape, sum(p.numel() for p in mh.parameters()))
+```
+
+```text title="Output"
+torch.Size([1, 5, 8]) 288
+```
+
+Hai đầu, mỗi đầu 4 chiều; đầu ra cùng hình dạng với đầu vào. Số tham số là $4d^2 + 4d = 288$ với $d = 8$, không phụ thuộc số đầu.
+
+## Self-attention không biết thứ tự
+
+Nhìn lại công thức: đầu ra của token $i$ là trung bình có trọng số của **mọi** value, trọng số chỉ phụ thuộc vào nội dung của query và key. Không chỗ nào dùng vị trí. Hệ quả: **xáo trộn** các token thì đầu ra chỉ bị xáo theo đúng cách đó, không thay đổi gì khác.
+
+```python
+hoan_vi = torch.tensor([3, 0, 4, 1, 2])
+ra_goc = mh(x, torch.ones(1, 5, dtype=torch.bool))
+ra_xao = mh(x[:, hoan_vi], torch.ones(1, 5, dtype=torch.bool))
+print(torch.allclose(ra_xao, ra_goc[:, hoan_vi], atol=1e-6))
+```
+
+```text title="Output"
+True
+```
+
+Với self-attention, "thầy dạy không hay" và "không, thầy dạy hay" là cùng một túi token (Chương 39). RNN thì khác: nó đọc theo thứ tự nên tự biết vị trí. Muốn Transformer phân biệt thứ tự, phải **đưa vị trí vào đầu vào**.
+
+## Mã hóa vị trí bằng sin và cos
+
+Cách của bài báo gốc: cộng vào vector của token ở vị trí $p$ một vector cố định cùng số chiều $d$, với các cặp chiều là sin và cos ở những tần số giảm dần:
+
+$$
+\text{PE}(p, 2i) = \sin\Big(\frac{p}{10000^{2i/d}}\Big), \qquad \text{PE}(p, 2i+1) = \cos\Big(\frac{p}{10000^{2i/d}}\Big)
+$$
+
+Chiều đầu dao động nhanh (đổi mỗi vị trí), chiều cuối dao động rất chậm, như kim giây và kim giờ của một chiếc đồng hồ: cùng nhau chúng cho mỗi vị trí một "dấu vân tay" riêng. Đây đúng là cách Chương 31 mã hóa bước $t$ của mô hình diffusion.
+
+```python
+def vi_tri(n, d):                                    # n vị trí, d chiều
+    p = torch.arange(n).unsqueeze(1)
+    goc = p / 10000 ** (torch.arange(0, d, 2) / d)
+    P = torch.zeros(n, d)
+    P[:, 0::2], P[:, 1::2] = torch.sin(goc), torch.cos(goc)
+    return P
+
+P = vi_tri(64, 128)
+tich = P @ P.T
+print(P.shape, [round(tich[i, i + 5].item(), 3) for i in (0, 10, 30)], [round(tich[10, 10 + k].item(), 2) for k in (0, 1, 5, 20)])
+```
+
+```text title="Output"
+torch.Size([64, 128]) [47.185, 47.185, 47.185] [64.0, 62.09, 47.19, 38.93]
+```
+
+Hai tính chất. Thứ nhất, tích vô hướng giữa vị trí $i$ và $i + 5$ **bằng nhau** dù $i$ là 0, 10 hay 30: nó chỉ phụ thuộc vào **khoảng cách**, vì $\sin a \sin b + \cos a \cos b = \cos(a - b)$. Mô hình có thể học "nhìn token cách 1 bước về bên trái" mà không cần biết đang ở vị trí tuyệt đối nào. Thứ hai, tích vô hướng giảm khi khoảng cách tăng (64 ở khoảng cách 0, nhỏ dần ở 1, 5, 20): vị trí gần nhau thì vector gần nhau.
+
+<HinhKetQua src="/hinh/ch44/h1_vi_tri.svg" alt="Bản đồ nhiệt, trục dọc là vị trí từ 0 tới 63, trục ngang là chiều từ 0 tới 127. Các cột bên trái đổi màu rất nhanh theo vị trí như sọc mảnh; càng sang phải sọc càng rộng; các cột ngoài cùng bên phải gần như không đổi màu suốt 64 vị trí, xen kẽ trắng (chiều sin, gần 0) và đỏ đậm (chiều cos, gần 1)." so="44.1" chuThich="Mã hóa vị trí sin và cos cho 64 vị trí, 128 chiều. Mỗi hàng là vector cộng vào token ở vị trí đó.">
+**Đọc hình.** Mỗi hàng là vector vị trí của một vị trí; màu là giá trị từ -1 tới 1.
+
+**Điều cần thấy.** Các chiều đầu (bên trái) đổi dấu sau vài vị trí, các chiều sau đổi chậm dần, các chiều cuối gần như không đổi trên 64 vị trí. Không có hai hàng nào giống nhau: mỗi vị trí có một mẫu riêng, và các vị trí kề nhau có mẫu gần giống nhau.
+</HinhKetQua>
+
+Nhiều mô hình về sau thay cách này bằng vector vị trí **học được** (BERT, GPT-2), hoặc mã hóa vị trí tương đối như RoPE, xoay query và key theo vị trí (dùng trong nhiều mô hình ngôn ngữ lớn hiện nay, Phần V). Ý tưởng gốc không đổi: self-attention cần được cho biết vị trí.
+
+<TuKiemTra
+	cauHoi="Bỏ mã hóa vị trí khỏi một Transformer rồi đưa vào câu 'A trước B' và 'B trước A' (cùng các token, khác thứ tự). Nếu đầu ra cuối là trung bình của mọi token, hai câu cho kết quả thế nào?"
+	luaChon={['Khác nhau nhờ multi-head', 'Giống hệt nhau: đầu ra từng token chỉ bị xáo theo, và trung bình của một tập không phụ thuộc thứ tự', 'Khác nhau nhờ LayerNorm', 'Khác nhau vì attention có softmax']}
+	dapAn={1}
+	giaiThich="Mọi thành phần của khối Transformer (attention, mạng truyền thẳng theo từng token, LayerNorm theo từng token) đều xử lý tập token mà không dùng thứ tự, nên đầu ra chỉ là đầu vào được xáo theo. Lấy trung bình thì mất luôn thứ tự xáo. Trang 3 đo điều này trên một bài toán mà thứ tự là tất cả."
+/>
+
+<Khung loai="loi">
+**Cộng vector vị trí có độ lớn lấn át vector từ.** Vector sin, cos có các thành phần trong khoảng -1 tới 1; vector từ khởi tạo nhỏ có thể bị lấn át. Bài báo gốc nhân vector từ với $\sqrt{d}$ trước khi cộng, như trang 3 làm.
+
+**Huấn luyện với câu tối đa 64 token rồi dùng cho câu 500 token.** Vector vị trí học được không có cho vị trí chưa từng thấy; với sin, cos thì có, nhưng mô hình chưa từng học ở đó. Ngữ cảnh dài hơn lúc huấn luyện là một bài toán khó riêng của mô hình ngôn ngữ lớn.
+</Khung>

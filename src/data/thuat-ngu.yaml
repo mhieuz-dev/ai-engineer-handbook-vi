@@ -888,3 +888,18 @@
   tenTiengAnh: attention
   giaiThich: Attention cho mô hình, ở mỗi bước, tính một trung bình có trọng số của các vector đầu vào, với trọng số là softmax của điểm hợp giữa bước hiện tại và từng vị trí. Ban đầu dùng để bộ giải mã nhìn lại câu nguồn khi dịch, sửa nút thắt của một vector duy nhất; là thành phần cốt lõi của Transformer.
   hocKy: ai-engineer/ch43-seq2seq-attention
+- id: self-attention
+  ten: Self-attention
+  tenTiengAnh: self-attention
+  giaiThich: Self-attention cho mỗi token trong một chuỗi nhìn trực tiếp tới mọi token khác của chính chuỗi đó. Mỗi token sinh ra query, key và value; đầu ra là trung bình các value với trọng số softmax của tích query với key chia căn số chiều. Không biết thứ tự nếu không thêm mã hóa vị trí, và tốn bình phương độ dài chuỗi.
+  hocKy: ai-engineer/ch44-transformer
+- id: multi-head
+  ten: Multi-head attention
+  tenTiengAnh: multi-head attention
+  giaiThich: Multi-head attention chạy song song nhiều attention, mỗi đầu với ma trận query, key, value riêng và số chiều nhỏ hơn, rồi ghép kết quả lại. Mỗi đầu có thể học một kiểu quan hệ khác nhau giữa các token, với tổng chi phí gần như một đầu lớn.
+  hocKy: ai-engineer/ch44-transformer
+- id: transformer
+  ten: Transformer
+  tenTiengAnh: Transformer
+  giaiThich: Transformer là kiến trúc mạng chỉ dựa trên attention, không dùng RNN, gồm các khối self-attention nhiều đầu và mạng truyền thẳng từng token, có kết nối tắt và LayerNorm, cộng mã hóa vị trí ở đầu vào. Tính song song được trên cả chuỗi và mở rộng tốt, là nền của BERT, GPT và mọi mô hình ngôn ngữ lớn.
+  hocKy: ai-engineer/ch44-transformer

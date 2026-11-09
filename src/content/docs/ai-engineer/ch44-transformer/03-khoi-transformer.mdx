@@ -1,0 +1,115 @@
+---
+title: Khối Transformer
+description: "Một khối Transformer là self-attention nhiều đầu, rồi một mạng truyền thẳng áp lên từng token, mỗi phần có kết nối tắt và LayerNorm. Chồng hai khối, thêm vector từ và mã hóa vị trí: một Transformer encoder nhỏ, tự cài từng dòng. Trên bài 'A đứng trước B không', có mã hóa vị trí đạt 99,4%, bỏ đi thì 50,3%, bằng đoán bừa."
+---
+
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Bốn thành phần
+
+Một khối <Term id="transformer">Transformer</Term> (phần mã hóa) gồm:
+
+1. **Self-attention nhiều đầu** (trang 2): mỗi token trộn thông tin từ các token khác.
+2. **Mạng truyền thẳng** (feed-forward): một MLP hai lớp (Chương 23) áp lên **từng token riêng lẻ**, cùng trọng số cho mọi vị trí. Attention trao đổi thông tin giữa các token; mạng truyền thẳng xử lý thông tin trong từng token. Lớp ẩn thường rộng gấp 2 tới 4 lần $d$.
+3. **Kết nối tắt** (Chương 28) quanh mỗi phần: $x + f(x)$, để tín hiệu và gradient đi thẳng qua nhiều khối.
+4. **LayerNorm** (Chương 26): chuẩn hóa mỗi vector token về trung bình 0, phương sai 1 trước mỗi phần (cách đặt "pre-norm", ổn định hơn cách đặt sau trong bài báo gốc).
+
+Ghép lại thành mô hình phân loại: vector từ nhân $\sqrt{d}$, cộng mã hóa vị trí (bật tắt được bằng `vt`), chồng các khối, rồi lấy **trung bình** vector của các token thật (bỏ ô đệm) làm vector câu, cuối cùng một lớp tuyến tính.
+
+```python
+class Khoi(nn.Module):
+    def __init__(self, d, h, f):
+        super().__init__()
+        self.att, self.n1 = MultiHead(d, h), nn.LayerNorm(d)
+        self.ff = nn.Sequential(nn.Linear(d, f), nn.GELU(), nn.Linear(f, d))   # mạng truyền thẳng từng token
+        self.n2, self.drop = nn.LayerNorm(d), nn.Dropout(0.1)
+    def forward(self, x, mask):
+        x = x + self.drop(self.att(self.n1(x), mask))   # kết nối tắt quanh attention
+        return x + self.drop(self.ff(self.n2(x)))      # kết nối tắt quanh mạng truyền thẳng
+
+class Transformer(nn.Module):
+    def __init__(self, V, so_lop=3, d=128, h=4, f=256, L=2, vt=True, toi_da=64):
+        super().__init__()
+        self.emb, self.vt = nn.Embedding(V, d, padding_idx=0), vt
+        self.register_buffer("P", vi_tri(toi_da, d))    # mã hóa vị trí cố định, không học
+        self.khoi = nn.ModuleList([Khoi(d, h, f) for _ in range(L)])
+        self.n, self.ra = nn.LayerNorm(d), nn.Linear(d, so_lop)
+    def forward(self, x):
+        mask = x != 0
+        z = self.emb(x) * math.sqrt(self.emb.embedding_dim)
+        if self.vt:
+            z = z + self.P[:x.shape[1]]
+        for k in self.khoi:
+            z = k(z, mask)
+        z = self.n(z)
+        z = (z * mask[..., None]).sum(1) / mask.sum(1, keepdim=True)   # trung bình các token thật
+        return self.ra(z)
+```
+
+Hai khối, $d = 128$, 4 đầu, lớp ẩn truyền thẳng 256. Mỗi khối có khoảng 132 nghìn tham số: 66 nghìn ở attention, 66 nghìn ở mạng truyền thẳng. Với từ điển 1535 âm tiết của trang 4, bảng vector từ có thêm 196 nghìn.
+
+## Thứ tự có quan trọng không
+
+Trang 2 nói không có mã hóa vị trí thì Transformer không phân biệt được thứ tự. Kiểm trên một bài toán mà thứ tự là **tất cả**: mỗi chuỗi có 12 token ngẫu nhiên (từ điển 22 token), trong đó có đúng một token A (số 1) và một token B (số 2) ở vị trí ngẫu nhiên. Nhãn: A có đứng trước B không. Tập các token của hai chuỗi "A trước B" và "B trước A" có thể y hệt nhau, chỉ khác thứ tự.
+
+```python
+def tao(n, seed):
+    g = torch.Generator().manual_seed(seed)
+    X = torch.randint(3, 22, (n, 12), generator=g)   # token "nhiễu" từ 3 tới 21
+    for i in range(n):
+        a, b = torch.randperm(12, generator=g)[:2].tolist()
+        X[i, a], X[i, b] = 1, 2                      # đặt A và B
+    y = ((X == 1).float().argmax(1) < (X == 2).float().argmax(1)).long()   # A trước B
+    return X, y
+
+X_ab, y_ab = tao(5000, 0)
+X_ab_va, y_ab_va = tao(1000, 1)
+
+def hoc_thu_tu(vt, so_epoch=10):
+    torch.manual_seed(0)
+    m = Transformer(22, so_lop=2, vt=vt)
+    opt = torch.optim.AdamW(m.parameters(), lr=1e-3, fused=True)   # fused: lặp lại được trên CPU
+    for ep in range(1, so_epoch + 1):
+        m.train()
+        thu_tu = torch.randperm(5000)
+        for k in range(0, 5000, 64):
+            idx = thu_tu[k:k + 64]
+            loss = F.cross_entropy(m(X_ab[idx]), y_ab[idx])
+            opt.zero_grad()
+            loss.backward()
+            opt.step()
+        m.eval()
+        with torch.no_grad():
+            acc = (m(X_ab_va).argmax(1) == y_ab_va).float().mean().item()
+        if ep in (1, 5, 10):
+            print(vt, ep, round(acc, 3))
+
+hoc_thu_tu(vt=True)
+hoc_thu_tu(vt=False)
+```
+
+```text title="Output"
+True 1 0.496
+True 5 0.935
+True 10 0.994
+False 1 0.499
+False 5 0.534
+False 10 0.503
+```
+
+Có mã hóa vị trí: **99,4%** sau 10 epoch, vài giây trên CPU. Không có: **50,3%**, đúng bằng đoán bừa, và không bao giờ khá hơn dù học bao lâu, vì với mô hình đó hai chuỗi chỉ khác thứ tự là **cùng một đầu vào**. Đây không phải do mô hình yếu hay học chưa đủ; đó là giới hạn về cấu trúc, đúng như phép kiểm xáo trộn ở trang 2 đã báo trước.
+
+<TuKiemTra
+	cauHoi="Mạng truyền thẳng trong khối Transformer áp lên từng token riêng lẻ với cùng trọng số. Vậy thông tin đi từ token này sang token khác ở đâu?"
+	luaChon={['Ở mạng truyền thẳng', 'Chỉ ở self-attention', 'Ở LayerNorm', 'Ở kết nối tắt']}
+	dapAn={1}
+	giaiThich="LayerNorm, mạng truyền thẳng và kết nối tắt đều làm việc trên từng vector token một, không nhìn token khác. Chỉ self-attention trộn thông tin giữa các token. Một khối Transformer xen kẽ hai việc: trao đổi giữa các token (attention), rồi suy nghĩ trong từng token (mạng truyền thẳng)."
+/>
+
+<Khung loai="loi">
+**Lấy trung bình cả các ô đệm.** Vector của ô đệm sau vài khối không còn bằng 0 (LayerNorm, bias), nên tính trung bình trên cả chuỗi đã đệm làm câu ngắn bị pha loãng bởi phần đệm. Nhân với mặt nạ và chia cho số token thật, như `forward` ở trên.
+
+**Nghĩ rằng Transformer luôn cần nhiều dữ liệu hơn RNN.** Thường đúng với dữ liệu nhỏ, vì Transformer không có sẵn giả định "từ gần nhau liên quan nhau" như RNN hay CNN. Nhưng như bài thứ tự ở trên, với tín hiệu rõ thì nó học rất nhanh. Câu hỏi đúng là đo trên bài toán của mình (trang 4).
+</Khung>
