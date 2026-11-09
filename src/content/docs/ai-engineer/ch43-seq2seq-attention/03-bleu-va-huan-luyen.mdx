@@ -1,0 +1,109 @@
+---
+title: BLEU và huấn luyện
+description: "BLEU chấm một bản dịch bằng tỷ lệ n-gram, từ 1 tới 4 từ, trùng với bản dịch tham chiếu, kèm phạt bản dịch quá ngắn. Tự cài, thấy vì sao nó vô nghĩa trên một câu ngắn, rồi huấn luyện mô hình encoder-decoder 8 epoch khoảng 2,5 phút: BLEU trên val tăng chậm dần từ 3,95 lên 8,89."
+---
+
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Chấm một bản dịch
+
+Độ chính xác không dùng được cho dịch máy: một câu có nhiều bản dịch đúng, và hai bản dịch tốt hiếm khi trùng từng chữ. <Term id="bleu">BLEU</Term> (Papineni và cộng sự, 2002) đo **bao nhiêu mảnh** của bản dịch máy xuất hiện trong bản dịch tham chiếu của người:
+
+- Với mỗi $n$ từ 1 tới 4, đếm các n-gram của bản dịch máy có trong bản tham chiếu, **cắt** số đếm ở số lần n-gram đó có trong tham chiếu (để "là là là là" không được điểm vì có "là" trong tham chiếu). Chia cho tổng số n-gram của bản dịch máy: được precision $p_n$.
+- Lấy trung bình nhân của $p_1, \ldots, p_4$.
+- Nhân với **phạt ngắn** (brevity penalty) $\text{BP} = \min(1, e^{1 - r/c})$, với $c$ là tổng độ dài bản dịch máy, $r$ là tổng độ dài tham chiếu: precision không phạt việc bỏ sót, nên một bản dịch chỉ gồm vài từ chắc chắn đúng sẽ được điểm cao nếu không có phạt này.
+
+BLEU tính trên **cả tập** (cộng dồn số đếm của mọi câu rồi mới chia), thang 0 tới 100.
+
+```python
+def bleu(tham_chieu, dich_may, N=4):
+    khop, tong, r, c = [0] * N, [0] * N, 0, 0
+    for R, H in zip(tham_chieu, dich_may):
+        r, c = r + len(R), c + len(H)
+        for n in range(1, N + 1):
+            h_ng = Counter(tuple(H[i:i + n]) for i in range(len(H) - n + 1))
+            r_ng = Counter(tuple(R[i:i + n]) for i in range(len(R) - n + 1))
+            khop[n - 1] += sum(min(so, r_ng[g]) for g, so in h_ng.items())   # đếm có cắt
+            tong[n - 1] += max(len(H) - n + 1, 0)
+    if min(khop) == 0:
+        return 0.0
+    log_p = sum(math.log(k / t) for k, t in zip(khop, tong)) / N
+    bp = 1 if c > r else math.exp(1 - r / c)
+    return round(100 * bp * math.exp(log_p), 2)
+
+R = "tôi đã rất tự hào về đất nước tôi .".split()
+for H in ("tôi đã rất tự hào về đất nước tôi .", "tôi rất tự hào về đất nước của tôi .", "tôi rất tự hào .", "đất nước tôi tự hào ."):
+    print(bleu([R], [H.split()]), "|", H)
+```
+
+```text title="Output"
+100.0 | tôi đã rất tự hào về đất nước tôi .
+59.88 | tôi rất tự hào về đất nước của tôi .
+0.0 | tôi rất tự hào .
+0.0 | đất nước tôi tự hào .
+```
+
+Trùng hoàn toàn: 100. Bỏ "đã" và thêm "của" vẫn giữ được phần lớn n-gram: 59,88. Hai câu cuối đều được **0**, dù mọi từ của chúng đều có trong tham chiếu. "Tôi rất tự hào ." chỉ có 5 token nên chỉ có 2 cụm 4 từ, và không cụm nào trùng ("rất tự hào ." không có trong tham chiếu, vì ở đó sau "tự hào" là "về"); "đất nước tôi tự hào ." cũng không có 4-gram nào trùng. Trung bình nhân bằng 0 khi chỉ một thừa số bằng 0, nên phạt ngắn còn chưa kịp có tác dụng. Trên một câu, BLEU rất thô; nó chỉ có ý nghĩa khi cộng dồn trên hàng trăm, hàng nghìn câu, như hàm trên làm khi nhận cả một tập.
+
+## Huấn luyện
+
+Hàm huấn luyện dùng chung cho trang này và trang 4: Adam, lô 64, cắt độ lớn gradient ở 1 (RNN dễ bùng gradient, Chương 29), 8 epoch. Sau mỗi epoch dịch cả 2000 câu val và tính BLEU; giữ bản có BLEU val cao nhất.
+
+```python
+def huan_luyen(chu_y, so_epoch=8, seed=0):
+    torch.manual_seed(seed)
+    mh, gm = MaHoa(len(tu_e)), GiaiMa(len(tu_v), chu_y=chu_y)
+    tham_so = list(mh.parameters()) + list(gm.parameters())
+    opt = torch.optim.Adam(tham_so, lr=1e-3, fused=True)
+    tot, ban_tot = -1, None
+    for ep in range(1, so_epoch + 1):
+        mh.train()
+        gm.train()
+        thu_tu, tong, n = torch.randperm(len(C_tr)), 0.0, 0
+        for k in range(0, len(thu_tu), 64):
+            X, Y = lo(C_tr, thu_tu[k:k + 64])
+            loss = loss_lo(mh, gm, X, Y)
+            opt.zero_grad()
+            loss.backward()
+            nn.utils.clip_grad_norm_(tham_so, 1.0)
+            opt.step()
+            tong, n = tong + loss.item(), n + 1
+        b = bleu([v for _, v in C_va], dich(mh, gm, C_va))
+        print(ep, round(tong / n, 3), b)
+        if b > tot:
+            tot, ban_tot = b, (copy.deepcopy(mh), copy.deepcopy(gm))
+    return ban_tot
+
+t0 = time.time()
+mh_tron, gm_tron = huan_luyen(chu_y=False)
+print(time.time() - t0 < 600)
+```
+
+```text title="Output"
+1 4.3 3.95
+2 3.376 5.44
+3 3.016 6.73
+4 2.762 7.33
+5 2.553 7.83
+6 2.372 8.21
+7 2.206 8.66
+8 2.056 8.89
+True
+```
+
+Khoảng 2,5 phút. Loss train giảm đều từ 4,30 xuống 2,06. BLEU val tăng từ 3,95 sau epoch đầu lên **8,89** ở epoch 8, nhưng mỗi epoch thêm ít hơn epoch trước (từ +1,5 điểm xuống +0,2 điểm). Một BLEU 8,9 là thấp: bản dịch thường giữ được vài từ đúng chỗ nhưng sai nghĩa cả câu. Đó là cái giá của 29 nghìn cặp câu, một từ điển 2231 từ và vài phút CPU; hệ thống dịch thật học trên hàng chục triệu cặp câu. Trang 4 giữ nguyên mọi thứ đó và chỉ thêm attention.
+
+<TuKiemTra
+	cauHoi="Một hệ thống dịch đạt BLEU 30 trên tập A và 25 trên tập B. Có thể nói nó dịch tập A tốt hơn không?"
+	luaChon={['Có, 30 lớn hơn 25', 'Không chắc: BLEU phụ thuộc vào văn bản, độ dài câu, số bản tham chiếu và cách tách token, nên chỉ so được hai hệ thống trên cùng một tập, cùng cách tính', 'Có, nếu hai tập cùng cỡ', 'Không, BLEU không so được bao giờ']}
+	dapAn={1}
+	giaiThich="BLEU của tập văn bản dễ (câu ngắn, câu lặp) cao hơn tập khó với cùng một hệ thống. Cách tách token và chữ thường hay không cũng đổi con số. BLEU dùng để so các hệ thống trên cùng một tập test với cùng một cách tính; công cụ sacreBLEU ra đời để chuẩn hóa chuyện đó."
+/>
+
+<Khung loai="loi">
+**Chọn mô hình theo loss thay vì thước đo thật.** Loss train giảm đều qua mọi epoch; BLEU val thì có lúc giảm (mô hình có attention ở trang 4 đạt đỉnh ở epoch 6 rồi đi xuống trong khi loss train vẫn giảm): mô hình bắt đầu học thuộc train. Giữ checkpoint theo BLEU trên val, như giữ theo macro-F1 ở Chương 41.
+
+**Tính BLEU trung bình theo câu.** Trung bình BLEU của từng câu khác BLEU trên tập, và rất nhiễu vì nhiều câu có BLEU bằng 0 chỉ vì thiếu một 4-gram. BLEU chuẩn cộng dồn số đếm trên cả tập rồi mới tính.
+</Khung>

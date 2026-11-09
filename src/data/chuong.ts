@@ -69,7 +69,7 @@ const BANG: [number, string, string, string, XuatBan?][] = [
 	[40, 'phan-4', 'Word embeddings', 'word-embeddings', { trangThai: 'xong', notebook: 'ch40_word_embeddings.ipynb' }],
 	[41, 'phan-4', 'Phân loại văn bản', 'phan-loai-van-ban', { trangThai: 'xong', notebook: 'ch41_phan_loai_van_ban.ipynb' }],
 	[42, 'phan-4', 'Gán nhãn chuỗi', 'gan-nhan-chuoi', { trangThai: 'xong', notebook: 'ch42_gan_nhan_chuoi.ipynb' }],
-	[43, 'phan-4', 'Seq2Seq và attention', 'seq2seq-attention'],
+	[43, 'phan-4', 'Seq2Seq và attention', 'seq2seq-attention', { trangThai: 'xong', notebook: 'ch43_seq2seq_attention.ipynb' }],
 	[44, 'phan-4', 'Transformer từ đầu', 'transformer'],
 	[45, 'phan-4', 'Tokenization và mô hình tiền huấn luyện', 'tokenization-pretrained'],
 	[46, 'phan-4', 'Fine-tune PhoBERT', 'fine-tune-phobert'],

@@ -1,0 +1,125 @@
+---
+title: Encoder-decoder
+description: "Một GRU đọc câu tiếng Anh và nén nó vào một vector; một GRU thứ hai bắt đầu từ vector đó và sinh câu tiếng Việt từng từ, như mô hình ngôn ngữ của Chương 39 có điều kiện. Huấn luyện bằng teacher forcing: luôn đưa từ đúng của bước trước vào bước sau. Giải mã tham lam: mỗi bước chọn từ có xác suất cao nhất."
+---
+
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Hai mạng nối nhau
+
+Kiến trúc <Term id="encoder-decoder">encoder-decoder</Term> (Sutskever, Vinyals và Le, 2014; Cho và cộng sự, 2014) gồm hai RNN:
+
+- **Bộ mã hóa** (encoder) đọc câu nguồn từ đầu tới cuối. Trạng thái ẩn cuối cùng của nó là một vector tóm tắt **cả câu**.
+- **Bộ giải mã** (decoder) là một **mô hình ngôn ngữ** của tiếng Việt (Chương 39), nhưng có điều kiện: trạng thái ẩn ban đầu của nó là vector tóm tắt đó. Nó sinh câu đích từng từ, bắt đầu từ `<s>`, mỗi bước đoán từ tiếp theo, tới khi sinh ra `</s>`.
+
+Cả hai dùng GRU (Chương 29), vector từ 256 chiều, trạng thái ẩn 256 chiều. Lớp giải mã có sẵn một cờ `chu_y` dùng ở trang 4; ở trang này và trang 3, `chu_y=False`.
+
+```python
+import copy
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.nn.utils.rnn import pad_sequence
+torch.set_num_threads(4)                             # 4 luồng: nhanh hơn, và đã kiểm cho kết quả lặp lại y hệt
+
+class MaHoa(nn.Module):
+    def __init__(self, V, d=256, h=256):
+        super().__init__()
+        self.emb = nn.Embedding(V, d, padding_idx=0)
+        self.gru = nn.GRU(d, h, batch_first=True)
+    def forward(self, x):
+        return self.gru(self.emb(x))                 # (trạng thái ở mọi bước, trạng thái cuối)
+
+class GiaiMa(nn.Module):
+    def __init__(self, V, d=256, h=256, chu_y=False):
+        super().__init__()
+        self.chu_y = chu_y
+        self.emb = nn.Embedding(V, d, padding_idx=0)
+        self.gru = nn.GRU(d + (h if chu_y else 0), h, batch_first=True)
+        self.ra = nn.Linear(h * (2 if chu_y else 1), V)
+    def buoc(self, y, h, enc, mask):                 # một bước: từ trước y, trạng thái h -> điểm cho từ tiếp theo
+        e = self.emb(y)
+        if not self.chu_y:
+            o, h = self.gru(e, h)
+            return self.ra(o).squeeze(1), h, None
+        diem = (enc @ h[-1].unsqueeze(2)).squeeze(2).masked_fill(~mask, -1e9)   # trang 4
+        a = diem.softmax(1)
+        ngu_canh = a.unsqueeze(1) @ enc
+        o, h = self.gru(torch.cat([e, ngu_canh], 2), h)
+        return self.ra(torch.cat([o, ngu_canh], 2)).squeeze(1), h, a
+```
+
+## Teacher forcing
+
+Lúc huấn luyện, ta biết câu đích đúng. Ở mỗi bước, đầu vào của bộ giải mã là **từ đúng** của bước trước, không phải từ mà chính nó vừa đoán; mục tiêu là từ đúng của bước hiện tại. Cách này gọi là <Term id="teacher-forcing">teacher forcing</Term>: như cô giáo luôn đặt lại học trò vào đúng chỗ trước khi hỏi câu tiếp. Nhờ vậy một lỗi ở bước đầu không kéo cả câu sai theo, và việc học nhanh và ổn định hơn nhiều. Loss là cross-entropy (Chương 11) trên từ điển tiếng Việt ở mỗi bước, bỏ qua các ô đệm.
+
+```python
+def lo(ds, idx):                                     # một lô: nguồn đã đệm, đích có <s> và </s> đã đệm
+    X = [torch.tensor(ma(ds[i][0], id_e)) for i in idx]
+    Y = [torch.tensor([2] + ma(ds[i][1], id_v) + [3]) for i in idx]
+    return pad_sequence(X, batch_first=True), pad_sequence(Y, batch_first=True)
+
+def loss_lo(mh, gm, X, Y):
+    enc, h = mh(X)
+    mask = X != 0
+    diem = []
+    for t in range(Y.shape[1] - 1):
+        o, h, _ = gm.buoc(Y[:, t:t + 1], h, enc, mask)   # teacher forcing: đưa từ đúng Y[:, t]
+        diem.append(o)
+    return F.cross_entropy(torch.stack(diem, 1).reshape(-1, len(tu_v)), Y[:, 1:].reshape(-1), ignore_index=0)
+```
+
+## Giải mã
+
+Lúc dùng thật, không có câu đích. Bộ giải mã phải đưa **chính từ nó vừa sinh** vào bước sau. Cách đơn giản nhất là **giải mã tham lam**: mỗi bước chọn từ có điểm cao nhất, dừng khi gặp `</s>` hoặc đủ 20 từ. Xử lý theo lô 256 câu cho nhanh:
+
+```python
+def dich(mh, gm, ds, toi_da=20):
+    mh.eval()
+    gm.eval()
+    ra = []
+    with torch.no_grad():
+        for k in range(0, len(ds), 256):
+            X = pad_sequence([torch.tensor(ma(e, id_e)) for e, _ in ds[k:k + 256]], batch_first=True)
+            enc, h = mh(X)
+            mask = X != 0
+            y, cau = torch.full((len(X), 1), 2), []
+            for _ in range(toi_da):
+                o, h, _ = gm.buoc(y, h, enc, mask)
+                y = o.argmax(1, keepdim=True)        # tham lam: từ có điểm cao nhất
+                cau.append(y)
+            for s in torch.cat(cau, 1).tolist():
+                s = s[:s.index(3)] if 3 in s else s  # cắt ở </s>
+                ra.append([tu_v[i] for i in s])
+    return ra
+
+torch.manual_seed(0)
+mh0, gm0 = MaHoa(len(tu_e)), GiaiMa(len(tu_v))
+print(" ".join(dich(mh0, gm0, C_va[:1])[0]))
+X, Y = lo(C_tr, range(64))
+print(X.shape, Y.shape, round(loss_lo(mh0, gm0, X, Y).item(), 3), round(math.log(len(tu_v)), 3))
+```
+
+```text title="Output"
+chặn giáng thế vọng để rào ngày chó can xạ khám bẩn iraq cạn cởi mạc và người rực sáu
+torch.Size([64, 12]) torch.Size([64, 14]) 7.725 7.71
+```
+
+Mạng chưa học sinh ra đủ 20 từ ngẫu nhiên, không liên quan gì tới câu nguồn và không bao giờ sinh `</s>`. Loss ban đầu xấp xỉ $\ln 2231 \approx 7{,}71$, đúng bằng loss của việc đoán đều trên cả từ điển tiếng Việt: một phép kiểm tốt rằng mọi thứ được nối đúng.
+
+Có một khoảng cách giữa hai chế độ. Lúc học, mô hình luôn nhìn thấy từ đúng; lúc dùng, nó nhìn thấy từ của chính nó, kể cả từ sai. Một lỗi sớm đưa mô hình vào những ngữ cảnh nó chưa từng gặp khi học. Hiện tượng này gọi là **exposure bias**. Có những cách giảm nó (trộn dần từ tự sinh vào lúc học, giải mã chùm ở bài tập 43.3), nhưng teacher forcing vẫn là cách huấn luyện chuẩn, kể cả cho mô hình ngôn ngữ lớn.
+
+<TuKiemTra
+	cauHoi="Với teacher forcing, câu đích '⟨s⟩ tôi rất tự hào ⟨/s⟩' tạo ra bao nhiêu cặp (đầu vào, mục tiêu) cho bộ giải mã, và cặp thứ ba là gì?"
+	luaChon={['4 cặp; cặp thứ ba là (rất, tự)', '5 cặp; cặp thứ ba là (rất, tự)', '6 cặp; cặp thứ ba là (tự, hào)', '5 cặp; cặp thứ ba là (tôi, rất)']}
+	dapAn={1}
+	giaiThich="Chuỗi có 6 token. Đầu vào là 5 token đầu (⟨s⟩ tôi rất tự hào), mục tiêu là 5 token sau (tôi rất tự hào ⟨/s⟩), dịch đi một vị trí. Các cặp: (⟨s⟩, tôi), (tôi, rất), (rất, tự), (tự, hào), (hào, ⟨/s⟩). Cặp thứ ba là (rất, tự). Đó chính là Y[:, :-1] và Y[:, 1:] trong loss_lo."
+/>
+
+<Khung loai="loi">
+**Quên dịch mục tiêu đi một vị trí.** Đưa từ $t$ vào và bắt mô hình đoán chính từ $t$ thì loss về gần 0 rất nhanh, mô hình chỉ học chép lại đầu vào, và lúc dịch nó sinh ra rác.
+
+**Không tính độ dài khi đệm.** Loss phải bỏ qua các ô `<pad>` (`ignore_index=0`); nếu không, mô hình được thưởng vì đoán đúng ô đệm, một việc vô nghĩa chiếm phần lớn loss ở lô có câu dài ngắn chênh nhau.
+</Khung>

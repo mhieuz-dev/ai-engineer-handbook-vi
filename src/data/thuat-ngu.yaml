@@ -863,3 +863,28 @@
   tenTiengAnh: conditional random field
   giaiThich: CRF mô hình hóa trực tiếp xác suất của chuỗi nhãn khi đã biết câu, bằng tổng trọng số của các đặc trưng tùy ý nhìn được cả câu, cộng trọng số cho cặp nhãn liền nhau. Giống hồi quy logistic cho cả chuỗi, giải mã bằng Viterbi, và là mô hình gán nhãn chuỗi mạnh trước thời mạng nơ-ron.
   hocKy: ai-engineer/ch42-gan-nhan-chuoi
+- id: seq2seq
+  ten: Chuỗi sang chuỗi
+  tenTiengAnh: sequence to sequence (seq2seq)
+  giaiThich: Chuỗi sang chuỗi là nhóm bài toán mà đầu vào và đầu ra đều là chuỗi, dài ngắn khác nhau và không khớp từng cặp, như dịch máy, tóm tắt, trả lời câu hỏi, nhận dạng giọng nói. Mô hình thường gồm một bộ mã hóa đọc đầu vào và một bộ giải mã sinh đầu ra từng token.
+  hocKy: ai-engineer/ch43-seq2seq-attention
+- id: encoder-decoder
+  ten: Encoder-decoder
+  tenTiengAnh: encoder-decoder
+  giaiThich: Kiến trúc encoder-decoder gồm bộ mã hóa đọc chuỗi nguồn thành các trạng thái ẩn, và bộ giải mã là một mô hình ngôn ngữ có điều kiện, sinh chuỗi đích từng token dựa trên các trạng thái đó. Bản đầu dùng RNN; Transformer cũng theo khuôn này.
+  hocKy: ai-engineer/ch43-seq2seq-attention
+- id: teacher-forcing
+  ten: Teacher forcing
+  tenTiengAnh: teacher forcing
+  giaiThich: Teacher forcing là cách huấn luyện bộ giải mã bằng cách đưa token đúng của bước trước vào bước sau, thay vì token mà mô hình tự sinh. Học nhanh và ổn định, nhưng tạo khoảng cách với lúc dùng thật khi mô hình phải ăn token của chính nó, gọi là exposure bias.
+  hocKy: ai-engineer/ch43-seq2seq-attention
+- id: bleu
+  ten: BLEU
+  tenTiengAnh: bilingual evaluation understudy
+  giaiThich: BLEU chấm bản dịch máy bằng trung bình nhân của precision n-gram từ 1 tới 4 so với bản dịch tham chiếu, với số đếm có cắt, nhân thêm phạt bản dịch quá ngắn. Tính trên cả tập văn bản, thang 0 tới 100; trên từng câu ngắn rất nhiễu, và chỉ so được các hệ thống trên cùng tập test.
+  hocKy: ai-engineer/ch43-seq2seq-attention
+- id: attention
+  ten: Attention
+  tenTiengAnh: attention
+  giaiThich: Attention cho mô hình, ở mỗi bước, tính một trung bình có trọng số của các vector đầu vào, với trọng số là softmax của điểm hợp giữa bước hiện tại và từng vị trí. Ban đầu dùng để bộ giải mã nhìn lại câu nguồn khi dịch, sửa nút thắt của một vector duy nhất; là thành phần cốt lõi của Transformer.
+  hocKy: ai-engineer/ch43-seq2seq-attention

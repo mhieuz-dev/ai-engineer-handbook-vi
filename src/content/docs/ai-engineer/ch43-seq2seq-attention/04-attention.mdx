@@ -1,0 +1,139 @@
+---
+title: Attention
+description: "Một vector duy nhất phải chứa cả câu nguồn: nút thắt. Attention cho bộ giải mã nhìn lại mọi từ nguồn ở mỗi bước. Cùng dữ liệu, cùng ngân sách: BLEU val từ 8,89 lên 12,81, test từ 8,14 lên 11,6. Ma trận attention cho thấy mô hình dồn 69% trọng số vào dấu chấm cuối câu, nhưng ở nhiều bước vẫn nhìn đúng từ cần dịch."
+---
+
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Nút thắt
+
+Ở trang 2, mọi thứ bộ giải mã biết về câu nguồn nằm trong **một** vector 256 số: trạng thái cuối của bộ mã hóa. Câu càng dài, vector đó càng phải nén nhiều; và các từ đầu câu đã đi qua nhiều bước GRU trước khi tới đó, dễ bị "quên". Người dịch không làm vậy: họ đọc cả câu, rồi khi viết từng từ của bản dịch, họ **nhìn lại** đúng chỗ tương ứng trong câu gốc.
+
+<Term id="attention">Attention</Term> (Bahdanau, Cho và Bengio, 2015) cho bộ giải mã làm đúng điều đó. Ở mỗi bước $t$, với trạng thái hiện tại $\mathbf h_t$ của bộ giải mã và trạng thái $\mathbf e_j$ của bộ mã hóa ở từng từ nguồn $j$:
+
+1. **Điểm hợp**: $s_{tj} = \mathbf e_j \cdot \mathbf h_t$, mỗi từ nguồn hợp với bước hiện tại tới đâu. Ở đây dùng tích vô hướng, dạng đơn giản của Luong, Pham và Manning (2015); Bahdanau dùng một mạng nhỏ.
+2. **Trọng số**: $\alpha_{tj} = \operatorname{softmax}_j(s_{tj})$, các số dương cộng lại bằng 1. Những ô đệm của câu nguồn được gán điểm $-10^9$ trước softmax để trọng số của chúng bằng 0.
+3. **Vector ngữ cảnh**: $\mathbf c_t = \sum_j \alpha_{tj}\, \mathbf e_j$, trung bình có trọng số của câu nguồn, **riêng** cho bước $t$.
+
+Vector ngữ cảnh được ghép vào đầu vào của GRU và vào lớp ra. Đó đúng là nhánh `chu_y=True` của `GiaiMa.buoc` ở trang 2: `diem`, `a`, `ngu_canh`. Không thêm một thành phần nào ngoài đó, và trọng số attention được học hoàn toàn từ loss dịch, không có nhãn gióng hàng nào.
+
+## Huấn luyện với attention
+
+Cùng hàm `huan_luyen`, cùng 8 epoch, cùng seed:
+
+```python
+t0 = time.time()
+mh_cy, gm_cy = huan_luyen(chu_y=True)
+print(time.time() - t0 < 900)
+for e, v in C_va[:3]:
+    print(" ".join(e), "|", " ".join(v), "|", " ".join(dich(mh_cy, gm_cy, [(e, v)])[0]))
+```
+
+```text title="Output"
+1 4.092 6.9
+2 3.052 10.29
+3 2.583 11.23
+4 2.243 12.51
+5 1.965 12.75
+6 1.733 12.81
+7 1.53 12.76
+8 1.353 12.32
+True
+if they get it for free , they use it . | nếu họ nhận được nó miễn phí , họ sẽ dùng . | họ lấy nó lên lên .
+why can 't we ? why can 't humans regenerate ? | vậy tại sao con người không thể ? | tại sao không thể không ?
+all these red parts are favelas . | những vùng màu đỏ là khu ổ chuột . | tất cả đều là những con ruồi .
+```
+
+Khoảng 5 phút, chậm hơn vì mỗi bước giải mã phải tính attention trên cả câu nguồn. BLEU val vượt mô hình không attention **ngay từ epoch 2** (10,29 so với 5,44), đạt đỉnh **12,81** ở epoch 6, rồi giảm dần trong khi loss train vẫn giảm: mô hình bắt đầu học thuộc, và hàm `huan_luyen` giữ bản ở epoch 6. Cùng dữ liệu, cùng số tham số gần như cũ, cùng 8 epoch: chỉ thêm attention mà BLEU tăng gần 4 điểm, hơn 40%.
+
+Nhưng ba bản dịch mẫu cho thấy giới hạn rõ: "họ lấy nó lên lên .", "tất cả đều là những con ruồi ." còn xa bản dịch đúng. BLEU 12,8 nghĩa là mô hình đã bắt được nhiều mảnh đúng hơn, chưa phải là dịch được.
+
+## Nhìn vào attention
+
+Với một câu, ghi lại vector trọng số $\alpha_t$ ở mỗi bước giải mã. Xếp chồng thành một ma trận: hàng là từ đích, cột là từ nguồn.
+
+```python
+def dich_kem_attention(mh, gm, e, toi_da=20):
+    mh.eval()
+    gm.eval()
+    with torch.no_grad():
+        X = torch.tensor([ma(e, id_e)])
+        enc, h = mh(X)
+        y, tu, A = torch.tensor([[2]]), [], []
+        for _ in range(toi_da):
+            o, h, a = gm.buoc(y, h, enc, X != 0)
+            y = o.argmax(1, keepdim=True)
+            if y.item() == 3:
+                break
+            tu.append(tu_v[y.item()])
+            A.append(a[0].numpy())
+    return tu, np.array(A)
+
+cau_nguon = "i was very proud .".split()
+tu_dich, A = dich_kem_attention(mh_cy, gm_cy, cau_nguon)
+print(tu_dich)
+print(A.round(2))
+```
+
+```text title="Output"
+['tôi', 'tự', 'hào', 'hứng', ',', 'vì', 'vậy', '.']
+[[0.   0.   0.   0.   1.  ]
+ [0.   0.   0.   0.05 0.95]
+ [0.   0.   0.   0.63 0.37]
+ [0.   0.   0.   0.22 0.78]
+ [0.   0.   0.   0.   1.  ]
+ [0.   0.   0.01 0.   0.99]
+ [0.   0.   0.   0.   1.  ]
+ [0.   0.   0.   0.   1.  ]]
+```
+
+Bản dịch "tôi tự hào hứng , vì vậy ." chỉ đúng phần "tôi tự hào". Ma trận attention cho thấy một điều không như sách vở: phần lớn trọng số dồn vào **cột cuối**, dấu chấm. Bước sinh "tự" và "hào" mới nhìn sang "proud" (0,63 và 0,22). Đếm trên 300 câu val đầu, trung bình **69%** trọng số rơi vào token cuối của câu nguồn.
+
+Lý do: bộ mã hóa ở đây là GRU **một chiều**, nên trạng thái ở dấu chấm cuối là trạng thái duy nhất đã đọc hết câu; nó vừa là bản tóm tắt tốt nhất, vừa là chỗ an toàn để nhìn. Mô hình dùng nó làm nền, rồi ở một số bước liếc sang đúng từ cần dịch. Các hệ thống dịch thật dùng bộ mã hóa **hai chiều** (Chương 41), để trạng thái ở mỗi vị trí đã biết cả hai phía của câu, và attention của chúng thường gọn hơn nhiều. Đây vẫn là một mô hình nhỏ, học vài phút.
+
+<HinhKetQua src="/hinh/ch43/h1_attention.svg" alt="Hai ma trận attention dạng bản đồ nhiệt, hàng là từ tiếng Việt mô hình sinh ra, cột là từ tiếng Anh của câu nguồn. Trái: câu 'if they get it for free , they use it .' dịch thành 'họ lấy nó lên lên .'; hàng 'họ' và các hàng cuối dồn vào cột dấu chấm; hàng 'lấy' và 'nó' đậm ở cột 'it', hàng 'lấy' nhạt ở 'get'. Phải: câu 'why can 't we ? why can 't humans regenerate ?' dịch thành 'tại sao không thể không ?'; hàng 'tại' dồn vào dấu hỏi cuối, hàng 'sao' dồn vào dấu hỏi thứ nhất, các hàng 'không', 'thể', 'không' rải trên 'humans', 'regenerate' và 'can'." so="43.1" chuThich="Trọng số attention của mô hình có attention khi dịch hai câu val đầu tiên (không chọn lọc). Hàng là từ đích theo thứ tự sinh, cột là từ nguồn; mỗi hàng cộng lại bằng 1.">
+**Đọc hình.** Mỗi hàng là một bước giải mã; ô đậm nhất của hàng là từ nguồn mà mô hình "nhìn" nhiều nhất khi sinh từ đích đó.
+
+**Điều cần thấy.** Hai câu là hai câu val đầu tiên, không chọn lọc, và đều dịch sai nghĩa. Từ đầu tiên của bản dịch luôn nhìn vào dấu câu cuối, trạng thái đã đọc hết câu. Nhưng ở giữa câu, mô hình có những lần nhìn đúng chỗ: sinh "nó" thì nhìn "it", sinh "lấy" thì nhìn "get" và "it"; ở câu thứ hai, các từ "không", "thể" nhìn vào "can", "humans", "regenerate", đúng phần câu nói về việc con người không thể làm gì. Không ai dạy mô hình gióng hàng; nó tự học nhìn vào đó chỉ vì làm vậy giúp giảm loss dịch. Còn dịch đúng cả câu thì cần nhiều dữ liệu và một mô hình lớn hơn nhiều.
+</HinhKetQua>
+
+## Chọn và đo test một lần
+
+Hai ứng viên trên val: không attention (BLEU tốt nhất 8,9) và có attention. Chọn mô hình có BLEU val cao hơn, đo test **một lần** trên 259 câu ngắn của tst2013; in cả mô hình kia để tham khảo.
+
+```python
+ung_vien = {"không attention": (mh_tron, gm_tron), "attention": (mh_cy, gm_cy)}
+diem_val = {k: bleu([v for _, v in C_va], dich(*m, C_va)) for k, m in ung_vien.items()}
+chon = max(diem_val, key=diem_val.get)
+print(diem_val, "chọn:", chon)
+for k, m in ung_vien.items():
+    print(k, bleu([v for _, v in C_te], dich(*m, C_te)))
+```
+
+```text title="Output"
+{'không attention': 8.89, 'attention': 12.81} chọn: attention
+không attention 8.14
+attention 11.6
+```
+
+Chọn mô hình có attention (BLEU val 12,81 so với 8,89). Trên 259 câu test: **11,6**, so với 8,14 của mô hình không attention. Cả hai thấp hơn val khoảng 1 điểm; tập test nhỏ nên con số dao động, nhưng khoảng cách 3,5 điểm giữa hai mô hình giữ đúng chiều trên cả val lẫn test.
+
+<TuKiemTra
+	cauHoi="Với câu nguồn 10 từ và câu đích 12 từ, ma trận attention có kích thước bao nhiêu, và tổng mỗi hàng bằng bao nhiêu?"
+	luaChon={['10 x 12, tổng mỗi hàng bằng 1', '12 x 10, tổng mỗi hàng bằng 1', '12 x 10, tổng mỗi cột bằng 1', '10 x 10, tổng bằng 10']}
+	dapAn={1}
+	giaiThich="Mỗi bước giải mã (12 bước, 12 hàng) có một phân phối softmax trên 10 từ nguồn (10 cột), nên mỗi hàng cộng lại bằng 1. Cột không có ràng buộc: một từ nguồn có thể được nhìn nhiều lần (khi một từ dịch thành nhiều từ) hoặc không được nhìn lần nào (khi mô hình bỏ sót nó)."
+/>
+
+<Khung loai="vi-sao" tieuDe="ATTENTION QUAN TRỌNG TỚI VẬY">
+Attention ở đây chỉ là một cách sửa nút thắt của RNN. Hai năm sau, Vaswani và cộng sự (2017) hỏi một câu táo bạo: nếu attention tốt như vậy, có cần RNN nữa không? Câu trả lời là bài báo "Attention Is All You Need": bỏ hẳn GRU, LSTM, để mọi từ attention tới mọi từ khác, kể cả trong cùng một câu (self-attention). Đó là Transformer, Chương 44, và là kiến trúc của mọi mô hình ngôn ngữ lớn hiện nay.
+</Khung>
+
+<Khung loai="loi">
+**Quên che phần đệm trước softmax.** Không có `masked_fill`, các ô `<pad>` của câu nguồn ngắn nhận một phần trọng số, và vector ngữ cảnh lẫn thông tin vô nghĩa. Lỗi này không làm code báo lỗi, chỉ làm bản dịch kém đi một cách khó hiểu.
+
+**Đọc attention như lời giải thích chắc chắn.** Trọng số attention cho biết mô hình **trộn** thông tin từ đâu, thường khớp với gióng hàng mà người dịch sẽ vẽ, nhưng không phải lúc nào cũng vậy. Các nghiên cứu (Jain và Wallace, 2019) cho thấy có thể đổi trọng số attention khá nhiều mà dự đoán không đổi. Dùng nó để gợi ý, không để chứng minh.
+</Khung>

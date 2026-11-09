@@ -1,0 +1,131 @@
+---
+title: Bài tập
+description: "Ba bài tập có đáp án chi tiết (BLEU-4 của một câu sáu từ bằng 0 dù BLEU-2 là 70,7; attention giúp cả câu ngắn lẫn câu dài khoảng 4 điểm, nút thắt chưa lộ rõ ở câu dưới 12 từ; giải mã chùm k bằng 3 thêm 0,76 điểm BLEU) và câu hỏi phỏng vấn."
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Đoán trước, rồi chạy code trong notebook để kiểm tra. Code dùng lại `bleu`, `dich`, `C_va`, `mh_tron`, `gm_tron`, `mh_cy`, `gm_cy`, `ma`, `id_e`, `tu_v` và các import của các trang trước.
+
+<BaiTap so="43.1">
+**BLEU bằng tay.** Tham chiếu "con mèo ngồi trên tấm thảm" (6 từ), bản dịch máy "con mèo mèo ngồi trên thảm" (6 từ). Tính tay số unigram trùng sau khi cắt, precision của unigram và bigram, phạt ngắn, rồi kiểm $p_1$, $p_2$ bằng code. Vì sao BLEU-4 của câu này bằng 0?
+
+<Fragment slot="dap-an">
+
+```python
+R = "con mèo ngồi trên tấm thảm".split()
+H = "con mèo mèo ngồi trên thảm".split()
+for n in (1, 2, 3, 4):
+    h_ng = Counter(tuple(H[i:i + n]) for i in range(len(H) - n + 1))
+    r_ng = Counter(tuple(R[i:i + n]) for i in range(len(R) - n + 1))
+    print(n, sum(min(so, r_ng[g]) for g, so in h_ng.items()), len(H) - n + 1)
+print(bleu([R], [H]), bleu([R], [H], N=2))
+```
+
+```text title="Output"
+1 5 6
+2 3 5
+3 1 4
+4 0 3
+0.0 70.71
+```
+
+Unigram: bản dịch có 6 từ; "mèo" xuất hiện 2 lần nhưng tham chiếu chỉ có 1, nên chỉ tính 1; "tấm" thiếu, "thảm" có. Trùng sau khi cắt: 5 trên 6, $p_1 = 5/6$. Bigram: "con mèo", "mèo ngồi", "ngồi trên" trùng; "mèo mèo", "trên thảm" không có (tham chiếu là "trên tấm"): $p_2 = 3/5$. Trigram: chỉ "mèo ngồi trên", $p_3 = 1/4$. 4-gram: không cụm nào trùng, $p_4 = 0/3$. Hai câu cùng dài 6 nên phạt ngắn bằng 1.
+
+Vì $p_4 = 0$, trung bình nhân bằng 0 và BLEU-4 bằng **0**. Chỉ tính tới bigram, $\sqrt{5/6 \times 3/5} = \sqrt{0{,}5} = 0{,}7071$: BLEU-2 bằng **70,71**. Một bản dịch khá được 0 điểm chỉ vì câu ngắn và thiếu đúng một cụm 4 từ. Các công cụ như sacreBLEU có tùy chọn làm trơn để BLEU từng câu bớt vô nghĩa, nhưng cách đúng vẫn là tính trên cả tập.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="43.2">
+**Câu dài có khổ hơn không.** Chia 2000 câu val theo độ dài câu nguồn: 3 tới 6 từ, và 7 tới 12 từ. Tính BLEU của hai mô hình trên từng nhóm. Nút thắt của trang 4 có hiện ra không?
+
+<Fragment slot="dap-an">
+
+```python
+for ten, (lo_ngan, lo_dai) in (("ngắn (3-6)", (3, 6)), ("dài (7-12)", (7, 12))):
+    nhom = [(e, v) for e, v in C_va if lo_ngan <= len(e) <= lo_dai]
+    ref = [v for _, v in nhom]
+    print(ten, len(nhom), bleu(ref, dich(mh_tron, gm_tron, nhom)), bleu(ref, dich(mh_cy, gm_cy, nhom)))
+```
+
+```text title="Output"
+ngắn (3-6) 632 9.63 14.1
+dài (7-12) 1368 7.79 11.67
+```
+
+Câu ngắn (632 câu): 9,63 không attention, **14,10** có attention. Câu dài (1368 câu): 7,79 và **11,67**. Cả hai mô hình đều kém hơn ở câu dài, như dự đoán. Nhưng attention giúp **gần như bằng nhau** ở hai nhóm: +4,5 điểm ở câu ngắn, +3,9 điểm ở câu dài, tức khoảng +46% và +50% tương đối.
+
+Vậy nút thắt chưa lộ rõ trong phạm vi này: câu dài nhất chỉ 12 từ, vẫn vừa sức một vector 256 số. Bahdanau và cộng sự cho thấy khoảng cách bùng ra ở câu trên 30 từ, nơi mô hình không attention sụp hẳn. Thí nghiệm ở đây trung thực về điều nó đo được: với câu ngắn, attention giúp đều tay, không phải chủ yếu ở câu dài. Muốn thấy nút thắt, phải huấn luyện trên câu dài hơn, cần nhiều thời gian CPU hơn.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="43.3">
+**Giải mã chùm.** Giải mã tham lam chọn từ tốt nhất ở từng bước, nhưng câu tốt nhất chưa chắc gồm toàn từ tốt nhất từng bước. **Giải mã chùm** (beam search) giữ $k$ câu dở dang có tổng log xác suất cao nhất ở mỗi bước. Cài với $k = 3$ cho mô hình có attention, so BLEU với tham lam trên 500 câu val đầu.
+
+<Fragment slot="dap-an">
+
+```python
+def chum(mh, gm, e, k=3, toi_da=20):
+    with torch.no_grad():
+        X = torch.tensor([ma(e, id_e)])
+        enc, h0 = mh(X)
+        mask = X != 0
+        chum_hien = [(0.0, [2], h0)]                 # (tổng log xác suất, các token, trạng thái)
+        xong = []
+        for _ in range(toi_da):
+            ung = []
+            for diem, toks, h in chum_hien:
+                o, h2, _ = gm.buoc(torch.tensor([[toks[-1]]]), h, enc, mask)
+                lp = o.log_softmax(1)[0]
+                gia_tri, chi_so = lp.topk(k)
+                for g, i in zip(gia_tri.tolist(), chi_so.tolist()):
+                    ung.append((diem + g, toks + [i], h2))
+            ung.sort(key=lambda x: -x[0])
+            chum_hien = []
+            for u in ung[:k]:
+                (xong if u[1][-1] == 3 else chum_hien).append(u)
+            if not chum_hien:
+                break
+        tot = max(xong + chum_hien, key=lambda x: x[0] / len(x[1]))   # chia độ dài: không thiên vị câu ngắn
+        return [tu_v[i] for i in tot[1][1:] if i != 3]
+
+mh_cy.eval()
+gm_cy.eval()
+mau = C_va[:500]
+ref = [v for _, v in mau]
+t0 = time.time()
+print(bleu(ref, dich(mh_cy, gm_cy, mau)), bleu(ref, [chum(mh_cy, gm_cy, e) for e, _ in mau]), time.time() - t0 < 300)
+```
+
+```text title="Output"
+13.33 14.09 True
+```
+
+Trên 500 câu val đầu: tham lam **13,33**, giải mã chùm $k = 3$ được **14,09**, thêm 0,76 điểm, đổi lại mỗi câu phải chạy bộ giải mã cho 3 nhánh và không còn xử lý theo lô.
+
+Giải mã chùm sửa được những lỗi kiểu "đi sai một bước rồi không quay lại được": một từ hơi kém hơn ở bước đầu có thể dẫn tới cả câu tốt hơn. Phép chia cho độ dài khi chọn câu cuối là cần thiết: tổng log xác suất luôn âm, nên không chia thì câu càng ngắn càng được ưa, và mô hình sẽ thích dừng sớm. Mô hình ngôn ngữ lớn thường không dùng giải mã chùm cho hội thoại mà lấy mẫu có nhiệt độ (Chương 48), vì chùm cho văn bản an toàn nhưng lặp và nhạt; với dịch máy, nơi chỉ có một vài đáp án đúng, chùm vẫn là lựa chọn chuẩn.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Attention giải quyết vấn đề gì của mô hình encoder-decoder?**
+
+<p lang="en"><em>What problem does attention solve in encoder-decoder models?</em></p>
+
+*Gợi ý:* nút thắt của một vector có độ dài cố định phải chứa cả câu nguồn; câu dài và từ ở đầu câu bị mất thông tin. Attention cho bộ giải mã một vector ngữ cảnh riêng ở mỗi bước, là trung bình có trọng số của mọi trạng thái bộ mã hóa, với trọng số học được.
+
+**2. Teacher forcing là gì, và exposure bias là gì?**
+
+<p lang="en"><em>What is teacher forcing, and what is exposure bias?</em></p>
+
+*Gợi ý:* lúc huấn luyện, đưa từ đúng của bước trước vào bộ giải mã thay vì từ nó tự sinh; học nhanh và ổn định. Exposure bias là khoảng cách với lúc dùng, khi mô hình phải ăn từ của chính nó, kể cả từ sai, và gặp ngữ cảnh chưa thấy khi học. Giảm bằng scheduled sampling, beam search, hoặc huấn luyện ở mức chuỗi.
+
+**3. BLEU có hạn chế gì?**
+
+<p lang="en"><em>What are the limitations of BLEU?</em></p>
+
+*Gợi ý:* chỉ so trùng n-gram bề mặt với một hay vài bản tham chiếu, nên phạt bản dịch đúng nhưng diễn đạt khác; không đo trôi chảy hay đúng nghĩa trực tiếp; nhạy với tách token và chữ thường; trên từng câu rất nhiễu. Dùng để so hệ thống trên cùng tập; bổ sung bằng chrF, COMET, và đánh giá của người.
+</Khung>
