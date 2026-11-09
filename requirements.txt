@@ -12,3 +12,4 @@ gymnasium==1.4.0
 # Phần IV: tiếng Việt và đọc dữ liệu parquet từ Hugging Face
 underthesea==9.5.0
 pyarrow==26.0.1
+python-crfsuite==0.9.12
