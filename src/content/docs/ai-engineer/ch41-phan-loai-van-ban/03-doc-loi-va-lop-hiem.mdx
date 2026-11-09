@@ -1,0 +1,115 @@
+---
+title: Đọc lỗi và lớp hiếm
+description: "Ma trận nhầm lẫn của SVM: hai lớp lớn có F1 trên 0,93, còn lớp trung tính chỉ bắt được một phần nhỏ. Đặt trọng số lớp cân bằng đổi một chút độ chính xác lấy recall của lớp hiếm. Đọc trọng số của mô hình để biết nó dựa vào từ nào, và đọc những câu nó sai để biết lỗi nằm ở mô hình hay ở nhãn."
+---
+
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Từng lớp một
+
+Macro-F1 0,778 là trung bình của ba con số. Xem từng con số:
+
+```python
+TEN = ["tiêu cực", "trung tính", "tích cực"]
+print(classification_report(y_va, p_svm, target_names=TEN, digits=3))
+print(confusion_matrix(y_va, p_svm))
+```
+
+```text title="Output"
+precision    recall  f1-score   support
+
+    tiêu cực      0.912     0.946     0.929       705
+  trung tính      0.800     0.329     0.466        73
+    tích cực      0.929     0.949     0.939       805
+
+    accuracy                          0.919      1583
+   macro avg      0.881     0.741     0.778      1583
+weighted avg      0.916     0.919     0.913      1583
+
+[[667   2  36]
+ [ 27  24  22]
+ [ 37   4 764]]
+```
+
+Hai lớp lớn rất tốt: F1 0,929 (tiêu cực) và 0,939 (tích cực). Lớp trung tính thì khác hẳn: **recall chỉ 0,329**, tức mô hình bắt được 24 trên 73 câu trung tính; 27 câu bị đoán thành tiêu cực, 22 câu thành tích cực. Precision của nó lại cao (0,80): khi mô hình dám nói "trung tính" thì thường đúng, chỉ là nó hiếm khi dám. Độ chính xác 91,9% che hoàn toàn chuyện đó; macro-F1 0,778 bị kéo xuống chính vì F1 trung tính chỉ 0,466.
+
+## Trọng số lớp
+
+Một cách quen thuộc với lớp hiếm (Chương 12): phạt lỗi trên lớp hiếm **nặng hơn** khi huấn luyện. `class_weight="balanced"` nhân loss của mỗi lớp với nghịch đảo tần suất của nó, nên một câu trung tính bị đoán sai tốn gấp khoảng 12 lần một câu tích cực bị đoán sai (5643 chia 458).
+
+```python
+svm_cb = LinearSVC(class_weight="balanced").fit(A_tr, y_tr)
+p_cb = svm_cb.predict(A_va)
+print(cham(p_cb))
+print(confusion_matrix(y_va, p_cb))
+```
+
+```text title="Output"
+(0.9185, 0.8013)
+[[663   8  34]
+ [ 22  34  17]
+ [ 36  12 757]]
+```
+
+Độ chính xác gần như không đổi (91,85% so với 91,91%), macro-F1 tăng từ 0,778 lên **0,801**. Ở hàng trung tính, số câu đúng tăng từ 24 lên 34. Cái giá nằm ở cột trung tính: mô hình giờ nói "trung tính" 54 lần thay vì 30, nên có thêm những câu tiêu cực và tích cực bị kéo về trung tính (8 và 12 câu thay vì 2 và 4).
+
+<HinhKetQua src="/hinh/ch41/h1_nham_lan.svg" alt="Hai ma trận nhầm lẫn 3 nhân 3 cạnh nhau, hàng là nhãn thật, cột là nhãn đoán, theo thứ tự tiêu cực, trung tính, tích cực. Trái là SVM thường, phải là SVM với trọng số lớp cân bằng. Ô đường chéo của hai lớp lớn đậm ở cả hai hình. Ở hàng trung tính, hình trái dồn phần lớn vào hai cột tiêu cực và tích cực, hình phải dồn nhiều hơn vào ô trung tính." so="41.1" chuThich="Ma trận nhầm lẫn trên tập val (1583 câu) của SVM tuyến tính trên unigram và bigram âm tiết, không và có trọng số lớp cân bằng.">
+**Đọc hình.** Hàng là nhãn thật, cột là nhãn mô hình đoán; số trong ô là số câu, đường chéo là đoán đúng. Màu tô theo **tỷ lệ trong mỗi hàng** chứ không theo số câu, để hàng trung tính chỉ 73 câu vẫn đọc được.
+
+**Điều cần thấy.** Hai lớp lớn gần như không đổi giữa hai hình. Toàn bộ khác biệt nằm ở hàng và cột trung tính: trọng số cân bằng kéo thêm 10 câu trung tính về đúng ô, đổi lại có thêm 14 câu của hai lớp kia bị gọi là trung tính. Lớp hiếm vẫn là chỗ yếu nhất: hơn một nửa câu trung tính vẫn bị đoán sai.
+</HinhKetQua>
+
+## Mô hình dựa vào đâu
+
+Mô hình tuyến tính có một lợi thế lớn: **đọc được**. Mỗi đặc trưng có một trọng số cho mỗi lớp; trọng số lớn nhất cho lớp tiêu cực và tích cực là những n-gram mô hình tin nhất:
+
+```python
+ten_dt = tv_am.get_feature_names_out()
+for lop in (0, 2):
+    print(TEN[lop], list(ten_dt[np.argsort(svm.coef_[lop])[::-1][:10]]))
+```
+
+```text title="Output"
+tiêu cực ['chưa', 'không', 'nên', 'cần', 'khó', 'ít', 'thiếu', 'hơi', 'quá', 'hơn']
+tích cực ['tốt', 'rất', 'vui', 'giúp', 'nhiệt', 'dễ', 'không nhàm', 'hay .', 'luôn', 'tình']
+```
+
+Phía tiêu cực toàn những âm tiết của lời phàn nàn và góp ý: "chưa", "không", "nên", "cần", "khó", "thiếu", "quá". Phía tích cực có "tốt", "rất", "vui", "dễ", "nhiệt" và "tình" (hai nửa của "nhiệt tình"). Đáng chú ý nhất là bigram "**không nhàm**" nằm trong mười đặc trưng tích cực mạnh nhất, trong khi "không" một mình là đặc trưng tiêu cực mạnh thứ hai: bigram cho mô hình tuyến tính một cách để xử lý phủ định, điều mà trung bình vector từ ở Chương 40 không làm được. "hay ." (chữ "hay" đứng cuối câu) cũng là một đặc trưng mạnh, một lý do để giữ dấu câu.
+
+## Những câu sai
+
+Nhìn tận mắt những câu mô hình sai, như Chương 32 nhìn những ảnh sai:
+
+```python
+sai = np.where(p_svm != y_va)[0]
+for i in sai[:8]:
+    print(TEN[y_va[i]], "->", TEN[p_svm[i]], "|", va.sentence[i])
+```
+
+```text title="Output"
+trung tính -> tiêu cực | em không có bất cứ một lời phê bình nào .
+tiêu cực -> tích cực | đôi khi giảng dạy quá nhiệt tình mà quên mất cả thời gian ( hết giờ học giảng viên vẫn dạy thêm 10 - 15 phút ) .
+trung tính -> tiêu cực | thầy cho tự tìm hiểu , và tự tìm hiểu khác với hiểu được vấn đề .
+tiêu cực -> tích cực | không đi đúng giờ .
+tiêu cực -> tích cực | cô rất nghiêm .
+tích cực -> tiêu cực | ngoài ra cung cấp một vài thông tin bổ sung về việc học công nghệ thông tin hiệu quả hơn .
+tích cực -> tiêu cực | thúc đẩy sinh viên tự học đạt điểm cao trong các kỳ thi .
+tiêu cực -> tích cực | giảng viên nói tiếng anh không hay .
+```
+
+Đọc tám câu sai, chúng rơi vào ba kiểu. **Phủ định mà n-gram không bắt được**: "giảng viên nói tiếng anh không hay" có nhãn tiêu cực, nhưng "hay" kéo về tích cực mạnh hơn "không". **Câu lẫn khen chê**: "đôi khi giảng dạy quá nhiệt tình mà quên mất cả thời gian" là lời chê viết bằng từ khen. **Nhãn đáng ngờ**: "em không có bất cứ một lời phê bình nào" được gán trung tính, mô hình đoán tiêu cực vì "không"; người đọc có lẽ thấy đây gần với lời khen. "Cô rất nghiêm" có nhãn tiêu cực, một đánh giá mà người khác có thể gán khác. Như Chương 32, ở mức độ chính xác này, một phần lỗi là giới hạn của chính nhãn.
+
+<TuKiemTra
+	cauHoi="Đặt class_weight='balanced' làm độ chính xác giảm nhẹ nhưng macro-F1 tăng. Khi nào nên dùng nó?"
+	luaChon={['Luôn luôn, vì macro-F1 quan trọng hơn', 'Khi bỏ sót lớp hiếm đắt hơn báo nhầm thành lớp hiếm, theo đúng bài toán thật', 'Không bao giờ, vì độ chính xác giảm', 'Chỉ khi có ít hơn 3 lớp']}
+	dapAn={1}
+	giaiThich="Trọng số lớp dời ranh giới quyết định về phía lớp hiếm: bắt được nhiều câu trung tính hơn, đổi lại nhầm thêm vài câu khác thành trung tính. Đúng hay sai tùy chi phí thật của từng loại lỗi: nếu câu trung tính cần được người đọc riêng, bỏ sót nó tốn hơn; nếu không ai quan tâm lớp đó, không cần. Đây là quyết định của bài toán, không phải của thuật toán."
+/>
+
+<Khung loai="loi">
+**Chỉ nhìn ma trận nhầm lẫn của tập test.** Mọi phân tích lỗi để cải tiến mô hình làm trên val. Đọc lỗi trên test rồi sửa mô hình là biến test thành val thứ hai (Chương 32).
+
+**Tin trọng số của mô hình như sự thật về ngôn ngữ.** Trọng số cho biết mô hình **dùng** gì để đoán trên dữ liệu này, kể cả những thứ trùng hợp (một tên giảng viên ẩn danh xuất hiện nhiều trong lời chê chẳng hạn). Đó là chỗ để soi ra mô hình học lối tắt, không phải bằng chứng ngôn ngữ học.
+</Khung>

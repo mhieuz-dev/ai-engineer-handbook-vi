@@ -833,3 +833,8 @@
   tenTiengAnh: fastText
   giaiThich: fastText biểu diễn mỗi từ bằng tổng vector của các mảnh ký tự của nó, nên có vector cho cả từ chưa gặp, từ gõ sai và teencode. Có sẵn bộ vector học trên kho văn bản lớn cho 157 ngôn ngữ, trong đó có tiếng Việt.
   hocKy: ai-engineer/ch40-word-embeddings
+- id: phan-loai-van-ban
+  ten: Phân loại văn bản
+  tenTiengAnh: text classification
+  giaiThich: Phân loại văn bản là gán cho mỗi văn bản một nhãn trong một tập cố định, như cảm xúc, chủ đề, thư rác hay ý định người dùng. Baseline mạnh là TF-IDF trên n-gram với hồi quy logistic hoặc SVM tuyến tính; khi lớp mất cân bằng, đánh giá bằng F1 từng lớp hoặc macro-F1 chứ không chỉ độ chính xác.
+  hocKy: ai-engineer/ch41-phan-loai-van-ban

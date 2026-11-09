@@ -1,0 +1,122 @@
+---
+title: Bài tập
+description: "Ba bài tập có đáp án chi tiết (phân loại chủ đề đạt 87,7% nhưng lớp khác chỉ đúng 30 trên 95 câu; bootstrap theo cặp cho thấy SVM bigram hơn hồi quy logistic 1,26 điểm ở 98,6% số lần lấy mẫu lại; BiLSTM đổi seed làm macro-F1 val dao động từ 0,784 tới 0,799) và câu hỏi phỏng vấn."
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Đoán trước, rồi chạy code trong notebook để kiểm tra. Code dùng lại `tr`, `va`, `y_va`, `W_tr`, `W_va`, `p_svm`, `huan_luyen`, `cham` và các import của các trang trước.
+
+<BaiTap so="41.1">
+**Phân loại chủ đề.** Mỗi câu của UIT-VSFC còn có nhãn chủ đề: giảng viên (0), chương trình đào tạo (1), cơ sở vật chất (2), khác (3). Dùng đúng quy trình đã chọn (SVM trên unigram và bigram âm tiết), đo độ chính xác, macro-F1 và ma trận nhầm lẫn trên val.
+
+<Fragment slot="dap-an">
+
+```python
+yc_tr, yc_va = tr.topic.values, va.topic.values
+tvc = TfidfVectorizer(token_pattern=r"\S+", ngram_range=(1, 2))
+pc = LinearSVC().fit(tvc.fit_transform(tr.sentence), yc_tr).predict(tvc.transform(va.sentence))
+print(np.bincount(yc_va), round(accuracy_score(yc_va, pc), 4), round(f1_score(yc_va, pc, average="macro"), 4))
+print(confusion_matrix(yc_va, pc))
+```
+
+```text title="Output"
+[1151  267   70   95] 0.8774 0.756
+[[1089   52    3    7]
+ [  53  207    2    5]
+ [   4    3   63    0]
+ [  44   19    2   30]]
+```
+
+Độ chính xác **87,7%**, macro-F1 0,756. Chủ đề cơ sở vật chất dễ nhất: 63 trên 70 câu đúng, vì từ vựng riêng hẳn ("phòng", "máy chiếu", "wifi"). Khó là giảng viên với chương trình đào tạo (52 và 53 câu nhầm qua lại: một câu như "bài tập nhiều quá" nói về người dạy hay về chương trình?), và đặc biệt lớp **khác**: chỉ 30 trên 95 câu đúng, 44 câu bị đoán là giảng viên. "Khác" là lớp gom những gì không thuộc ba lớp kia, nên không có từ vựng đặc trưng nào; mô hình dựa vào từ ngữ khó bắt được nó. Cùng một quy trình, mỗi nhãn có độ khó riêng.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="41.2">
+**So hai mô hình trên cùng các câu.** Trang 2 nói chênh lệch dưới khoảng 1,4 điểm khó tách khỏi nhiễu khi xét **từng** mô hình. Nhưng hai mô hình được chấm trên **cùng** 1583 câu, nên có thể so chặt hơn. Lấy mẫu lại có hoàn lại (bootstrap) 2000 lần tập val, mỗi lần tính hiệu độ chính xác giữa SVM bigram âm tiết (`p_svm`) và hồi quy logistic unigram từ của trang 1. Hiệu đó dương bao nhiêu phần trăm số lần, khoảng 95% của nó là bao nhiêu?
+
+<Fragment slot="dap-an">
+
+```python
+tv1 = TfidfVectorizer(analyzer=str.split)
+p_lr = LogisticRegression(max_iter=2000).fit(tv1.fit_transform(W_tr), tr.sentiment.values).predict(tv1.transform(W_va))
+dung_svm, dung_lr = (p_svm == y_va), (p_lr == y_va)
+rng = np.random.default_rng(0)
+hieu = []
+for _ in range(2000):
+    idx = rng.integers(len(y_va), size=len(y_va))   # cùng một mẫu câu cho cả hai mô hình
+    hieu.append(dung_svm[idx].mean() - dung_lr[idx].mean())
+hieu = np.array(hieu)
+print(round(dung_svm.mean() - dung_lr.mean(), 4), round((hieu > 0).mean(), 3), np.percentile(hieu, [2.5, 97.5]).round(4))
+print(int((dung_svm & ~dung_lr).sum()), int((~dung_svm & dung_lr).sum()))
+```
+
+```text title="Output"
+0.0126 0.986 [0.0019 0.024 ]
+48 28
+```
+
+SVM đúng hơn hồi quy logistic **1,26 điểm** trên val. Trong 2000 lần lấy mẫu lại, hiệu đó dương ở **98,6%** số lần; khoảng 95% của nó là từ 0,19 tới 2,40 điểm, không chứa 0. Dòng cuối cho thấy vì sao: SVM đúng mà hồi quy logistic sai ở 48 câu, ngược lại chỉ 28 câu; mọi câu còn lại hai mô hình cùng đúng hoặc cùng sai.
+
+Trang 2 nói mỗi con số dao động khoảng 0,7 điểm. Nếu coi hai con số như độc lập, hiệu của chúng dao động khoảng 1 điểm, và 1,26 điểm khó gọi là chắc chắn. Nhưng hai mô hình được chấm trên **cùng** những câu, nên phần lớn nhiễu (câu nào dễ, câu nào khó) triệt tiêu khi lấy hiệu. Chỉ những câu hai mô hình **bất đồng** mới mang thông tin. So theo cặp nhạy hơn nhiều so với so hai khoảng tin cậy riêng rẽ; kiểm định McNemar là phiên bản giải tích của đúng ý tưởng này, chỉ dùng hai con số 48 và 28.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="41.3">
+**BiLSTM đổi theo seed.** Huấn luyện thêm hai lần với seed 1 và 2 (khoảng 75 giây mỗi lần). Macro-F1 tốt nhất trên val dao động bao nhiêu?
+
+<Fragment slot="dap-an">
+
+```python
+for seed in (1, 2):
+    m_s = huan_luyen(seed)
+    print("seed", seed, cham(du_doan(m_s, X_va)))
+```
+
+```text title="Output"
+1 0.909 0.7368
+2 0.9109 0.7743
+3 0.9217 0.7762
+4 0.9109 0.7791
+5 0.9071 0.7589
+6 0.9135 0.789
+7 0.9084 0.7701
+8 0.9172 0.7951
+seed 1 (0.9172, 0.7951)
+1 0.8951 0.6985
+2 0.9103 0.7647
+3 0.9128 0.7839
+4 0.9103 0.7647
+5 0.892 0.745
+6 0.909 0.7609
+7 0.9141 0.7839
+8 0.9116 0.7843
+seed 2 (0.9116, 0.7843)
+```
+
+Macro-F1 tốt nhất trên val: 0,799 (seed 0), 0,795 (seed 1), 0,784 (seed 2); độ chính xác 92,0%, 91,7%, 91,2%. Cùng mô hình, cùng dữ liệu, chỉ đổi seed khởi tạo và thứ tự lô, macro-F1 dao động 0,015, gần bằng toàn bộ khoảng cách giữa BiLSTM và SVM cân bằng (0,801). Nếu chỉ chạy seed 2, ta đã kết luận BiLSTM kém SVM rõ rệt; nếu chỉ chạy seed 0, ta đã nói chúng ngang nhau. Với mô hình có yếu tố ngẫu nhiên, báo cáo trung bình và độ phân tán qua nhiều seed, như Chương 35 và 36.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Dữ liệu mất cân bằng lớp thì đánh giá và huấn luyện thế nào?**
+
+<p lang="en"><em>How do you evaluate and train a classifier on imbalanced classes?</em></p>
+
+*Gợi ý:* đừng chỉ dùng độ chính xác; xem F1 từng lớp, macro-F1, ma trận nhầm lẫn, đường precision-recall. Khi huấn luyện: trọng số lớp, lấy mẫu lại, chỉnh ngưỡng quyết định. Chọn theo chi phí thật của từng loại lỗi, chốt thước đo trước khi thử.
+
+**2. Bạn có 10 nghìn câu có nhãn để phân loại cảm xúc. Bắt đầu bằng mô hình nào?**
+
+<p lang="en"><em>You have 10k labeled sentences for sentiment classification. What model do you start with?</em></p>
+
+*Gợi ý:* TF-IDF trên n-gram với hồi quy logistic hoặc SVM tuyến tính: nhanh, khó đánh bại, đọc được trọng số. Rồi mới thử mô hình được huấn luyện sẵn (tinh chỉnh PhoBERT cho tiếng Việt). Mạng tự huấn luyện từ đầu như LSTM hiếm khi thắng rõ ở cỡ dữ liệu này.
+
+**3. Làm sao biết mô hình mới thật sự tốt hơn mô hình cũ?**
+
+<p lang="en"><em>How do you know a new model is actually better than the old one?</em></p>
+
+*Gợi ý:* so trên cùng tập đánh giá, ước lượng độ bất định (bootstrap theo cặp, kiểm định McNemar), chạy nhiều seed với mô hình ngẫu nhiên, và chỉ đo test sau khi đã chọn. Chênh lệch nhỏ hơn mức nhiễu thì chưa phải cải tiến.
+</Khung>

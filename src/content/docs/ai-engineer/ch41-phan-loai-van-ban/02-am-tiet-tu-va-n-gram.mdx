@@ -1,0 +1,86 @@
+---
+title: Âm tiết, từ và n-gram
+description: "Tách từ có giúp phân loại không? Trên UIT-VSFC thì không: unigram âm tiết bằng hoặc nhỉnh hơn unigram từ, và với bigram thì SVM đạt đúng 91,91% ở cả hai mức, vì bigram âm tiết đã chứa sẵn từ ghép. Nhưng với 1583 câu val, mỗi con số dao động khoảng 0,7 điểm, nên chênh lệch dưới 1,4 điểm khó tách khỏi nhiễu."
+---
+
+import Khung from '../../../../components/Khung.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Câu hỏi của Chương 38
+
+Chương 38 hứa đo xem tách từ giúp phân loại bao nhiêu. Thí nghiệm: giữ nguyên mọi thứ, chỉ đổi **đơn vị** (âm tiết theo dấu cách, hay từ sau underthesea) và **độ dài n-gram** (chỉ unigram, hay unigram cộng bigram), với hai mô hình mạnh nhất của trang 1. Câu của UIT-VSFC đã có dấu cách quanh dấu câu, nên cắt theo khoảng trắng (`token_pattern=r"\S+"`) là đủ cho mức âm tiết.
+
+```python
+def thu(X_tr, X_va, ngram, mo_hinh):
+    tv = TfidfVectorizer(token_pattern=r"\S+", ngram_range=(1, ngram))   # mọi chuỗi không khoảng trắng là một token
+    return cham(mo_hinh.fit(tv.fit_transform(X_tr), y_tr).predict(tv.transform(X_va)))
+
+ket_qua = {}
+for don_vi, (X_tr, X_va) in (("âm tiết", (tr.sentence, va.sentence)), ("từ", (W_tr, W_va))):
+    for ngram in (1, 2):
+        for ten, mh in (("Logistic", LogisticRegression(max_iter=2000)), ("SVM", LinearSVC())):
+            ket_qua[(don_vi, ngram, ten)] = thu(X_tr, X_va, ngram, mh)
+            print(don_vi, ngram, ten, ket_qua[(don_vi, ngram, ten)])
+```
+
+```text title="Output"
+âm tiết 1 Logistic (0.9078, 0.7071)
+âm tiết 1 SVM (0.9141, 0.7695)
+âm tiết 2 Logistic (0.9122, 0.6926)
+âm tiết 2 SVM (0.9191, 0.778)
+từ 1 Logistic (0.9065, 0.7123)
+từ 1 SVM (0.9071, 0.7464)
+từ 2 Logistic (0.9109, 0.6775)
+từ 2 SVM (0.9191, 0.7827)
+```
+
+Đọc theo từng cặp:
+
+- **Âm tiết hay từ, chỉ unigram**: tách từ không giúp. Với hồi quy logistic, âm tiết 90,78% so với từ 90,65%; với SVM, âm tiết còn hơn: 91,41% so với 90,71%, macro-F1 0,770 so với 0,746.
+- **Thêm bigram**: cả hai đơn vị đều nhích lên, và gặp nhau. SVM đạt đúng **91,91%** ở cả hai mức, macro-F1 0,778 (âm tiết) và 0,783 (từ).
+
+Vì sao tách từ không giúp? Bigram âm tiết **đã chứa** từ ghép hai âm tiết: "nhiệt tình" là một bigram, đúng như "nhiệt_tình" là một từ. Mô hình tuyến tính tự học trọng số cho bigram đó, không cần ai gộp sẵn. Và với unigram, các âm tiết của một từ ghép thường cùng chiều cảm xúc ("nhiệt" và "tình" đều đi với lời khen), nên tách ra cũng không mất nhiều. Tách từ quan trọng hơn ở những việc cần đúng **ranh giới** từ: gán nhãn từ loại, nhận diện tên riêng (Chương 42), và các mô hình được huấn luyện sẵn trên văn bản đã tách như PhoBERT (Chương 46).
+
+## Chênh lệch có thật không
+
+Bảng trên có 8 con số trong khoảng 90,4% tới 91,9%. Chênh lệch 0,1 điểm có ý nghĩa gì không? Mỗi câu val là một phép thử đúng hay sai; với $n = 1583$ câu và độ chính xác $p \approx 0{,}91$, độ lệch chuẩn của độ chính xác đo được là $\sqrt{p(1-p)/n}$ (Chương 7):
+
+```python
+p, n = 0.91, len(y_va)
+print(round(np.sqrt(p * (1 - p) / n), 4))
+```
+
+```text title="Output"
+0.0072
+```
+
+Khoảng **0,72 điểm phần trăm**. Một khoảng tin cậy 95% của mỗi con số rộng khoảng $\pm 1{,}4$ điểm. Phần lớn chênh lệch trong bảng nhỏ hơn thế nhiều; chỉ có khoảng cách giữa SVM bigram âm tiết (91,9%) và những cấu hình kém nhất (khoảng 90,5%) là chạm ngưỡng đó. Kết luận trung thực: **thêm bigram có vẻ giúp, tách từ thì không thấy khác biệt** trên bộ dữ liệu này, và cần nhiều dữ liệu đánh giá hơn hoặc nhiều lần chia hơn để nói chắc. Bài tập 41.2 dùng bootstrap để so hai mô hình **trên cùng các câu**, một phép so sánh nhạy hơn.
+
+Ta chọn **SVM trên unigram và bigram âm tiết** để đi tiếp. Nó hòa với bản dùng từ về độ chính xác và kém 0,005 về macro-F1, một chênh lệch nhỏ hơn nhiều so với mức nhiễu vừa tính; khi hai lựa chọn ngang nhau trong mức nhiễu, chọn cái **đơn giản hơn**: không cần tách từ, nhanh hơn và ít thứ có thể hỏng hơn khi đưa vào dùng.
+
+```python
+tv_am = TfidfVectorizer(token_pattern=r"\S+", ngram_range=(1, 2))
+A_tr, A_va = tv_am.fit_transform(tr.sentence), tv_am.transform(va.sentence)
+svm = LinearSVC().fit(A_tr, y_tr)
+p_svm = svm.predict(A_va)
+print(A_tr.shape, cham(p_svm))
+```
+
+```text title="Output"
+(11426, 34113) (0.9191, 0.778)
+```
+
+Unigram cộng bigram cho 34 113 đặc trưng, so với khoảng 2500 âm tiết. Phần lớn là bigram hiếm, nhưng mô hình tuyến tính có điều chuẩn (Chương 13) xử lý được.
+
+<TuKiemTra
+	cauHoi="Hai mô hình đạt 91,0% và 91,6% trên 1583 câu val. Kết luận nào hợp lý nhất?"
+	luaChon={['Mô hình thứ hai chắc chắn tốt hơn', 'Chênh lệch 0,6 điểm nhỏ hơn độ lệch chuẩn khoảng 0,7 điểm của mỗi con số; chưa đủ để nói mô hình nào tốt hơn', 'Hai mô hình giống hệt nhau', 'Cần đo lại trên tập test để chọn']}
+	dapAn={1}
+	giaiThich="Với n = 1583 và độ chính xác quanh 91%, mỗi con số dao động khoảng 0,7 điểm chỉ vì những câu nào tình cờ rơi vào val. Chênh lệch 0,6 điểm nằm trong mức đó. Không dùng test để chọn (test chỉ đo một lần); muốn so chắc hơn thì so hai mô hình trên cùng từng câu (bootstrap, kiểm định McNemar) hoặc dùng kiểm định chéo."
+/>
+
+<Khung loai="loi">
+**Thử nhiều cấu hình rồi báo con số cao nhất trên val như kết quả.** Chọn cái tốt nhất trong 8 cấu hình trên cùng một tập val là chọn mô hình, và con số được chọn thiên lạc quan (Chương 35 đã thấy với checkpoint DQN). Con số để báo cáo là con số trên test, đo một lần sau khi đã chọn.
+
+**Bỏ dấu câu theo thói quen.** Trên bộ này, giữ dấu câu là một lựa chọn có chủ ý; câu kết thúc bằng "!" hay "?" có thể mang sắc thái riêng. Mọi bước tiền xử lý nên được đo, không mặc định.
+</Khung>

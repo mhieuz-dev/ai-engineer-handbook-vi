@@ -1,0 +1,119 @@
+---
+title: Bài toán và baseline
+description: "Phân loại cảm xúc ba lớp trên UIT-VSFC. Lớp trung tính chỉ chiếm 4% nên độ chính xác che mất nó; dùng thêm macro-F1. Đoán lớp đông nhất được 50,9%, Naive Bayes 87,6%, hồi quy logistic trên TF-IDF 90,7%, SVM tuyến tính 90,7% nhưng macro-F1 cao hơn hẳn: 0,746 so với 0,712."
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+<CanBietTruoc>
+Precision, recall, F1, ma trận nhầm lẫn (Chương 12). Hồi quy logistic, Naive Bayes, SVM (Chương 11, 15, 16). Tách từ, BoW, TF-IDF, vector từ trên UIT-VSFC (Chương 38 tới 40). LSTM (Chương 29).
+
+<Fragment slot="sau-chuong">
+Làm trọn một bài phân loại văn bản tiếng Việt: chọn thước đo hợp với lớp hiếm, dựng baseline, so Naive Bayes, hồi quy logistic, SVM, đo xem tách từ và n-gram giúp bao nhiêu, đọc lỗi theo từng lớp, xử lý lớp hiếm, huấn luyện một BiLSTM với chuỗi có độ dài khác nhau, và biết khi nào một chênh lệch là thật hay chỉ là nhiễu.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch41_phan_loai_van_ban.ipynb" />
+
+## Bài toán
+
+<Term id="phan-loai-van-ban">Phân loại văn bản</Term> là gán cho mỗi văn bản một nhãn trong một tập cố định: thư rác hay không, chủ đề bài báo, ý định của câu hỏi trong chatbot. Chương này làm bài **phân loại cảm xúc** trên UIT-VSFC: mỗi câu phản hồi của sinh viên là tiêu cực (0), trung tính (1) hay tích cực (2). Dữ liệu đã chia sẵn: 11 426 câu train, 1583 val, 3166 test. Như Chương 32: mọi lựa chọn dựa trên val, test chỉ mở **một lần** ở cuối (trang 4).
+
+## Chọn thước đo trước
+
+Nhãn trên tập val:
+
+```python
+!pip install underthesea
+```
+
+```python
+import os
+import time
+import urllib.request
+import numpy as np
+import pandas as pd
+from underthesea import word_tokenize
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.svm import LinearSVC
+from sklearn.metrics import accuracy_score, f1_score, confusion_matrix, classification_report
+
+URL = "https://huggingface.co/api/datasets/uitnlp/vietnamese_students_feedback/parquet/default/{}/0.parquet"
+THU_MUC = os.path.expanduser("~/.cache/vsfc")
+
+def tai(phan):                                       # như Chương 38
+    os.makedirs(THU_MUC, exist_ok=True)
+    tep = os.path.join(THU_MUC, phan + ".parquet")
+    if not os.path.exists(tep):
+        urllib.request.urlretrieve(URL.format(phan), tep)
+    return pd.read_parquet(tep)
+
+tr, va, te = tai("train"), tai("validation"), tai("test")
+y_tr, y_va, y_te = tr.sentiment.values, va.sentiment.values, te.sentiment.values
+print(np.bincount(y_tr), np.bincount(y_va), np.round(np.bincount(y_va) / len(y_va), 3))
+```
+
+```text title="Output"
+[5325  458 5643] [705  73 805] [0.445 0.046 0.509]
+```
+
+Lớp trung tính chỉ chiếm **4,6%** val (73 câu). Một mô hình không bao giờ đoán "trung tính" vẫn có thể đạt độ chính xác trên 90%. Nếu bài toán thật cần bắt được những câu trung tính (ví dụ để chuyển cho người đọc), độ chính xác sẽ không cho thấy mô hình bỏ sót chúng.
+
+Vì vậy dùng hai thước đo, chốt trước khi thử mô hình nào (Chương 9): **độ chính xác**, và **macro-F1**, trung bình cộng F1 của ba lớp (Chương 12). Macro-F1 coi ba lớp như nhau bất kể lớp nào đông, nên một lớp hiếm bị bỏ sót kéo nó xuống mạnh.
+
+```python
+def cham(p):
+    return round(accuracy_score(y_va, p), 4), round(f1_score(y_va, p, average="macro"), 4)
+
+print("đoán toàn tích cực", cham(np.full(len(y_va), 2)))
+```
+
+```text title="Output"
+đoán toàn tích cực (0.5085, 0.2247)
+```
+
+Đoán toàn tích cực: 50,9% độ chính xác, macro-F1 chỉ 0,225 (F1 bằng 0 ở hai lớp, khoảng 0,67 ở lớp còn lại).
+
+## Ba mô hình tuyến tính
+
+Tách từ như Chương 39, giữ dấu câu (dấu "!" hay "?" có thể mang cảm xúc). Rồi ba mô hình quen thuộc của Phần II, mỗi mô hình với đặc trưng hợp với nó: Naive Bayes đa thức (Chương 15) trên **số đếm**, vì nó mô hình hóa số lần xuất hiện; hồi quy logistic và SVM tuyến tính (Chương 11, 16) trên **TF-IDF**.
+
+```python
+noi = lambda ds: [" ".join(w.replace(" ", "_") for w in word_tokenize(c)) for c in ds]
+W_tr, W_va, W_te = noi(tr.sentence), noi(va.sentence), noi(te.sentence)   # khoảng 5 giây
+
+cv = CountVectorizer(analyzer=str.split)
+tv = TfidfVectorizer(analyzer=str.split)
+B_tr, B_va = cv.fit_transform(W_tr), cv.transform(W_va)
+T_tr, T_va = tv.fit_transform(W_tr), tv.transform(W_va)
+print("Naive Bayes ", cham(MultinomialNB().fit(B_tr, y_tr).predict(B_va)))
+print("Logistic    ", cham(LogisticRegression(max_iter=2000).fit(T_tr, y_tr).predict(T_va)))
+print("SVM tuyến tính", cham(LinearSVC().fit(T_tr, y_tr).predict(T_va)))
+```
+
+```text title="Output"
+Naive Bayes  (0.8756, 0.6296)
+Logistic     (0.9065, 0.7123)
+SVM tuyến tính (0.9071, 0.7464)
+```
+
+Mọi mô hình đều vượt xa baseline. Naive Bayes: 87,6%. Hồi quy logistic và SVM gần như bằng nhau về độ chính xác (90,65% và 90,71%), nhưng macro-F1 của SVM cao hơn rõ: 0,746 so với 0,712. Chênh lệch đó gần như toàn bộ đến từ lớp trung tính, như trang 3 sẽ cho thấy. Cả ba chạy dưới một giây: với văn bản ngắn và vài nghìn câu, mô hình tuyến tính trên đặc trưng thưa là baseline **phải có** trước khi nghĩ tới mạng nơ-ron.
+
+<TuKiemTra
+	cauHoi="Một mô hình đạt 95% độ chính xác trên val này. Có thể kết luận nó tốt hơn SVM ở trên không?"
+	luaChon={['Có, 95% lớn hơn 90,7%', 'Chưa chắc: cần xem macro-F1 và từng lớp, vì một mô hình bỏ hẳn lớp trung tính vẫn có thể có độ chính xác cao', 'Không, vì độ chính xác không bao giờ vượt 92%', 'Có, nếu nó là mạng nơ-ron']}
+	dapAn={1}
+	giaiThich="Với 95% độ chính xác, mô hình sai 79 câu. Nó có thể sai cả 73 câu trung tính mà vẫn đúng gần hết hai lớp kia. Độ chính xác cao hơn là dấu hiệu tốt, nhưng muốn biết mô hình có bắt được lớp hiếm không thì phải nhìn F1 từng lớp hoặc macro-F1. Ngoài ra, chênh lệch nhỏ có thể chỉ là nhiễu (trang 2)."
+/>
+
+<Khung loai="loi">
+**Chọn thước đo sau khi thấy kết quả.** Nếu mô hình A thắng về độ chính xác còn B thắng về macro-F1, chọn thước đo theo bên mình thích là gian lận với chính mình. Chốt trước: thước đo nào quyết định, thước đo nào chỉ để tham khảo.
+
+**Cho Naive Bayes ăn TF-IDF rồi kết luận nó kém.** Naive Bayes đa thức giả định đặc trưng là số đếm; nó vẫn chạy với TF-IDF nhưng không còn đúng mô hình của nó. Mỗi mô hình một kiểu đặc trưng hợp với giả định của nó.
+</Khung>
