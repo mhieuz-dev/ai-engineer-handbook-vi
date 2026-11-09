@@ -9,3 +9,6 @@ torch==2.14.1+cpu
 torchvision==0.29.1+cpu
 # Phần III-B trở đi: môi trường học tăng cường
 gymnasium==1.4.0
+# Phần IV: tiếng Việt và đọc dữ liệu parquet từ Hugging Face
+underthesea==9.5.0
+pyarrow==26.0.1
