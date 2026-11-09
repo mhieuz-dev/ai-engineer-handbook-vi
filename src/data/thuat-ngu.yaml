@@ -838,3 +838,28 @@
   tenTiengAnh: text classification
   giaiThich: Phân loại văn bản là gán cho mỗi văn bản một nhãn trong một tập cố định, như cảm xúc, chủ đề, thư rác hay ý định người dùng. Baseline mạnh là TF-IDF trên n-gram với hồi quy logistic hoặc SVM tuyến tính; khi lớp mất cân bằng, đánh giá bằng F1 từng lớp hoặc macro-F1 chứ không chỉ độ chính xác.
   hocKy: ai-engineer/ch41-phan-loai-van-ban
+- id: gan-nhan-chuoi
+  ten: Gán nhãn chuỗi
+  tenTiengAnh: sequence labeling
+  giaiThich: Gán nhãn chuỗi là gán một nhãn cho mỗi token trong câu, khi nhãn của token phụ thuộc vào các token xung quanh. Ví dụ gán nhãn từ loại, nhận diện thực thể có tên và tách từ tiếng Việt. Các mô hình tiêu biểu là HMM, CRF, BiLSTM và Transformer.
+  hocKy: ai-engineer/ch42-gan-nhan-chuoi
+- id: bio
+  ten: Lược đồ BIO
+  tenTiengAnh: BIO tagging scheme
+  giaiThich: Lược đồ BIO biến việc tìm cụm nhiều token thành gán nhãn từng token. B đánh dấu token mở đầu một cụm, I là token nằm trong cụm, O là token ngoài mọi cụm, thường kèm loại cụm như B-PER, I-LOC. Tách từ tiếng Việt là trường hợp chỉ có B và I.
+  hocKy: ai-engineer/ch42-gan-nhan-chuoi
+- id: hmm
+  ten: Mô hình Markov ẩn
+  tenTiengAnh: hidden Markov model (HMM)
+  giaiThich: Mô hình Markov ẩn coi các nhãn là một chuỗi Markov không nhìn thấy, mỗi nhãn sinh ra một từ nhìn thấy. Học bằng đếm xác suất chuyển giữa nhãn và xác suất phát từ, giải mã bằng thuật toán Viterbi. Là mô hình sinh, nên khó thêm đặc trưng tùy ý.
+  hocKy: ai-engineer/ch42-gan-nhan-chuoi
+- id: viterbi
+  ten: Thuật toán Viterbi
+  tenTiengAnh: Viterbi algorithm
+  giaiThich: Thuật toán Viterbi tìm chuỗi nhãn có điểm cao nhất bằng quy hoạch động, dựa vào giả định Markov, theo đó chuỗi tốt nhất tới vị trí i kết thúc ở một nhãn chỉ phụ thuộc vào chuỗi tốt nhất tới vị trí trước đó. Độ phức tạp n nhân K bình phương với n token và K nhãn, thay vì K mũ n.
+  hocKy: ai-engineer/ch42-gan-nhan-chuoi
+- id: crf
+  ten: CRF
+  tenTiengAnh: conditional random field
+  giaiThich: CRF mô hình hóa trực tiếp xác suất của chuỗi nhãn khi đã biết câu, bằng tổng trọng số của các đặc trưng tùy ý nhìn được cả câu, cộng trọng số cho cặp nhãn liền nhau. Giống hồi quy logistic cho cả chuỗi, giải mã bằng Viterbi, và là mô hình gán nhãn chuỗi mạnh trước thời mạng nơ-ron.
+  hocKy: ai-engineer/ch42-gan-nhan-chuoi

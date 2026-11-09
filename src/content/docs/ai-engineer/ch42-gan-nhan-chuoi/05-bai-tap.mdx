@@ -1,0 +1,122 @@
+---
+title: Bài tập
+description: "Ba bài tập có đáp án chi tiết (Viterbi bằng tay ra chuỗi N V với xác suất 0,147; bỏ đặc trưng âm tiết đầu và cuối làm từ chưa gặp tụt từ 63% xuống 57%, còn bỏ từ hai bên chỉ tụt 0,2 điểm; gấp đôi dữ liệu train từ 700 lên 1400 câu thêm 1,8 điểm và đường học chưa chững) và câu hỏi phỏng vấn."
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Đoán trước, rồi chạy code trong notebook để kiểm tra. Code dùng lại `tr`, `dv`, `do`, `dac_trung` và `pycrfsuite` của các trang trước.
+
+<BaiTap so="42.1">
+**Viterbi bằng tay.** Một HMM đồ chơi có hai nhãn N (danh từ) và V (động từ). Xác suất đầu câu: N 0,7, V 0,3. Chuyển: N sang N 0,3, N sang V 0,7, V sang N 0,6, V sang V 0,4. Phát: "cá" từ N 0,6, từ V 0,1; "bơi" từ N 0,1, từ V 0,5. Tính tay xác suất chung của cả bốn chuỗi nhãn cho câu "cá bơi", chọn chuỗi tốt nhất, rồi kiểm bằng code: liệt kê hết và Viterbi phải cho cùng đáp án.
+
+<Fragment slot="dap-an">
+
+```python
+from itertools import product
+dau = {"N": 0.7, "V": 0.3}
+cv = {("N", "N"): 0.3, ("N", "V"): 0.7, ("V", "N"): 0.6, ("V", "V"): 0.4}
+pt = {("N", "cá"): 0.6, ("V", "cá"): 0.1, ("N", "bơi"): 0.1, ("V", "bơi"): 0.5}
+cau_do_choi = ["cá", "bơi"]
+for t1, t2 in product("NV", repeat=2):
+    print(t1 + t2, round(dau[t1] * pt[(t1, "cá")] * cv[(t1, t2)] * pt[(t2, "bơi")], 4))
+d1 = {t: dau[t] * pt[(t, "cá")] for t in "NV"}       # Viterbi bước 1
+d2 = {t: max(d1[s] * cv[(s, t)] for s in "NV") * pt[(t, "bơi")] for t in "NV"}   # bước 2
+print({t: round(v, 4) for t, v in d1.items()}, {t: round(v, 4) for t, v in d2.items()})
+```
+
+```text title="Output"
+NN 0.0126
+NV 0.147
+VN 0.0018
+VV 0.006
+{'N': 0.42, 'V': 0.03} {'N': 0.0126, 'V': 0.147}
+```
+
+Bốn chuỗi: NN được 0,7 x 0,6 x 0,3 x 0,1 = 0,0126; **NV** được 0,7 x 0,6 x 0,7 x 0,5 = **0,147**; VN được 0,0018; VV được 0,006. Chuỗi tốt nhất là N V: "cá" là danh từ, "bơi" là động từ.
+
+Viterbi đi tới cùng đáp án mà không cần liệt kê. Bước 1: $\delta_1(N) = 0{,}7 \times 0{,}6 = 0{,}42$, $\delta_1(V) = 0{,}3 \times 0{,}1 = 0{,}03$. Bước 2, với V: $\max(0{,}42 \times 0{,}7;\ 0{,}03 \times 0{,}4) \times 0{,}5 = 0{,}294 \times 0{,}5 = 0{,}147$, đi qua N; với N: $\max(0{,}42 \times 0{,}3;\ 0{,}03 \times 0{,}6) \times 0{,}1 = 0{,}0126$. Lớn nhất ở cuối là V với 0,147, quay lui về N: chuỗi N V, đúng bằng con số liệt kê. Với hai từ và hai nhãn, liệt kê chỉ có 4 chuỗi; với 30 từ và 17 nhãn thì không thể, còn Viterbi vẫn chỉ làm đúng hai phép max mỗi ô.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="42.2">
+**Đặc trưng nào quan trọng.** Huấn luyện lại CRF từ loại của trang 3 hai lần: một lần bỏ đặc trưng từ hai bên (`w-1`, `w+1`, `dau_cau`, `cuoi_cau`), một lần bỏ đặc trưng âm tiết đầu và cuối (`dau=`, `cuoi=`). Đo trên dev, chú ý cột từ chưa gặp.
+
+<Fragment slot="dap-an">
+
+```python
+def crf_bo(bo):                                      # huấn luyện CRF bỏ những đặc trưng có tiền tố trong bo
+    loc = lambda f: [x for x in f if not x.startswith(bo)]
+    h = pycrfsuite.Trainer(verbose=False)
+    for c in tr:
+        h.append([loc(dac_trung(c, i)) for i in range(len(c))], [t for _, t in c])
+    h.set_params({"c1": 0.1, "c2": 0.01, "max_iterations": 100})
+    h.train("tam.crfsuite")
+    g = pycrfsuite.Tagger()
+    g.open("tam.crfsuite")
+    return do(dv, lambda c: g.tag([loc(dac_trung(c, i)) for i in range(len(c))]))
+
+print("bỏ từ hai bên  ", crf_bo(("w-1", "w+1", "dau_cau", "cuoi_cau")))
+print("bỏ âm tiết đầu, cuối", crf_bo(("dau=", "cuoi=")))
+```
+
+```text title="Output"
+bỏ từ hai bên   (0.8528, 0.6109, 4449)
+bỏ âm tiết đầu, cuối (0.8407, 0.5711, 4449)
+```
+
+Bỏ đặc trưng từ hai bên: 85,28%, chỉ giảm 0,23 điểm so với 85,51%; từ chưa gặp 61,1% so với 62,7%. Bỏ âm tiết đầu và cuối: **84,07%**, giảm 1,44 điểm; từ chưa gặp tụt từ 62,7% xuống **57,1%**.
+
+Với từ đã gặp, chính từ đó gần như đủ để đoán nhãn, nên phần lớn ảnh hưởng dồn vào từ chưa gặp. Ở đó, âm tiết đầu và cuối quan trọng hơn ngữ cảnh: một từ ghép lạ chung âm tiết với từ đã biết thường cùng loại. Ngữ cảnh hai bên một phần đã được trọng số chuyển của CRF (nhãn trước, nhãn sau) gánh, nên bỏ đặc trưng từ hai bên mất ít hơn. Đây là thí nghiệm bỏ đi của Chương 35, áp vào đặc trưng.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="42.3">
+**Thêm dữ liệu giúp bao nhiêu.** Huấn luyện CRF của trang 3 trên 350, 700 và cả 1400 câu train đầu tiên. Độ chính xác trên dev tăng thế nào?
+
+<Fragment slot="dap-an">
+
+```python
+for n in (350, 700, 1400):
+    h = pycrfsuite.Trainer(verbose=False)
+    for c in tr[:n]:
+        h.append([dac_trung(c, i) for i in range(len(c))], [t for _, t in c])
+    h.set_params({"c1": 0.1, "c2": 0.01, "max_iterations": 100})
+    h.train("tam.crfsuite")
+    g = pycrfsuite.Tagger()
+    g.open("tam.crfsuite")
+    print(n, do(dv, lambda c: g.tag([dac_trung(c, i) for i in range(len(c))])))
+```
+
+```text title="Output"
+350 (0.8052, 0.5887, 4449)
+700 (0.8369, 0.6159, 4449)
+1400 (0.8551, 0.6267, 4449)
+```
+
+350 câu: 80,5%. 700 câu: 83,7%. 1400 câu: 85,5%. Gấp đôi từ 350 lên 700 thêm 3,2 điểm, gấp đôi tiếp lên 1400 thêm 1,8 điểm: lợi ích giảm dần như mọi đường học, nhưng đường vẫn đang đi lên rõ, chưa chững lại. Kết luận thực tế: với bài này, thêm dữ liệu có nhãn vẫn còn đáng giá hơn tinh chỉnh đặc trưng. Đó cũng là lời giải thích chính cho khoảng cách giữa CRF nhỏ của ta và các bộ gán nhãn được huấn luyện trên kho dữ liệu lớn.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. HMM và CRF khác nhau thế nào?**
+
+<p lang="en"><em>What is the difference between an HMM and a CRF for sequence labeling?</em></p>
+
+*Gợi ý:* HMM là mô hình sinh, mô hình hóa P(câu, nhãn) qua xác suất chuyển và phát, nên chỉ dùng được từ hiện tại; CRF là mô hình phân biệt, mô hình hóa P(nhãn | câu) bằng tổng trọng số của đặc trưng tùy ý nhìn cả câu. Cả hai giải mã bằng Viterbi. CRF thường tốt hơn khi có đặc trưng giàu thông tin.
+
+**2. Vì sao NER dùng lược đồ BIO, và đánh giá NER thế nào?**
+
+<p lang="en"><em>Why does NER use the BIO scheme, and how is it evaluated?</em></p>
+
+*Gợi ý:* BIO biến tìm cụm thành gán nhãn từng token, phân biệt được hai cụm liền nhau cùng loại. Đánh giá bằng precision, recall, F1 trên cụm: cụm đúng khi cả ranh giới lẫn loại đều khớp, không chấm theo token.
+
+**3. Thuật toán Viterbi làm gì và độ phức tạp bao nhiêu?**
+
+<p lang="en"><em>What does the Viterbi algorithm do, and what is its complexity?</em></p>
+
+*Gợi ý:* tìm chuỗi nhãn có điểm cao nhất bằng quy hoạch động, dựa vào giả định Markov bậc một: chuỗi tốt nhất tới vị trí i kết thúc ở nhãn t chỉ phụ thuộc vào chuỗi tốt nhất tới i - 1. Độ phức tạp O(nK²) với n token và K nhãn, thay vì K mũ n.
+</Khung>

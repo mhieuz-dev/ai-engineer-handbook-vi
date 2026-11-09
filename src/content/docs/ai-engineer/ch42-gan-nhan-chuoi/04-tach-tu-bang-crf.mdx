@@ -1,0 +1,130 @@
+---
+title: Tách từ bằng CRF
+description: "Tách từ tiếng Việt là gán nhãn B hoặc I cho từng âm tiết. Một CRF học từ 1400 câu trong một giây đạt F1 trên từ 89,3% ở test, so với 75,3% khi coi mỗi âm tiết là một từ. underthesea đạt 95,7% trên cùng tập, nhưng con số đó có thể lạc quan vì dữ liệu nó học có thể chồng lấn với chính Vietnamese Treebank."
+---
+
+import Khung from '../../../../components/Khung.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Từ ranh giới tới nhãn
+
+Chương 38 dùng `word_tokenize` của underthesea như một hộp đen. Bên trong nó là đúng thứ vừa học: một CRF gán cho mỗi âm tiết nhãn **B** (mở đầu một từ) hoặc **I** (nối tiếp từ trước). Vietnamese Treebank đã tách từ bằng tay, nên dựng được dữ liệu huấn luyện ngay: tách mỗi từ thành âm tiết, âm tiết đầu nhãn B, các âm tiết sau nhãn I.
+
+```python
+def bio(c):                                          # câu đã tách từ thành (âm tiết, nhãn B/I)
+    am, nh = [], []
+    for w, _ in c:
+        for k, s in enumerate(w.split()):
+            am.append(s)
+            nh.append("B" if k == 0 else "I")
+    return am, nh
+
+print(bio(tr[0][:8]))
+```
+
+```text title="Output"
+(['Tôi', 'nhớ', 'lời', 'anh', 'chủ', 'tịch', 'xã', 'Bùi', 'Văn', 'Luyến', 'nhắc'], ['B', 'B', 'B', 'B', 'B', 'I', 'B', 'B', 'I', 'I', 'B'])
+```
+
+"chủ tịch" thành "chủ" (B), "tịch" (I); "Bùi Văn Luyến" thành B, I, I. Đặc trưng cho mỗi âm tiết: chính nó, chữ hoa, chữ số, hai âm tiết mỗi bên, và hai cặp âm tiết liền kề. Cặp "chủ_tịch" là đặc trưng mạnh nhất cho việc "tịch" nhận nhãn I, giống ý PMI ở Chương 38 nhưng giờ có nhãn để học.
+
+```python
+def dt_am(am, i):
+    s = am[i].lower()
+    f = ["bias", "s=" + s]
+    if am[i][:1].isupper():
+        f.append("hoa")
+    if am[i].isdigit():
+        f.append("so")
+    for d in (-2, -1, 1, 2):
+        j = i + d
+        f.append(f"s{d}=" + (am[j].lower() if 0 <= j < len(am) else "#"))
+    if i > 0:
+        f.append("cap_truoc=" + am[i - 1].lower() + "_" + s)
+    if i < len(am) - 1:
+        f.append("cap_sau=" + s + "_" + am[i + 1].lower())
+    return f
+
+hoc_tach = pycrfsuite.Trainer(verbose=False)
+for c in tr:
+    am, nh = bio(c)
+    hoc_tach.append([dt_am(am, i) for i in range(len(am))], nh)
+hoc_tach.set_params({"c1": 0.1, "c2": 0.01, "max_iterations": 100})
+hoc_tach.train("tach_tu.crfsuite")
+tach_crf = pycrfsuite.Tagger()
+tach_crf.open("tach_tu.crfsuite")
+crf_tach = lambda am: tach_crf.tag([dt_am(am, i) for i in range(len(am))])
+```
+
+## F1 trên từ
+
+Chấm từng âm tiết thì gần như vô nghĩa: phần lớn âm tiết là B, nên đoán toàn B đã đúng rất nhiều. Đơn vị cần đúng là **từ**: một từ dự đoán chỉ tính là đúng khi **cả hai ranh giới** khớp với một từ thật. Precision là tỷ lệ từ dự đoán đúng, recall là tỷ lệ từ thật được tìm ra, F1 là trung bình điều hòa (Chương 12).
+
+```python
+def khoang(nh):                                      # nhãn B/I thành tập (đầu, cuối) của các từ
+    ra, dau = set(), None
+    for i, l in enumerate(nh):
+        if l == "B":
+            if dau is not None:
+                ra.add((dau, i))
+            dau = i
+    ra.add((dau, len(nh)))
+    return ra
+
+def f1_tu(ds, tach):
+    dung = du = that = 0
+    for c in ds:
+        am, nh = bio(c)
+        a, b = khoang(nh), khoang(tach(am))
+        dung, du, that = dung + len(a & b), du + len(b), that + len(a)
+    P, R = dung / du, dung / that
+    return round(P, 4), round(R, 4), round(2 * P * R / (P + R), 4)
+
+print("toàn B", f1_tu(dv, lambda am: ["B"] * len(am)))
+print("CRF   ", f1_tu(dv, crf_tach))
+```
+
+```text title="Output"
+toàn B (0.6473, 0.7899, 0.7115)
+CRF    (0.8568, 0.8806, 0.8686)
+```
+
+Coi mỗi âm tiết là một từ cho F1 71,2% trên dev: recall cao (mọi từ một âm tiết đều đúng) nhưng mọi từ ghép đều sai. CRF học từ 1400 câu đạt **86,9%**.
+
+## So với underthesea, và một cái bẫy
+
+underthesea là bộ tách từ được huấn luyện trên dữ liệu lớn hơn nhiều. So trên **test** (CRF đã chọn xong, đây là lần đo duy nhất), đưa vào chuỗi âm tiết nối bằng dấu cách để hai bên nhận cùng một đầu vào:
+
+```python
+from underthesea import word_tokenize
+
+def tach_uts(am):
+    nh = []
+    for w in word_tokenize(" ".join(am)):
+        nh += ["B"] + ["I"] * (len(w.split()) - 1)
+    return nh if len(nh) == len(am) else ["B"] * len(am)   # phòng khi số âm tiết lệch
+
+for ten, tach in (("toàn B", lambda am: ["B"] * len(am)), ("CRF", crf_tach), ("underthesea", tach_uts)):
+    print(ten, f1_tu(te, tach))
+```
+
+```text title="Output"
+toàn B (0.6937, 0.8222, 0.7525)
+CRF (0.8862, 0.9001, 0.8931)
+underthesea (0.9594, 0.9548, 0.9571)
+```
+
+CRF: **89,3%**. underthesea: **95,7%**. Khoảng cách 6 điểm phần lớn là do dữ liệu: CRF của ta chỉ thấy 1400 câu. Nhưng con số 95,7% cần đọc cẩn thận. Bộ tách từ của underthesea được huấn luyện trên dữ liệu tách từ của cộng đồng VLSP, mà Vietnamese Treebank cũng là một sản phẩm của VLSP. Nếu một phần câu test ở đây đã nằm trong dữ liệu huấn luyện của underthesea, con số của nó được đo trên câu nó **đã thấy**, đúng lỗi rò rỉ dữ liệu của Chương 9. Ta không kiểm chứng được điều đó từ bên ngoài, nên kết luận an toàn là: underthesea **ít nhất** không kém CRF nhỏ của ta, còn nó tốt hơn **bao nhiêu** trên văn bản thật thì cần một tập test chắc chắn nằm ngoài dữ liệu huấn luyện của nó.
+
+<TuKiemTra
+	cauHoi="Câu gồm các âm tiết 'sinh viên học bài' với nhãn thật B I B B. Mô hình đoán B B B B. Precision và recall trên từ là bao nhiêu?"
+	luaChon={['Precision 3/4, recall 3/3', 'Precision 2/4, recall 2/3', 'Precision 4/4, recall 3/3', 'Precision 2/3, recall 2/4']}
+	dapAn={1}
+	giaiThich="Từ thật: 'sinh viên', 'học', 'bài', 3 từ. Từ đoán: 'sinh', 'viên', 'học', 'bài', 4 từ. Khớp đúng cả ranh giới: 'học' và 'bài', 2 từ. Precision = 2/4, recall = 2/3. Chấm theo âm tiết thì đúng 3/4, trông khá hơn hẳn: đó là lý do phải chấm theo từ."
+/>
+
+<Khung loai="loi">
+**So hai hệ thống trên một tập mà một bên có thể đã học.** Mô hình công bố sẵn thường được huấn luyện trên chính những bộ dữ liệu chuẩn công khai. Đọc mô tả dữ liệu huấn luyện của nó trước khi dùng một bộ chuẩn để so; nếu không chắc, ghi rõ điều đó cạnh con số, như ở trên.
+
+**Đánh giá tách từ trên văn bản đã chuẩn hóa khác nhau.** Một bên nhận văn bản gốc có dấu câu dính chữ, bên kia nhận âm tiết đã tách sẵn: con số lệch vì đầu vào chứ không vì mô hình. Đưa cùng một chuỗi âm tiết cho mọi hệ thống, như `tach_uts` ở trên.
+</Khung>

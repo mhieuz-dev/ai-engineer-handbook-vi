@@ -1,0 +1,120 @@
+---
+title: CRF
+description: "CRF chấm điểm cả chuỗi nhãn bằng tổng trọng số của các đặc trưng tùy ý, như hồi quy logistic cho cả câu, và vẫn giải mã bằng Viterbi. Với đặc trưng từ, chữ hoa, chữ số, âm tiết đầu và cuối, từ hai bên: 85,5% trên dev, từ chưa gặp đúng 63%. Chọn trên dev, đo test một lần: 88,0%."
+---
+
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Từ sinh ra sang phân biệt
+
+HMM là mô hình **sinh** (generative): nó mô hình hóa cách từ được sinh ra từ nhãn, nên mọi thông tin phải đi qua $P(w \mid t)$. Ta đâu cần sinh câu; ta chỉ cần **phân biệt** chuỗi nhãn đúng với chuỗi nhãn sai khi đã biết câu. <Term id="crf">CRF</Term> (conditional random field, Lafferty, McCallum và Pereira, 2001) mô hình hóa thẳng $P(t_{1:n} \mid w_{1:n})$:
+
+$$
+P(t_{1:n} \mid w_{1:n}) = \frac{1}{Z(w)} \exp\Big( \sum_{i} \sum_k \lambda_k\, f_k(t_{i-1}, t_i, w_{1:n}, i) \Big)
+$$
+
+Mỗi $f_k$ là một **đặc trưng** bất kỳ, nhìn được **cả câu**: "từ hiện tại là 'rất' và nhãn là ADV", "từ viết hoa và nhãn là PROPN", "từ đứng sau là 'của' và nhãn là NOUN", "nhãn trước là ADV và nhãn này là VERB". Mỗi đặc trưng có một trọng số $\lambda_k$ học từ dữ liệu; $Z(w)$ chuẩn hóa để tổng xác suất bằng 1. Nếu bỏ phần nhãn trước, đây chính là hồi quy logistic (Chương 11) cho từng từ; phần nhãn trước nối các quyết định lại thành một chuỗi, và giải mã vẫn bằng Viterbi.
+
+Học CRF là tối đa log likelihood có điều chuẩn L1 và L2 (Chương 13), một bài toán lồi; thư viện `python-crfsuite` (bản Python của CRFsuite, Okazaki, 2007) làm việc đó. Ta chỉ việc viết đặc trưng, dưới dạng danh sách chuỗi cho mỗi từ:
+
+```python
+import pycrfsuite
+
+def dac_trung(c, i):                                 # đặc trưng của từ thứ i trong câu c
+    w = c[i][0]
+    f = ["bias", "w=" + w.lower(), "dau=" + w.lower().split()[0], "cuoi=" + w.lower().split()[-1]]
+    if w[:1].isupper():
+        f.append("hoa")                              # viết hoa: gợi ý tên riêng
+    if any(ch.isdigit() for ch in w):
+        f.append("so")                               # có chữ số
+    if " " in w:
+        f.append("nhieu_am_tiet")                    # từ ghép
+    f.append("w-1=" + c[i - 1][0].lower() if i > 0 else "dau_cau")
+    f.append("w+1=" + c[i + 1][0].lower() if i < len(c) - 1 else "cuoi_cau")
+    return f
+
+print(dac_trung(tr[0], 4))
+```
+
+```text title="Output"
+['bias', 'w=chủ tịch', 'dau=chủ', 'cuoi=tịch', 'nhieu_am_tiet', 'w-1=anh', 'w+1=xã']
+```
+
+Từ "chủ tịch" có 7 đặc trưng: một đặc trưng hằng (bias), chính nó, âm tiết đầu "chủ", âm tiết cuối "tịch", là từ nhiều âm tiết, từ trước "anh", từ sau "xã". Đặc trưng âm tiết đầu và cuối giúp với từ ghép chưa gặp: một từ ghép chưa có trong train vẫn có thể chung âm tiết đầu hay cuối với những từ đã gặp, và những âm tiết đó mang thông tin về loại từ.
+
+```python
+t0 = time.time()
+hoc = pycrfsuite.Trainer(verbose=False)
+for c in tr:
+    hoc.append([dac_trung(c, i) for i in range(len(c))], [t for _, t in c])
+hoc.set_params({"c1": 0.1, "c2": 0.01, "max_iterations": 100})   # c1: điều chuẩn L1, c2: L2
+hoc.train("pos.crfsuite")
+gan_nhan = pycrfsuite.Tagger()
+gan_nhan.open("pos.crfsuite")
+crf = lambda c: gan_nhan.tag([dac_trung(c, i) for i in range(len(c))])
+print(do(dv, crf), time.time() - t0 < 60)
+```
+
+```text title="Output"
+(0.8551, 0.6267, 4449) True
+```
+
+**85,5%** trên dev, hơn HMM 4 điểm, và từ chưa gặp đúng **63%** so với 40%. Huấn luyện khoảng một giây.
+
+## CRF học được gì
+
+Trọng số của CRF đọc được như hồi quy logistic. Những đặc trưng trạng thái mạnh nhất, và những cặp nhãn liền nhau được ưa nhất:
+
+```python
+info = gan_nhan.info()
+manh = sorted(info.state_features.items(), key=lambda x: -x[1])
+print([(f, t, round(v, 2)) for (f, t), v in manh[:8]])
+chuyen_crf = sorted(info.transitions.items(), key=lambda x: -x[1])
+print([(a, b, round(v, 2)) for (a, b), v in chuyen_crf[:5]])
+```
+
+```text title="Output"
+[('so', 'NUM', 11.37), ('w+1=gd', 'PROPN', 10.15), ('w-1=lương bổng', 'PART', 9.34), ('w+1=hồng lĩnh', 'PROPN', 9.0), ('w-1=thứ', 'NUM', 7.84), ('dau=nếu', 'SCONJ', 7.75), ('hoa', 'PROPN', 7.45), ('w-1=tiếc', 'PART', 7.08)]
+[('PROPN', 'CCONJ', 3.39), ('NUM', 'SYM', 3.22), ('ADJ', 'CCONJ', 3.21), ('NOUN', 'CCONJ', 2.7), ('VERB', 'CCONJ', 2.7)]
+```
+
+Một số trọng số đúng như kỳ vọng: "có chữ số" là dấu hiệu mạnh nhất của số (NUM), "viết hoa" của tên riêng (PROPN), âm tiết đầu "nếu" của liên từ phụ thuộc (SCONJ). Nhưng xen giữa là những đặc trưng rất **cụ thể** như "từ trước là 'lương bổng'" cho trợ từ, "từ sau là 'hồng lĩnh'" cho tên riêng: những ngữ cảnh chỉ gặp một hai lần trong train mà mô hình nhớ thuộc lòng. Với 20 nghìn từ train, ranh giới giữa học quy luật và học thuộc rất mỏng; điều chuẩn `c1`, `c2` giữ cho những trọng số đó không quá lớn. Ở các cặp nhãn liền nhau, CRF ưa nhất là tên riêng, tính từ, danh từ, động từ đứng trước liên từ đẳng lập (CCONJ): cấu trúc "A và B" của phép liệt kê.
+
+<HinhKetQua src="/hinh/ch42/h1_da_gap_chua_gap.svg" alt="Biểu đồ cột nhóm cho ba mô hình baseline, HMM, CRF. Mỗi mô hình hai cột: từ đã gặp trong train và từ chưa gặp. Từ đã gặp: 89,0, 89,8 và 90,2 phần trăm, gần như bằng nhau. Từ chưa gặp: 43,0, 40,3 và 62,7 phần trăm." so="42.1" chuThich="Độ chính xác gán nhãn từ loại trên dev, tách theo từ đã gặp trong train (21 713 từ) và từ chưa gặp (4449 từ).">
+**Đọc hình.** Mỗi mô hình hai cột: từ có trong train, và từ không có.
+
+**Điều cần thấy.** Với từ đã gặp, ba mô hình gần như ngang nhau, 89 tới 90%: nhớ nhãn hay gặp nhất đã gần đủ, ngữ cảnh chỉ thêm khoảng 1 điểm. Gần như toàn bộ khác biệt nằm ở từ chưa gặp: CRF đúng 62,7%, hơn 20 điểm so với hai mô hình kia, nhờ đặc trưng hình thức (chữ hoa, chữ số, âm tiết đầu và cuối). Khi dữ liệu train nhỏ, bài toán gán nhãn phần lớn là bài toán đoán từ lạ.
+</HinhKetQua>
+
+## Đo test một lần
+
+Ba ứng viên trên dev: baseline 81,2%, HMM 81,4%, CRF 85,5%. Chọn CRF. Đo test một lần, kèm hai mô hình kia để tham khảo:
+
+```python
+for ten, gan in (("baseline", baseline), ("HMM", lambda c: viterbi(c, phat_hapax)), ("CRF", crf)):
+    print(ten, do(te, gan))
+```
+
+```text title="Output"
+baseline (0.823, 0.3446, 1506)
+HMM (0.8366, 0.3964, 1506)
+CRF (0.8795, 0.66, 1506)
+```
+
+CRF đạt **88,0%** trên test, từ chưa gặp 66%. Cả ba mô hình đều cao hơn trên test so với dev, và thứ tự giữ nguyên. Với chỉ 20 nghìn từ train, đây là mức hợp lý; các bộ gán nhãn tiếng Việt dùng thật được huấn luyện trên kho dữ liệu lớn hơn nhiều, và gần như chắc chắn sai ít hơn. Bài tập 42.3 đo xem thêm dữ liệu giúp bao nhiêu.
+
+<TuKiemTra
+	cauHoi="Vì sao thêm đặc trưng 'từ đứng sau' vào HMM thì khó, còn vào CRF thì dễ?"
+	luaChon={['Vì CRF không dùng Viterbi', 'Vì HMM là mô hình sinh: mọi thông tin phải đi qua xác suất nhãn sinh ra từ, nên từ đứng sau không có chỗ trong câu chuyện; CRF chỉ chấm điểm chuỗi nhãn khi đã biết cả câu, nên đặc trưng nào nhìn được câu cũng dùng được', 'Vì HMM không có từ đứng sau', 'Vì CRF có nhiều tham số hơn']}
+	dapAn={1}
+	giaiThich="Trong HMM, từ w_i chỉ phụ thuộc nhãn t_i. Muốn dùng w_(i+1) để đoán t_i, phải viết lại toàn bộ cách mô hình sinh câu. CRF là mô hình phân biệt: câu đã cho trước, chỉ có chuỗi nhãn là biến ngẫu nhiên, nên đặc trưng được nhìn mọi chỗ trong câu, chồng chéo nhau thoải mái, như hồi quy logistic dùng bao nhiêu đặc trưng cũng được."
+/>
+
+<Khung loai="loi">
+**Đặc trưng nhìn vào nhãn thật.** Đặc trưng chỉ được dùng **câu**, không được dùng nhãn vàng của từ khác; lúc dùng thật không có nhãn vàng. Phần phụ thuộc giữa các nhãn liền nhau đã có trọng số chuyển của CRF lo.
+
+**Không điều chuẩn.** Với hàng chục nghìn đặc trưng dạng "w=..." mà mỗi cái chỉ gặp vài lần, CRF không điều chuẩn học thuộc train. `c1` và `c2` là siêu tham số; ở đây đặt theo giá trị phổ biến, bài tập 42.2 thử bỏ bớt đặc trưng.
+</Khung>

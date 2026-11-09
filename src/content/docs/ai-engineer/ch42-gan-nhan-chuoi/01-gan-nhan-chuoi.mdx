@@ -1,0 +1,139 @@
+---
+title: Gán nhãn chuỗi
+description: "Mỗi từ trong câu một nhãn: từ loại, tên riêng, hay ranh giới từ. Lược đồ BIO biến việc tìm cụm thành gán nhãn từng token. Dữ liệu: Vietnamese Treebank trong Universal Dependencies, 3323 câu đã tách từ và gán 17 nhãn từ loại. Gán mỗi từ nhãn hay gặp nhất của nó đã đạt 81,2% trên dev, nhưng chỉ 43% với từ chưa gặp."
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import En from '../../../../components/En.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+<CanBietTruoc>
+Xác suất có điều kiện, ước lượng bằng đếm, log xác suất (Chương 7, 39). Giả định Markov (Chương 33, 39). Hồi quy logistic (Chương 11). Tách từ tiếng Việt (Chương 38).
+
+<Fragment slot="sau-chuong">
+Biết các bài gán nhãn chuỗi (từ loại, tên riêng, tách từ) và lược đồ BIO. Tự cài mô hình Markov ẩn và thuật toán Viterbi, thấy vì sao xử lý từ chưa gặp quyết định chất lượng. Huấn luyện CRF với đặc trưng tự chọn, rồi dùng chính CRF để tách từ tiếng Việt như underthesea làm, và đánh giá bằng F1 trên cụm.
+</Fragment>
+</CanBietTruoc>
+
+<ColabButton notebook="ch42_gan_nhan_chuoi.ipynb" />
+
+## Một nhãn cho mỗi token
+
+Chương 41 gán **một** nhãn cho **cả** câu. <Term id="gan-nhan-chuoi">Gán nhãn chuỗi</Term> gán một nhãn cho **mỗi token**, và nhãn của một token phụ thuộc vào các token xung quanh. Ba bài toán tiêu biểu:
+
+- **Gán nhãn từ loại** (part-of-speech tagging, POS): "bàn" là danh từ trong "cái bàn gỗ", động từ trong "bàn chuyện học". Bước nền cho phân tích cú pháp, trích xuất thông tin, chuyển văn bản thành giọng nói.
+- **Nhận diện thực thể có tên** (named entity recognition, NER): tìm tên người, tổ chức, địa điểm. Trong câu "Bộ Y tế họp ở Hà Nội", "Bộ Y tế" là tổ chức, "Hà Nội" là địa điểm.
+- **Tách từ** tiếng Việt (Chương 38): mỗi âm tiết bắt đầu một từ mới hay nối tiếp từ trước.
+
+## Lược đồ BIO
+
+NER và tách từ cần tìm **cụm** nhiều token, không phải nhãn cho từng token riêng lẻ. Lược đồ <Term id="bio">BIO</Term> biến tìm cụm thành gán nhãn từng token: **B** (begin) là token mở đầu một cụm, **I** (inside) là token nằm trong cụm, **O** (outside) là token không thuộc cụm nào. Kèm loại cụm sau dấu gạch:
+
+| Bộ | Y | tế | họp | ở | Hà | Nội |
+|---|---|---|---|---|---|---|
+| B-ORG | I-ORG | I-ORG | O | O | B-LOC | I-LOC |
+
+**Bảng 42.1.** Nhãn BIO cho NER, mỗi âm tiết một nhãn.
+
+Hai cụm liền nhau cùng loại vẫn tách được, vì cụm thứ hai bắt đầu lại bằng B. Tách từ là trường hợp đặc biệt chỉ có B và I: mọi âm tiết đều thuộc một từ nào đó, "Hà Nội" là B I. Trang 4 làm đúng bài đó.
+
+## Vietnamese Treebank
+
+Bộ dữ liệu của chương: phần tiếng Việt của <En>Universal Dependencies</En> (UD), một dự án quốc tế xây dữ liệu cú pháp thống nhất cho hơn 100 ngôn ngữ. Phần tiếng Việt (UD_Vietnamese-VTB) chuyển từ Vietnamese Treebank của dự án VLSP, phát hành theo giấy phép CC BY-SA 4.0. Câu đã được **tách từ bằng tay** (từ nhiều âm tiết viết có dấu cách bên trong, như "chủ tịch") và mỗi từ có một trong 17 nhãn từ loại phổ quát (UPOS). Tệp theo định dạng CoNLL-U: mỗi dòng một từ, các cột cách nhau bằng tab, cột 2 là từ, cột 4 là nhãn. Tải từ một commit cố định để dữ liệu không đổi theo thời gian:
+
+```python
+!pip install python-crfsuite underthesea
+```
+
+```python
+import math
+import os
+import time
+import urllib.request
+from collections import Counter, defaultdict
+import numpy as np
+
+URL = ("https://raw.githubusercontent.com/UniversalDependencies/UD_Vietnamese-VTB/"
+       "3c971fd1c5d03561e00b267d3d0057b81a9bea84/vi_vtb-ud-{}.conllu")   # ghim commit
+THU_MUC = os.path.expanduser("~/.cache/ud_vi")
+
+def doc(phan):                                       # danh sách câu, mỗi câu là danh sách (từ, nhãn)
+    os.makedirs(THU_MUC, exist_ok=True)
+    tep = os.path.join(THU_MUC, f"vi_vtb-ud-{phan}.conllu")
+    if not os.path.exists(tep):
+        urllib.request.urlretrieve(URL.format(phan), tep)
+    cau, hien = [], []
+    for dong in open(tep, encoding="utf-8"):
+        dong = dong.rstrip("\n")
+        if not dong:                                 # dòng trống: hết một câu
+            if hien:
+                cau.append(hien)
+                hien = []
+        elif not dong.startswith("#"):               # bỏ dòng chú thích
+            cot = dong.split("\t")
+            if cot[0].isdigit():                     # bỏ dòng từ ghép kiểu 1-2 (tiếng Việt không có)
+                hien.append((cot[1], cot[3]))
+    return cau
+
+tr, dv, te = doc("train"), doc("dev"), doc("test")
+dem_nhan = Counter(t for c in tr for _, t in c)
+print(len(tr), len(dv), len(te), sum(map(len, tr)))
+print(tr[0][:8])
+print(dem_nhan.most_common())
+```
+
+```text title="Output"
+1400 1123 800 20215
+[('Tôi', 'PRON'), ('nhớ', 'VERB'), ('lời', 'NOUN'), ('anh', 'NOUN'), ('chủ tịch', 'NOUN'), ('xã', 'NOUN'), ('Bùi Văn Luyến', 'PROPN'), ('nhắc', 'VERB')]
+[('NOUN', 5617), ('VERB', 3821), ('PUNCT', 2931), ('ADV', 1481), ('ADP', 1207), ('ADJ', 1097), ('PROPN', 895), ('PRON', 803), ('NUM', 622), ('SCONJ', 501), ('AUX', 475), ('DET', 300), ('CCONJ', 256), ('PART', 106), ('X', 67), ('SYM', 33), ('INTJ', 3)]
+```
+
+1400 câu train, 1123 câu dev (dùng làm val), 800 câu test; train có 20 215 từ. Câu đầu tiên đã thấy cả nét riêng của tiếng Việt: "anh" là **danh từ chỉ loại** đứng trước "chủ tịch" (nhãn NOUN), "chủ tịch" là một từ, "Bùi Văn Luyến" là một tên riêng (PROPN). Danh từ, động từ và dấu câu chiếm hơn 60% số từ; có nhãn chỉ xuất hiện vài lần.
+
+## Baseline: nhãn hay gặp nhất
+
+Mốc đơn giản nhất: gán cho mỗi từ nhãn mà nó mang nhiều nhất trong train; từ chưa gặp thì gán nhãn phổ biến nhất (NOUN). Đo riêng độ chính xác trên **từ chưa gặp**, vì đó là chỗ khó:
+
+```python
+nhan_cua = defaultdict(Counter)                      # với mỗi từ: đếm các nhãn nó mang
+for c in tr:
+    for w, t in c:
+        nhan_cua[w.lower()][t] += 1
+NHAN_NHIEU = dem_nhan.most_common(1)[0][0]
+
+def baseline(c):
+    return [nhan_cua[w.lower()].most_common(1)[0][0] if w.lower() in nhan_cua else NHAN_NHIEU for w, _ in c]
+
+def do(ds, gan):                                     # độ chính xác chung, trên từ chưa gặp, số từ chưa gặp
+    dung = n = dung_la = n_la = 0
+    for c in ds:
+        for (w, t), q in zip(c, gan(c)):
+            dung, n = dung + (t == q), n + 1
+            if w.lower() not in nhan_cua:
+                dung_la, n_la = dung_la + (t == q), n_la + 1
+    return round(dung / n, 4), round(dung_la / n_la, 4), n_la
+
+print(do(dv, baseline))
+```
+
+```text title="Output"
+(0.8118, 0.43, 4449)
+```
+
+**81,2%** trên dev. Nhưng với 4449 từ chưa gặp trong train (17% số từ của dev, vì train rất nhỏ), chỉ đúng **43%**: đoán bừa "danh từ". Hai cách cải thiện là dùng **ngữ cảnh** (từ đứng trước là "rất" thì từ này nhiều khả năng là tính từ) và dùng **hình thức** của từ (viết hoa thì nhiều khả năng là tên riêng, có chữ số thì là số). Trang 2 dùng ngữ cảnh, trang 3 dùng cả hai.
+
+<TuKiemTra
+	cauHoi="Câu 'Nguyễn Văn An làm ở Đà Nẵng' gán nhãn NER theo BIO trên từng âm tiết (PER là người, LOC là địa điểm). Nhãn của 'An' và 'Đà' là gì?"
+	luaChon={['B-PER và B-LOC', 'I-PER và B-LOC', 'I-PER và I-LOC', 'O và B-LOC']}
+	dapAn={1}
+	giaiThich="'Nguyễn' mở đầu cụm tên người nên là B-PER, 'Văn' và 'An' nằm trong cụm nên là I-PER. 'làm', 'ở' là O. 'Đà' mở đầu cụm địa điểm nên B-LOC, 'Nẵng' là I-LOC."
+/>
+
+<Khung loai="loi">
+**Chấm theo token khi bài toán là tìm cụm.** Với NER, một hệ thống đoán đúng "Bộ Y" mà sai "tế" vẫn đúng 2 trên 3 token, nhưng cụm "Bộ Y tế" thì sai. Đánh giá NER và tách từ bằng **F1 trên cụm**: một cụm chỉ tính là đúng khi cả ranh giới lẫn loại đều đúng (trang 4).
+
+**Quên rằng dữ liệu đã tách từ.** UD_Vietnamese-VTB tách từ bằng tay, nên mọi con số từ loại ở chương này giả định ranh giới từ hoàn hảo. Trong thực tế, đầu vào phải qua bộ tách từ trước, và lỗi tách từ lan sang gán nhãn.
+</Khung>

@@ -1,0 +1,126 @@
+---
+title: HMM và Viterbi
+description: "Mô hình Markov ẩn coi nhãn là một chuỗi Markov không nhìn thấy, mỗi nhãn sinh ra một từ. Học bằng đếm, giải mã bằng Viterbi trong O(nK²) thay vì thử K mũ n chuỗi nhãn. Với từ chưa gặp xử lý ngây thơ, HMM còn thua baseline (78,1% so với 81,2%); ước lượng nhãn của từ lạ từ những từ chỉ gặp một lần đưa nó lên 81,4%."
+---
+
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Nhãn ẩn sinh ra từ
+
+<Term id="hmm">Mô hình Markov ẩn</Term> (hidden Markov model, HMM) kể một câu chuyện về cách câu được tạo ra: có một chuỗi **nhãn** $t_1, t_2, \ldots, t_n$ mà ta không nhìn thấy (ẩn), đi theo một chuỗi Markov như mô hình bigram của Chương 39; mỗi nhãn **sinh ra** một từ $w_i$ mà ta nhìn thấy. Xác suất chung của câu và chuỗi nhãn:
+
+$$
+P(w_{1:n}, t_{1:n}) = \prod_{i=1}^{n} \underbrace{P(t_i \mid t_{i-1})}_{\text{chuyển}}\; \underbrace{P(w_i \mid t_i)}_{\text{phát}}
+$$
+
+với $t_0$ là một nhãn "đầu câu". Hai bảng xác suất học bằng **đếm** trên train, đúng như mô hình n-gram: xác suất chuyển là tỷ lệ lần nhãn $t_{i-1}$ được theo sau bởi $t_i$; xác suất phát là tỷ lệ lần nhãn $t$ đi với từ $w$. Gán nhãn một câu mới là tìm chuỗi nhãn có xác suất chung lớn nhất.
+
+```python
+NHAN = sorted(dem_nhan)
+so = {t: i for i, t in enumerate(NHAN)}
+K = len(NHAN)
+chuyen = np.full((K + 1, K), 0.1)                    # hàng cuối là "đầu câu"; làm trơn add-0,1
+phat = defaultdict(lambda: np.zeros(K))              # với mỗi từ: số lần đi với từng nhãn
+for c in tr:
+    truoc = K
+    for w, t in c:
+        chuyen[truoc, so[t]] += 1
+        phat[w.lower()][so[t]] += 1
+        truoc = so[t]
+log_chuyen = np.log(chuyen / chuyen.sum(1, keepdims=True))
+so_lan_nhan = np.array([dem_nhan[t] for t in NHAN], dtype=float)
+V_tu = len(phat)
+print(K, V_tu, NHAN[np.exp(log_chuyen[so["ADV"]]).argmax()], NHAN[np.exp(log_chuyen[K]).argmax()])
+```
+
+```text title="Output"
+17 3398 VERB NOUN
+```
+
+17 nhãn, 3398 từ khác nhau trong train (không phân biệt hoa thường). Sau một phó từ (ADV, như "rất", "đã", "không"), nhãn hay gặp nhất là động từ; nhãn hay mở đầu câu nhất là danh từ.
+
+## Viterbi
+
+Có $K^n$ chuỗi nhãn cho một câu $n$ từ: với 17 nhãn và câu 20 từ là khoảng $4 \times 10^{24}$ chuỗi, không thể thử hết. Nhưng giả định Markov cho phép **quy hoạch động** (Chương 34): gọi $\delta_i(t)$ là log xác suất của chuỗi nhãn tốt nhất cho $i$ từ đầu mà **kết thúc ở nhãn $t$**. Chuỗi tốt nhất kết thúc ở $t$ phải đi qua chuỗi tốt nhất kết thúc ở một nhãn $t'$ nào đó ở bước trước:
+
+$$
+\delta_i(t) = \max_{t'} \big[\, \delta_{i-1}(t') + \log P(t \mid t') \,\big] + \log P(w_i \mid t)
+$$
+
+Ghi lại $t'$ đạt max ở mỗi bước, rồi đi ngược từ nhãn tốt nhất ở cuối câu. Đó là thuật toán <Term id="viterbi">Viterbi</Term> (Andrew Viterbi, 1967, ban đầu để giải mã tín hiệu số): mỗi bước xét $K \times K$ cặp nhãn, tổng cộng $O(nK^2)$ phép tính, khoảng 6000 phép cho câu 20 từ thay vì $10^{24}$.
+
+```python
+def viterbi(c, log_phat):
+    n = len(c)
+    delta, quay_lui = np.zeros((n, K)), np.zeros((n, K), dtype=int)
+    delta[0] = log_chuyen[K] + log_phat(c[0][0])
+    for i in range(1, n):
+        diem = delta[i - 1][:, None] + log_chuyen[:K]   # diem[t', t]: đi từ t' sang t
+        quay_lui[i] = diem.argmax(0)
+        delta[i] = diem.max(0) + log_phat(c[i][0])
+    y = [int(delta[-1].argmax())]
+    for i in range(n - 1, 0, -1):                    # đi ngược theo con trỏ
+        y.append(quay_lui[i][y[-1]])
+    return [NHAN[k] for k in y[::-1]]
+```
+
+## Từ chưa gặp
+
+Xác suất phát $P(w \mid t)$ của một từ chưa gặp là bao nhiêu? Cách ngây thơ: làm trơn add-k như Chương 39, cộng $k$ vào mọi ô đếm.
+
+```python
+def phat_ngay_tho(w, k=0.1):                         # add-k cho mọi từ
+    e = phat[w.lower()] if w.lower() in phat else np.zeros(K)
+    return np.log((e + k) / (so_lan_nhan + k * (V_tu + 1)))
+
+print(do(dv, lambda c: viterbi(c, phat_ngay_tho)))
+```
+
+```text title="Output"
+(0.7809, 0.2018, 4449)
+```
+
+**Tệ hơn baseline**: 78,1% so với 81,2%, và chỉ 20% từ chưa gặp được gán đúng. Lý do nằm ở mẫu số: với từ lạ, $P(w \mid t) = k / (\text{số lần } t + kV)$, lớn nhất với **nhãn hiếm nhất**. Mô hình kết luận từ lạ nhiều khả năng là thán từ (INTJ, 3 lần trong train), ngược hẳn thực tế.
+
+Cách chuẩn: hỏi xem **những từ chỉ gặp đúng một lần** trong train (hapax) mang nhãn gì. Từ lạ trong dev cũng hiếm như vậy, nên nhiều khả năng có phân phối nhãn giống. Rồi đổi chiều bằng định lý Bayes (Chương 7): $P(w \mid t) \propto P(t \mid \text{lạ}) / P(t)$.
+
+```python
+dem_tu = Counter(w.lower() for c in tr for w, _ in c)
+hapax = np.zeros(K)
+for c in tr:
+    for w, t in c:
+        if dem_tu[w.lower()] == 1:
+            hapax[so[t]] += 1
+p_la = (hapax + 0.1) / (hapax + 0.1).sum()           # P(nhãn | từ lạ), ước lượng từ hapax
+log_phat_la = np.log(p_la) - np.log(so_lan_nhan)     # tỷ lệ với P(từ lạ | nhãn)
+
+def phat_hapax(w):
+    if w.lower() not in phat:
+        return log_phat_la
+    return np.log((phat[w.lower()] + 1e-3) / (so_lan_nhan + 1e-3 * V_tu))
+
+print([(NHAN[i], round(p_la[i], 3)) for i in np.argsort(-p_la)[:5]])
+print(do(dv, lambda c: viterbi(c, phat_hapax)))
+```
+
+```text title="Output"
+[('NOUN', np.float64(0.351)), ('VERB', np.float64(0.327)), ('ADJ', np.float64(0.161)), ('PROPN', np.float64(0.077)), ('NUM', np.float64(0.038))]
+(0.8138, 0.4026, 4449)
+```
+
+Những từ chỉ gặp một lần chủ yếu là danh từ (35%), động từ (33%), tính từ (16%), tên riêng (8%): đúng những loại từ "mở", nơi từ mới liên tục xuất hiện. Với cách này HMM đạt **81,4%** trên dev, hơn baseline một chút. Nhưng tách ra thì thấy phần hơn đến từ **từ đã gặp**, nơi ngữ cảnh giúp chọn đúng nhãn cho từ nhiều nghĩa (hình 42.1 ở trang sau); với từ chưa gặp, HMM chỉ đúng 40%, vẫn **kém** baseline (43%). HMM chỉ nhìn **một** nhãn trước và **chính** từ hiện tại; nó không thể dùng những tín hiệu hiển nhiên như "từ viết hoa", "từ có chữ số", "từ đứng sau là gì". Thêm những tín hiệu đó vào HMM rất khó, vì mỗi tín hiệu phải được viết thành một phần của câu chuyện "nhãn sinh ra từ". Trang 3 bỏ câu chuyện đó.
+
+<TuKiemTra
+	cauHoi="Với 17 nhãn, Viterbi trên một câu 30 từ cần khoảng bao nhiêu phép cộng và so sánh ở bước cập nhật?"
+	luaChon={['17 x 30 = 510', '30 x 17 x 17, khoảng 8700', '17 mũ 30', '30 mũ 17']}
+	dapAn={1}
+	giaiThich="Mỗi vị trí i xét mọi cặp (nhãn trước, nhãn hiện tại): 17 x 17 = 289 cặp, nhân với 30 vị trí là khoảng 8670. Liệt kê mọi chuỗi nhãn là 17 mũ 30, khoảng 10 mũ 37. Giả định Markov là thứ làm quy hoạch động khả thi: chuỗi tốt nhất tới vị trí i chỉ phụ thuộc vào nhãn ở vị trí i."
+/>
+
+<Khung loai="loi">
+**Làm trơn xác suất phát của từ lạ bằng add-k đều cho mọi nhãn.** Như vừa thấy, nó đẩy từ lạ về nhãn hiếm nhất. Từ lạ cần một mô hình riêng: hapax, hậu tố, chữ hoa.
+
+**Nhân xác suất thay vì cộng log.** Câu 50 từ, mỗi thừa số cỡ 0,01: tích cỡ $10^{-100}$, gần ngưỡng biểu diễn của số thực. Viterbi luôn làm trên log.
+</Khung>
