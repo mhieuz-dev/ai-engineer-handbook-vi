@@ -13,3 +13,7 @@ gymnasium==1.4.0
 underthesea==9.5.0
 pyarrow==26.0.1
 python-crfsuite==0.9.12
+# Chương 45 trở đi: tokenizer và mô hình tiền huấn luyện (PhoBERT, XLM-R, GPT-2)
+transformers==5.22.2
+tokenizers==0.23.3
+sentencepiece==0.2.3
