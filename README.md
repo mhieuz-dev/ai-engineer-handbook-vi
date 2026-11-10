@@ -2,6 +2,20 @@
 
 Giáo trình tự học bằng tiếng Việt, hiện có nhánh *AI Engineer*: từ Python cơ bản đến Machine Learning, Deep Learning và mô hình ngôn ngữ lớn. Site dựng bằng Astro và Starlight, có giao diện sáng tối, công thức KaTeX và notebook thực hành mở thẳng trên Google Colab. Tác giả: Mhz.
 
+**Đọc ngay:** https://ai-and-robotics-handbook.vercel.app
+
+*A free, open-source Vietnamese textbook for aspiring AI engineers, from Python basics to machine learning, deep learning and large language models, with runnable Colab notebooks.*
+
+<p align="center">
+  <img src=".github/readme/ke-sach.jpg" width="640" alt="Kệ sách trên trang chủ: nhánh AI Engineer và nhánh Robotics">
+</p>
+
+Mỗi chương đi qua năm bước: trực giác, toán, tính tay, code, đọc kết quả. Thuật ngữ mới được giải thích ngay chỗ gặp, cuối bài có câu hỏi tự kiểm tra, mỗi trang tải được PDF và mở được notebook trên Colab.
+
+<p align="center">
+  <img src=".github/readme/chuong-self-attention.jpg" width="800" alt="Một trang chương: Self-attention, Chương 44">
+</p>
+
 ## Chạy site trên máy
 
 ```bash
