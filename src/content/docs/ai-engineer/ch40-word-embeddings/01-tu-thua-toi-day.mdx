@@ -9,6 +9,7 @@ import En from '../../../../components/En.astro';
 import Khung from '../../../../components/Khung.astro';
 import Term from '../../../../components/Term.astro';
 import TuKiemTra from '../../../../components/TuKiemTra.astro';
+import VideoChuong from '../../../../components/VideoChuong.astro';
 
 <CanBietTruoc>
 BoW, cosine, PMI và luật Zipf (Chương 38, 39). SVD và giảm chiều (Chương 5, 20). PyTorch, Adam, cross-entropy nhị phân (Chương 11, 25). Hồi quy logistic (Chương 11).
@@ -17,6 +18,8 @@ BoW, cosine, PMI và luật Zipf (Chương 38, 39). SVD và giảm chiều (Chư
 Hiểu vì sao cần vector dày cho từ và giả thuyết phân bố đằng sau. Học vector từ bằng hai cách: đếm đồng xuất hiện rồi nén bằng SVD, và Word2Vec skip-gram với negative sampling tự cài bằng PyTorch. Đọc vector từ qua hàng xóm gần nhất và phép tương tự, thấy vì sao từ trái nghĩa lại gần nhau, và đo xem vector từ giúp phân loại cảm xúc tới đâu so với TF-IDF.
 </Fragment>
 </CanBietTruoc>
+
+<VideoChuong so={40} />
 
 <ColabButton notebook="ch40_word_embeddings.ipynb" />
 

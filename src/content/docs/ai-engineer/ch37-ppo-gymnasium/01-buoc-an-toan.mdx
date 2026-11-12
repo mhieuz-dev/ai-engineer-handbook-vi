@@ -9,6 +9,7 @@ import HinhKetQua from '../../../../components/HinhKetQua.astro';
 import Khung from '../../../../components/Khung.astro';
 import Term from '../../../../components/Term.astro';
 import TuKiemTra from '../../../../components/TuKiemTra.astro';
+import VideoChuong from '../../../../components/VideoChuong.astro';
 
 <CanBietTruoc>
 Policy gradient, baseline, lợi thế, actor-critic, đánh đổi thiên lệch và phương sai (Chương 36). Tách terminated với truncated (Chương 34, 35). Adam, gradient clipping (Chương 26).
@@ -17,6 +18,8 @@ Policy gradient, baseline, lợi thế, actor-critic, đánh đổi thiên lệc
 Hiểu vì sao PPO cắt tỷ số xác suất và điều đó cho phép dùng lại dữ liệu nhiều lần. Cài trọn PPO với GAE và môi trường song song của Gymnasium, huấn luyện trên CartPole, trên Pendulum với hành động liên tục, và trên một môi trường quản lý kho do chính bạn viết. Tổng kết Phần III-B: chọn thuật toán nào cho bài toán nào.
 </Fragment>
 </CanBietTruoc>
+
+<VideoChuong so={37} />
 
 <ColabButton notebook="ch37_ppo_gymnasium.ipynb" />
 

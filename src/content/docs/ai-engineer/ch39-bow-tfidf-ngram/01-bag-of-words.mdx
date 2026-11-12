@@ -8,6 +8,7 @@ import ColabButton from '../../../../components/ColabButton.astro';
 import Khung from '../../../../components/Khung.astro';
 import Term from '../../../../components/Term.astro';
 import TuKiemTra from '../../../../components/TuKiemTra.astro';
+import VideoChuong from '../../../../components/VideoChuong.astro';
 
 <CanBietTruoc>
 Chuẩn hóa văn bản, tách từ bằng underthesea, từ vựng và luật Zipf, bộ dữ liệu UIT-VSFC (Chương 38). Vector, tích vô hướng, độ dài (Chương 5). Xác suất có điều kiện và quy tắc chuỗi (Chương 7). Logarit.
@@ -16,6 +17,8 @@ Chuẩn hóa văn bản, tách từ bằng underthesea, từ vựng và luật Z
 Biểu diễn một câu bằng vector đếm từ (Bag-of-Words) và TF-IDF, tự cài bằng NumPy rồi so với scikit-learn, đo độ giống nhau bằng cosine và dựng một máy tìm câu tương tự. Xây mô hình ngôn ngữ n-gram, thấy vì sao nó cho xác suất 0, làm trơn bằng add-k và nội suy, và đánh giá bằng perplexity.
 </Fragment>
 </CanBietTruoc>
+
+<VideoChuong so={39} />
 
 <ColabButton notebook="ch39_bow_tfidf_ngram.ipynb" />
 

@@ -285,6 +285,79 @@ html .katex-display > .katex > .katex-html > .tag {
 }
 .colab-nut:hover { filter: brightness(1.08); }
 
+/* Video nên xem: thẻ nhẹ, chỉ tải ảnh thu nhỏ lười, bấm mở YouTube ở tab mới. */
+.video-hoc { margin: 1.2rem 0; }
+.video-nhan {
+	font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+	font-weight: 800;
+	font-size: 0.72rem;
+	letter-spacing: 0.04em;
+	color: var(--pri);
+	margin-bottom: 0.35rem;
+}
+.video-the {
+	display: flex;
+	align-items: center;
+	gap: 0.85rem;
+	background: var(--panel);
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	padding: 0.55rem;
+	color: var(--tx);
+	text-decoration: none;
+}
+.video-the:hover { border-color: var(--pri); }
+.video-anh {
+	position: relative;
+	flex: none;
+	width: 168px;
+	aspect-ratio: 16 / 9;
+	border-radius: 6px;
+	overflow: hidden;
+	background: #000;
+}
+.video-anh img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.video-play {
+	position: absolute;
+	inset: 0;
+	margin: auto;
+	width: 34px;
+	height: 34px;
+	border-radius: 50%;
+	background: rgba(0, 0, 0, 0.62);
+}
+.video-play::after {
+	content: '';
+	position: absolute;
+	left: 13px;
+	top: 10px;
+	border-left: 12px solid #fff;
+	border-top: 7px solid transparent;
+	border-bottom: 7px solid transparent;
+}
+.video-chu { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+.video-tieu-de {
+	font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+	font-weight: 600;
+	font-size: 0.95rem;
+	line-height: 1.35;
+}
+.video-kenh {
+	font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+	font-size: 0.78rem;
+	color: var(--mut-chu);
+}
+.video-lien-ket {
+	display: none;
+	font-family: 'JetBrains Mono', ui-monospace, monospace;
+	font-size: 0.72rem;
+	color: var(--mut-chu);
+}
+@media (max-width: 560px) {
+	.video-the { flex-direction: column; align-items: stretch; }
+	.video-anh { width: 100%; }
+}
+
 .bai-tap {
 	border: 1px solid var(--line);
 	border-radius: 4px;
@@ -378,7 +451,10 @@ html .katex-display > .katex > .katex-html > .tag {
 	input[type='range'], .tai-ve, .thu-ngay-lr, .tn-lr, .colab-hang { display: none !important; }
 	.main-pane, .main-frame { margin: 0 !important; padding: 0 !important; }
 	.sl-markdown-content { max-width: none; font-size: 11pt; line-height: 1.6; }
-	.khung, .bai-tap, .can-biet-truoc, .hinh-ket-qua { break-inside: avoid; }
+	.khung, .bai-tap, .can-biet-truoc, .hinh-ket-qua, .video-hoc { break-inside: avoid; }
+	.video-hoc .video-anh, .video-hoc .video-play { display: none; }
+	.video-hoc .video-the { background: #fff; }
+	.video-hoc .video-lien-ket { display: block; }
 	details.khung-dao-sau > * { display: block; }
 	.khung-mo { display: none; }
 	.in-chuong { max-width: none; padding: 0; }

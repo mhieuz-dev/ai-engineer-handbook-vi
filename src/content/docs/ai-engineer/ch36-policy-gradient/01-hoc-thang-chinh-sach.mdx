@@ -8,6 +8,7 @@ import ColabButton from '../../../../components/ColabButton.astro';
 import Khung from '../../../../components/Khung.astro';
 import Term from '../../../../components/Term.astro';
 import TuKiemTra from '../../../../components/TuKiemTra.astro';
+import VideoChuong from '../../../../components/VideoChuong.astro';
 
 <CanBietTruoc>
 Lợi nhuận có chiết khấu, chính sách, hàm giá trị (Chương 33). Sai khác thời gian (Chương 34). CartPole, mạng Q, tách terminated với truncated (Chương 35). Softmax và cross-entropy (Chương 11), autograd của PyTorch (Chương 25).
@@ -16,6 +17,8 @@ Lợi nhuận có chiết khấu, chính sách, hàm giá trị (Chương 33). S
 Hiểu định lý policy gradient qua mẹo log-đạo hàm và kiểm nó bằng số. Tự cài REINFORCE, thêm baseline để giảm phương sai mà không làm lệch gradient, rồi chuyển sang actor-critic, nơi một mạng giá trị chấm từng bước. Thấy hai phía của đánh đổi giữa phương sai và thiên lệch, và vì sao bước cập nhật quá lớn làm hỏng chính sách, là chỗ PPO ở Chương 37 bắt đầu.
 </Fragment>
 </CanBietTruoc>
+
+<VideoChuong so={36} />
 
 <ColabButton notebook="ch36_policy_gradient.ipynb" />
 

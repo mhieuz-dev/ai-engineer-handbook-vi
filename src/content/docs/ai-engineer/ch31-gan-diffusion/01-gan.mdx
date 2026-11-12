@@ -9,6 +9,7 @@ import En from '../../../../components/En.astro';
 import Khung from '../../../../components/Khung.astro';
 import Term from '../../../../components/Term.astro';
 import TuKiemTra from '../../../../components/TuKiemTra.astro';
+import VideoChuong from '../../../../components/VideoChuong.astro';
 
 <CanBietTruoc>
 VAE, bộ chấm ảnh sinh bằng CNN, ảnh VAE bị mờ (Chương 30). Phân phối chuẩn (Chương 7). Cross-entropy nhị phân (Chương 11). U-Net dùng tích chập và kết nối tắt (Chương 27, 28).
@@ -17,6 +18,8 @@ VAE, bộ chấm ảnh sinh bằng CNN, ảnh VAE bị mờ (Chương 30). Phân
 Tự huấn luyện một GAN và thấy vì sao nó khó: loss không nói lên tiến độ, sụp mode. Hiểu quá trình thêm nhiễu của diffusion và công thức nhảy thẳng tới bước bất kỳ. Huấn luyện một mô hình diffusion nhỏ đoán nhiễu, sinh ảnh bằng DDIM, và so công bằng GAN, VAE, diffusion trên cùng một thước đo.
 </Fragment>
 </CanBietTruoc>
+
+<VideoChuong so={31} />
 
 <ColabButton notebook="ch31_gan_diffusion.ipynb" />
 

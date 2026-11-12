@@ -8,6 +8,7 @@ import ColabButton from '../../../../components/ColabButton.astro';
 import Khung from '../../../../components/Khung.astro';
 import Term from '../../../../components/Term.astro';
 import TuKiemTra from '../../../../components/TuKiemTra.astro';
+import VideoChuong from '../../../../components/VideoChuong.astro';
 
 <CanBietTruoc>
 Attention trong encoder-decoder (Chương 43). Nhân ma trận, softmax (Chương 5, 11). LayerNorm, kết nối tắt, dropout (Chương 26, 28). nn.Embedding, phân loại cảm xúc trên UIT-VSFC (Chương 40, 41).
@@ -16,6 +17,8 @@ Attention trong encoder-decoder (Chương 43). Nhân ma trận, softmax (Chươn
 Tự cài self-attention bằng NumPy và hiểu vì sao chia cho căn bậc hai số chiều. Hiểu multi-head, vì sao self-attention không biết thứ tự và mã hóa vị trí sin, cos sửa điều đó. Lắp một khối Transformer hoàn chỉnh bằng PyTorch, huấn luyện trên UIT-VSFC, và so trung thực với các mô hình của Chương 41.
 </Fragment>
 </CanBietTruoc>
+
+<VideoChuong so={44} />
 
 <ColabButton notebook="ch44_transformer.ipynb" />
 

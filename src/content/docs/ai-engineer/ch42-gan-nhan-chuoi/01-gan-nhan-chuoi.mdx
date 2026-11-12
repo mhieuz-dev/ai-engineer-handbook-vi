@@ -9,6 +9,7 @@ import En from '../../../../components/En.astro';
 import Khung from '../../../../components/Khung.astro';
 import Term from '../../../../components/Term.astro';
 import TuKiemTra from '../../../../components/TuKiemTra.astro';
+import VideoChuong from '../../../../components/VideoChuong.astro';
 
 <CanBietTruoc>
 Xác suất có điều kiện, ước lượng bằng đếm, log xác suất (Chương 7, 39). Giả định Markov (Chương 33, 39). Hồi quy logistic (Chương 11). Tách từ tiếng Việt (Chương 38).
@@ -17,6 +18,8 @@ Xác suất có điều kiện, ước lượng bằng đếm, log xác suất (
 Biết các bài gán nhãn chuỗi (từ loại, tên riêng, tách từ) và lược đồ BIO. Tự cài mô hình Markov ẩn và thuật toán Viterbi, thấy vì sao xử lý từ chưa gặp quyết định chất lượng. Huấn luyện CRF với đặc trưng tự chọn, rồi dùng chính CRF để tách từ tiếng Việt như underthesea làm, và đánh giá bằng F1 trên cụm.
 </Fragment>
 </CanBietTruoc>
+
+<VideoChuong so={42} />
 
 <ColabButton notebook="ch42_gan_nhan_chuoi.ipynb" />
 

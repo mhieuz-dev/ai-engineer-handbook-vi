@@ -1,0 +1,43 @@
+---
+import { videoCuaChuong } from '../data/video';
+
+interface Props {
+	so: number;
+}
+
+const { so } = Astro.props;
+const ds = videoCuaChuong(so);
+---
+
+{
+	ds.length > 0 && (
+		<aside class="video-hoc" aria-label="Video nên xem">
+			<div class="video-nhan">VIDEO NÊN XEM</div>
+			{ds.map((v) => (
+				<a
+					class="video-the"
+					href={`https://www.youtube.com/watch?v=${v.id}`}
+					target="_blank"
+					rel="noopener"
+				>
+					<span class="video-anh">
+						<img
+							src={`https://i.ytimg.com/vi/${v.id}/mqdefault.jpg`}
+							width="320"
+							height="180"
+							loading="lazy"
+							decoding="async"
+							alt=""
+						/>
+						<span class="video-play" aria-hidden="true" />
+					</span>
+					<span class="video-chu">
+						<span class="video-tieu-de">{v.tieuDe}</span>
+						<span class="video-kenh">{v.kenh} · {v.thoiLuong}</span>
+						<span class="video-lien-ket">youtube.com/watch?v={v.id}</span>
+					</span>
+				</a>
+			))}
+		</aside>
+	)
+}
