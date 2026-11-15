@@ -1,0 +1,231 @@
+chuong: 2
+ten: Python cho dữ liệu
+
+khai_niem:
+  - id: chuoi-tuple-set
+    ten: Chuỗi, tuple, set
+    trang: /ai-engineer/ch02-python-cho-du-lieu/01-chuoi-tuple-set/
+  - id: thu-vien-chuan
+    ten: Thư viện chuẩn
+    trang: /ai-engineer/ch02-python-cho-du-lieu/02-thu-vien-chuan/
+  - id: doc-csv
+    ten: Đọc tệp CSV
+    trang: /ai-engineer/ch02-python-cho-du-lieu/03-doc-file-csv/
+  - id: lop-doi-tuong
+    ten: Lớp và đối tượng
+    trang: /ai-engineer/ch02-python-cho-du-lieu/04-lop-va-doi-tuong/
+
+cau_hoi:
+  - loai: trac-nghiem
+    id: ch02-tn-01
+    khai_niem: [chuoi-tuple-set]
+    muc: de
+    diem: 1
+    de: "`\"a,b,c\".split(\",\")` cho gì?"
+    lua_chon: ["'abc'", "['a', 'b', 'c']", "('a', 'b', 'c')", "Lỗi"]
+    dap_an: 1
+    giai_thich: "`split` cắt chuỗi theo dấu phân cách và trả về list."
+
+  - loai: trac-nghiem
+    id: ch02-tn-02
+    khai_niem: [chuoi-tuple-set]
+    muc: de
+    diem: 1
+    de: "Khác biệt chính giữa tuple và list là gì?"
+    lua_chon: ["Tuple nhanh hơn mọi phép toán", "Tuple không sửa được sau khi tạo", "Tuple chỉ chứa số", "Tuple không lặp được"]
+    dap_an: 1
+    giai_thich: "Tuple bất biến. Dùng tuple cho dữ liệu cố định như tọa độ, cấu hình; list cho dãy cần thêm/bớt."
+
+  - loai: trac-nghiem
+    id: ch02-tn-03
+    khai_niem: [chuoi-tuple-set]
+    muc: vua
+    diem: 1
+    de: "`len(set([1, 2, 2, 3]))` bằng bao nhiêu?"
+    lua_chon: ["4", "3", "2", "1"]
+    dap_an: 1
+    giai_thich: "Set bỏ phần tử trùng, còn 1, 2, 3."
+
+  - loai: trac-nghiem
+    id: ch02-tn-04
+    khai_niem: [doc-csv]
+    muc: de
+    diem: 1
+    de: "`csv.DictReader` khác `csv.reader` ở điểm nào?"
+    lua_chon:
+      - "Trả mỗi dòng thành dict theo tên cột thay vì list."
+      - "Nhanh hơn gấp đôi."
+      - "Chỉ đọc được tệp nhỏ."
+      - "Tự đổi số thành float."
+    dap_an: 0
+    giai_thich: "`DictReader` dùng dòng đầu làm tên cột, mỗi dòng sau thành dict. Tiện khi số cột nhiều, nhưng vẫn phải tự ép kiểu."
+
+  - loai: trac-nghiem
+    id: ch02-tn-05
+    khai_niem: [doc-csv]
+    muc: vua
+    diem: 1
+    de: "Đọc tệp CSV tiếng Việt trên Windows mà không ghi `encoding` thường gặp chuyện gì?"
+    lua_chon: ["Tệp tự nén", "Chữ bị lỗi (mojibake) hoặc UnicodeDecodeError", "Mất cột đầu", "Pandas tự sửa"]
+    dap_an: 1
+    giai_thich: "Mặc định mã hóa có thể là cp1252. Ghi rõ `encoding=\"utf-8\"` (hoặc `utf-8-sig` nếu có BOM)."
+
+  - loai: trac-nghiem
+    id: ch02-tn-06
+    khai_niem: [doc-csv]
+    muc: vua
+    diem: 1
+    de: "Vì sao nên dùng `with open(...) as f:` thay vì `f = open(...)` rồi quên `f.close()`?"
+    lua_chon:
+      - "`with` tự đóng tệp kể cả khi có lỗi giữa chừng."
+      - "`with` làm tệp nhỏ hơn."
+      - "Không có khác biệt thực tế."
+      - "`with` tự chuyển sang UTF-8."
+    dap_an: 0
+    giai_thich: "`with` đảm bảo đóng tệp khi ra khỏi khối, kể cả khi ném ngoại lệ."
+
+  - loai: trac-nghiem
+    id: ch02-tn-07
+    khai_niem: [thu-vien-chuan]
+    muc: vua
+    diem: 1
+    de: "Muốn đếm số lần xuất hiện của từng từ, công cụ nào tiện nhất trong thư viện chuẩn?"
+    lua_chon: ["`collections.Counter`", "`math.factorial`", "`random.shuffle`", "`os.path`"]
+    dap_an: 0
+    giai_thich: "`Counter` nhận danh sách và đếm; `.most_common(k)` lấy top-k."
+
+  - loai: trac-nghiem
+    id: ch02-tn-08
+    khai_niem: [lop-doi-tuong]
+    muc: vua
+    diem: 1
+    de: "Trong lớp Python, `self` là gì?"
+    lua_chon:
+      - "Từ khóa bắt buộc của mọi ngôn ngữ."
+      - "Tham chiếu tới đối tượng đang gọi phương thức."
+      - "Một biến toàn cục."
+      - "Tên của lớp."
+    dap_an: 1
+    giai_thich: "`self` là tham số đầu của phương thức, trỏ tới đối tượng hiện tại. Tên có thể đổi nhưng quy ước là `self`."
+
+  - loai: trac-nghiem
+    id: ch02-tn-09
+    khai_niem: [thu-vien-chuan]
+    muc: de
+    diem: 1
+    de: "`pathlib.Path` tiện hơn nối chuỗi đường dẫn ở điểm nào?"
+    lua_chon:
+      - "Tự xử lý dấu `/` khác nhau giữa hệ điều hành và có sẵn `.exists()`, `.suffix`."
+      - "Nén tệp tự động."
+      - "Đọc được tệp Excel."
+      - "Không cần quyền truy cập tệp."
+    dap_an: 0
+    giai_thich: "`Path` ghép đường dẫn an toàn theo hệ điều hành và có nhiều phương thức tiện cho kiểm tra, duyệt thư mục."
+
+  - loai: trac-nghiem
+    id: ch02-tn-10
+    khai_niem: [thu-vien-chuan]
+    muc: kho
+    diem: 1
+    de: "`json.load` khác `json.loads` thế nào?"
+    lua_chon:
+      - "`load` đọc từ tệp/stream, `loads` đọc từ chuỗi."
+      - "`load` nhanh hơn."
+      - "`loads` chỉ dùng cho list."
+      - "Không khác gì."
+    dap_an: 0
+    giai_thich: "`s` là string: `json.loads(chuoi)`. `json.load(tep)` đọc từ đối tượng tệp."
+
+  - loai: tu-luan
+    id: ch02-tl-01
+    khai_niem: [doc-csv]
+    muc: vua
+    diem: 10
+    de: "Một tệp CSV tiếng Việt mở bằng Excel thì đúng, nhưng đọc bằng Python lại ra ký tự lạ ở tên cột. Trình bày cách chẩn đoán và cách sửa bền vững."
+    rubric:
+      - y: "Nêu nguyên nhân mã hóa: tệp lưu cp1252/UTF-8 có BOM, Python đọc mặc định sai."
+        diem: 4
+      - y: "Cách sửa: `encoding=\"utf-8\"` hoặc `utf-8-sig`; kiểm tra bằng cách in vài byte đầu/dòng đầu."
+        diem: 3
+      - y: "Phòng ngừa: ghi rõ encoding ở mọi lần đọc, thống nhất quy trình, kiểm tra tên cột sau khi đọc."
+        diem: 3
+    tra_loi_mau: "Ký tự lạ xuất hiện khi chuỗi byte được giải mã bằng bảng mã khác với lúc ghi. Excel trên Windows hay lưu cp1252 hoặc UTF-8 có BOM, còn Python có thể mặc định cp1252. Cách chẩn đoán: mở tệp ở chế độ nhị phân, xem 3 byte đầu có `EF BB BF` không; in dòng đầu sau khi đọc. Cách sửa: `open(path, encoding=\"utf-8-sig\")` cho tệp có BOM, hoặc `encoding=\"utf-8\"`; với pandas thì `pd.read_csv(path, encoding=\"utf-8-sig\")`. Phòng ngừa: luôn ghi encoding, kiểm tra tên cột ngay sau khi đọc, và thống nhất một chuẩn lưu tệp cho cả nhóm."
+
+  - loai: tu-luan
+    id: ch02-tl-02
+    khai_niem: [lop-doi-tuong, chuoi-tuple-set]
+    muc: vua
+    diem: 10
+    de: "Khi nào nên tạo lớp `SinhVien` thay vì dùng dict `{\"ten\": ..., \"diem\": ...}`? Nêu lợi ích và cái giá."
+    rubric:
+      - y: "Dùng lớp khi cần ràng buộc/kiểm tra dữ liệu, hành vi đi kèm, nhiều chỗ dùng lại."
+        diem: 4
+      - y: "Dict tiện cho dữ liệu tạm, ít ràng buộc, chuyển JSON dễ."
+        diem: 3
+      - y: "Cái giá của lớp: viết nhiều hơn, cần hiểu OOP; đừng tạo lớp cho một dict dùng một lần."
+        diem: 3
+    tra_loi_mau: "Dùng lớp khi dữ liệu có quy tắc và hành vi: điểm phải trong 0..10, tên không rỗng, cần tính điểm trung bình, cần in ra theo định dạng. Lớp gom logic kiểm tra vào một chỗ và tránh truyền sai kiểu ở nhiều hàm. Dict tiện khi dữ liệu chỉ để đọc/ghi JSON nhanh, không cần ràng buộc. Cái giá của lớp là phải viết `__init__`, `__repr__`, dễ over-engineer. Quy tắc: nếu cùng một cấu trúc dict xuất hiện ở ba nơi và có quy tắc kiểm tra, hãy nâng thành lớp."
+
+  - loai: code
+    id: ch02-code-01
+    khai_niem: [thu-vien-chuan, chuoi-tuple-set]
+    muc: vua
+    diem: 3
+    de: "Viết `dem_tu(s)` trả về dict đếm số lần xuất hiện của từng từ, tách theo khoảng trắng, không phân biệt hoa thường."
+    khung: |
+      def dem_tu(s):
+          # viết code ở đây
+          pass
+    kiem_tra: |
+      kq = dem_tu("AI và ai và Học")
+      assert kq["ai"] == 2 and kq["và"] == 2 and kq["học"] == 1
+      assert dem_tu("") == {}
+      print("OK")
+    loi_giai: |
+      from collections import Counter
+      def dem_tu(s):
+          return dict(Counter(s.lower().split()))
+
+  - loai: case
+    id: ch02-case-01
+    khai_niem: [doc-csv, chuoi-tuple-set]
+    muc: vua
+    diem: 10
+    boi_canh: "Giáo viên gửi tệp `diem_lop.csv` để tính điểm trung bình. Tệp nhìn bằng mắt thì bình thường, nhưng có tên gõ bằng hai kiểu Unicode khác nhau, tên thừa khoảng trắng, một điểm dùng dấu phẩy thập phân, một ô trống và một ô ghi 'chưa thi'."
+    du_lieu: [diem_lop.csv]
+    bay:
+      - "Hai tên giống hệt khi nhìn nhưng khác dạng Unicode NFC/NFD."
+      - "Tên '  An ' thừa khoảng trắng nên bị coi là người khác."
+      - "Điểm '7,5' không ép được bằng float() nếu không đổi dấu phẩy."
+      - "Ô trống và 'chưa thi' không phải số, nếu bỏ qua âm thầm thì mẫu số sai."
+    nhiem_vu:
+      - loai: tu-luan
+        de: "Kể ra ba bẫy dữ liệu trong tệp và cách phát hiện từng bẫy."
+        diem: 3
+        rubric:
+          - y: "NFC/NFD; phát hiện bằng so sánh độ dài chuỗi hoặc chuẩn hóa rồi so."
+            diem: 1
+          - y: "Khoảng trắng thừa; phát hiện bằng `strip()` rồi so tập tên."
+            diem: 1
+          - y: "Điểm dạng chữ/dấu phẩy/ô trống; phát hiện bằng đếm giá trị không ép được sang float."
+            diem: 1
+      - loai: code
+        de: "Dùng pandas đọc `diem_lop.csv`, chuẩn hóa tên về NFC và strip, bỏ dòng trùng tên, ép điểm về float (đổi dấu phẩy thành dấu chấm), bỏ dòng không có điểm; gán kết quả vào `df` với cột `ho_ten`, `diem`."
+        diem: 4
+        kiem_tra: |
+          import unicodedata
+          assert len(df) == 13, len(df)
+          assert df["ho_ten"].map(lambda s: unicodedata.normalize("NFC", s).strip()).is_unique
+          assert abs(df["diem"].mean() - 7.923) < 0.01
+          print("OK")
+      - loai: tu-luan
+        de: "Viết 3 câu giải thích cho giáo viên vì sao điểm trung bình tính tự động trước đây bị lệch, và đề xuất sửa ở nguồn."
+        diem: 3
+        rubric:
+          - y: "Nêu ảnh hưởng của tên trùng/ô trống tới mẫu số hoặc tổng."
+            diem: 1
+          - y: "Nêu ảnh hưởng của dấu phẩy thập phân bị bỏ qua."
+            diem: 1
+          - y: "Đề xuất nguồn: một biểu mẫu nhập, chuẩn Unicode NFC, kiểm tra trước khi gửi."
+            diem: 1
+    dap_an_mau: "Tệp có 15 dòng nhưng chỉ 13 học sinh sau khi chuẩn hóa NFC và strip: '  An ' trùng 'An', và 'Nguyễn Văn An' viết NFD trùng bản NFC. Hai dòng không có điểm hợp lệ ('', 'chưa thi'). Điểm '7,5' phải đổi dấu phẩy. Sau khi làm sạch, trung bình trên 13 điểm hợp lệ là 7,923. Nếu bỏ qua các bẫy này, mẫu số có thể là 15 hoặc tổng bị thiếu, làm điểm trung bình lệch. Nên sửa ở nguồn: dùng biểu mẫu nhập có kiểm tra, chuẩn hóa NFC ngay khi lưu, và không cho gửi khi điểm trống hoặc không phải số."

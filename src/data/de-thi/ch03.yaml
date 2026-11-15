@@ -1,0 +1,218 @@
+chuong: 3
+ten: NumPy
+
+khai_niem:
+  - id: shape
+    ten: Mảng và shape
+    trang: /ai-engineer/ch03-numpy/01-mang-va-shape/
+  - id: broadcasting
+    ten: Phép tính và broadcasting
+    trang: /ai-engineer/ch03-numpy/02-phep-tinh-va-broadcasting/
+  - id: chi-so-loc
+    ten: Chỉ số và lọc
+    trang: /ai-engineer/ch03-numpy/03-chi-so-va-loc/
+  - id: truc-ma-tran
+    ten: Trục và ma trận
+    trang: /ai-engineer/ch03-numpy/04-truc-va-ma-tran/
+
+cau_hoi:
+  - loai: trac-nghiem
+    id: ch03-tn-01
+    khai_niem: [shape]
+    muc: de
+    diem: 1
+    de: "`np.array([1, 2, 3]).shape` là gì?"
+    lua_chon: ["(3,)", "(1, 3)", "(3, 1)", "3"]
+    dap_an: 0
+    giai_thich: "Mảng một chiều có shape `(3,)`, khác với ma trận một hàng `(1, 3)`."
+
+  - loai: trac-nghiem
+    id: ch03-tn-02
+    khai_niem: [broadcasting]
+    muc: vua
+    diem: 1
+    de: "Cộng mảng shape `(3, 1)` với mảng shape `(1, 4)` cho shape gì?"
+    lua_chon: ["(3, 1)", "(1, 4)", "(3, 4)", "Lỗi"]
+    dap_an: 2
+    giai_thich: "Broadcasting kéo hai chiều 1 ra: hàng 3 và cột 4, kết quả `(3, 4)`."
+
+  - loai: trac-nghiem
+    id: ch03-tn-03
+    khai_niem: [chi-so-loc]
+    muc: de
+    diem: 1
+    de: "Với `a = np.array([[1, 2], [3, 4]])`, `a[0]` là gì?"
+    lua_chon: ["1", "[1, 2]", "[[1, 2]]", "Lỗi"]
+    dap_an: 1
+    giai_thich: "`a[0]` lấy hàng đầu, trả mảng một chiều `[1, 2]`."
+
+  - loai: trac-nghiem
+    id: ch03-tn-04
+    khai_niem: [chi-so-loc]
+    muc: kho
+    diem: 1
+    de: "Lấy `a[1:3]` (slice cơ bản) rồi sửa phần tử trong đó thì mảng gốc có đổi không?"
+    lua_chon: ["Có, slice cơ bản là view", "Không, slice luôn là bản sao", "Chỉ đổi khi dùng `.copy()`", "Tùy dtype"]
+    dap_an: 0
+    giai_thich: "Slice cơ bản trả view, sửa view là sửa gốc. Fancy indexing (mảng chỉ số) mới trả bản sao."
+
+  - loai: trac-nghiem
+    id: ch03-tn-05
+    khai_niem: [truc-ma-tran]
+    muc: vua
+    diem: 1
+    de: "`a.mean(axis=0)` trên mảng shape `(3, 4)` cho shape gì?"
+    lua_chon: ["(3,)", "(4,)", "(3, 4)", "Một số"]
+    dap_an: 1
+    giai_thich: "`axis=0` gộp theo hàng, còn lại 4 cột nên kết quả `(4,)`, tức trung bình từng cột."
+
+  - loai: trac-nghiem
+    id: ch03-tn-06
+    khai_niem: [chi-so-loc]
+    muc: de
+    diem: 1
+    de: "`a[a > 0]` làm gì?"
+    lua_chon: ["Đếm số phần tử dương", "Trả mảng các phần tử dương", "Đổi số âm thành 0", "Lỗi"]
+    dap_an: 1
+    giai_thich: "Mặt nạ boolean chọn các phần tử thỏa điều kiện, trả mảng một chiều."
+
+  - loai: trac-nghiem
+    id: ch03-tn-07
+    khai_niem: [shape]
+    muc: vua
+    diem: 1
+    de: "`a.reshape(-1, 2)` nghĩa là gì?"
+    lua_chon:
+      - "Đổi thành 2 hàng, tự tính số cột."
+      - "Đổi thành 2 cột, tự tính số hàng."
+      - "Xoá một chiều."
+      - "Chỉ lấy 2 phần tử."
+    dap_an: 1
+    giai_thich: "`-1` là chiều tự suy ra. Với `(-1, 2)`, số cột là 2, số hàng = tổng phần tử / 2."
+
+  - loai: trac-nghiem
+    id: ch03-tn-08
+    khai_niem: [shape]
+    muc: vua
+    diem: 1
+    de: "Muốn kết quả lặp lại được giữa các lần chạy, nên tạo số ngẫu nhiên thế nào?"
+    lua_chon:
+      - "`np.random.rand()`"
+      - "`np.random.default_rng(seed)` với seed cố định"
+      - "`random.random()`"
+      - "Không cần seed, numpy tự cố định"
+    dap_an: 1
+    giai_thich: "`default_rng(seed)` tạo bộ sinh mới, tách biệt trạng thái toàn cục và tái lập được."
+
+  - loai: trac-nghiem
+    id: ch03-tn-09
+    khai_niem: [broadcasting]
+    muc: de
+    diem: 1
+    de: "Trong NumPy, `np.array([1, 2]) / 2` cho gì?"
+    lua_chon: ["[0, 1]", "[0.5, 1.0]", "Lỗi vì khác shape", "2"]
+    dap_an: 1
+    giai_thich: "Số vô hướng được broadcasting tới mọi phần tử, phép chia trả float."
+
+  - loai: trac-nghiem
+    id: ch03-tn-10
+    khai_niem: [truc-ma-tran]
+    muc: kho
+    diem: 1
+    de: "Bạn có batch ảnh shape `(32, 28, 28)`. Muốn trung bình từng pixel qua 32 ảnh, dùng trục nào?"
+    lua_chon: ["axis=0", "axis=1", "axis=2", "axis=(1, 2)"]
+    dap_an: 0
+    giai_thich: "`axis=0` gộp chiều batch, còn lại `(28, 28)` là ảnh trung bình. `axis=(1,2)` sẽ cho trung bình mỗi ảnh."
+
+  - loai: tu-luan
+    id: ch03-tl-01
+    khai_niem: [shape, broadcasting]
+    muc: vua
+    diem: 10
+    de: "Bạn có mảng điểm shape `(5,)` và muốn trừ đi trung bình từng cột của ma trận `(5, 3)`. Bạn viết `X - y.mean()` thì báo lỗi shape. Giải thích và sửa."
+    rubric:
+      - y: "Nêu `y.mean()` là số vô hướng, không phải vector 3 cột; shape không khớp."
+        diem: 4
+      - y: "Nêu đúng cách: `X - X.mean(axis=0)` hoặc đổi `y` thành `(5, 1)` nếu muốn trừ theo hàng."
+        diem: 4
+      - y: "Chỉ ra broadcasting chỉ mở chiều 1, không tự hiểu ý người viết."
+        diem: 2
+    tra_loi_mau: "`y.mean()` trả một số vô hướng, nên `X - y.mean()` chỉ trừ cùng một số cho mọi phần tử, không phải trừ theo cột. Nếu muốn trừ trung bình từng cột của `X`, viết `X - X.mean(axis=0)`: kết quả `(3,)` được broadcasting lên `(5, 3)`. Nếu muốn trừ một vector 5 phần tử theo từng hàng, phải đổi shape thành `(5, 1)` trước: `X - y.reshape(-1, 1)`. Broadcasting chỉ kéo các chiều có kích thước 1; nó không đoán ý định."
+
+  - loai: tu-luan
+    id: ch03-tl-02
+    khai_niem: [truc-ma-tran]
+    muc: vua
+    diem: 10
+    de: "Giải thích `axis=0` và `axis=1` cho một người mới, dùng ma trận 2 hàng 3 cột làm ví dụ."
+    rubric:
+      - y: "`axis=0` gộp theo hàng, kết quả còn 3 phần tử (trung bình/sum từng cột)."
+        diem: 4
+      - y: "`axis=1` gộp theo cột, kết quả còn 2 phần tử (từng hàng)."
+        diem: 4
+      - y: "Ví dụ số cụ thể đúng."
+        diem: 2
+    tra_loi_mau: "Với ma trận `[[1, 2, 3], [4, 5, 6]]`, `axis=0` là gộp dọc theo hàng: cộng hai hàng lại được `[5, 7, 9]`, tức tính theo từng cột. `axis=1` là gộp ngang trong mỗi hàng: hàng đầu `1+2+3=6`, hàng sau `4+5+6=15`, kết quả `[6, 15]`. Mẹo nhớ: axis là chiều bị 'ép dẹp'; `axis=0` ép chiều hàng nên kết quả còn chiều cột."
+
+  - loai: code
+    id: ch03-code-01
+    khai_niem: [truc-ma-tran, broadcasting]
+    muc: vua
+    diem: 3
+    de: "Viết `chuan_hoa_cot(X)` trả về mảng đã trừ trung bình và chia độ lệch chuẩn theo từng cột; cột nào độ lệch chuẩn bằng 0 thì giữ nguyên cột đó (không chia)."
+    khung: |
+      import numpy as np
+
+      def chuan_hoa_cot(X):
+          # viết code ở đây
+          pass
+    kiem_tra: |
+      import numpy as np
+      X = np.array([[1.0, 10.0], [3.0, 10.0]])
+      Z = chuan_hoa_cot(X)
+      assert Z.shape == X.shape
+      assert abs(Z[0, 0] + 1.0) < 1e-9 and abs(Z[1, 0] - 1.0) < 1e-9
+      assert abs(Z[0, 1]) < 1e-12 and abs(Z[1, 1]) < 1e-12
+      print("OK")
+    loi_giai: |
+      import numpy as np
+
+      def chuan_hoa_cot(X):
+          X = np.asarray(X, dtype=float)
+          tb = X.mean(axis=0)
+          do_lech = X.std(axis=0)
+          an_toan = np.where(do_lech == 0, 1.0, do_lech)
+          return (X - tb) / an_toan
+
+  - loai: case
+    id: ch03-case-01
+    khai_niem: [shape, truc-ma-tran, broadcasting]
+    muc: kho
+    diem: 10
+    boi_canh: "Một bạn trong nhóm viết hàm chuẩn hóa batch ảnh shape `(4, 2, 2)` bằng cách trừ trung bình toàn batch rồi chia cho độ lệch chuẩn toàn batch. Kết quả chạy không lỗi nhưng ảnh bị mất tương phản, và có lúc chia cho 0 khi cả batch cùng một màu."
+    du_lieu: []
+    bay:
+      - "Trung bình toàn batch không phải trung bình từng pixel; mất cấu trúc ảnh."
+      - "Độ lệch chuẩn bằng 0 khi mọi pixel giống nhau, gây chia 0 hoặc NaN."
+      - "Nếu chuẩn hóa trước khi chia train/test sẽ rò rỉ thống kê."
+    nhiem_vu:
+      - loai: tu-luan
+        de: "Chỉ ra hai lỗi trong cách chuẩn hóa và nêu trục đúng cho batch `(4, 2, 2)`."
+        diem: 4
+        rubric:
+          - y: "Phải tính trung bình/độ lệch theo từng pixel, gộp trục batch `axis=0`."
+            diem: 2
+          - y: "Phải chặn chia 0 khi độ lệch chuẩn bằng 0."
+            diem: 2
+      - loai: code
+        de: "Viết `chuan_hoa_batch(batch)` chuẩn hóa theo từng pixel (trục 0), giữ shape, cột/pixel có độ lệch 0 thì giữ nguyên."
+        diem: 6
+        kiem_tra: |
+          import numpy as np
+          b = np.array([[[1.0, 1.0], [1.0, 1.0]], [[3.0, 1.0], [1.0, 1.0]], [[5.0, 1.0], [1.0, 1.0]], [[7.0, 1.0], [1.0, 1.0]]])
+          z = chuan_hoa_batch(b)
+          assert z.shape == b.shape
+          assert abs(z[:, 0, 0].mean()) < 1e-9
+          assert abs(z[0, 1, 1]) < 1e-12 and abs(z[3, 1, 1]) < 1e-12
+          print("OK")
+    dap_an_mau: "Cách cũ dùng một trung bình và một độ lệch cho toàn batch nên mọi ảnh bị kéo về cùng một mức, mất tương phản cục bộ. Với batch `(4, 2, 2)`, trục batch là 0, nên phải tính `mean(axis=0)` và `std(axis=0)` để được bảng `(2, 2)` thống kê cho từng pixel. Khi độ lệch bằng 0, thay bằng 1 trước khi chia để tránh chia 0. Ngoài ra, thống kê chuẩn hóa phải tính trên train rồi áp cho val/test, không tính lại trên test."

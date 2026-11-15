@@ -1,0 +1,208 @@
+chuong: 1
+ten: Python từ đầu
+
+khai_niem:
+  - id: kieu-va-phep-toan
+    ten: Kiểu dữ liệu và phép toán
+    trang: /ai-engineer/ch01-python-tu-dau/01-bien-va-kieu/
+  - id: vong-lap
+    ten: Điều kiện và vòng lặp
+    trang: /ai-engineer/ch01-python-tu-dau/02-dieu-kien-va-vong-lap/
+  - id: ham
+    ten: Hàm
+    trang: /ai-engineer/ch01-python-tu-dau/03-ham/
+  - id: list-dict
+    ten: List và dict
+    trang: /ai-engineer/ch01-python-tu-dau/04-list-va-dict/
+
+cau_hoi:
+  - loai: trac-nghiem
+    id: ch01-tn-01
+    khai_niem: [kieu-va-phep-toan]
+    muc: de
+    diem: 1
+    de: "Đoạn `3 + \"4\"` cho kết quả gì?"
+    lua_chon: ["7", "'34'", "TypeError", "None"]
+    dap_an: 2
+    giai_thich: "Python không tự đổi chuỗi thành số. Muốn nối chuỗi thì `\"3\" + \"4\"`; muốn cộng số thì `int(\"4\")`."
+
+  - loai: trac-nghiem
+    id: ch01-tn-02
+    khai_niem: [vong-lap]
+    muc: de
+    diem: 1
+    de: "`list(range(1, 5))` bằng gì?"
+    lua_chon: ["[1, 2, 3, 4, 5]", "[1, 2, 3, 4]", "[0, 1, 2, 3, 4]", "[2, 3, 4, 5]"]
+    dap_an: 1
+    giai_thich: "`range(a, b)` lấy từ a tới b-1. Muốn có 5 thì dùng `range(1, 6)`."
+
+  - loai: trac-nghiem
+    id: ch01-tn-03
+    khai_niem: [list-dict]
+    muc: vua
+    diem: 1
+    de: "```python\nx = [1, 2, 3]\ny = x\ny.append(4)\nprint(len(x))\n```\nIn ra gì?"
+    lua_chon: ["3", "4", "Lỗi", "None"]
+    dap_an: 1
+    giai_thich: "`y = x` không chép danh sách mà cho hai tên cùng trỏ vào một danh sách. Sửa thì dùng `y = x.copy()` hoặc `list(x)`."
+
+  - loai: trac-nghiem
+    id: ch01-tn-04
+    khai_niem: [list-dict]
+    muc: de
+    diem: 1
+    de: "`d = {\"a\": 1}; print(d[\"b\"])` xảy ra gì?"
+    lua_chon: ["In ra None", "In ra 0", "KeyError", "Tự thêm khóa b"]
+    dap_an: 2
+    giai_thich: "Truy cập khóa không có bằng `[]` sẽ ném `KeyError`. Dùng `d.get(\"b\", 0)` nếu muốn giá trị mặc định."
+
+  - loai: trac-nghiem
+    id: ch01-tn-05
+    khai_niem: [ham]
+    muc: vua
+    diem: 1
+    de: "Hàm không có lệnh `return` trả về gì?"
+    lua_chon: ["0", "Chuỗi rỗng", "None", "Lỗi"]
+    dap_an: 2
+    giai_thich: "Mặc định hàm trả `None`. Đây là lỗi hay gặp khi quên `return` và thấy biến nhận giá trị `None`."
+
+  - loai: trac-nghiem
+    id: ch01-tn-06
+    khai_niem: [kieu-va-phep-toan]
+    muc: vua
+    diem: 1
+    de: "Muốn so sánh hai chuỗi có nội dung giống nhau, nên dùng gì?"
+    lua_chon: ["`is`", "`==`", "`equals`", "`compare`"]
+    dap_an: 1
+    giai_thich: "`==` so giá trị; `is` so danh tính đối tượng, không đáng tin cho chuỗi. Dùng `==` cho so sánh nội dung."
+
+  - loai: trac-nghiem
+    id: ch01-tn-07
+    khai_niem: [vong-lap]
+    muc: vua
+    diem: 1
+    de: "Cách viết nào vừa lấy chỉ số vừa lấy giá trị của danh sách là rõ nhất?"
+    lua_chon:
+      - "`for i in range(len(xs)): print(i, xs[i])`"
+      - "`for i, x in enumerate(xs): print(i, x)`"
+      - "`for x in xs: print(xs.index(x), x)`"
+      - "`while xs: print(xs.pop())`"
+    dap_an: 1
+    giai_thich: "`enumerate` cho cả chỉ số và giá trị, tránh lỗi lệch chỉ số. `index` sai khi có phần tử trùng."
+
+  - loai: trac-nghiem
+    id: ch01-tn-08
+    khai_niem: [vong-lap]
+    muc: vua
+    diem: 1
+    de: "Vòng `while` nào có nguy cơ chạy mãi?"
+    lua_chon:
+      - "`while i < 10: i += 1`"
+      - "`while i < 10:` mà bên trong không đổi `i`"
+      - "`for i in range(10): ...`"
+      - "`while True: break`"
+    dap_an: 1
+    giai_thich: "Điều kiện phụ thuộc `i` nhưng `i` không đổi thì vòng không bao giờ kết thúc. Luôn đảm bảo có bước tiến tới điều kiện dừng."
+
+  - loai: trac-nghiem
+    id: ch01-tn-09
+    khai_niem: [kieu-va-phep-toan]
+    muc: vua
+    diem: 1
+    de: "`if ds:` với `ds = []` thì nhánh `if` có chạy không?"
+    lua_chon: ["Có", "Không, vì list rỗng là falsy", "Lỗi", "Tùy phiên bản Python"]
+    dap_an: 1
+    giai_thich: "List rỗng, chuỗi rỗng, 0 và None đều là falsy. Dùng `if ds:` để kiểm tra có phần tử."
+
+  - loai: trac-nghiem
+    id: ch01-tn-10
+    khai_niem: [kieu-va-phep-toan]
+    muc: kho
+    diem: 1
+    de: "Vì sao `s = \"abc\"; s[0] = \"x\"` báo lỗi?"
+    lua_chon:
+      - "Vì chuỗi trong Python là bất biến (immutable)."
+      - "Vì chỉ số phải bắt đầu từ 1."
+      - "Vì phải dùng `s.set(0, 'x')`."
+      - "Vì chuỗi chỉ đọc được, không in được."
+    dap_an: 0
+    giai_thich: "Chuỗi không sửa tại chỗ. Tạo chuỗi mới: `s = \"x\" + s[1:]`."
+
+  - loai: tu-luan
+    id: ch01-tl-01
+    khai_niem: [list-dict]
+    muc: vua
+    diem: 10
+    de: "Bạn viết hàm `them_diem(ds, diem)` để thêm điểm vào danh sách, nhưng gọi hai lần ở hai chỗ khác nhau lại thấy danh sách cũ bị đổi. Giải thích nguyên nhân và hai cách sửa."
+    rubric:
+      - y: "Chỉ ra tham chiếu: list được truyền vào là cùng một đối tượng, không phải bản sao."
+        diem: 4
+      - y: "Cách sửa 1: không sửa tham số, trả về list mới (`return ds + [diem]`)."
+        diem: 3
+      - y: "Cách sửa 2: chép trước khi sửa (`moi = ds.copy()`) hoặc dùng tuple cho dữ liệu bất biến."
+        diem: 3
+    tra_loi_mau: "List trong Python là đối tượng tham chiếu. Khi truyền `ds` vào hàm, hàm nhận cùng một list, nên `ds.append(...)` sửa luôn list gốc. Nếu hàm được thiết kế để 'thêm' thì nên trả về list mới: `def them_diem(ds, diem): return ds + [diem]`. Nếu buộc phải sửa tại chỗ, hãy chép trước: `moi = ds.copy(); moi.append(diem); return moi`, và ghi rõ trong tên hàm là có sửa đối số."
+
+  - loai: tu-luan
+    id: ch01-tl-02
+    khai_niem: [vong-lap, ham]
+    muc: vua
+    diem: 10
+    de: "Khi nào dùng `for`, khi nào dùng `while`? Cho một ví dụ mỗi loại gắn với xử lý dữ liệu."
+    rubric:
+      - y: "`for` khi biết trước tập cần duyệt (danh sách, range, file)."
+        diem: 4
+      - y: "`while` khi số lần lặp chưa biết, dừng theo điều kiện (đọc tới khi gặp dấu hiệu, lặp tới khi hội tụ)."
+        diem: 4
+      - y: "Ví dụ cụ thể, đúng cú pháp."
+        diem: 2
+    tra_loi_mau: "Dùng `for` khi đã biết tập cần duyệt, ví dụ `for dong in csv.reader(f):` để xử lý từng dòng. Dùng `while` khi chưa biết trước số lần, ví dụ `while loss > 1e-4 and buoc < 10000:` để lặp huấn luyện tới khi hội tụ. Quy tắc thực dụng: nếu có thể viết bằng `for` trên một tập xác định thì viết `for`; `while` chỉ khi điều kiện dừng là trạng thái chứ không phải độ dài."
+
+  - loai: code
+    id: ch01-code-01
+    khai_niem: [vong-lap]
+    muc: de
+    diem: 3
+    de: "Viết `dem_chan(xs)` trả về số phần tử chẵn trong danh sách số nguyên."
+    khung: |
+      def dem_chan(xs):
+          # viết code ở đây
+          pass
+    kiem_tra: |
+      assert dem_chan([1, 2, 3, 4, 6]) == 3
+      assert dem_chan([]) == 0
+      assert dem_chan([1, 3, 5]) == 0
+      print("OK")
+    loi_giai: |
+      def dem_chan(xs):
+          return sum(1 for x in xs if x % 2 == 0)
+
+  - loai: case
+    id: ch01-case-01
+    khai_niem: [ham, kieu-va-phep-toan]
+    muc: vua
+    diem: 10
+    boi_canh: "Bạn nhận một script nhỏ của bạn cùng nhóm để tính điểm trung bình ba bài kiểm tra. Script chạy được với lớp có học sinh nhưng báo lỗi với lớp rỗng, và có lúc in ra chuỗi nối thay vì số."
+    du_lieu: []
+    bay:
+      - "Chia cho 0 khi danh sách điểm rỗng."
+      - "Cộng chuỗi với số khi điểm được đọc từ CSV mà không ép kiểu."
+      - "Trả None khi quên return."
+    nhiem_vu:
+      - loai: tu-luan
+        de: "Kể tên hai lỗi và nêu cách tái hiện mỗi lỗi bằng một dòng gọi hàm."
+        diem: 4
+        rubric:
+          - y: "Lỗi chia 0 với danh sách rỗng; tái hiện `trung_binh([])`."
+            diem: 2
+          - y: "Lỗi nối chuỗi do điểm là str; tái hiện với `[\"8\", \"9\"]`."
+            diem: 2
+      - loai: code
+        de: "Viết `trung_binh(ds)` trả 0.0 nếu danh sách rỗng, ép mỗi phần tử về float trước khi cộng."
+        diem: 6
+        kiem_tra: |
+          assert trung_binh([]) == 0.0
+          assert abs(trung_binh(["8", 9, 10]) - 9.0) < 1e-9
+          assert abs(trung_binh([1]) - 1.0) < 1e-9
+          print("OK")
+    dap_an_mau: "Lỗi thứ nhất: `sum(ds)/len(ds)` với `ds=[]` chia cho 0. Lỗi thứ hai: điểm đọc từ CSV là chuỗi nên `sum` nối chuỗi hoặc cộng chuỗi với số gây TypeError. Cách sửa: kiểm tra rỗng trước, ép kiểu từng phần tử, và luôn trả về số thực. Hàm mẫu: `def trung_binh(ds):\n    if not ds:\n        return 0.0\n    return sum(float(x) for x in ds) / len(ds)`."

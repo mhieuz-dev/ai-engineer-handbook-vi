@@ -1,0 +1,238 @@
+chuong: 4
+ten: Pandas và Matplotlib
+
+khai_niem:
+  - id: dataframe
+    ten: DataFrame
+    trang: /ai-engineer/ch04-pandas-va-matplotlib/01-dataframe/
+  - id: loc-cot
+    ten: Chọn, lọc và tạo cột
+    trang: /ai-engineer/ch04-pandas-va-matplotlib/02-chon-loc-va-cot-moi/
+  - id: groupby
+    ten: Gộp nhóm và sắp xếp
+    trang: /ai-engineer/ch04-pandas-va-matplotlib/03-gop-nhom-va-sap-xep/
+  - id: ve-bieu-do
+    ten: Vẽ biểu đồ
+    trang: /ai-engineer/ch04-pandas-va-matplotlib/04-ve-bieu-do/
+
+cau_hoi:
+  - loai: trac-nghiem
+    id: ch04-tn-01
+    khai_niem: [dataframe]
+    muc: de
+    diem: 1
+    de: "`df.head()` làm gì?"
+    lua_chon: ["In 5 dòng đầu", "Xoá 5 dòng đầu", "Đổi tên cột", "Sắp xếp bảng"]
+    dap_an: 0
+    giai_thich: "`head(n)` xem nhanh n dòng đầu (mặc định 5), hữu ích trước khi phân tích."
+
+  - loai: trac-nghiem
+    id: ch04-tn-02
+    khai_niem: [loc-cot]
+    muc: de
+    diem: 1
+    de: "Muốn lấy các dòng có `so_tien > 100000`, viết thế nào?"
+    lua_chon: ["`df.so_tien > 100000`", "`df[df.so_tien > 100000]`", "`df.loc(so_tien > 100000)`", "`df.filter(100000)`"]
+    dap_an: 1
+    giai_thich: "Biểu thức so sánh tạo mặt nạ boolean; đặt vào `df[...]` để lọc dòng."
+
+  - loai: trac-nghiem
+    id: ch04-tn-03
+    khai_niem: [groupby]
+    muc: vua
+    diem: 1
+    de: "Muốn tổng doanh thu theo từng kênh, viết thế nào?"
+    lua_chon:
+      - "`df.groupby(\"kenh\")[\"so_tien\"].sum()`"
+      - "`df.sort_values(\"kenh\")`"
+      - "`df[\"kenh\"].sum()`"
+      - "`df.pivot(\"kenh\")`"
+    dap_an: 0
+    giai_thich: "`groupby` gom theo kênh rồi `sum` trên cột số tiền."
+
+  - loai: trac-nghiem
+    id: ch04-tn-04
+    khai_niem: [dataframe]
+    muc: vua
+    diem: 1
+    de: "Tệp CSV dùng dấu phẩy làm dấu thập phân (ví dụ `1234,56`). Cách đọc đúng với pandas là gì?"
+    lua_chon:
+      - "`pd.read_csv(path)` là đủ"
+      - "`pd.read_csv(path, decimal=\",\")`"
+      - "`pd.read_csv(path, sep=\".\")`"
+      - "Đổi tên cột"
+    dap_an: 1
+    giai_thich: "`decimal=\",\"` báo pandas hiểu dấu phẩy là dấu thập phân. Nếu tệp trộn cả hai kiểu, phải tự làm sạch cột."
+
+  - loai: trac-nghiem
+    id: ch04-tn-05
+    khai_niem: [dataframe, loc-cot]
+    muc: vua
+    diem: 1
+    de: "Cột ngày có nhiều định dạng. Muốn đổi sang datetime và biến giá trị hỏng thành `NaT`, dùng gì?"
+    lua_chon:
+      - "`pd.to_datetime(s, errors=\"coerce\")`"
+      - "`pd.to_numeric(s)`"
+      - "`s.astype(str)`"
+      - "`s.dropna()`"
+    dap_an: 0
+    giai_thich: "`errors=\"coerce\"` biến giá trị không parse được thành `NaT` thay vì ném lỗi, giúp đếm được bao nhiêu dòng hỏng."
+
+  - loai: trac-nghiem
+    id: ch04-tn-06
+    khai_niem: [loc-cot]
+    muc: kho
+    diem: 1
+    de: "Vì sao `df[df.a > 0][\"b\"] = 1` có thể không sửa vào `df` và sinh cảnh báo?"
+    lua_chon:
+      - "Vì `df[...]` có thể trả bản sao, không phải view."
+      - "Vì cột b không tồn tại."
+      - "Vì pandas không cho gán số."
+      - "Vì thiếu `.copy()`."
+    dap_an: 0
+    giai_thich: "Chuỗi lọc rồi gán dễ rơi vào bản sao. Dùng `df.loc[df.a > 0, \"b\"] = 1` để gán trên bảng gốc."
+
+  - loai: trac-nghiem
+    id: ch04-tn-07
+    khai_niem: [dataframe]
+    muc: de
+    diem: 1
+    de: "`df.drop_duplicates()` làm gì?"
+    lua_chon: ["Xoá cột trùng tên", "Bỏ các dòng trùng hoàn toàn", "Sắp xếp bảng", "Đổi kiểu dữ liệu"]
+    dap_an: 1
+    giai_thich: "Mặc định so tất cả cột; có thể chỉ định `subset` để so theo vài cột."
+
+  - loai: trac-nghiem
+    id: ch04-tn-08
+    khai_niem: [groupby]
+    muc: vua
+    diem: 1
+    de: "`merge` khác `concat` ở điểm nào?"
+    lua_chon:
+      - "`merge` ghép theo khóa giữa hai bảng; `concat` nối theo trục (hàng hoặc cột)."
+      - "`merge` chỉ dùng cho số."
+      - "`concat` không ghép được nhiều bảng."
+      - "Không khác gì."
+    dap_an: 0
+    giai_thich: "Dùng `merge` khi có khóa chung (như `ma_don`); dùng `concat` khi xếp thêm dòng hoặc cột cùng cấu trúc."
+
+  - loai: trac-nghiem
+    id: ch04-tn-09
+    khai_niem: [ve-bieu-do]
+    muc: de
+    diem: 1
+    de: "Cách tạo figure và axes rõ ràng trong Matplotlib là gì?"
+    lua_chon: ["`plt.plot()` rồi quên", "`fig, ax = plt.subplots()` rồi `ax.plot(...)`", "`ax = plt.figure()`", "`plt.axes = []`"]
+    dap_an: 1
+    giai_thich: "Tạo `fig, ax` giúp kiểm soát figure và axes, dễ đặt tiêu đề, lưu hình, vẽ nhiều ô."
+
+  - loai: trac-nghiem
+    id: ch04-tn-10
+    khai_niem: [ve-bieu-do]
+    muc: vua
+    diem: 1
+    de: "Lưu hình bị cắt mất nhãn trục. Cách sửa thường dùng là gì?"
+    lua_chon:
+      - "`plt.savefig(\"a.png\", bbox_inches=\"tight\")`"
+      - "`plt.show()`"
+      - "`plt.close()`"
+      - "Đổi kích thước chữ về 0"
+    dap_an: 0
+    giai_thich: "`bbox_inches=\"tight\"` cắt theo nội dung thực, giữ nhãn và tiêu đề."
+
+  - loai: tu-luan
+    id: ch04-tl-01
+    khai_niem: [dataframe, loc-cot]
+    muc: vua
+    diem: 10
+    de: "Bạn nhận một tệp doanh thu có ngày trộn ba định dạng, số tiền lúc dùng dấu phẩy lúc dùng dấu chấm, vài ô trống, vài dòng trùng. Trình bày thứ tự làm sạch và lý do."
+    rubric:
+      - y: "Đọc dữ liệu dạng chuỗi, xem vài dòng và kiểu từng cột trước khi ép kiểu."
+        diem: 3
+      - y: "Chuẩn hóa ngày và số tiền, đếm giá trị hỏng thay vì bỏ âm thầm."
+        diem: 4
+      - y: "Bỏ dòng trùng sau khi chuẩn hóa, ghi lại số dòng bị loại và lý do."
+        diem: 3
+    tra_loi_mau: "Đầu tiên đọc dữ liệu dạng chuỗi (`dtype=str`) và xem `head()`, `info()` để biết cột nào lẫn định dạng. Sau đó chuẩn hóa ngày bằng `pd.to_datetime(..., errors=\"coerce\")`, đếm số `NaT`; chuẩn hóa số tiền bằng cách bỏ dấu phân cách nghìn, đổi dấu phẩy thập phân, ép float và đếm số ô không ép được. Chỉ sau khi chuẩn hóa mới bỏ dòng trùng bằng `drop_duplicates()`, và ghi lại số dòng bị loại. Thứ tự này quan trọng vì nếu bỏ trùng trước, hai dòng cùng nội dung nhưng khác định dạng sẽ không bị coi là trùng."
+
+  - loai: tu-luan
+    id: ch04-tl-02
+    khai_niem: [groupby]
+    muc: vua
+    diem: 10
+    de: "Doanh thu trung bình bị kéo lên rất cao vì một đơn sỉ 100 triệu. Bạn báo cáo với sếp bằng chỉ số nào, và giải thích ra sao?"
+    rubric:
+      - y: "Nêu trung bình bị ảnh hưởng bởi ngoại lai; trung vị ổn định hơn."
+        diem: 4
+      - y: "Đề xuất báo cáo cả hai, kèm số đơn và tổng, không chỉ một con số."
+        diem: 3
+      - y: "Cách trình bày cho người không kỹ thuật: ví dụ 'một nửa số đơn dưới X', tách đơn sỉ/đơn lẻ."
+        diem: 3
+    tra_loi_mau: "Trung bình cộng rất nhạy với ngoại lai: một đơn 100 triệu có thể kéo trung bình của hàng trăm đơn lên gấp nhiều lần. Trung vị (median) cho biết 'một nửa số đơn thấp hơn mức này', nên phản ánh đơn điển hình tốt hơn. Mình sẽ báo cáo cả trung vị, trung bình, tổng doanh thu và số đơn; đồng thời tách riêng đơn sỉ khỏi đơn lẻ. Với sếp, nên nói: 'Một nửa số đơn dưới 1,2 triệu; riêng một đơn sỉ 100 triệu làm trung bình tăng vọt, nên em để riêng để không làm sai hình dung về khách hàng thường.'"
+
+  - loai: code
+    id: ch04-code-01
+    khai_niem: [groupby]
+    muc: de
+    diem: 3
+    de: "Viết `tong_theo_kenh(df)` trả về Series tổng `so_tien` theo từng `kenh`, sắp xếp giảm dần."
+    khung: |
+      def tong_theo_kenh(df):
+          # viết code ở đây
+          pass
+    kiem_tra: |
+      import pandas as pd
+      df = pd.DataFrame({"kenh": ["web", "app", "web"], "so_tien": [1.0, 2.0, 3.0]})
+      kq = tong_theo_kenh(df)
+      assert abs(kq["web"] - 4.0) < 1e-9
+      assert abs(kq["app"] - 2.0) < 1e-9
+      assert list(kq.index)[0] == "web"
+      print("OK")
+    loi_giai: |
+      def tong_theo_kenh(df):
+          return df.groupby("kenh")["so_tien"].sum().sort_values(ascending=False)
+
+  - loai: case
+    id: ch04-case-01
+    khai_niem: [dataframe, loc-cot, groupby]
+    muc: kho
+    diem: 10
+    boi_canh: "Sếp gửi tệp `doanh_thu_2026.csv` và hỏi: 'Năm nay mỗi kênh thu bao nhiêu?'. Tệp do ba người nhập nên ngày có ba định dạng, số tiền lúc dùng dấu phẩy lúc dùng dấu chấm, có ô trống, có dòng nhập trùng, có khoản hoàn tiền âm và một đơn sỉ rất lớn."
+    du_lieu: [doanh_thu_2026.csv]
+    bay:
+      - "Ngày trộn ISO, dd/mm/yyyy và dd-Mon-yyyy; đọc mặc định có thể đoán sai tháng/ngày."
+      - "Số tiền trộn dấu phẩy và dấu chấm thập phân; ép float trực tiếp sẽ lỗi hoặc mất phần lẻ."
+      - "6 ô tiền trống và 3 dòng trùng; bỏ âm thầm làm mẫu số sai."
+      - "2 khoản hoàn tiền âm là hợp lệ, không phải lỗi; 1 đơn sỉ 100 triệu là ngoại lai cần báo riêng."
+    nhiem_vu:
+      - loai: tu-luan
+        de: "Kể tên bốn bẫy trong tệp và cách kiểm tra từng bẫy trước khi tính tổng."
+        diem: 3
+        rubric:
+          - y: "Ngày trộn định dạng; kiểm bằng số NaT sau khi parse."
+            diem: 1
+          - y: "Số tiền trộn dấu; kiểm bằng số ô không ép được float."
+            diem: 1
+          - y: "Ô trống, dòng trùng, hoàn tiền/ngoại lai; kiểm bằng đếm và xem các dòng bất thường."
+            diem: 1
+      - loai: code
+        de: "Đọc `doanh_thu_2026.csv`, chuẩn hóa ngày và số tiền, bỏ ô trống và dòng trùng, giữ khoản hoàn tiền âm; gán `sach` là DataFrame đã làm sạch với cột `ngay` kiểu datetime và `so_tien` kiểu float."
+        diem: 5
+        kiem_tra: |
+          import pandas as pd
+          assert len(sach) == 114, len(sach)
+          assert abs(float(sach["so_tien"].sum()) - 247526799.17) < 1.0
+          tong = sach.groupby("kenh")["so_tien"].sum()
+          assert abs(float(tong["web"]) - 140038760.22) < 1.0
+          assert abs(float(tong["cua_hang"]) - 35853373.23) < 1.0
+          assert str(sach["ngay"].dtype).startswith("datetime")
+          print("OK")
+      - loai: tu-luan
+        de: "Viết 3 câu trả lời cho sếp: tổng theo kênh, cảnh báo về đơn sỉ, và nên đọc số nào để hiểu khách hàng thường."
+        diem: 2
+        rubric:
+          - y: "Nêu tổng đúng theo kênh (hoặc cách lấy)."
+            diem: 1
+          - y: "Tách đơn sỉ/hoàn tiền và đề xuất trung vị cho đơn thường."
+            diem: 1
+    dap_an_mau: "Tệp có 123 dòng, 6 ô tiền trống và 3 dòng trùng, còn 114 dòng hợp lệ sau khi bỏ trống và bỏ trùng. Tổng doanh thu là 247.526.799,17; theo kênh: web 140.038.760,22; ứng dụng 46.099.236,74; cửa hàng 35.853.373,23; đối tác 25.535.428,98. Hai khoản âm là hoàn tiền hợp lệ nên giữ; đơn sỉ 100 triệu là ngoại lai, cần báo riêng để không làm lệch hình dung về đơn thường. Khi trả lời sếp, nên nêu tổng và số đơn, tách đơn sỉ, và dùng trung vị để mô tả đơn điển hình."

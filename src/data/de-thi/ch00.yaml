@@ -1,0 +1,235 @@
+chuong: 0
+ten: Lộ trình AI Engineer và cách dùng Colab
+
+khai_niem:
+  - id: colab-runtime
+    ten: Runtime Colab
+    trang: /ai-engineer/ch00-lo-trinh-va-colab/02-dung-colab/
+  - id: notebook-thu-tu
+    ten: Chạy notebook đúng thứ tự
+    trang: /ai-engineer/ch00-lo-trinh-va-colab/02-dung-colab/
+  - id: nam-buoc-hoc
+    ten: Năm bước học một chương
+    trang: /ai-engineer/ch00-lo-trinh-va-colab/01-lo-trinh/
+
+cau_hoi:
+  - loai: trac-nghiem
+    id: ch00-tn-01
+    khai_niem: [colab-runtime]
+    muc: de
+    diem: 1
+    de: "Bạn cài một thư viện bằng `!pip install` ở cell đầu, chạy hết notebook, rồi để máy nghỉ. Hôm sau mở lại, cell `import` báo `ModuleNotFoundError`. Nguyên nhân hợp lý nhất là gì?"
+    lua_chon:
+      - "Thư viện đó không hỗ trợ Colab."
+      - "Runtime đã được cấp lại nên mọi thứ cài thêm bị mất."
+      - "Bạn gõ sai tên thư viện ở cell import."
+      - "Colab chỉ cho cài tối đa một thư viện mỗi ngày."
+    dap_an: 1
+    giai_thich: "Colab cấp lại máy ảo sau một thời gian nghỉ hoặc khi bấm Reset. Gói cài bằng `!pip` không nằm trong notebook, nên phải chạy lại cell cài đặt (hoặc gộp việc cài vào đầu notebook kèm ghi chú)."
+
+  - loai: trac-nghiem
+    id: ch00-tn-02
+    khai_niem: [notebook-thu-tu]
+    muc: vua
+    diem: 1
+    de: "Trong notebook, bạn chạy cell 5 trước cell 3 rồi thấy một biến 'tự nhiên' có giá trị lạ. Cách xử lý đúng nhất là gì?"
+    lua_chon:
+      - "Xoá cell 5 vì nó gây lỗi."
+      - "Bấm Runtime → Run all để chạy lại từ đầu theo thứ tự."
+      - "Đổi tên biến cho khác đi."
+      - "Thêm `print` ở mọi cell rồi đoán."
+    dap_an: 1
+    giai_thich: "Notebook giữ trạng thái giữa các cell, nên chạy sai thứ tự sẽ tạo biến 'mồ côi'. Chạy lại toàn bộ từ đầu là cách tái lập đáng tin nhất."
+
+  - loai: trac-nghiem
+    id: ch00-tn-03
+    khai_niem: [colab-runtime]
+    muc: de
+    diem: 1
+    de: "Bạn muốn dữ liệu và notebook còn nguyên khi đóng trình duyệt. Cách nào đúng?"
+    lua_chon:
+      - "Chỉ cần bấm Save, Colab tự giữ cả ổ đĩa ảo."
+      - "Lưu notebook vào Drive và mount Drive cho dữ liệu, hoặc tải tệp về máy."
+      - "Để tab Colab mở qua đêm là đủ."
+      - "Dùng chế độ ẩn danh để Colab giữ lâu hơn."
+    dap_an: 1
+    giai_thich: "Ổ đĩa của máy ảo là tạm. Muốn giữ lâu, lưu notebook trên Drive và mount Drive cho dữ liệu, hoặc tải về máy. Tab mở qua đêm vẫn có thể bị ngắt."
+
+  - loai: trac-nghiem
+    id: ch00-tn-04
+    khai_niem: [colab-runtime]
+    muc: vua
+    diem: 1
+    de: "Câu nào đúng về GPU miễn phí trên Colab?"
+    lua_chon:
+      - "Luôn có GPU và không giới hạn thời gian."
+      - "GPU là tài nguyên dùng chung, có thể không có và runtime có thể bị ngắt."
+      - "GPU chỉ dùng được khi trả tiền."
+      - "GPU khiến mọi đoạn code chạy nhanh hơn, kể cả đọc CSV."
+    dap_an: 1
+    giai_thich: "Colab miễn phí chia GPU cho nhiều người, không đảm bảo lúc nào cũng có, và runtime có thể bị ngắt. Code không dùng phép tính lớn thì GPU không giúp gì."
+
+  - loai: trac-nghiem
+    id: ch00-tn-05
+    khai_niem: [nam-buoc-hoc]
+    muc: de
+    diem: 1
+    de: "Năm bước học của giáo trình là gì?"
+    lua_chon:
+      - "Đọc, chép, chạy, sửa, nộp."
+      - "Trực giác, Toán, Tính tay, Code, Đọc kết quả."
+      - "Cài đặt, huấn luyện, đánh giá, triển khai, bảo trì."
+      - "Xem video, đọc sách, làm bài, thi, ôn."
+    dap_an: 1
+    giai_thich: "Mỗi chương đi từ trực giác, tới công thức, tính tay một ví dụ nhỏ, rồi code và cuối cùng là đọc kết quả. Đi đủ năm bước thì hiểu mới chắc."
+
+  - loai: trac-nghiem
+    id: ch00-tn-06
+    khai_niem: [colab-runtime]
+    muc: vua
+    diem: 1
+    de: "Lệnh `!pip install pandas` khác `pip install pandas` ở điểm nào khi gõ trong cell Colab?"
+    lua_chon:
+      - "Dấu `!` chạy lệnh như lệnh hệ điều hành, còn không có `!` là cú pháp Python."
+      - "Không khác gì, Colab tự hiểu cả hai."
+      - "Có `!` thì cài nhanh hơn."
+      - "Không có `!` thì cài vào ổ đĩa của bạn."
+    dap_an: 0
+    giai_thich: "Trong cell Colab, `!` báo cho notebook chạy phần còn lại như lệnh shell. `pip install` không có `!` là cú pháp Python sai."
+
+  - loai: trac-nghiem
+    id: ch00-tn-07
+    khai_niem: [notebook-thu-tu]
+    muc: vua
+    diem: 1
+    de: "Bạn gặp một lỗi dài trong notebook. Việc nào nên làm trước?"
+    lua_chon:
+      - "Xoá cell bị lỗi."
+      - "Đọc dòng cuối của thông báo lỗi và kiểm tra cell phụ thuộc đã chạy chưa."
+      - "Cài lại toàn bộ thư viện."
+      - "Đổi sang máy khác."
+    dap_an: 1
+    giai_thich: "Dòng cuối cho biết loại lỗi; các dòng phía trên chỉ vị trí. Rất nhiều lỗi trong notebook là do cell phụ thuộc chưa chạy, không phải do code sai."
+
+  - loai: trac-nghiem
+    id: ch00-tn-08
+    khai_niem: [colab-runtime]
+    muc: de
+    diem: 1
+    de: "Vì sao giáo trình dùng Colab thay vì bắt bạn cài Python trên máy?"
+    lua_chon:
+      - "Vì Colab nhanh hơn mọi máy cá nhân."
+      - "Vì chạy trên trình duyệt, không cần cài, máy yếu vẫn học được; đổi máy chỉ cần đăng nhập."
+      - "Vì Colab không bao giờ hết tài nguyên."
+      - "Vì Colab bảo mật tuyệt đối."
+    dap_an: 1
+    giai_thich: "Colab giúp người mới bỏ qua bước cài đặt và dùng được máy yếu. Nó không nhanh hơn mọi máy và không bảo mật tuyệt đối, nên đừng chứa dữ liệu nhạy cảm."
+
+  - loai: trac-nghiem
+    id: ch00-tn-09
+    khai_niem: [lo-trinh]
+    muc: de
+    diem: 1
+    de: "Nhánh Robotics trên site hiện ở trạng thái nào?"
+    lua_chon:
+      - "Đã xong toàn bộ."
+      - "Đang được soạn, chưa có chương nào."
+      - "Chỉ dành cho người đã biết ROS."
+      - "Đã bỏ."
+    dap_an: 1
+    giai_thich: "Trang chủ ghi Robotics là nhánh thứ hai đang được soạn. Nhánh AI Engineer mới là nhánh có chương để học."
+
+  - loai: trac-nghiem
+    id: ch00-tn-10
+    khai_niem: [colab-runtime]
+    muc: vua
+    diem: 1
+    de: "Bạn muốn tải notebook về máy để mở bằng Jupyter. Cách nào đúng?"
+    lua_chon:
+      - "File → Download → Download .ipynb."
+      - "In trang ra PDF rồi đổi đuôi thành .ipynb."
+      - "Chụp màn hình từng cell."
+      - "Copy từng cell vào Word."
+    dap_an: 0
+    giai_thich: "Colab cho tải `.ipynb` trong menu File. Tệp đó mở được bằng Jupyter hoặc Colab khác."
+
+  - loai: tu-luan
+    id: ch00-tl-01
+    khai_niem: [colab-runtime, notebook-thu-tu]
+    muc: vua
+    diem: 10
+    de: "Bạn mở lại notebook sau một tuần, chạy cell cuối và nhận `NameError: name 'df' is not defined`. Trình bày cách chẩn đoán và quy trình làm việc để lần sau không gặp lại."
+    rubric:
+      - y: "Nêu đúng nguyên nhân: runtime đã cấp lại hoặc cell tạo `df` chưa chạy."
+        diem: 4
+      - y: "Nêu cách xử lý tức thì: Runtime → Run all hoặc chạy lại các cell theo thứ tự."
+        diem: 3
+      - y: "Nêu thói quen phòng ngừa: notebook tự chứa, cell cài đặt ở đầu, không phụ thuộc trạng thái ẩn."
+        diem: 3
+    tra_loi_mau: "`NameError` nghĩa là biến `df` chưa tồn tại trong phiên hiện tại. Hai khả năng: runtime vừa được cấp lại nên mọi biến mất, hoặc cell tạo `df` nằm dưới cell đang chạy nên chưa được chạy. Cách xử lý: bấm Runtime → Run all để chạy lại từ đầu; nếu vẫn lỗi thì tìm cell gán `df` và kiểm tra nó có chạy thành công không. Để phòng ngừa, đặt mọi lệnh cài thư viện và import ở đầu notebook, không dựa vào trạng thái ẩn, và trước khi nộp thì chạy lại toàn bộ một lần trên runtime sạch."
+
+  - loai: tu-luan
+    id: ch00-tl-02
+    khai_niem: [nam-buoc-hoc]
+    muc: vua
+    diem: 10
+    de: "Một bạn mới nói: 'Cứ đưa code chạy được là xong, cần gì trực giác với tính tay.' Bạn giải thích thế nào?"
+    rubric:
+      - y: "Chỉ ra giới hạn của việc chỉ chạy code: không biết vì sao, không sửa được khi hỏng, dễ tin kết quả sai."
+        diem: 4
+      - y: "Nêu vai trò của trực giác và tính tay: kiểm tra kết quả, phát hiện rò rỉ/lỗi đơn vị, chọn đúng chỉ số."
+        diem: 4
+      - y: "Đưa ví dụ cụ thể trong giáo trình (ví dụ tính tay một bước gradient rồi so với code)."
+        diem: 2
+    tra_loi_mau: "Code chạy được chỉ chứng minh cú pháp đúng, không chứng minh kết quả đúng. Nếu không có trực giác, bạn không biết một R² 0,99 là đáng mừng hay là dấu hiệu rò rỉ dữ liệu; không biết vì sao loss tăng để sửa learning rate. Tính tay một ví dụ nhỏ cho bạn một con số kỳ vọng để đối chiếu với code, nhờ đó phát hiện lỗi đơn vị, lỗi trục, lỗi chia train/test. Ví dụ ở chương hồi quy, tính tay gradient cho hai điểm dữ liệu rồi so với kết quả `autograd` giúp thấy ngay nếu công thức bị sai dấu."
+
+  - loai: code
+    id: ch00-code-01
+    khai_niem: [ham]
+    muc: de
+    diem: 3
+    de: "Viết hàm `chao(ten)` trả về chuỗi `Xin chào, <ten>!` (không in). Đây là bài làm quen cell code trên web."
+    khung: |
+      def chao(ten):
+          # viết code ở đây
+          pass
+    kiem_tra: |
+      assert chao("Lan") == "Xin chào, Lan!"
+      assert chao("") == "Xin chào, !"
+      print("OK")
+    loi_giai: |
+      def chao(ten):
+          return f"Xin chào, {ten}!"
+      print(chao("Lan"))
+
+  - loai: case
+    id: ch00-case-01
+    khai_niem: [colab-runtime, notebook-thu-tu]
+    muc: vua
+    diem: 10
+    boi_canh: "Nhóm ba bạn cùng làm bài tập nhóm trên Colab. Bạn A chạy được, bạn B báo `ModuleNotFoundError`, bạn C mất tệp dữ liệu sau giờ nghỉ trưa. Nhóm phải nộp notebook cho giảng viên trong 30 phút."
+    du_lieu: []
+    bay:
+      - "Mỗi người có runtime riêng nên gói cài và biến không dùng chung."
+      - "Runtime bị cấp lại sau khi nghỉ, ổ đĩa tạm mất dữ liệu."
+      - "Notebook phụ thuộc thứ tự cell và trạng thái ẩn."
+    nhiem_vu:
+      - loai: tu-luan
+        de: "Nêu hai nguyên nhân khác nhau của lỗi bạn B và bạn C."
+        diem: 4
+        rubric:
+          - y: "B: runtime riêng, chưa chạy cell cài đặt."
+            diem: 2
+          - y: "C: ổ đĩa tạm bị xoá khi runtime cấp lại, chưa mount Drive/lưu tệp."
+            diem: 2
+      - loai: tu-luan
+        de: "Đề xuất cấu trúc notebook để cả nhóm tái lập được trong 30 phút."
+        diem: 6
+        rubric:
+          - y: "Cell 1 cài thư viện + import, có ghi chú chạy lại."
+            diem: 2
+          - y: "Dữ liệu lấy từ Drive/URL công khai, không dựa vào tệp tải tay."
+            diem: 2
+          - y: "Kiểm tra chạy Run all trên runtime sạch trước khi nộp; ghi phiên bản thư viện."
+            diem: 2
+    dap_an_mau: "Bạn B lỗi vì mỗi người có runtime riêng: cell `!pip install` của A không ảnh hưởng tới B. Bạn C mất dữ liệu vì ổ đĩa của Colab là tạm; khi runtime bị cấp lại sau giờ nghỉ, tệp tải tay biến mất. Cách sửa: đặt một cell đầu notebook chứa toàn bộ lệnh cài và import, dữ liệu đọc từ Drive đã mount hoặc URL công khai; trước khi nộp, mở runtime mới, bấm Run all, và ghi lại phiên bản thư viện để người khác tái lập."
