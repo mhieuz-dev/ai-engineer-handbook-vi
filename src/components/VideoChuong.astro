@@ -14,30 +14,82 @@ const ds = videoCuaChuong(so);
 		<aside class="video-hoc" aria-label="Video nên xem">
 			<div class="video-nhan">VIDEO NÊN XEM</div>
 			{ds.map((v) => (
-				<a
-					class="video-the"
-					href={`https://www.youtube.com/watch?v=${v.id}`}
-					target="_blank"
-					rel="noopener"
-				>
-					<span class="video-anh">
-						<img
-							src={`https://i.ytimg.com/vi/${v.id}/mqdefault.jpg`}
-							width="320"
-							height="180"
-							loading="lazy"
-							decoding="async"
-							alt=""
-						/>
-						<span class="video-play" aria-hidden="true" />
-					</span>
-					<span class="video-chu">
-						<span class="video-tieu-de">{v.tieuDe}</span>
-						<span class="video-kenh">{v.kenh} · {v.thoiLuong}</span>
-						<span class="video-lien-ket">youtube.com/watch?v={v.id}</span>
-					</span>
-				</a>
+				<figure class="video-the" data-id={v.id}>
+					<a
+						class="video-nut"
+						href={`https://www.youtube.com/watch?v=${v.id}`}
+						target="_blank"
+						rel="noopener"
+						aria-label={`Phát video: ${v.tieuDe}`}
+					>
+						<span class="video-anh">
+							<img
+								src={`https://i.ytimg.com/vi/${v.id}/mqdefault.jpg`}
+								width="320"
+								height="180"
+								loading="lazy"
+								decoding="async"
+								alt=""
+							/>
+							<span class="video-lop" aria-hidden="true" />
+							<span class="video-play" aria-hidden="true" />
+							<span class="video-chu">
+								<span class="video-tieu-de">{v.tieuDe}</span>
+								<span class="video-kenh">{v.kenh} · {v.thoiLuong}</span>
+							</span>
+						</span>
+					</a>
+					<div class="video-khung" hidden />
+					<figcaption class="video-chan">
+						<a
+							class="video-lien-ket"
+							href={`https://www.youtube.com/watch?v=${v.id}`}
+							target="_blank"
+							rel="noopener"
+						>
+							Mở trên YouTube ↗
+						</a>
+						<span class="video-url">youtube.com/watch?v={v.id}</span>
+					</figcaption>
+				</figure>
 			))}
 		</aside>
 	)
 }
+
+<script>
+	const khu = document.querySelector<HTMLElement>('.video-hoc');
+	if (khu) {
+		khu.addEventListener('click', (e) => {
+			const nut = (e.target as HTMLElement).closest<HTMLAnchorElement>('.video-nut');
+			if (!nut || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+			const the = nut.closest<HTMLElement>('.video-the');
+			const id = the?.dataset.id;
+			if (!the || !id) return;
+			e.preventDefault();
+
+			// Phát video khác: dừng và trả ảnh lại cho video đang chạy.
+			khu.querySelectorAll<HTMLElement>('.video-the').forEach((t) => {
+				if (t === the) return;
+				t.classList.remove('dang-phat');
+				const k = t.querySelector<HTMLElement>('.video-khung')!;
+				k.hidden = true;
+				k.replaceChildren();
+				t.querySelector<HTMLAnchorElement>('.video-nut')!.hidden = false;
+			});
+			if (the.classList.contains('dang-phat')) return;
+
+			const khung = the.querySelector<HTMLElement>('.video-khung')!;
+			const iframe = document.createElement('iframe');
+			iframe.src = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`;
+			iframe.title = nut.getAttribute('aria-label')?.replace(/^Phát video: /, '') ?? 'Video';
+			iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+			iframe.allowFullscreen = true;
+			khung.replaceChildren(iframe);
+			khung.hidden = false;
+			the.classList.add('dang-phat');
+			nut.hidden = true;
+			iframe.focus();
+		});
+	}
+</script>

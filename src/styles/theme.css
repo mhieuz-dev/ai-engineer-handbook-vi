@@ -285,7 +285,7 @@ html .katex-display > .katex > .katex-html > .tag {
 }
 .colab-nut:hover { filter: brightness(1.08); }
 
-/* Video nên xem: thẻ nhẹ, chỉ tải ảnh thu nhỏ lười, bấm mở YouTube ở tab mới. */
+/* Video nên xem: khung 16:9, trước khi bấm chỉ tải ảnh thu nhỏ; bấm phát ngay bằng youtube-nocookie. */
 .video-hoc { margin: 1.2rem 0; }
 .video-nhan {
 	font-family: 'Be Vietnam Pro', system-ui, sans-serif;
@@ -295,68 +295,90 @@ html .katex-display > .katex > .katex-html > .tag {
 	color: var(--pri);
 	margin-bottom: 0.35rem;
 }
-.video-the {
-	display: flex;
-	align-items: center;
-	gap: 0.85rem;
-	background: var(--panel);
-	border: 1px solid var(--line);
-	border-radius: 10px;
-	padding: 0.55rem;
-	color: var(--tx);
-	text-decoration: none;
-}
-.video-the:hover { border-color: var(--pri); }
+.video-the { margin: 0 0 0.9rem; }
+.video-nut { display: block; border-radius: 14px; text-decoration: none; box-shadow: 0 8px 24px rgb(20 20 20 / 0.18); }
+.video-nut[hidden] { display: none; }
 .video-anh {
 	position: relative;
-	flex: none;
-	width: 168px;
+	display: block;
 	aspect-ratio: 16 / 9;
-	border-radius: 6px;
+	border-radius: 14px;
 	overflow: hidden;
 	background: #000;
 }
-.video-anh img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.video-anh img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform 0.45s ease; }
+.video-nut:hover .video-anh img,
+.video-nut:focus-visible .video-anh img { transform: scale(1.03); }
+.video-nut:focus-visible { outline: 2px solid var(--pri); outline-offset: 3px; }
+.video-lop {
+	position: absolute;
+	inset: 0;
+	background: linear-gradient(to top, rgb(0 0 0 / 0.8) 0%, rgb(0 0 0 / 0.28) 42%, transparent 68%);
+}
 .video-play {
 	position: absolute;
 	inset: 0;
 	margin: auto;
-	width: 34px;
-	height: 34px;
+	width: 62px;
+	height: 62px;
 	border-radius: 50%;
-	background: rgba(0, 0, 0, 0.62);
+	background: rgb(0 0 0 / 0.55);
+	box-shadow: 0 2px 16px rgb(0 0 0 / 0.45);
+	transition: transform 0.2s ease, background 0.2s ease;
 }
+.video-nut:hover .video-play,
+.video-nut:focus-visible .video-play { transform: scale(1.09); background: var(--acc); }
 .video-play::after {
 	content: '';
 	position: absolute;
-	left: 13px;
-	top: 10px;
-	border-left: 12px solid #fff;
-	border-top: 7px solid transparent;
-	border-bottom: 7px solid transparent;
+	left: 24px;
+	top: 18px;
+	border-left: 20px solid #fff;
+	border-top: 13px solid transparent;
+	border-bottom: 13px solid transparent;
 }
-.video-chu { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+.video-chu {
+	position: absolute;
+	left: 1rem;
+	right: 1rem;
+	bottom: 0.8rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.1rem;
+	color: #fff;
+}
 .video-tieu-de {
 	font-family: 'Be Vietnam Pro', system-ui, sans-serif;
-	font-weight: 600;
-	font-size: 0.95rem;
-	line-height: 1.35;
+	font-weight: 700;
+	font-size: 1rem;
+	line-height: 1.3;
+	text-shadow: 0 1px 4px rgb(0 0 0 / 0.55);
 }
 .video-kenh {
 	font-family: 'Be Vietnam Pro', system-ui, sans-serif;
 	font-size: 0.78rem;
-	color: var(--mut-chu);
+	color: rgb(255 255 255 / 0.85);
+	text-shadow: 0 1px 3px rgb(0 0 0 / 0.55);
 }
+.video-khung {
+	aspect-ratio: 16 / 9;
+	border-radius: 14px;
+	overflow: hidden;
+	background: #000;
+	box-shadow: 0 8px 24px rgb(20 20 20 / 0.18);
+}
+.video-khung[hidden] { display: none; }
+.video-khung iframe { display: block; width: 100%; height: 100%; border: 0; }
+.video-chan { display: flex; justify-content: flex-end; margin-top: 0.4rem; }
 .video-lien-ket {
-	display: none;
-	font-family: 'JetBrains Mono', ui-monospace, monospace;
-	font-size: 0.72rem;
-	color: var(--mut-chu);
+	font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+	font-size: 0.8rem;
+	font-weight: 600;
+	color: var(--pri);
+	text-decoration: none;
 }
-@media (max-width: 560px) {
-	.video-the { flex-direction: column; align-items: stretch; }
-	.video-anh { width: 100%; }
-}
+.video-lien-ket:hover { text-decoration: underline; }
+.video-url { display: none; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 0.72rem; color: var(--mut-chu); }
 
 .bai-tap {
 	border: 1px solid var(--line);
@@ -452,9 +474,9 @@ html .katex-display > .katex > .katex-html > .tag {
 	.main-pane, .main-frame { margin: 0 !important; padding: 0 !important; }
 	.sl-markdown-content { max-width: none; font-size: 11pt; line-height: 1.6; }
 	.khung, .bai-tap, .can-biet-truoc, .hinh-ket-qua, .video-hoc { break-inside: avoid; }
-	.video-hoc .video-anh, .video-hoc .video-play { display: none; }
-	.video-hoc .video-the { background: #fff; }
-	.video-hoc .video-lien-ket { display: block; }
+	.video-hoc .video-nut, .video-hoc .video-lien-ket { display: none !important; }
+	.video-hoc .video-url { display: block; }
+	.video-hoc .video-the { box-shadow: none; }
 	details.khung-dao-sau > * { display: block; }
 	.khung-mo { display: none; }
 	.in-chuong { max-width: none; padding: 0; }
