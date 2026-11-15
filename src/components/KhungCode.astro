@@ -57,6 +57,7 @@
 					<button class="kc-tl-nhanh" type="button" data-viec="hoi-nguoc">Hỏi tôi 3 câu</button>
 				</div>
 				<div class="kc-tl-tra-loi" aria-live="polite"></div>
+				<p class="kc-tl-nguon" aria-live="polite"></p>
 				<form class="kc-tl-form">
 					<label class="kc-tl-nhan-cau" for="kc-tl-cau">Hỏi trợ lý</label>
 					<div class="kc-tl-hang">
@@ -64,6 +65,33 @@
 						<button class="kc-tl-gui" type="submit">Gửi</button>
 					</div>
 				</form>
+				<details class="kc-key">
+					<summary>Dùng key riêng (không giới hạn lượt)</summary>
+					<div class="kc-key-than">
+						<label class="kc-key-nhan">Nhà cung cấp
+							<select class="kc-key-ncc">
+								<option value="gemini">Google Gemini</option>
+								<option value="openrouter">OpenRouter</option>
+								<option value="groq">Groq (có thể bị chặn CORS)</option>
+							</select>
+						</label>
+						<label class="kc-key-nhan">Key
+							<input class="kc-key-khoa" type="password" autocomplete="off" placeholder="Dán key vào đây" />
+						</label>
+						<label class="kc-key-nhan">Model
+							<input class="kc-key-model" type="text" autocomplete="off" placeholder="Để trống dùng model gợi ý" />
+						</label>
+						<div class="kc-key-hang">
+							<button class="kc-key-luu" type="button">Lưu key</button>
+							<button class="kc-key-xoa" type="button">Xoá key</button>
+						</div>
+						<p class="kc-key-tt" aria-live="polite"></p>
+						<p class="kc-key-mo-ta">
+							Key chỉ lưu trên máy bạn và gọi thẳng tới nhà cung cấp, không gửi qua máy chủ của site. Tạo key miễn phí tại
+							aistudio.google.com/apikey (Gemini) hoặc openrouter.ai/keys (OpenRouter).
+						</p>
+					</div>
+				</details>
 				<p class="kc-tl-minh-bach">
 					Câu hỏi được gửi tới nhà cung cấp AI miễn phí (Google, Groq hoặc OpenRouter). Bản miễn phí có thể dùng dữ liệu để cải thiện
 					mô hình, nên đừng gửi thông tin cá nhân.
@@ -287,6 +315,36 @@
 	}
 	.kc-tl-gui:disabled { opacity: 0.5; cursor: default; }
 	.kc-tl-minh-bach { font-size: 0.72rem; color: var(--mut-chu); line-height: 1.45; }
+	.kc-tl-nguon { margin: 0.2rem 0 0.6rem; font-size: 0.7rem; color: var(--mut-chu); }
+	.kc-tl-dang { color: var(--mut-chu); font-style: italic; }
+	.kc-tl-tra-loi p { margin: 0.4rem 0; }
+	.kc-tl-tra-loi ul,
+	.kc-tl-tra-loi ol { margin: 0.4rem 0; padding-inline-start: 1.2rem; }
+	.kc-tl-tra-loi code { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 0.82em; background: var(--panel); padding: 0.05em 0.3em; border-radius: 4px; }
+	.kc-md-khoi { margin: 0.5rem 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+	.kc-md-khoi pre { margin: 0; padding: 0.6rem 0.7rem; overflow: auto; background: var(--panel); }
+	.kc-md-khoi code { background: none; padding: 0; }
+	.kc-md-dua { display: block; width: 100%; padding: 0.3rem; border: 0; border-top: 1px solid var(--line); background: var(--bg); color: var(--pri); font: 600 0.75rem 'Be Vietnam Pro', sans-serif; cursor: pointer; }
+	.kc-md-dua:hover { background: var(--accbg); }
+	.kc-key { margin-top: 0.7rem; border-top: 1px solid var(--line); padding-top: 0.6rem; }
+	.kc-key summary { cursor: pointer; font-size: 0.8rem; font-weight: 600; color: var(--pri); }
+	.kc-key-than { display: grid; gap: 0.45rem; margin-top: 0.5rem; }
+	.kc-key-nhan { display: grid; gap: 0.2rem; font-size: 0.75rem; font-weight: 600; }
+	.kc-key-nhan input,
+	.kc-key-nhan select {
+		padding: 0.35rem 0.5rem;
+		border: 1px solid var(--line);
+		border-radius: 7px;
+		background: var(--bg);
+		color: var(--tx);
+		font: 0.82rem 'Be Vietnam Pro', sans-serif;
+	}
+	.kc-key-hang { display: flex; gap: 0.4rem; }
+	.kc-key-luu,
+	.kc-key-xoa { padding: 0.3rem 0.7rem; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); color: var(--tx); font-weight: 600; cursor: pointer; }
+	.kc-key-luu { border-color: var(--pri); color: var(--pri); }
+	.kc-key-tt { font-size: 0.75rem; color: var(--ok-chu); }
+	.kc-key-mo-ta { font-size: 0.7rem; color: var(--mut-chu); line-height: 1.4; }
 
 	/* Nút gắn vào từng khối code của bài. */
 	.kc-thu-ngay,

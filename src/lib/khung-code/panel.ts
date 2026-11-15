@@ -3,6 +3,8 @@ import { giaiThichLoi, type LoiDaHieu } from './loi';
 import { soOutput } from './so-output';
 import { MayChay } from './chay';
 import type { TrinhSoan } from './editor';
+import { hoiTroLy, docKhoaRieng, luuKhoaRieng, xoaKhoaRieng, MODEL_GOI_Y, type NhaCungCap } from './tro-ly';
+import { thanhHtml } from './markdown';
 
 const KHOA_NHAP = 'air-khung-code-v1';
 const MA_MAU = '# Gõ code Python ở đây rồi bấm Chạy (Ctrl+Enter).\nprint("Xin chào!")\n';
@@ -77,6 +79,14 @@ export function khoiTaoKhungCode(): void {
 		tlNoi: $<HTMLElement>('.kc-tl-tra-loi'),
 		tlCau: $<HTMLTextAreaElement>('.kc-tl-cau'),
 		tlForm: $<HTMLFormElement>('.kc-tl-form'),
+		tlNguon: $<HTMLElement>('.kc-tl-nguon'),
+		tlGui: $<HTMLButtonElement>('.kc-tl-gui'),
+		keyNcc: $<HTMLSelectElement>('.kc-key-ncc'),
+		keyKhoa: $<HTMLInputElement>('.kc-key-khoa'),
+		keyModel: $<HTMLInputElement>('.kc-key-model'),
+		keyLuu: $<HTMLButtonElement>('.kc-key-luu'),
+		keyXoa: $<HTMLButtonElement>('.kc-key-xoa'),
+		keyTt: $<HTMLElement>('.kc-key-tt'),
 	};
 
 	const may = new MayChay();
@@ -374,7 +384,7 @@ export function khoiTaoKhungCode(): void {
 		await chay(chunks, chunks.length - 1, true);
 	};
 
-	// Trợ lý: bản cục bộ (chưa gọi máy chủ AI). GĐ sau sẽ thay bằng lời gọi máy chủ.
+	// Trợ lý: gọi máy chủ AI khi có, không thì trả lời cục bộ để khung không chết.
 	const tomTat = () => {
 		const dau = [...document.querySelectorAll<HTMLElement>('main .sl-markdown-content h2')]
 			.map((h) => h.textContent?.trim())
@@ -390,7 +400,7 @@ export function khoiTaoKhungCode(): void {
 		if (!dau.length) return 'Thử tự hỏi: khái niệm chính của trang này là gì, nó dùng khi nào, và nó hỏng ra sao?';
 		return `Thử trả lời: ${dau.map((t, i) => `(${i + 1}) ${t} là gì và cho một ví dụ?`).join(' ')}`;
 	};
-	const traLoi = (viec: string) => {
+	const traLoiCucBo = (viec: string) => {
 		if (viec === 'loi') {
 			if (!loiGanNhat) return 'Chưa có lỗi nào. Chạy một khối code rồi quay lại đây.';
 			return `Lỗi ${loiGanNhat.loai}${loiGanNhat.dong ? ` ở dòng ${loiGanNhat.dong}` : ''}: ${loiGanNhat.giaiThich}`;
@@ -400,15 +410,104 @@ export function khoiTaoKhungCode(): void {
 		if (viec === 'hoi-nguoc') return hoiNguoc();
 		return '';
 	};
+
+	let boiDen = '';
+	document.addEventListener('selectionchange', () => {
+		const t = window.getSelection()?.toString().trim();
+		if (t) boiDen = t.slice(0, 2000);
+	});
+	const nguCanhHienTai = () => ({
+		trang: location.pathname,
+		tieuDe: document.querySelector('main h1')?.textContent?.trim() ?? '',
+		boiDen,
+		code: trinhSoan?.lay().slice(0, 8000) ?? '',
+		loi: loiGanNhat ? `${loiGanNhat.loai}${loiGanNhat.dong ? ` dòng ${loiGanNhat.dong}` : ''}: ${loiGanNhat.giaiThich}` : '',
+	});
+
+	const CAU_HOI: Record<string, string> = {
+		loi: 'Giải thích lỗi gần nhất trong code của tôi và chỉ cách sửa. Đừng đưa cả lời giải, chỉ gợi ý từng bước.',
+		bai: 'Gợi ý hướng làm bài tập trên trang này, tuyệt đối không đưa đáp án. Kết thúc bằng một câu hỏi để tôi tự nghĩ tiếp.',
+		'tom-tat': 'Tóm tắt trang này trong 5 ý ngắn, mỗi ý một câu, kèm một ví dụ cụ thể.',
+		'hoi-nguoc': 'Hỏi tôi 3 câu để kiểm tra tôi đã hiểu trang này chưa. Chưa đưa đáp án.',
+	};
+
+	let dangHoi = false;
+	const hoi = async (cau: string, viec?: string) => {
+		if (dangHoi || !cau.trim()) return;
+		if (viec === 'loi' && !loiGanNhat) {
+			el.tlNoi.textContent = traLoiCucBo('loi');
+			el.tlNguon.textContent = '';
+			return;
+		}
+		dangHoi = true;
+		el.tlGui.disabled = true;
+		el.tlNguon.textContent = '';
+		el.tlNoi.innerHTML = '<p class="kc-tl-dang">Đang hỏi trợ lý...</p>';
+		const kq = await hoiTroLy({ messages: [{ role: 'user', content: cau }], context: nguCanhHienTai() });
+		if (kq.text) {
+			el.tlNoi.innerHTML = await thanhHtml(kq.text);
+			el.tlNguon.textContent = kq.nhaCungCap
+				? `Trả lời bởi ${kq.nhaCungCap}${typeof kq.con === 'number' && Number.isFinite(kq.con) ? ` · còn ${kq.con} điểm lượt hôm nay` : ''}.`
+				: '';
+		} else {
+			const cucBo = viec ? traLoiCucBo(viec) : '';
+			el.tlNoi.textContent = [kq.thongBao, cucBo].filter(Boolean).join('\n\n') || 'Chưa trả lời được, thử lại sau.';
+			el.tlNguon.textContent = 'Đang dùng gợi ý cục bộ trong trình duyệt.';
+		}
+		dangHoi = false;
+		el.tlGui.disabled = false;
+	};
+
 	panel.querySelectorAll<HTMLButtonElement>('.kc-tl-nhanh').forEach((b) => {
 		b.addEventListener('click', () => {
-			el.tlNoi.textContent = traLoi(b.dataset.viec ?? '');
+			const viec = b.dataset.viec ?? '';
+			void hoi(CAU_HOI[viec] ?? '', viec);
 		});
 	});
 	el.tlForm.addEventListener('submit', (e) => {
 		e.preventDefault();
 		const cau = el.tlCau.value.trim();
 		if (!cau) return;
-		el.tlNoi.textContent = `Câu hỏi: ${cau}\n\nTrợ lý AI sẽ trả lời khi máy chủ AI được bật. Trong lúc đó, thử đọc lại mục liên quan và chạy một khối code nhỏ.`;
+		el.tlCau.value = '';
+		void hoi(cau);
 	});
+	el.tlNoi.addEventListener('click', (e) => {
+		const b = (e.target as HTMLElement).closest<HTMLButtonElement>('.kc-md-dua');
+		if (!b) return;
+		const ma = b.closest('.kc-md-khoi')?.querySelector('pre code')?.textContent ?? '';
+		if (ma) void mo(ma);
+	});
+
+	const capNhatKey = () => {
+		const k = docKhoaRieng();
+		if (k) {
+			el.keyNcc.value = k.nhaCungCap;
+			el.keyKhoa.value = k.khoa;
+			el.keyModel.value = k.model;
+			el.keyTt.textContent = `Đang dùng key ${k.nhaCungCap} lưu trên máy này.`;
+		} else {
+			el.keyTt.textContent = 'Chưa có key riêng: dùng lượt miễn phí của site.';
+		}
+	};
+	el.keyNcc.addEventListener('change', () => {
+		el.keyModel.placeholder = MODEL_GOI_Y[el.keyNcc.value as NhaCungCap];
+	});
+	el.keyLuu.addEventListener('click', () => {
+		const ncc = el.keyNcc.value as NhaCungCap;
+		const khoa = el.keyKhoa.value.trim();
+		if (!khoa) {
+			el.keyTt.textContent = 'Hãy dán key trước khi lưu.';
+			return;
+		}
+		luuKhoaRieng({ nhaCungCap: ncc, khoa, model: el.keyModel.value.trim() || MODEL_GOI_Y[ncc] });
+		capNhatKey();
+	});
+	el.keyXoa.addEventListener('click', () => {
+		xoaKhoaRieng();
+		el.keyKhoa.value = '';
+		el.keyModel.value = '';
+		capNhatKey();
+	});
+	capNhatKey();
+
 }
