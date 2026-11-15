@@ -15,6 +15,11 @@ export function docDong(message: string): number | null {
 
 const BANG: { mau: RegExp; loai: string; giaiThich: string }[] = [
 	{
+		mau: /NetworkError|Failed to fetch|importScripts|Failed to load resource|Không tải được Python/i,
+		loai: 'kết nối',
+		giaiThich: 'Không tải được Python từ CDN. Kiểm tra mạng rồi bấm Chạy lại; nếu mạng chặn CDN thì đổi mạng hoặc dùng notebook trên Colab.',
+	},
+	{
 		mau: /NameError: name '([^']+)' is not defined/,
 		loai: 'NameError',
 		giaiThich: "Tên biến hoặc hàm chưa được gán ở thời điểm này. Kiểm tra chính tả, dấu hai chấm, và chắc rằng khối gán đã chạy trước. Nếu là hàm của thư viện, nhớ `import` trước khi dùng.",

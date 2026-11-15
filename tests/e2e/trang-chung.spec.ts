@@ -139,7 +139,7 @@ test('trang chủ: thanh tiến độ tổng và lưới thẻ theo Phần đế
 
 test('trang chủ: Học tiếp ẩn khi chưa đọc, hiện đúng trang đọc gần nhất', async ({ page }) => {
 	await page.goto('/');
-	await expect(page.locator('.hoc-tiep')).toBeHidden();
+	await expect(page.locator('.hoc-tiep:not(.on-lai)')).toBeHidden();
 
 	await page.addInitScript(() => {
 		localStorage.setItem(
@@ -151,7 +151,7 @@ test('trang chủ: Học tiếp ẩn khi chưa đọc, hiện đúng trang đọ
 		);
 	});
 	await page.goto('/');
-	const the = page.locator('.hoc-tiep');
+	const the = page.locator('.hoc-tiep:not(.on-lai)');
 	await expect(the).toBeVisible();
 	await expect(the).toContainText('Chương 10');
 	await expect(the).toContainText('Trang 2');
@@ -176,4 +176,37 @@ test('quyền riêng tư: giải thích nơi lưu, có nút xuất và xoá; ch�
 	await expect(page.getByRole('button', { name: 'Xuất dữ liệu ra tệp JSON' })).toBeVisible();
 	await expect(page.getByRole('button', { name: 'Xoá dữ liệu trong trình duyệt' })).toBeVisible();
 	await expect(page.locator('.dn-nut')).toHaveCount(0);
+});
+
+
+test('trang chủ: thẻ Phòng thi thử và thẻ Ôn lại từ kết quả thi', async ({ page }) => {
+	await page.goto('/');
+	const theThi = page.locator('.luyen-tap .lt-the', { hasText: 'Phòng thi thử' });
+	await expect(theThi).toHaveAttribute('href', '/phong-thi/');
+	await expect(page.locator('.on-lai')).toBeHidden();
+
+	await page.addInitScript(() => {
+		localStorage.setItem(
+			'air-bai-thi-v1',
+			JSON.stringify([
+				{
+					id: 'x',
+					ngay: '2026-11-15T10:00:00Z',
+					kieu: 'nhanh',
+					phamVi: [0],
+					diem: 7.4,
+					soCau: 12,
+					banDo: [
+						{ id: 'chon-chi-so', ten: 'Chọn chỉ số đánh giá', trang: '/ai-engineer/ch12-danh-gia-mo-hinh/01-ma-tran-nham-lan/', dat: 0.4, tong: 1, phanTram: 40, muc: 'chua-nam' },
+						{ id: 'ro-ri', ten: 'Rò rỉ dữ liệu', trang: '/ai-engineer/ch09-quy-trinh-du-an-ml/04-pipeline-va-ro-ri/', dat: 1, tong: 1, phanTram: 100, muc: 'vung' },
+					],
+				},
+			]),
+		);
+	});
+	await page.goto('/');
+	const on = page.locator('.on-lai');
+	await expect(on).toBeVisible();
+	await expect(on).toContainText('Chọn chỉ số đánh giá (40%)');
+	await expect(on.locator('.ht-nut')).toHaveAttribute('href', '/ai-engineer/ch12-danh-gia-mo-hinh/01-ma-tran-nham-lan/');
 });

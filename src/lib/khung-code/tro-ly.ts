@@ -162,3 +162,37 @@ export async function hoiTroLy({ messages, context }: YeuCauHoi): Promise<TraLoi
 		return { loi: 'mang', thongBao: 'Không kết nối được máy chủ AI. Kiểm tra mạng rồi thử lại.' };
 	}
 }
+
+export interface ChamKetQua {
+	diem: number;
+	y?: { y: string; diem: number; toiDa?: number; trichDan?: string }[];
+	nhanXet?: string;
+}
+
+/** Chấm một bài tự luận theo rubric; trả null khi máy chủ AI không sẵn sàng. */
+export async function chamBai(de: string, rubric: { y: string; diem: number }[], baiLam: string): Promise<ChamKetQua | null> {
+	const header: Record<string, string> = { 'content-type': 'application/json' };
+	const token = await layIdToken();
+	if (token) header.authorization = `Bearer ${token}`;
+	try {
+		const r = await fetch('/api/ai', {
+			method: 'POST',
+			headers: header,
+			body: JSON.stringify({ mode: 'cham', cham: { de, rubric, baiLam } }),
+		});
+		if (!r.ok) return null;
+		const d = (await r.json()) as { cham?: ChamKetQua };
+		const c = d.cham;
+		if (!c) return null;
+		let diem = typeof c.diem === 'number' ? c.diem : null;
+		if (diem === null && Array.isArray(c.y)) {
+			const toiDa = c.y.reduce((s, x) => s + (x.toiDa ?? 0), 0) || rubric.reduce((s, x) => s + x.diem, 0);
+			const dat = c.y.reduce((s, x) => s + (x.diem ?? 0), 0);
+			diem = toiDa ? (dat / toiDa) * 10 : 0;
+		}
+		if (diem === null) return null;
+		return { ...c, diem };
+	} catch {
+		return null;
+	}
+}

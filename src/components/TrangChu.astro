@@ -71,6 +71,15 @@ const dsChuong = chuongDaXuatBan().map((c) => ({ slug: c.slug, so: c.so, ten: c.
 		<a class="ht-nut" href="/">Đọc tiếp →</a>
 	</aside>
 
+	<aside class="hoc-tiep on-lai" data-on-lai hidden>
+		<div class="ht-chu">
+			<p class="ht-nhan">ÔN LẠI</p>
+			<p class="ht-ten"></p>
+			<p class="ht-phu"></p>
+		</div>
+		<a class="ht-nut" href="/phong-thi/" data-on-lai-nut>Thi lại →</a>
+	</aside>
+
 	<KeSach />
 
 	<section class="cac-phan" aria-labelledby="cac-phan-ten">
@@ -107,6 +116,17 @@ const dsChuong = chuongDaXuatBan().map((c) => ({ slug: c.slug, so: c.so, ten: c.
 					</details>
 				))
 			}
+		</div>
+	</section>
+
+	<section class="luyen-tap" aria-labelledby="luyen-tap-ten">
+		<h2 id="luyen-tap-ten">Luyện và kiểm tra</h2>
+		<div class="lt-luoi">
+			<a class="lt-the" href="/phong-thi/">
+				<span class="lt-nhan">MỚI</span>
+				<strong>Phòng thi thử</strong>
+				<span>Case thật cho Ch0–Ch4, chấm ngay trên máy, tự luận theo rubric, kèm bản đồ kiến thức và chỗ cần ôn.</span>
+			</a>
 		</div>
 	</section>
 
@@ -162,6 +182,33 @@ const dsChuong = chuongDaXuatBan().map((c) => ({ slug: c.slug, so: c.so, ten: c.
 					khoi.hidden = false;
 				}
 			}
+		}
+	}
+
+	const khoiOn = document.querySelector<HTMLElement>('.on-lai');
+	if (khoiOn) {
+		try {
+			const ds = JSON.parse(localStorage.getItem('air-bai-thi-v1') ?? '[]');
+			const gan = Array.isArray(ds) ? ds[0] : null;
+			if (gan?.banDo?.length) {
+				const yeu = (gan.banDo as { ten: string; phanTram: number; trang: string }[])
+					.filter((x) => x.phanTram < 80)
+					.sort((a, b) => a.phanTram - b.phanTram);
+				const dau = yeu[0] ?? (gan.banDo[0] as { ten: string; phanTram: number; trang: string });
+				const ngay = typeof gan.ngay === 'string' ? new Date(gan.ngay).toLocaleDateString('vi-VN') : '';
+				khoiOn.querySelector('.ht-ten')!.textContent = `${dau.ten} (${dau.phanTram}%)`;
+				khoiOn.querySelector('.ht-phu')!.textContent = yeu.length > 1
+					? `Còn yếu: ${yeu.slice(1, 4).map((x) => `${x.ten} (${x.phanTram}%)`).join(' · ')}`
+					: `Từ bài thi ${ngay} · ${gan.diem}/10`;
+				const a = khoiOn.querySelector<HTMLAnchorElement>('[data-on-lai-nut]')!;
+				if (dau.trang) {
+					a.href = dau.trang;
+					a.textContent = 'Ôn trang này →';
+				}
+				khoiOn.hidden = false;
+			}
+		} catch {
+			/* dữ liệu hỏng: bỏ qua */
 		}
 	}
 </script>
@@ -223,6 +270,16 @@ const dsChuong = chuongDaXuatBan().map((c) => ({ slug: c.slug, so: c.so, ten: c.
 	.buoc li::before { content: counter(b) '. '; color: var(--acc); }
 	.tinh-nang { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 0.8rem; margin: 1.5rem 0; }
 	.tinh-nang div { margin: 0; padding: 0.7rem 0.9rem; border-left: 3px solid var(--pri); background: var(--panel); }
+	.on-lai { border-left-color: var(--acc); }
+	.on-lai .ht-nhan { color: var(--acc-chu); }
+
+	.luyen-tap h2 { border: 0; margin-top: 2.4rem; }
+	.lt-luoi { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 0.8rem; }
+	.lt-the { display: flex; flex-direction: column; gap: 0.3rem; padding: 0.9rem 1rem; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); text-decoration: none; color: var(--tx); }
+	.lt-the:hover { border-color: var(--pri); }
+	.lt-the strong { color: var(--pri); font-size: 1rem; }
+	.lt-the > span:last-child { font-size: 0.85rem; color: var(--mut-chu); line-height: 1.45; }
+	.lt-nhan { align-self: flex-start; font-size: 0.65rem; font-weight: 800; letter-spacing: 0.06em; color: var(--ok-chu); }
 	.tinh-nang dt { font-weight: 600; margin: 0; }
 	.tinh-nang dd { margin: 0.15rem 0 0; color: var(--mut); font-size: 0.92rem; }
 

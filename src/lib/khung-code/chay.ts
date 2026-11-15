@@ -122,6 +122,15 @@ self.onmessage = async (e) => {
   if (d.loai === 'nap-jedi') {
     const ok = pyodide ? await caiJedi() : false;
     self.postMessage({ loai: 'jedi-kq', id: d.id, ok });
+    return;
+  }
+  if (d.loai === 'ghi-tep') {
+    try {
+      pyodide.FS.writeFile(d.ten, d.noiDung);
+      self.postMessage({ loai: 'ghi-tep-xong', id: d.id });
+    } catch (err) {
+      self.postMessage({ loai: 'ghi-tep-loi', id: d.id, message: String(err) });
+    }
   }
 };
 `;
@@ -150,6 +159,7 @@ export class MayChay {
 	private cho = new Map<number, Nhan>();
 	private moiLuc: Nhan[] = [];
 	private daSanSang = false;
+	private soLanThu = 0;
 
 	get sanSang(): boolean {
 		return this.daSanSang;
@@ -165,6 +175,7 @@ export class MayChay {
 			const m = e.data;
 			if (m.loai === 'san-sang') {
 				this.daSanSang = true;
+				this.soLanThu = 0;
 				this.giaiQuyetNap?.ok();
 				this.giaiQuyetNap = null;
 			}
@@ -177,7 +188,7 @@ export class MayChay {
 				const f = this.cho.get(m.id);
 				if (f) {
 					f(m);
-					if (m.loai === 'xong' || m.loai === 'loi-he-thong' || m.loai === 'goi-y-kq' || m.loai === 'jedi-kq') this.cho.delete(m.id);
+					if (m.loai === 'xong' || m.loai === 'loi-he-thong' || m.loai === 'goi-y-kq' || m.loai === 'jedi-kq' || m.loai === 'ghi-tep-xong' || m.loai === 'ghi-tep-loi') this.cho.delete(m.id);
 				}
 			}
 		};
@@ -197,9 +208,18 @@ export class MayChay {
 		if (this.daSanSang) return;
 		if (this.napXong) return this.napXong;
 		this.tao();
-		this.napXong = new Promise<void>((ok, loi) => {
+		const motLan = new Promise<void>((ok, loi) => {
 			this.giaiQuyetNap = { ok, loi };
 			this.worker!.postMessage({ loai: 'nap', url: `${GOC}pyodide.js`, index: GOC });
+		});
+		this.napXong = motLan.catch(async (e) => {
+			this.huy();
+			this.napXong = null;
+			// CDN đôi khi chập chờn: thử lại tối đa 2 lần với worker mới.
+			if (this.soLanThu >= 2) throw e;
+			this.soLanThu++;
+			await new Promise((r) => setTimeout(r, 1200 * this.soLanThu));
+			return this.nap();
 		});
 		return this.napXong;
 	}
@@ -223,6 +243,17 @@ export class MayChay {
 				if (m.loai === 'goi-y-kq') xong(m.ds ?? null);
 			});
 			this.worker!.postMessage({ loai: 'goi-y', id, code, line, column });
+		});
+	}
+
+	async ghiTep(ten: string, noiDung: string): Promise<void> {
+		await this.nap();
+		const id = ++this.id;
+		return new Promise((xong) => {
+			this.cho.set(id, (m) => {
+				if (m.loai === 'ghi-tep-xong' || m.loai === 'ghi-tep-loi') xong();
+			});
+			this.worker!.postMessage({ loai: 'ghi-tep', id, ten, noiDung });
 		});
 	}
 
