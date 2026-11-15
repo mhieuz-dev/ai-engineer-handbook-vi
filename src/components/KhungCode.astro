@@ -1,0 +1,335 @@
+---
+// Khung code Python nổi ở góc dưới phải, có tab Code và Trợ lý. Chỉ gắn ở trang chương.
+---
+
+<button
+	class="kc-nut"
+	type="button"
+	aria-haspopup="dialog"
+	aria-expanded="false"
+	aria-controls="kc-panel"
+	title="Mở khung code Python"
+>
+	<span class="kc-nut-ngoặc" aria-hidden="true">&lt;/&gt;</span>
+	<span class="kc-nut-chu">Code</span>
+</button>
+
+<section class="kc-panel" id="kc-panel" role="dialog" aria-modal="false" aria-label="Khung code Python và trợ lý" hidden>
+	<div class="kc-keo" aria-hidden="true"></div>
+	<header class="kc-dau">
+		<div class="kc-tabs" role="tablist" aria-label="Khung bên phải">
+			<button class="kc-tab dang-chon" type="button" role="tab" aria-selected="true" data-tab="code">Code</button>
+			<button class="kc-tab" type="button" role="tab" aria-selected="false" data-tab="tro-ly">Trợ lý</button>
+		</div>
+		<div class="kc-nhom">
+			<button class="kc-nut-nho kc-undo" type="button" title="Hoàn tác (Ctrl+Z)" aria-label="Hoàn tác">↶</button>
+			<button class="kc-nut-nho kc-redo" type="button" title="Làm lại (Ctrl+Shift+Z)" aria-label="Làm lại">↷</button>
+			<button class="kc-nut-nho kc-khoi-phuc" type="button" title="Khôi phục code gốc" aria-label="Khôi phục code gốc">↺</button>
+			<button class="kc-chay" type="button"><span aria-hidden="true">▶</span> Chạy</button>
+			<button class="kc-dung" type="button" hidden><span aria-hidden="true">■</span> Dừng</button>
+			<button class="kc-nut-nho kc-dong" type="button" title="Đóng khung (Esc)" aria-label="Đóng khung">×</button>
+		</div>
+	</header>
+
+	<div class="kc-than">
+		<div class="kc-code" data-tab-noi="code">
+			<div class="kc-editor" aria-label="Trình soạn code Python"></div>
+			<div class="kc-ket-qua">
+				<div class="kc-kq-dau">
+					<strong class="kc-kq-ten">Kết quả</strong>
+					<span class="kc-kq-nhan"></span>
+				</div>
+				<pre class="kc-out" aria-live="polite">Chạy code để xem kết quả ở đây.</pre>
+				<div class="kc-hinh"></div>
+			</div>
+		</div>
+		<div class="kc-troly" data-tab-noi="tro-ly" hidden>
+			<div class="kc-tl-than">
+				<p class="kc-tl-nhan">TRỢ LÝ HỌC TẬP</p>
+				<p class="kc-tl-mo-ta">
+					Bôi đen một đoạn khó trong bài rồi quay lại đây. Trợ lý đọc trang bạn đang học, đoạn đang chọn, code trong khung và lỗi
+					gần nhất để trả lời ngắn, có ví dụ, và hỏi ngược lại để bạn tự nghĩ.
+				</p>
+				<div class="kc-tl-nut">
+					<button class="kc-tl-nhanh" type="button" data-viec="loi">Giải thích lỗi gần nhất</button>
+					<button class="kc-tl-nhanh" type="button" data-viec="bai">Gợi ý bài tập (không đưa đáp án)</button>
+					<button class="kc-tl-nhanh" type="button" data-viec="tom-tat">Tóm tắt trang này</button>
+					<button class="kc-tl-nhanh" type="button" data-viec="hoi-nguoc">Hỏi tôi 3 câu</button>
+				</div>
+				<div class="kc-tl-tra-loi" aria-live="polite"></div>
+				<form class="kc-tl-form">
+					<label class="kc-tl-nhan-cau" for="kc-tl-cau">Hỏi trợ lý</label>
+					<div class="kc-tl-hang">
+						<textarea id="kc-tl-cau" class="kc-tl-cau" rows="2" placeholder="Ví dụ: Vì sao chuẩn hóa lại quan trọng ở đây?"></textarea>
+						<button class="kc-tl-gui" type="submit">Gửi</button>
+					</div>
+				</form>
+				<p class="kc-tl-minh-bach">
+					Câu hỏi được gửi tới nhà cung cấp AI miễn phí (Google, Groq hoặc OpenRouter). Bản miễn phí có thể dùng dữ liệu để cải thiện
+					mô hình, nên đừng gửi thông tin cá nhân.
+				</p>
+			</div>
+		</div>
+	</div>
+
+	<footer class="kc-chan">
+		<span class="kc-trang-thai">Sẵn sàng</span>
+		<span class="kc-goi-y">Ctrl+Enter để chạy · Esc để đóng</span>
+	</footer>
+</section>
+
+<script>
+	import { khoiTaoKhungCode } from '../lib/khung-code/panel';
+	khoiTaoKhungCode();
+</script>
+
+<style is:global>
+	.kc-nut {
+		position: fixed;
+		right: 1.1rem;
+		bottom: 1.1rem;
+		z-index: 50;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.45rem;
+		padding: 0.55rem 0.95rem;
+		border-radius: 999px;
+		border: 1px solid color-mix(in srgb, var(--pri) 55%, var(--line));
+		background: var(--pri);
+		color: var(--bg);
+		font: 700 0.85rem 'Be Vietnam Pro', system-ui, sans-serif;
+		box-shadow: 0 6px 20px rgb(20 20 20 / 0.22);
+		cursor: pointer;
+	}
+	.kc-nut:hover { filter: brightness(1.08); }
+	.kc-nut:focus-visible { outline: 2px solid var(--acc); outline-offset: 3px; }
+	.kc-nut-ngoặc { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+	.kc-panel {
+		position: fixed;
+		right: 1.1rem;
+		bottom: 1.1rem;
+		z-index: 60;
+		width: min(56rem, calc(100vw - 2.2rem));
+		height: min(36rem, calc(100vh - 2.2rem));
+		display: flex;
+		flex-direction: column;
+		background: var(--bg);
+		border: 1px solid var(--line);
+		border-radius: 16px;
+		box-shadow: 0 18px 60px rgb(20 20 20 / 0.4);
+		overflow: hidden;
+		font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+	}
+	.kc-panel[hidden] { display: none; }
+	.kc-keo {
+		position: absolute;
+		left: 0;
+		top: 0;
+		width: 18px;
+		height: 18px;
+		cursor: nwse-resize;
+		z-index: 2;
+	}
+	.kc-keo::after {
+		content: '';
+		position: absolute;
+		left: 5px;
+		top: 5px;
+		width: 7px;
+		height: 7px;
+		border-left: 2px solid var(--mut);
+		border-top: 2px solid var(--mut);
+		opacity: 0.5;
+	}
+	.kc-dau {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.6rem;
+		padding: 0.45rem 0.55rem 0.45rem 0.7rem;
+		border-bottom: 1px solid var(--line);
+		background: var(--panel);
+	}
+	.kc-tabs { display: flex; gap: 0.2rem; }
+	.kc-tab {
+		padding: 0.28rem 0.7rem;
+		border: 1px solid transparent;
+		border-radius: 7px;
+		background: transparent;
+		color: var(--mut-chu);
+		font: 600 0.82rem 'Be Vietnam Pro', sans-serif;
+		cursor: pointer;
+	}
+	.kc-tab.dang-chon { background: var(--bg); color: var(--pri); border-color: var(--line); }
+	.kc-nhom { display: flex; align-items: center; gap: 0.3rem; }
+	.kc-nut-nho {
+		display: inline-grid;
+		place-items: center;
+		width: 1.9rem;
+		height: 1.9rem;
+		padding: 0;
+		border: 1px solid var(--line);
+		border-radius: 8px;
+		background: var(--bg);
+		color: var(--tx);
+		font-size: 1rem;
+		line-height: 1;
+		cursor: pointer;
+	}
+	.kc-nut-nho:hover { border-color: var(--pri); color: var(--pri); }
+	.kc-chay,
+	.kc-dung {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+		padding: 0.32rem 0.75rem;
+		border: 0;
+		border-radius: 8px;
+		font: 700 0.82rem 'Be Vietnam Pro', sans-serif;
+		color: #fff;
+		cursor: pointer;
+	}
+	.kc-chay { background: var(--ok); }
+	.kc-chay:hover { filter: brightness(1.07); }
+	.kc-dung { background: var(--red); }
+	.kc-dung[hidden] { display: none; }
+
+	.kc-than { flex: 1; min-height: 0; }
+	.kc-code {
+		height: 100%;
+		display: grid;
+		grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+		min-height: 0;
+	}
+	.kc-code[hidden],
+	.kc-troly[hidden] { display: none; }
+	.kc-editor { min-height: 0; overflow: hidden; border-right: 1px solid var(--line); }
+	.kc-editor .cm-editor { height: 100%; }
+	.kc-editor .cm-scroller { overflow: auto; }
+	.kc-ket-qua { display: flex; flex-direction: column; min-height: 0; background: var(--panel); }
+	.kc-kq-dau {
+		display: flex;
+		align-items: baseline;
+		gap: 0.5rem;
+		padding: 0.38rem 0.7rem;
+		border-bottom: 1px solid var(--line);
+	}
+	.kc-kq-ten { font-size: 0.8rem; }
+	.kc-kq-nhan { font-size: 0.75rem; font-weight: 600; color: var(--mut-chu); }
+	.kc-kq-nhan.kc-khop { color: var(--ok-chu); }
+	.kc-kq-nhan.kc-khac,
+	.kc-kq-nhan.kc-loi { color: var(--red-chu); }
+	.kc-out {
+		flex: 1;
+		min-height: 0;
+		margin: 0;
+		padding: 0.6rem 0.7rem;
+		overflow: auto;
+		white-space: pre-wrap;
+		overflow-wrap: anywhere;
+		font: 0.8rem/1.5 'JetBrains Mono', ui-monospace, monospace;
+		color: var(--tx);
+		background: transparent;
+	}
+	.kc-hinh { flex: none; max-height: 45%; overflow: auto; }
+	.kc-hinh img { display: block; max-width: 100%; margin: 0.4rem auto; border-radius: 6px; background: #fff; }
+	.kc-chan {
+		display: flex;
+		justify-content: space-between;
+		gap: 0.6rem;
+		padding: 0.32rem 0.7rem;
+		border-top: 1px solid var(--line);
+		background: var(--panel);
+		font-size: 0.72rem;
+		color: var(--mut-chu);
+	}
+
+	.kc-troly { height: 100%; overflow: auto; }
+	.kc-tl-than { padding: 0.9rem 1rem; max-width: 40rem; }
+	.kc-tl-nhan { margin: 0; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.08em; color: var(--pri); }
+	.kc-tl-mo-ta { font-size: 0.88rem; line-height: 1.55; color: var(--mut-chu); }
+	.kc-tl-nut { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.7rem 0; }
+	.kc-tl-nhanh {
+		padding: 0.35rem 0.7rem;
+		border: 1px solid var(--line);
+		border-radius: 999px;
+		background: var(--panel);
+		color: var(--tx);
+		font: 600 0.78rem 'Be Vietnam Pro', sans-serif;
+		cursor: pointer;
+	}
+	.kc-tl-nhanh:hover { border-color: var(--pri); color: var(--pri); }
+	.kc-tl-tra-loi { font-size: 0.88rem; line-height: 1.55; }
+	.kc-tl-tra-loi:not(:empty) { margin: 0.6rem 0; padding: 0.6rem 0.8rem; border-left: 3px solid var(--pri); background: var(--panel); }
+	.kc-tl-form { margin-top: 0.8rem; }
+	.kc-tl-nhan-cau { display: block; font-size: 0.78rem; font-weight: 600; margin-bottom: 0.25rem; }
+	.kc-tl-hang { display: flex; gap: 0.4rem; align-items: flex-end; }
+	.kc-tl-cau {
+		flex: 1;
+		min-width: 0;
+		padding: 0.5rem 0.6rem;
+		border: 1px solid var(--line);
+		border-radius: 8px;
+		background: var(--bg);
+		color: var(--tx);
+		font: 0.85rem/1.4 'Be Vietnam Pro', sans-serif;
+		resize: vertical;
+	}
+	.kc-tl-gui {
+		padding: 0.5rem 0.9rem;
+		border: 0;
+		border-radius: 8px;
+		background: var(--pri);
+		color: var(--bg);
+		font-weight: 700;
+		cursor: pointer;
+	}
+	.kc-tl-gui:disabled { opacity: 0.5; cursor: default; }
+	.kc-tl-minh-bach { font-size: 0.72rem; color: var(--mut-chu); line-height: 1.45; }
+
+	/* Nút gắn vào từng khối code của bài. */
+	.kc-thu-ngay,
+	.kc-mo-code {
+		margin-left: auto;
+		padding: 0.12rem 0.55rem;
+		border: 1px solid var(--line);
+		border-radius: 999px;
+		background: var(--bg);
+		color: var(--pri);
+		font: 600 0.72rem 'Be Vietnam Pro', system-ui, sans-serif;
+		cursor: pointer;
+		white-space: nowrap;
+	}
+	.kc-thu-ngay:hover,
+	.kc-mo-code:hover { border-color: var(--pri); }
+	.kc-thu-ngay.kc-dat { border-color: var(--ok); color: var(--ok-chu); }
+	.kc-thu-ngay.kc-can-colab { color: var(--mut-chu); cursor: default; }
+	figure.expressive-code figcaption.header { display: flex; align-items: center; gap: 0.5rem; }
+	figure.expressive-code figcaption.header .title { margin-inline-end: auto; }
+	.kc-hang-nut { display: flex; justify-content: flex-end; margin: 0.15rem 0 0.1rem; }
+
+	.cm-dong-loi { background: color-mix(in srgb, var(--red) 20%, transparent); }
+
+	@media (max-width: 720px) {
+		.kc-panel {
+			inset: 0;
+			width: auto;
+			height: auto;
+			border-radius: 0;
+			border: 0;
+		}
+		.kc-keo { display: none; }
+		.kc-code { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1.4fr) minmax(0, 1fr); }
+		.kc-editor { border-right: 0; border-bottom: 1px solid var(--line); }
+		.kc-nut-chu { display: none; }
+		.kc-nut { right: 0.9rem; bottom: 0.9rem; padding: 0.7rem; }
+	}
+
+	@media print {
+		.kc-nut,
+		.kc-panel,
+		.kc-thu-ngay,
+		.kc-mo-code { display: none !important; }
+	}
+</style>
