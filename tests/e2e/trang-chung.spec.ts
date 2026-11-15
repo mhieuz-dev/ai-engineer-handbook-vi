@@ -67,9 +67,9 @@ test('menu trên cùng có Lộ trình, Thuật ngữ, Notebook', async ({ page,
 	}
 });
 
-test('mobile 375px: trang chủ, lộ trình, notebook, giới thiệu không tràn ngang', async ({ page, isMobile }) => {
+test('mobile 375px: trang chủ, lộ trình, notebook, giới thiệu, quyền riêng tư không tràn ngang', async ({ page, isMobile }) => {
 	test.skip(!isMobile);
-	for (const url of ['/', '/lo-trinh/', '/notebook/', '/gioi-thieu/']) {
+	for (const url of ['/', '/lo-trinh/', '/notebook/', '/gioi-thieu/', '/quyen-rieng-tu/']) {
 		await page.goto(url);
 		expect(await page.evaluate(() => document.documentElement.scrollWidth), url).toBeLessThanOrEqual(375);
 	}
@@ -166,4 +166,14 @@ test('trang chủ mobile: các Phần gập lại, mở ra được', async ({ p
 	await phan.locator('summary').tap();
 	await expect(phan).toHaveAttribute('open', '');
 	await expect(phan.locator('.o-chuong').first()).toBeVisible();
+});
+
+
+test('quyền riêng tư: giải thích nơi lưu, có nút xuất và xoá; chưa cấu hình Firebase thì không hiện nút đăng nhập', async ({ page }) => {
+	await page.goto('/quyen-rieng-tu/');
+	await expect(page.locator('h1')).toContainText('Quyền riêng tư');
+	await expect(page.locator('.qrt')).toContainText('chưa đăng nhập');
+	await expect(page.getByRole('button', { name: 'Xuất dữ liệu ra tệp JSON' })).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Xoá dữ liệu trong trình duyệt' })).toBeVisible();
+	await expect(page.locator('.dn-nut')).toHaveCount(0);
 });

@@ -4,6 +4,8 @@
  * Lời nhắc nằm ở đây nên người dùng không sửa được.
  */
 
+import { createRemoteJWKSet, jwtVerify } from 'jose';
+
 export const config = { runtime: 'edge' };
 
 type Loai = 'tro-ly' | 'cham' | 'phong-van';
@@ -165,13 +167,34 @@ async function demUpstash(khoa: string, diem: number, gioiHan: number): Promise<
 	}
 }
 
-async function kiemLuot(ip: string, mode: Loai): Promise<{ ok: boolean; con: number; tong: boolean }> {
+async function kiemLuot(ip: string, mode: Loai, uid: string | null): Promise<{ ok: boolean; con: number; tong: boolean }> {
 	const ngay = ngayVN();
-	const id = await bam(ip);
-	const khach = await demUpstash(`ai:g:${id}:${ngay}`, gioiHanTheoMode(mode), GIOI_HAN_KHACH);
-	if (!khach.ok) return { ok: false, con: 0, tong: false };
-	const tong = await demUpstash(`ai:site:${ngay}`, gioiHanTheoMode(mode), TRAN_SITE);
-	return { ok: tong.ok, con: khach.con, tong: tong.ok };
+	const diem = gioiHanTheoMode(mode);
+	const ca = uid
+		? await demUpstash(`ai:u:${uid}:${ngay}`, diem, GIOI_HAN_DA_DANG_NHAP)
+		: await demUpstash(`ai:g:${await bam(ip)}:${ngay}`, diem, GIOI_HAN_KHACH);
+	if (!ca.ok) return { ok: false, con: 0, tong: false };
+	const tong = await demUpstash(`ai:site:${ngay}`, diem, TRAN_SITE);
+	return { ok: tong.ok, con: ca.con, tong: tong.ok };
+}
+
+const JWKS = createRemoteJWKSet(new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'));
+
+/** Xác minh ID token Google/Firebase; sai thì coi như khách. */
+export async function xacThuc(req: Request): Promise<string | null> {
+	const auth = req.headers.get('authorization') ?? '';
+	if (!auth.startsWith('Bearer ')) return null;
+	const projectId = process.env.FIREBASE_PROJECT_ID;
+	if (!projectId) return null;
+	try {
+		const { payload } = await jwtVerify(auth.slice(7), JWKS, {
+			issuer: `https://securetoken.google.com/${projectId}`,
+			audience: projectId,
+		});
+		return typeof payload.sub === 'string' && payload.sub ? payload.sub : null;
+	} catch {
+		return null;
+	}
 }
 
 interface KqNhaCungCap {
@@ -276,7 +299,8 @@ export default async function handler(req: Request): Promise<Response> {
 	const mode = du.mode!;
 
 	const ip = (req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() || 'khong-ro';
-	const luot = await kiemLuot(ip, mode);
+	const uid = await xacThuc(req);
+	const luot = await kiemLuot(ip, mode, uid);
 	if (!luot.ok) {
 		return json(
 			{

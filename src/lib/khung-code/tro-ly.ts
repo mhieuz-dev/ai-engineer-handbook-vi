@@ -1,4 +1,5 @@
 /** Gọi máy chủ AI của site, hoặc gọi thẳng nhà cung cấp nếu người học dán key riêng. */
+import { layIdToken } from '../firebase';
 
 export type NhaCungCap = 'gemini' | 'groq' | 'openrouter';
 
@@ -140,9 +141,12 @@ export async function hoiTroLy({ messages, context }: YeuCauHoi): Promise<TraLoi
 	}
 
 	try {
+		const header: Record<string, string> = { 'content-type': 'application/json' };
+		const token = await layIdToken();
+		if (token) header.authorization = `Bearer ${token}`;
 		const r = await fetch('/api/ai', {
 			method: 'POST',
-			headers: { 'content-type': 'application/json' },
+			headers: header,
 			body: JSON.stringify({ mode: 'tro-ly', messages, context }),
 		});
 		if (r.status === 429) {

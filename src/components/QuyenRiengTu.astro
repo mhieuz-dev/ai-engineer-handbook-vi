@@ -1,0 +1,140 @@
+---
+import { CO_CAU_HINH } from '../lib/firebase';
+---
+
+<div class="qrt">
+	<h2>Lưu gì, ở đâu</h2>
+	<p>
+		Khi bạn chưa đăng nhập, mọi thứ nằm trong trình duyệt của bạn: tiến độ đọc, bản nháp trong khung code, kết quả bài thi, tiến độ luyện
+		thuật toán, lịch sử phỏng vấn thử, và key AI riêng nếu bạn dán. Không có gì được gửi lên máy chủ của site.
+	</p>
+	<p>
+		Khi bạn đăng nhập bằng Google, site lưu trên Firebase (gói Spark miễn phí, không gắn tài khoản thanh toán): tên hiển thị, ảnh đại diện,
+		và đúng những dữ liệu học tập kể trên để đồng bộ giữa các máy. Email chỉ dùng để đăng nhập, không hiển thị công khai và không dùng để
+		gửi thư quảng cáo. Mỗi tài khoản chỉ đọc và ghi được dữ liệu của chính mình.
+	</p>
+	<h2>Trợ lý AI</h2>
+	<p>
+		Câu hỏi gửi cho trợ lý được chuyển tới nhà cung cấp AI miễn phí (Google, Groq hoặc OpenRouter). Máy chủ của site không lưu nội dung câu
+		hỏi; chỉ giữ bộ đếm lượt theo ngày (dạng băm, không chứa nội dung). Bản miễn phí của các nhà cung cấp có thể dùng dữ liệu để cải thiện
+		mô hình, nên đừng gửi thông tin cá nhân. Nếu bạn dán key riêng, key chỉ nằm trong trình duyệt và gọi thẳng tới nhà cung cấp.
+	</p>
+	<h2>Dữ liệu của bạn</h2>
+	<div class="qrt-nut">
+		<button class="qrt-xuat" type="button">Xuất dữ liệu ra tệp JSON</button>
+		<button class="qrt-xoa-cuc-bo" type="button">Xoá dữ liệu trong trình duyệt</button>
+		{CO_CAU_HINH && (
+			<button class="qrt-xoa-tk" type="button" hidden>Xoá tài khoản và toàn bộ dữ liệu</button>
+		)}
+	</div>
+	<p class="qrt-tt" aria-live="polite"></p>
+</div>
+
+<script>
+	import { CO_CAU_HINH, dangXuat, theoDoi, xoaNguoiDung, type NguoiDungNhe } from '../lib/firebase';
+	import { docTatCa, xoaTatCaCucBo } from '../lib/luu-tru';
+
+	const goc = document.querySelector<HTMLElement>('.qrt');
+	if (goc) {
+		const tt = goc.querySelector<HTMLElement>('.qrt-tt')!;
+		const xuat = goc.querySelector<HTMLButtonElement>('.qrt-xuat')!;
+		const xoaCucBo = goc.querySelector<HTMLButtonElement>('.qrt-xoa-cuc-bo')!;
+		const xoaTk = goc.querySelector<HTMLButtonElement>('.qrt-xoa-tk');
+		let nguoiDung: NguoiDungNhe | null = null;
+
+		const tai = (ten: string) => {
+			const blob = new Blob([JSON.stringify({ xuatLuc: new Date().toISOString(), duLieu: docTatCa() }, null, 2)], {
+				type: 'application/json',
+			});
+			const a = document.createElement('a');
+			a.href = URL.createObjectURL(blob);
+			a.download = ten;
+			a.click();
+			URL.revokeObjectURL(a.href);
+		};
+		xuat.addEventListener('click', () => {
+			tai('ai-robotics-du-lieu.json');
+			tt.textContent = 'Đã xuất dữ liệu.';
+		});
+		xoaCucBo.addEventListener('click', () => {
+			if (!confirm('Xoá toàn bộ tiến độ, kết quả và bản nháp trong trình duyệt này?')) return;
+			xoaTatCaCucBo();
+			tt.textContent = 'Đã xoá dữ liệu trong trình duyệt.';
+		});
+
+		if (CO_CAU_HINH && xoaTk) {
+			let coPhien = false;
+			try {
+				coPhien = localStorage.getItem('air-da-dang-nhap') === '1';
+			} catch {
+				coPhien = false;
+			}
+			if (coPhien) {
+				try {
+					await theoDoi((u) => {
+						nguoiDung = u;
+						xoaTk.hidden = !u;
+					});
+				} catch {
+					xoaTk.hidden = true;
+				}
+				xoaTk.addEventListener('click', async () => {
+					if (!nguoiDung) return;
+					if (!confirm('Xoá tài khoản và toàn bộ dữ liệu học tập trên máy chủ? Không thể hoàn tác.')) return;
+					try {
+						await xoaNguoiDung(nguoiDung.uid);
+					} catch {
+						tt.textContent = 'Chưa xoá được dữ liệu trên máy chủ. Kiểm tra mạng rồi thử lại.';
+						return;
+					}
+					xoaTatCaCucBo();
+					await dangXuat();
+					tt.textContent = 'Đã xoá tài khoản và toàn bộ dữ liệu.';
+					xoaTk.hidden = true;
+				});
+			}
+		}
+	}
+</script>
+
+<style>
+	.qrt {
+		font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+	}
+	.qrt h2 {
+		margin-top: 1.6rem;
+		font-size: 1.2rem;
+	}
+	.qrt p {
+		line-height: 1.65;
+	}
+	.qrt-nut {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		margin: 1rem 0;
+	}
+	.qrt-nut button {
+		padding: 0.5rem 0.9rem;
+		border: 1px solid var(--line);
+		border-radius: 8px;
+		background: var(--panel);
+		color: var(--tx);
+		font: 600 0.85rem 'Be Vietnam Pro', sans-serif;
+		cursor: pointer;
+	}
+	.qrt-nut button:hover {
+		border-color: var(--pri);
+	}
+	.qrt-xoa-tk {
+		border-color: var(--red) !important;
+		color: var(--red-chu) !important;
+	}
+	.qrt-xoa-tk[hidden] {
+		display: none;
+	}
+	.qrt-tt {
+		font-size: 0.88rem;
+		color: var(--ok-chu);
+	}
+</style>

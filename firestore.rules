@@ -1,0 +1,14 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Mỗi người chỉ đọc/ghi tài liệu của chính mình, giới hạn kích thước để tiết kiệm hạn mức Spark.
+    match /nguoi_dung/{uid} {
+      allow read, delete: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if request.auth != null && request.auth.uid == uid
+        && request.resource.size < 200000;
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

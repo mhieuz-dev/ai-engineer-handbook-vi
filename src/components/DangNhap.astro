@@ -1,0 +1,296 @@
+---
+import { CO_CAU_HINH } from '../lib/firebase';
+---
+
+{
+	CO_CAU_HINH && (
+		<div class="dn" data-dn>
+			<button class="dn-nut" type="button" data-dn-mo>
+				<svg viewBox="0 0 18 18" width="16" height="16" aria-hidden="true">
+					<path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.9c1.7-1.56 2.7-3.87 2.7-6.62Z" />
+					<path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.26c-.8.54-1.83.86-3.06.86-2.35 0-4.34-1.59-5.05-3.72H.96v2.33A9 9 0 0 0 9 18Z" />
+					<path fill="#FBBC05" d="M3.95 10.7A5.4 5.4 0 0 1 3.67 9c0-.59.1-1.16.28-1.7V4.97H.96A9 9 0 0 0 0 9c0 1.45.35 2.82.96 4.03l2.99-2.33Z" />
+					<path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.97l2.99 2.33C4.66 5.17 6.65 3.58 9 3.58Z" />
+				</svg>
+				<span>Đăng nhập</span>
+			</button>
+
+			<div class="dn-da" data-dn-da hidden>
+				<button class="dn-nguoi" type="button" data-dn-menu aria-haspopup="menu" aria-expanded="false">
+					<img class="dn-anh" data-dn-anh alt="" width="26" height="26" />
+					<span class="dn-ten" data-dn-ten></span>
+				</button>
+				<div class="dn-menu" data-dn-drop role="menu" hidden>
+					<a class="dn-muc" href="/ho-so/" role="menuitem">Hồ sơ học tập</a>
+					<button class="dn-muc" type="button" data-dn-xuat role="menuitem">Xuất dữ liệu</button>
+					<a class="dn-muc" href="/quyen-rieng-tu/" role="menuitem">Quyền riêng tư</a>
+					<button class="dn-muc dn-thoat" type="button" data-dn-thoat role="menuitem">Đăng xuất</button>
+				</div>
+			</div>
+
+			<p class="dn-loi" data-dn-loi aria-live="polite"></p>
+
+			<div class="dn-hop" data-dn-hop hidden role="dialog" aria-modal="true" aria-labelledby="dn-hop-ten">
+				<div class="dn-hop-than">
+					<h2 id="dn-hop-ten">Gộp dữ liệu đang có?</h2>
+					<p>
+						Trình duyệt này đang có tiến độ học. Bạn muốn gộp vào tài khoản Google để đồng bộ nhiều máy, hay chỉ dùng dữ liệu đã có
+						trên tài khoản?
+					</p>
+					<div class="dn-hop-nut">
+						<button class="dn-hop-gop" type="button" data-dn-gop>Gộp vào tài khoản</button>
+						<button class="dn-hop-bo" type="button" data-dn-bo>Chỉ dùng dữ liệu tài khoản</button>
+					</div>
+				</div>
+			</div>
+		</div>
+	)
+}
+
+<script>
+	import { CO_CAU_HINH, dangNhapGoogle, dangXuat, theoDoi, type NguoiDungNhe } from '../lib/firebase';
+	import { batDongBo, docTatCa, dongBoKhiDangNhap, taiKhiMoTrang } from '../lib/luu-tru';
+
+	const KHOA_PHIEN = 'air-da-dang-nhap';
+
+	if (CO_CAU_HINH) {
+		const goc = document.querySelector<HTMLElement>('[data-dn]');
+		if (goc) {
+			const $ = <T extends HTMLElement>(s: string) => goc.querySelector<T>(s)!;
+			const nutMo = $<HTMLButtonElement>('[data-dn-mo]');
+			const da = $<HTMLElement>('[data-dn-da]');
+			const anh = $<HTMLImageElement>('[data-dn-anh]');
+			const ten = $<HTMLElement>('[data-dn-ten]');
+			const menuNut = $<HTMLButtonElement>('[data-dn-menu]');
+			const drop = $<HTMLElement>('[data-dn-drop]');
+			const loi = $<HTMLElement>('[data-dn-loi]');
+			const hop = $<HTMLElement>('[data-dn-hop]');
+			let vuaDangNhap = false;
+			let dungDongBo: (() => void) | null = null;
+			let uidDangDongBo: string | null = null;
+
+			const veNguoiDung = (u: NguoiDungNhe) => {
+				nutMo.hidden = true;
+				da.hidden = false;
+				ten.textContent = u.ten;
+				if (u.anh) {
+					anh.src = u.anh;
+					anh.alt = '';
+					anh.hidden = false;
+				} else anh.hidden = true;
+			};
+			const veKhach = () => {
+				nutMo.hidden = false;
+				da.hidden = true;
+				drop.hidden = true;
+				menuNut.setAttribute('aria-expanded', 'false');
+			};
+
+			const hoiGop = () =>
+				new Promise<boolean>((xong) => {
+					hop.hidden = false;
+					$<HTMLButtonElement>('[data-dn-gop]').onclick = () => {
+						hop.hidden = true;
+						xong(true);
+					};
+					$<HTMLButtonElement>('[data-dn-bo]').onclick = () => {
+						hop.hidden = true;
+						xong(false);
+					};
+					$<HTMLButtonElement>('[data-dn-gop]').focus();
+				});
+
+			const batDauDongBo = (u: NguoiDungNhe) => {
+				if (uidDangDongBo === u.uid) return;
+				dungDongBo?.();
+				uidDangDongBo = u.uid;
+				dungDongBo = batDongBo(u.uid, { ten: u.ten, anh: u.anh });
+			};
+
+			const xuLy = async (u: NguoiDungNhe | null) => {
+				if (!u) {
+					veKhach();
+					dungDongBo?.();
+					dungDongBo = null;
+					uidDangDongBo = null;
+					try {
+						localStorage.removeItem(KHOA_PHIEN);
+					} catch {
+						/* bỏ qua */
+					}
+					return;
+				}
+				veNguoiDung(u);
+				try {
+					localStorage.setItem(KHOA_PHIEN, '1');
+				} catch {
+					/* bỏ qua */
+				}
+				if (vuaDangNhap) {
+					vuaDangNhap = false;
+					const cach = await dongBoKhiDangNhap(u.uid, hoiGop, { ten: u.ten, anh: u.anh });
+					loi.textContent =
+						cach === 'gop'
+							? 'Đã gộp tiến độ trong trình duyệt vào tài khoản.'
+							: cach === 'tai-khoan'
+								? 'Đang dùng dữ liệu của tài khoản.'
+								: 'Đã đưa tiến độ trong trình duyệt lên tài khoản.';
+				} else {
+					await taiKhiMoTrang(u.uid, { ten: u.ten, anh: u.anh });
+				}
+				batDauDongBo(u);
+			};
+
+			nutMo.addEventListener('click', async () => {
+				loi.textContent = '';
+				try {
+					vuaDangNhap = true;
+					const u = await dangNhapGoogle();
+					await xuLy(u);
+				} catch (e) {
+					vuaDangNhap = false;
+					const ma = (e as { code?: string }).code ?? '';
+					loi.textContent = /popup|blocked|cancelled/i.test(ma)
+						? 'Trình duyệt chặn cửa sổ đăng nhập. Cho phép popup rồi thử lại.'
+						: 'Chưa đăng nhập được. Kiểm tra mạng rồi thử lại.';
+				}
+			});
+
+			menuNut.addEventListener('click', () => {
+				drop.hidden = !drop.hidden;
+				menuNut.setAttribute('aria-expanded', String(!drop.hidden));
+			});
+			document.addEventListener('click', (e) => {
+				if (!goc.contains(e.target as Node)) return;
+				if ((e.target as HTMLElement).closest('[data-dn-menu]')) return;
+				if ((e.target as HTMLElement).closest('[data-dn-drop]')) return;
+				drop.hidden = true;
+				menuNut.setAttribute('aria-expanded', 'false');
+			});
+			document.addEventListener('keydown', (e) => {
+				if (e.key === 'Escape' && !drop.hidden) {
+					drop.hidden = true;
+					menuNut.setAttribute('aria-expanded', 'false');
+					menuNut.focus();
+				}
+			});
+
+			$<HTMLButtonElement>('[data-dn-xuat]').addEventListener('click', () => {
+				const blob = new Blob([JSON.stringify({ xuatLuc: new Date().toISOString(), duLieu: docTatCa() }, null, 2)], {
+					type: 'application/json',
+				});
+				const a = document.createElement('a');
+				a.href = URL.createObjectURL(blob);
+				a.download = 'ai-robotics-du-lieu.json';
+				a.click();
+				URL.revokeObjectURL(a.href);
+			});
+			$<HTMLButtonElement>('[data-dn-thoat]').addEventListener('click', async () => {
+				await dangXuat();
+				veKhach();
+			});
+
+			let coPhien = false;
+			try {
+				coPhien = localStorage.getItem(KHOA_PHIEN) === '1';
+			} catch {
+				coPhien = false;
+			}
+			if (coPhien) {
+				try {
+					await theoDoi(xuLy);
+				} catch {
+					veKhach();
+				}
+			} else {
+				veKhach();
+			}
+		}
+	}
+</script>
+
+<style is:global>
+	.dn { display: flex; align-items: center; gap: 0.4rem; position: relative; }
+	.dn-nut {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		padding: 0.3rem 0.6rem;
+		border: 1px solid var(--line);
+		border-radius: 999px;
+		background: var(--bg);
+		color: var(--tx);
+		font: 600 0.78rem 'Be Vietnam Pro', system-ui, sans-serif;
+		cursor: pointer;
+		white-space: nowrap;
+	}
+	.dn-nut:hover { border-color: var(--pri); }
+	.dn-nut[hidden] { display: none; }
+	.dn-da { position: relative; }
+	.dn-da[hidden] { display: none; }
+	.dn-nguoi {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		padding: 0.2rem 0.55rem 0.2rem 0.2rem;
+		border: 1px solid var(--line);
+		border-radius: 999px;
+		background: var(--bg);
+		color: var(--tx);
+		font: 600 0.78rem 'Be Vietnam Pro', system-ui, sans-serif;
+		cursor: pointer;
+		max-width: 11rem;
+	}
+	.dn-anh { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; flex: none; }
+	.dn-ten { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.dn-menu {
+		position: absolute;
+		right: 0;
+		top: calc(100% + 0.35rem);
+		min-width: 12rem;
+		padding: 0.35rem;
+		border: 1px solid var(--line);
+		border-radius: 10px;
+		background: var(--bg);
+		box-shadow: 0 12px 36px rgb(20 20 20 / 0.22);
+		z-index: 40;
+	}
+	.dn-menu[hidden] { display: none; }
+	.dn-muc {
+		display: block;
+		width: 100%;
+		padding: 0.42rem 0.55rem;
+		border: 0;
+		border-radius: 7px;
+		background: transparent;
+		color: var(--tx);
+		text-align: left;
+		font: 500 0.82rem 'Be Vietnam Pro', system-ui, sans-serif;
+		text-decoration: none;
+		cursor: pointer;
+	}
+	.dn-muc:hover { background: var(--panel); }
+	.dn-thoat { color: var(--red-chu); }
+	.dn-loi { position: absolute; right: 0; top: calc(100% + 0.3rem); margin: 0; font-size: 0.68rem; color: var(--red-chu); max-width: 16rem; text-align: right; }
+	.dn-hop {
+		position: fixed;
+		inset: 0;
+		z-index: 80;
+		display: grid;
+		place-items: center;
+		padding: 1rem;
+		background: rgb(0 0 0 / 0.45);
+	}
+	.dn-hop[hidden] { display: none; }
+	.dn-hop-than { max-width: 26rem; padding: 1.2rem 1.3rem; border-radius: 14px; background: var(--bg); border: 1px solid var(--line); font-family: 'Be Vietnam Pro', sans-serif; }
+	.dn-hop-than h2 { margin: 0 0 0.5rem; font-size: 1.1rem; }
+	.dn-hop-than p { margin: 0 0 0.9rem; font-size: 0.9rem; line-height: 1.5; color: var(--mut-chu); }
+	.dn-hop-nut { display: flex; flex-direction: column; gap: 0.45rem; }
+	.dn-hop-gop,
+	.dn-hop-bo { padding: 0.55rem 0.8rem; border-radius: 8px; font: 700 0.85rem 'Be Vietnam Pro', sans-serif; cursor: pointer; }
+	.dn-hop-gop { border: 0; background: var(--pri); color: var(--bg); }
+	.dn-hop-bo { border: 1px solid var(--line); background: var(--bg); color: var(--tx); }
+	@media (max-width: 50rem) {
+		.dn-ten { display: none; }
+	}
+</style>
