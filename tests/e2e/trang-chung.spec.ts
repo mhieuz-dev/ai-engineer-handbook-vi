@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { CHUONG, chuongDaXuatBan } from '../../src/data/chuong';
+import { CHUONG, PHAN, chuongDaXuatBan } from '../../src/data/chuong';
 
 const TRANG_DAU = '/ai-engineer/ch10-hoi-quy-tuyen-tinh/01-truc-giac/';
 
@@ -121,4 +121,49 @@ test('desktop: link đầu trang cách nhau bằng chấm nhỏ, nút Tải về
 	const hNut = (await nut.boundingBox())!;
 	const hHang = (await page.locator('.crumb-hang').boundingBox())!;
 	expect(hNut.x + hNut.width).toBeGreaterThan(hHang.x + hHang.width - 2);
+});
+
+test('trang chủ: thanh tiến độ tổng và lưới thẻ theo Phần đếm đúng theo chuong.ts', async ({ page }) => {
+	await page.goto('/');
+	const daXong = chuongDaXuatBan().length;
+	await expect(page.locator('.tdt-hang')).toContainText(`${daXong}/${CHUONG.length}`);
+	const thanh = page.locator('.tdt-thanh');
+	await expect(thanh).toHaveAttribute('aria-valuenow', String(Math.round((daXong / CHUONG.length) * 100)));
+	await expect(page.locator('.the-phan')).toHaveCount(PHAN.length);
+	await expect(page.locator('.o-chuong')).toHaveCount(CHUONG.length);
+	await expect(page.locator('.o-chuong.xong')).toHaveCount(daXong);
+	await expect(page.locator('.o-chuong.sap-co')).toHaveCount(CHUONG.length - daXong);
+	await expect(page.locator('.o-chuong.xong').first()).toHaveAttribute('href', '/ai-engineer/ch00-lo-trinh-va-colab/01-lo-trinh/');
+	await expect(page.locator('.o-chuong.sap-co').first()).toContainText('Prompt engineering');
+});
+
+test('trang chủ: Học tiếp ẩn khi chưa đọc, hiện đúng trang đọc gần nhất', async ({ page }) => {
+	await page.goto('/');
+	await expect(page.locator('.hoc-tiep')).toBeHidden();
+
+	await page.addInitScript(() => {
+		localStorage.setItem(
+			'air-tien-do-v1',
+			JSON.stringify({
+				daDoc: { 'ai-engineer/ch10-hoi-quy-tuyen-tinh/02-toan': '2026-11-15' },
+				ngayHoc: ['2026-11-15'],
+			}),
+		);
+	});
+	await page.goto('/');
+	const the = page.locator('.hoc-tiep');
+	await expect(the).toBeVisible();
+	await expect(the).toContainText('Chương 10');
+	await expect(the).toContainText('Trang 2');
+	await expect(the.locator('.ht-nut')).toHaveAttribute('href', '/ai-engineer/ch10-hoi-quy-tuyen-tinh/02-toan/');
+});
+
+test('trang chủ mobile: các Phần gập lại, mở ra được', async ({ page, isMobile }) => {
+	test.skip(!isMobile);
+	await page.goto('/');
+	const phan = page.locator('.the-phan').first();
+	await expect(phan).not.toHaveAttribute('open', '');
+	await phan.locator('summary').tap();
+	await expect(phan).toHaveAttribute('open', '');
+	await expect(phan.locator('.o-chuong').first()).toBeVisible();
 });

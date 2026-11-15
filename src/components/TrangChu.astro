@@ -1,10 +1,13 @@
 ---
 import ThemeSelect from './overrides/ThemeSelect.astro';
 import { MENU_CHUNG } from '../data/menu-chung';
-import { CHUONG, chuongDaXuatBan } from '../data/chuong';
+import { CHUONG, PHAN, chuongDaXuatBan } from '../data/chuong';
+import { trangDauCuaChuong } from '../lib/trang-dau';
 import KeSach from './KeSach.astro';
 
-const daCo = chuongDaXuatBan().map((c) => `Chương ${c.so}, ${c.ten}`).join('; ');
+const tong = CHUONG.length;
+const daViet = chuongDaXuatBan().length;
+const ptTong = Math.round((daViet / tong) * 100);
 const buoc = ['Trực giác', 'Toán', 'Tính tay', 'Code', 'Đọc kết quả'];
 const tinhNang = [
 	['Nhắc nhanh', 'Thuật ngữ mới được giải thích ngay chỗ gặp.'],
@@ -14,20 +17,98 @@ const tinhNang = [
 	['Tải về PDF', 'In từng trang hoặc cả chương để đọc ngoại tuyến.'],
 	['Colab', 'Mở notebook chạy thẳng trên trình duyệt, không cần cài.'],
 ];
+
+const phanData = await Promise.all(
+	PHAN.map(async (p) => {
+		const chuong = CHUONG.filter((c) => c.phan === p.id);
+		const items = await Promise.all(
+			chuong.map(async (c) => ({ c, href: c.trangThai === 'xong' ? await trangDauCuaChuong(c) : undefined })),
+		);
+		const xong = items.filter((i) => i.href).length;
+		const trangThai = xong === 0 ? 'sap-co' : xong === chuong.length ? 'xong' : 'dang-viet';
+		return { p, items, xong, tong: chuong.length, pt: Math.round((xong / chuong.length) * 100), trangThai };
+	}),
+);
+
+const NHAN: Record<string, string> = { xong: 'Đã xong', 'dang-viet': 'Đang viết', 'sap-co': 'Sắp có' };
+const dsChuong = chuongDaXuatBan().map((c) => ({ slug: c.slug, so: c.so, ten: c.ten }));
 ---
 
 <div class="trang-chu">
 	<section class="hero">
 		<p class="gioi-thieu">Giáo trình tiếng Việt miễn phí: hiểu tận gốc AI, từ Python cơ bản đến mô hình ngôn ngữ lớn.</p>
 		<p><a class="nut-chinh" href="#ke-sach" id="nut-chon-sach">Chọn sách để học ↓</a></p>
-		<p class="trung-thuc">Trang đang được viết dần. {daCo && `Đã viết xong: ${daCo}. `}Còn lại {CHUONG.length - chuongDaXuatBan().length} chương sắp có.</p>
+
+		<div class="tien-do-tong">
+			<div class="tdt-hang">
+				<strong>{daViet}/{tong} chương</strong>
+				<span>đã viết</span>
+			</div>
+			<div
+				class="tdt-thanh"
+				role="progressbar"
+				aria-label="Số chương đã viết trên tổng số chương"
+				aria-valuemin="0"
+				aria-valuemax="100"
+				aria-valuenow={ptTong}
+			>
+				<div class="tdt-day" style={`width:${ptTong}%`}></div>
+			</div>
+		</div>
+
 		<nav class="nav-chung-mobile" aria-label="Liên kết nhanh">
 			{MENU_CHUNG.map((m) => <a href={m.href}>{m.nhan}</a>)}
 		</nav>
 		<div class="doi-giao-dien"><ThemeSelect /></div>
 	</section>
 
+	<aside class="hoc-tiep" data-chuong={JSON.stringify(dsChuong)} hidden>
+		<div class="ht-chu">
+			<p class="ht-nhan">HỌC TIẾP</p>
+			<p class="ht-ten"></p>
+			<p class="ht-phu"><span class="ht-pt"></span></p>
+		</div>
+		<a class="ht-nut" href="/">Đọc tiếp →</a>
+	</aside>
+
 	<KeSach />
+
+	<section class="cac-phan" aria-labelledby="cac-phan-ten">
+		<h2 id="cac-phan-ten">Lộ trình theo Phần</h2>
+		<div class="luoi-phan">
+			{
+				phanData.map(({ p, items, xong, tong: soChuong, pt, trangThai }) => (
+					<details class={`the-phan tt-${trangThai}`} open>
+						<summary class="dau-phan">
+							<span class="dau-hang">
+								<span class="ten-phan">{p.ten}</span>
+								<span class="so-phan">{xong}/{soChuong}</span>
+							</span>
+							<span class="nhan-phan">{NHAN[trangThai]}</span>
+							<span class="vach-phan" aria-hidden="true">
+								<span style={`width:${pt}%`} />
+							</span>
+						</summary>
+						<div class="o-luoi">
+							{items.map(({ c, href }) =>
+								href ? (
+									<a class="o-chuong xong" href={href}>
+										<span class="o-so">{c.so}</span>
+										<span class="o-ten">{c.ten}</span>
+									</a>
+								) : (
+									<span class="o-chuong sap-co" title="Sắp có">
+										<span class="o-so">{c.so}</span>
+										<span class="o-ten">{c.ten}</span>
+									</span>
+								),
+							)}
+						</div>
+					</details>
+				))
+			}
+		</div>
+	</section>
 
 	<section class="cach-hoc">
 		<h2>Cách học trên trang này</h2>
@@ -41,6 +122,50 @@ const tinhNang = [
 	</section>
 </div>
 
+<script is:inline>
+	if (window.matchMedia('(max-width: 50rem)').matches) {
+		document.querySelectorAll('details.the-phan').forEach(function (d) {
+			d.open = false;
+		});
+	}
+</script>
+
+<script>
+	import { KHOA_STORAGE, docTuStorage } from '../lib/tien-do';
+
+	const khoi = document.querySelector<HTMLElement>('.hoc-tiep');
+	if (khoi) {
+		const ds: { slug: string; so: number; ten: string }[] = JSON.parse(khoi.dataset.chuong ?? '[]');
+		let kho: Storage | undefined;
+		try {
+			kho = window.localStorage;
+			kho.getItem(KHOA_STORAGE);
+		} catch {
+			kho = undefined;
+		}
+		if (kho) {
+			const td = docTuStorage(kho);
+			const keys = Object.keys(td.daDoc);
+			if (keys.length) {
+				let moiNhat = keys[0];
+				for (const k of keys) if (td.daDoc[k] >= td.daDoc[moiNhat]) moiNhat = k;
+				const c = ds.find((x) => moiNhat === x.slug || moiNhat.startsWith(`${x.slug}/`));
+				if (c) {
+					const duoi = moiNhat.slice(c.slug.length + 1);
+					const soTrang = /^(\d+)/.exec(duoi)?.[1];
+					khoi.querySelector('.ht-ten')!.textContent = `Chương ${c.so}: ${c.ten}`;
+					const docChuong = ds.filter((x) => keys.some((k) => k === x.slug || k.startsWith(`${x.slug}/`))).length;
+					const pt = Math.round((docChuong / ds.length) * 100);
+					khoi.querySelector('.ht-phu')!.textContent = `${soTrang ? `Trang ${Number(soTrang)} · ` : ''}${pt}% giáo trình`;
+					const nut = khoi.querySelector<HTMLAnchorElement>('.ht-nut')!;
+					nut.href = `/${moiNhat}/`;
+					khoi.hidden = false;
+				}
+			}
+		}
+	}
+</script>
+
 <style>
 	.trang-chu { max-width: 56rem; margin: 0 auto; font-family: 'Be Vietnam Pro', system-ui, sans-serif; }
 	.hero { text-align: center; padding: 0.5rem 0 1rem; }
@@ -50,13 +175,49 @@ const tinhNang = [
 	.nut-chinh { display: inline-block; background: var(--acc); color: #1a1208; font-weight: 600; padding: 0.7rem 1.6rem; border-radius: 6px; text-decoration: none; }
 	@media (prefers-reduced-motion: no-preference) { :global(html) { scroll-behavior: smooth; } }
 	.nut-chinh:hover { filter: brightness(1.08); }
-	.trung-thuc { color: var(--mut); font-size: 0.9rem; }
 	.nav-chung-mobile { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem 1.2rem; margin-top: 1rem; }
 	.nav-chung-mobile a { color: var(--pri); font-weight: 600; text-decoration: none; }
 	.doi-giao-dien { display: flex; justify-content: center; margin-top: 0.8rem; }
 	/* Trang splash không có menu ☰ trên điện thoại, nên đặt nút đổi giao diện và liên kết nhanh ngay trên trang. */
 	@media (min-width: 50rem) { .nav-chung-mobile, .doi-giao-dien { display: none; } }
-	.cach-hoc h2 { border: 0; margin-top: 0; }
+
+	.tien-do-tong { max-width: 32rem; margin: 1.1rem auto 0; }
+	.tdt-hang { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.85rem; color: var(--mut-chu); }
+	.tdt-hang strong { font-variant-numeric: tabular-nums; color: var(--tx); }
+	.tdt-thanh { margin-top: 0.35rem; height: 7px; border-radius: 4px; background: color-mix(in srgb, var(--mut) 25%, transparent); overflow: hidden; }
+	.tdt-day { height: 100%; background: linear-gradient(90deg, var(--pri), var(--acc)); }
+
+	.hoc-tiep { display: flex; align-items: center; justify-content: space-between; gap: 1rem; max-width: 32rem; margin: 1.1rem auto 0; padding: 0.8rem 1rem; border: 1px solid var(--line); border-left: 4px solid var(--ok); border-radius: 12px; background: var(--panel); text-align: left; }
+	.hoc-tiep[hidden] { display: none; }
+	.ht-nhan { margin: 0; font-size: 0.68rem; letter-spacing: 0.09em; font-weight: 700; color: var(--ok-chu); }
+	.ht-ten { margin: 0.15rem 0 0; font-weight: 700; color: var(--tx); }
+	.ht-phu { margin: 0.1rem 0 0; font-size: 0.78rem; color: var(--mut-chu); }
+	.ht-nut { flex: none; font-weight: 700; color: var(--pri); text-decoration: none; white-space: nowrap; }
+	.ht-nut:hover { text-decoration: underline; }
+
+	.cac-phan h2 { border: 0; margin-top: 2.4rem; }
+	.luoi-phan { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 0.9rem; align-items: start; }
+	.the-phan { border: 1px solid var(--line); border-radius: 14px; background: var(--panel); overflow: hidden; }
+	.dau-phan { cursor: pointer; padding: 0.75rem 0.9rem; }
+	.dau-phan:focus-visible { outline: 2px solid var(--pri); outline-offset: -2px; }
+	.dau-hang { display: flex; align-items: baseline; justify-content: space-between; gap: 0.6rem; }
+	.ten-phan { font-weight: 800; color: var(--pri); font-size: 0.95rem; }
+	.so-phan { flex: none; font-size: 0.78rem; font-variant-numeric: tabular-nums; color: var(--mut-chu); }
+	.nhan-phan { display: inline-block; margin-top: 0.3rem; padding: 0 0.5em; border-radius: 999px; font-size: 0.68rem; font-weight: 600; border: 1px solid var(--line); color: var(--mut-chu); }
+	.tt-dang-viet .nhan-phan { color: var(--acc-chu); border-color: color-mix(in srgb, var(--acc) 45%, var(--line)); background: var(--accbg); }
+	.tt-xong .nhan-phan { color: var(--ok-chu); border-color: color-mix(in srgb, var(--ok) 45%, var(--line)); }
+	.vach-phan { display: block; margin-top: 0.5rem; height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--mut) 25%, transparent); overflow: hidden; }
+	.vach-phan > span { display: block; height: 100%; background: var(--ok); }
+	.tt-dang-viet .vach-phan > span { background: var(--acc); }
+	.tt-sap-co .vach-phan > span { background: var(--mut); }
+	.o-luoi { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); gap: 0.4rem; padding: 0 0.8rem 0.8rem; }
+	.o-chuong { display: flex; align-items: baseline; gap: 0.45rem; min-width: 0; padding: 0.4rem 0.5rem; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--tx); font-size: 0.82rem; line-height: 1.25; text-decoration: none; }
+	.o-chuong.xong:hover { border-color: var(--pri); color: var(--pri); }
+	.o-chuong.sap-co { opacity: 0.5; }
+	.o-so { flex: none; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--pri); }
+	.o-ten { overflow-wrap: anywhere; }
+
+	.cach-hoc h2 { border: 0; margin-top: 2.4rem; }
 	.buoc { display: flex; flex-wrap: wrap; gap: 0.5rem; list-style: none; padding: 0; margin: 1rem 0; counter-reset: b; }
 	.buoc li { counter-increment: b; margin: 0; padding: 0.35rem 0.9rem; border-radius: 999px; background: var(--accbg); font-weight: 600; }
 	.buoc li::before { content: counter(b) '. '; color: var(--acc); }
@@ -64,4 +225,8 @@ const tinhNang = [
 	.tinh-nang div { margin: 0; padding: 0.7rem 0.9rem; border-left: 3px solid var(--pri); background: var(--panel); }
 	.tinh-nang dt { font-weight: 600; margin: 0; }
 	.tinh-nang dd { margin: 0.15rem 0 0; color: var(--mut); font-size: 0.92rem; }
+
+	@media (max-width: 30rem) {
+		.hoc-tiep { align-items: flex-start; }
+	}
 </style>
