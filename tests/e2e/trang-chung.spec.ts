@@ -3,7 +3,7 @@ import { CHUONG, PHAN, chuongDaXuatBan } from '../../src/data/chuong';
 
 const TRANG_DAU = '/ai-engineer/ch10-hoi-quy-tuyen-tinh/01-truc-giac/';
 
-test('trang chủ: tiêu đề, hai thẻ nhánh, nút Chọn sách để học', async ({ page }) => {
+test('trang chủ: tiêu đề, hai thẻ nhánh, nút bắt đầu học', async ({ page }) => {
 	await page.goto('/');
 	await expect(page.locator('h1')).toHaveText('Hiểu tận gốc AI, từ Python đến mô hình ngôn ngữ lớn');
 	const ai = page.locator('#ke-sach .the-chon', { hasText: 'AI Engineer' });
@@ -11,7 +11,7 @@ test('trang chủ: tiêu đề, hai thẻ nhánh, nút Chọn sách để học'
 	await expect(ai).toBeVisible();
 	await expect(ai).toContainText('Đang viết');
 	await expect(robot).toContainText('Sắp có');
-	await expect(page.getByRole('link', { name: /Chọn sách để học/ })).toHaveAttribute('href', '#ke-sach');
+	await expect(page.locator('.hero-nut a').first()).toHaveAttribute('href', /\/ai-engineer\/ch00/);
 	await expect(page.getByText('Cách học trên trang này')).toBeVisible();
 });
 
@@ -109,13 +109,17 @@ test('nút Hồ sơ trên menu hiện phần trăm và trỏ về /ho-so/', asyn
 	await expect(nut.locator('[data-hoso-pt]')).toHaveText('0%');
 });
 
-test('mobile: trang chủ vẫn có liên kết nhanh thay cho menu thả xuống', async ({ page, isMobile }) => {
+test('mobile: trang chủ có ba thẻ lối vào Học / Luyện tập / Tra cứu', async ({ page, isMobile }) => {
 	test.skip(!isMobile);
 	await page.goto('/');
-	const nav = page.locator('.nav-chung-mobile');
-	for (const [ten, href] of [['Lộ trình', '/lo-trinh/'], ['Luyện tập', '/luyen-tap/'], ['Thuật ngữ', '/thuat-ngu/'], ['Notebook', '/notebook/']]) {
-		await expect(nav.getByRole('link', { name: ten })).toHaveAttribute('href', href);
-	}
+	const the = page.locator('.lv-the');
+	await expect(the).toHaveCount(3);
+	await expect(the.nth(0)).toContainText('Học');
+	await expect(the.nth(1)).toContainText('Luyện tập');
+	await expect(the.nth(2)).toContainText('Tra cứu');
+	await expect(the.nth(0).locator('.lv-vao')).toHaveAttribute('href', '/lo-trinh/');
+	await expect(the.nth(1).locator('.lv-vao')).toHaveAttribute('href', '/luyen-tap/');
+	await expect(the.nth(2).locator('.lv-vao')).toHaveAttribute('href', '/thuat-ngu/');
 });
 
 test('mobile 375px: trang chủ, lộ trình, notebook, giới thiệu, quyền riêng tư không tràn ngang', async ({ page, isMobile }) => {
@@ -230,14 +234,13 @@ test('quyền riêng tư: giải thích nơi lưu, có nút xuất và xoá; ch�
 });
 
 
-test('trang chủ: thẻ Phòng thi thử và thẻ Ôn lại từ kết quả thi', async ({ page }) => {
+test('trang chủ: thẻ luyện tập trỏ đúng và thẻ Ôn lại từ kết quả thi', async ({ page }) => {
 	await page.goto('/');
-	const theLuyenTap = (ten: string) => page.locator('.luyen-tap .lt-the').filter({ has: page.locator('strong', { hasText: ten }) });
-	await expect(theLuyenTap('Phòng thi thử')).toHaveAttribute('href', '/phong-thi/');
-	await expect(theLuyenTap('Luyện thuật toán')).toHaveAttribute('href', '/thuat-toan/');
-	await expect(theLuyenTap('Phỏng vấn thử')).toHaveAttribute('href', '/phong-van/');
-	await expect(theLuyenTap('Toán cho thuật toán')).toHaveAttribute('href', '/toan-thuat-toan/');
-	await expect(theLuyenTap('Hồ sơ học tập')).toHaveAttribute('href', '/ho-so/');
+	const theLuyenTap = page.locator('.lv-luyen');
+	await expect(theLuyenTap.getByRole('link', { name: /Phòng thi thử/ })).toHaveAttribute('href', '/phong-thi/');
+	await expect(theLuyenTap.getByRole('link', { name: /Luyện thuật toán/ })).toHaveAttribute('href', '/thuat-toan/');
+	await expect(theLuyenTap.getByRole('link', { name: /Toán cho thuật toán/ })).toHaveAttribute('href', '/toan-thuat-toan/');
+	await expect(page.locator('.lv-hoc').getByRole('link', { name: /Bắt đầu từ Chương 0/ })).toHaveAttribute('href', /\/ai-engineer\/ch00/);
 	await expect(page.locator('.on-lai')).toBeHidden();
 
 	await page.addInitScript(() => {

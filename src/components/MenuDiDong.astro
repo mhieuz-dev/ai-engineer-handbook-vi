@@ -3,6 +3,7 @@ import type { Khu } from '../data/khu';
 import type { NhomMenu } from '../data/menu-khu';
 import { slugTrangDaXuatBan } from '../lib/slug-xuat-ban';
 import Icon from './icon/Icon.astro';
+import ThemeSelect from './overrides/ThemeSelect.astro';
 
 interface Props {
 	nhom: NhomMenu[];
@@ -58,6 +59,11 @@ const soTrang = (await slugTrangDaXuatBan()).length;
 				</section>
 			))
 		}
+
+		<div class="mdd-giaodien">
+			<span>Giao diện</span>
+			<ThemeSelect />
+		</div>
 	</nav>
 </div>
 
@@ -307,6 +313,19 @@ const soTrang = (await slugTrangDaXuatBan()).length;
 	.mdd-chu small {
 		font-size: 0.72rem;
 		line-height: 1.35;
+		color: var(--mut-chu);
+	}
+	.mdd-giaodien {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		margin-top: 1.2rem;
+		padding-top: 0.9rem;
+		border-top: 1px solid var(--line);
+		font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+		font-size: 0.82rem;
+		font-weight: 600;
 		color: var(--mut-chu);
 	}
 </style>

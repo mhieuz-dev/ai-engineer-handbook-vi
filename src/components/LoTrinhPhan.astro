@@ -1,0 +1,120 @@
+---
+import { PHAN, CHUONG } from '../data/chuong';
+import { trangDauCuaChuong } from '../lib/trang-dau';
+
+interface Props {
+	tieuDe?: string;
+	/** Ẩn tiêu đề khi trang đã có tiêu đề riêng (trang /lo-trinh). */
+	anTieuDe?: boolean;
+}
+
+const { tieuDe = 'Lộ trình theo Phần', anTieuDe = false } = Astro.props;
+
+const phanData = await Promise.all(
+	PHAN.map(async (p) => {
+		const chuong = CHUONG.filter((c) => c.phan === p.id);
+		const items = await Promise.all(
+			chuong.map(async (c) => ({ c, href: c.trangThai === 'xong' ? await trangDauCuaChuong(c) : undefined })),
+		);
+		const xong = items.filter((i) => i.href).length;
+		const trangThai = xong === 0 ? 'sap-co' : xong === chuong.length ? 'xong' : 'dang-viet';
+		return { p, items, xong, tong: chuong.length, pt: Math.round((xong / chuong.length) * 100), trangThai };
+	}),
+);
+
+const NHAN: Record<string, string> = { xong: 'Đã xong', 'dang-viet': 'Đang viết', 'sap-co': 'Sắp có' };
+---
+
+<section class="cac-phan" aria-label={anTieuDe ? 'Lộ trình theo Phần' : undefined} aria-labelledby={anTieuDe ? undefined : 'cac-phan-ten'}>
+	{!anTieuDe && <h2 id="cac-phan-ten">{tieuDe}</h2>}
+	<div class="luoi-phan">
+		{
+			phanData.map(({ p, items, xong, tong: soChuong, pt, trangThai }) => (
+				<details class={`the-phan tt-${trangThai}`} open>
+					<summary class="dau-phan">
+						<span class="dau-hang">
+							<span class="ten-phan">{p.ten}</span>
+							<span class="so-phan">
+								{xong}/{soChuong}
+							</span>
+						</span>
+						<span class="nhan-phan">{NHAN[trangThai]}</span>
+						<span class="vach-phan" aria-hidden="true">
+							<span style={`width:${pt}%`} />
+						</span>
+					</summary>
+					<ul class="o-luoi">
+						{items.map(({ c, href }) => (
+							<li id={`ch${String(c.so).padStart(2, '0')}`} class="o-muc">
+								{href ? (
+									<a class="o-chuong xong" href={href}>
+										<span class="o-so">{c.so}</span>
+										<span class="o-ten">{c.ten}</span>
+									</a>
+								) : (
+									<span class="o-chuong sap-co" title="Sắp có">
+										<span class="o-so">{c.so}</span>
+										<span class="o-ten">{c.ten}</span>
+										<span class="nhan-sap-co sr-only">Sắp có</span>
+									</span>
+								)}
+							</li>
+						))}
+					</ul>
+				</details>
+			))
+		}
+	</div>
+</section>
+
+<style>
+	.cac-phan h2 { border: 0; margin-top: 2.4rem; }
+	/* Dòng thời gian dọc: một cột, mỗi Phần một dải, đầu dải có chấm màu theo trạng thái. */
+	.luoi-phan { position: relative; display: grid; grid-template-columns: 1fr; gap: 0.9rem; align-items: start; padding-inline-start: 1.35rem; }
+	.luoi-phan::before {
+		content: '';
+		position: absolute;
+		inset-block: 0.9rem;
+		inset-inline-start: 0.42rem;
+		width: 2px;
+		border-radius: 2px;
+		background: color-mix(in srgb, var(--line) 72%, var(--mut));
+	}
+	.the-phan { position: relative; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); overflow: hidden; }
+	.the-phan::before {
+		content: '';
+		position: absolute;
+		inset-inline-start: -1.15rem;
+		top: 1.15rem;
+		width: 10px;
+		height: 10px;
+		border-radius: 50%;
+		background: var(--ok);
+		box-shadow: 0 0 0 3px var(--bg);
+	}
+	.tt-dang-viet::before { background: var(--acc); }
+	.tt-sap-co::before { background: var(--mut); }
+	.dau-phan { cursor: pointer; padding: 0.75rem 0.9rem; }
+	.dau-phan:focus-visible { outline: 2px solid var(--khu-hoc); outline-offset: -2px; }
+	.dau-hang { display: flex; align-items: baseline; justify-content: space-between; gap: 0.6rem; }
+	.ten-phan { font-weight: 800; color: var(--khu-hoc); font-size: 0.95rem; }
+	.so-phan { flex: none; font-size: 0.78rem; font-variant-numeric: tabular-nums; color: var(--mut-chu); }
+	.nhan-phan { display: inline-block; margin-top: 0.3rem; padding: 0 0.5em; border-radius: 999px; font-size: 0.68rem; font-weight: 600; border: 1px solid var(--line); color: var(--mut-chu); }
+	.tt-dang-viet .nhan-phan { color: var(--acc-chu); border-color: color-mix(in srgb, var(--acc) 45%, var(--line)); background: var(--accbg); }
+	.tt-xong .nhan-phan { color: var(--ok-chu); border-color: color-mix(in srgb, var(--ok) 45%, var(--line)); }
+	.vach-phan { display: block; margin-top: 0.5rem; height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--mut) 25%, transparent); overflow: hidden; }
+	.vach-phan > span { display: block; height: 100%; background: var(--ok); }
+	.tt-dang-viet .vach-phan > span { background: var(--acc); }
+	.tt-sap-co .vach-phan > span { background: var(--mut); }
+	.o-luoi { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); gap: 0.4rem; margin: 0; padding: 0 0.8rem 0.8rem; list-style: none; }
+	.o-muc { margin: 0; min-width: 0; scroll-margin-top: 5.5rem; }
+	.o-muc:target .o-chuong { border-color: var(--acc); background: var(--accbg); }
+	.o-chuong { display: flex; align-items: baseline; gap: 0.45rem; min-width: 0; height: 100%; padding: 0.4rem 0.5rem; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--tx); font-size: 0.82rem; line-height: 1.25; text-decoration: none; }
+	.o-chuong.xong:hover { border-color: var(--khu-hoc); color: var(--khu-hoc); }
+	.o-chuong.sap-co { opacity: 0.5; }
+	.o-so { flex: none; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--khu-hoc); }
+	.o-ten { overflow-wrap: anywhere; }
+	@media (max-width: 49.999rem) {
+		.o-luoi { grid-template-columns: 1fr; }
+	}
+</style>

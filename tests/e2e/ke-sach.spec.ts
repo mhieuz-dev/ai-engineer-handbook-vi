@@ -23,7 +23,7 @@ test('mobile: kệ sách sau hero, không tải three, thẻ chọn hoạt độ
 	await page.goto('/');
 	const ke = page.locator('#ke-sach');
 	await expect(ke).toBeVisible();
-	const yNut = (await page.getByRole('link', { name: /Chọn sách để học/ }).boundingBox())!.y;
+	const yNut = (await page.locator('.hero-nut a').first().boundingBox())!.y;
 	const yKe = (await ke.boundingBox())!.y;
 	expect(yKe).toBeGreaterThan(yNut);
 	await ke.scrollIntoViewIfNeeded();
@@ -325,9 +325,10 @@ test('desktop: cử chỉ bị hủy (pointercancel) trên cuốn đang mở kh�
 	await kiemDaDong(page, true);
 });
 
-test('trang chủ: nút hero "Chọn sách để học" trỏ tới #ke-sach', async ({ page }) => {
+test('trang chủ: nút hero "Xem lộ trình" trỏ tới #cac-phan-ten', async ({ page }) => {
 	await page.goto('/');
-	await expect(page.getByRole('link', { name: /Chọn sách để học/ })).toHaveAttribute('href', '#ke-sach');
+	await expect(page.locator('.hero-nut a').nth(1)).toHaveAttribute('href', '#cac-phan-ten');
+	await expect(page.locator('#cac-phan-ten')).toBeVisible();
 });
 
 test('desktop: bàn phím Tab tới thẻ Robotics, Enter mở bảng thông tin', async ({ page, isMobile }) => {

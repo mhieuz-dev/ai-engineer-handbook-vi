@@ -36,8 +36,14 @@ test('nút gạt sáng tối đổi nền, nhớ lựa chọn khi tải lại', 
 	await expect(nut2).toHaveAttribute('aria-checked', 'false');
 });
 
-test('trang chủ có nút gạt sáng tối, không còn ô chọn cũ', async ({ page }) => {
+test('trang chủ có nút gạt sáng tối, không còn ô chọn cũ', async ({ page, isMobile }) => {
 	await page.goto('/');
-	await expect(page.locator('button.nut-sang-toi[role="switch"]:visible').first()).toBeVisible();
+	if (isMobile) {
+		// Điện thoại: nút nằm ở cuối ngăn kéo ☰.
+		await page.locator('[data-mdd-nut]').tap();
+		await expect(page.locator('.mdd-giaodien button.nut-sang-toi[role="switch"]')).toBeVisible();
+	} else {
+		await expect(page.locator('header button.nut-sang-toi[role="switch"]:visible').first()).toBeVisible();
+	}
 	await expect(page.locator('starlight-theme-select select:visible')).toHaveCount(0);
 });

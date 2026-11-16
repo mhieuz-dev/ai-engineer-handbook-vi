@@ -42,6 +42,8 @@ html[data-khu='hoc'] { --khu: var(--khu-hoc); }
 html[data-khu='luyen'] { --khu: var(--khu-luyen); }
 html[data-khu='tra'] { --khu: var(--khu-tra); }
 html[data-khu='hoso'] { --khu: var(--khu-hoso); }
+/* Trang chủ rộng hơn mức 45rem của splash để ba thẻ lối vào nằm một hàng và lộ trình thoáng hơn. */
+:root:has(.trang-chu) { --sl-content-width: 50rem; }
 :root[data-theme='dark'] {
 	--bg: #14171c;
 	--panel: #1a1e24;

@@ -1,13 +1,24 @@
 ---
-import ThemeSelect from './overrides/ThemeSelect.astro';
-import { MENU_CHUNG } from '../data/menu-chung';
-import { CHUONG, PHAN, chuongDaXuatBan } from '../data/chuong';
-import { trangDauCuaChuong } from '../lib/trang-dau';
+import { getCollection } from 'astro:content';
+import { CHUONG, chuongDaXuatBan } from '../data/chuong';
+import { trangBatDauHoc } from '../lib/trang-dau';
+import { taiBaiThuatToan } from '../lib/thuat-toan';
+import { taiBaiToan } from '../lib/toan';
+import { taiPreset } from '../lib/phong-van';
 import KeSach from './KeSach.astro';
+import LoTrinhPhan from './LoTrinhPhan.astro';
+import Icon from './icon/Icon.astro';
 
 const tong = CHUONG.length;
 const daViet = chuongDaXuatBan().length;
 const ptTong = Math.round((daViet / tong) * 100);
+const batDau = (await trangBatDauHoc()) ?? '/ai-engineer/ch00-lo-trinh-va-colab/01-lo-trinh/';
+const soThuatToan = (await taiBaiThuatToan()).length;
+const soToan = (await taiBaiToan()).length;
+const soPhongVan = (await taiPreset()).length;
+const soThuatNgu = (await getCollection('thuatNgu')).length;
+const soNotebook = chuongDaXuatBan().filter((c) => c.notebook).length;
+
 const buoc = ['Trực giác', 'Toán', 'Tính tay', 'Code', 'Đọc kết quả'];
 const tinhNang = [
 	['Nhắc nhanh', 'Thuật ngữ mới được giải thích ngay chỗ gặp.'],
@@ -18,25 +29,18 @@ const tinhNang = [
 	['Colab', 'Mở notebook chạy thẳng trên trình duyệt, không cần cài.'],
 ];
 
-const phanData = await Promise.all(
-	PHAN.map(async (p) => {
-		const chuong = CHUONG.filter((c) => c.phan === p.id);
-		const items = await Promise.all(
-			chuong.map(async (c) => ({ c, href: c.trangThai === 'xong' ? await trangDauCuaChuong(c) : undefined })),
-		);
-		const xong = items.filter((i) => i.href).length;
-		const trangThai = xong === 0 ? 'sap-co' : xong === chuong.length ? 'xong' : 'dang-viet';
-		return { p, items, xong, tong: chuong.length, pt: Math.round((xong / chuong.length) * 100), trangThai };
-	}),
-);
-
-const NHAN: Record<string, string> = { xong: 'Đã xong', 'dang-viet': 'Đang viết', 'sap-co': 'Sắp có' };
 const dsChuong = chuongDaXuatBan().map((c) => ({ slug: c.slug, so: c.so, ten: c.ten }));
 ---
 
 <div class="trang-chu">
 	<section class="hero">
-		<p><a class="nut-chinh" href="#ke-sach" id="nut-chon-sach">Chọn sách để học ↓</a></p>
+		<p class="hero-dan">
+			Mỗi chương đi qua năm bước từ trực giác đến code. Không cần đăng nhập, không thu phí.
+		</p>
+		<div class="hero-nut">
+			<a class="nut-chinh" href={batDau}>Bắt đầu từ Chương 0</a>
+			<a class="nut-phu" href="#cac-phan-ten">Xem lộ trình</a>
+		</div>
 
 		<div class="tien-do-tong">
 			<div class="tdt-hang">
@@ -54,11 +58,6 @@ const dsChuong = chuongDaXuatBan().map((c) => ({ slug: c.slug, so: c.so, ten: c.
 				<div class="tdt-day" style={`width:${ptTong}%`}></div>
 			</div>
 		</div>
-
-		<nav class="nav-chung-mobile" aria-label="Liên kết nhanh">
-			{MENU_CHUNG.map((m) => <a href={m.href}>{m.nhan}</a>)}
-		</nav>
-		<div class="doi-giao-dien"><ThemeSelect /></div>
 	</section>
 
 	<aside class="hoc-tiep" data-chuong={JSON.stringify(dsChuong)} hidden>
@@ -79,78 +78,52 @@ const dsChuong = chuongDaXuatBan().map((c) => ({ slug: c.slug, so: c.so, ten: c.
 		<a class="ht-nut" href="/phong-thi/" data-on-lai-nut>Thi lại →</a>
 	</aside>
 
-	<KeSach />
+	<section class="loi-vao" aria-labelledby="loi-vao-ten">
+		<h2 id="loi-vao-ten">Ba lối vào</h2>
+		<div class="lv-luoi">
+			<article class="lv-the lv-hoc">
+				<p class="lv-nhan"><Icon ten="hoc" /> Học</p>
+				<h3>Giáo trình AI Engineer</h3>
+				<p>{daViet}/{tong} chương, mỗi chương năm bước: trực giác, toán, tính tay, code, đọc kết quả.</p>
+				<ul class="lv-ds">
+					<li><a href="/lo-trinh/">Lộ trình 65 chương <small>{daViet}/{tong}</small></a></li>
+					<li><a href={batDau}>Bắt đầu từ Chương 0</a></li>
+					<li><a href="/notebook/">Notebook Colab <small>{soNotebook}</small></a></li>
+				</ul>
+				<a class="lv-vao" href="/lo-trinh/">Vào khu Học →</a>
+			</article>
 
-	<section class="cac-phan" aria-labelledby="cac-phan-ten">
-		<h2 id="cac-phan-ten">Lộ trình theo Phần</h2>
-		<div class="luoi-phan">
-			{
-				phanData.map(({ p, items, xong, tong: soChuong, pt, trangThai }) => (
-					<details class={`the-phan tt-${trangThai}`} open>
-						<summary class="dau-phan">
-							<span class="dau-hang">
-								<span class="ten-phan">{p.ten}</span>
-								<span class="so-phan">{xong}/{soChuong}</span>
-							</span>
-							<span class="nhan-phan">{NHAN[trangThai]}</span>
-							<span class="vach-phan" aria-hidden="true">
-								<span style={`width:${pt}%`} />
-							</span>
-						</summary>
-						<div class="o-luoi">
-							{items.map(({ c, href }) =>
-								href ? (
-									<a class="o-chuong xong" href={href}>
-										<span class="o-so">{c.so}</span>
-										<span class="o-ten">{c.ten}</span>
-									</a>
-								) : (
-									<span class="o-chuong sap-co" title="Sắp có">
-										<span class="o-so">{c.so}</span>
-										<span class="o-ten">{c.ten}</span>
-									</span>
-								),
-							)}
-						</div>
-					</details>
-				))
-			}
+			<article class="lv-the lv-luyen">
+				<p class="lv-nhan"><Icon ten="luyen" /> Luyện tập</p>
+				<h3>Thi thử và luyện tay</h3>
+				<p>Phòng thi chấm ngay trên máy, {soThuatToan} bài thuật toán, {soToan} bài toán nền, {soPhongVan} phong cách phỏng vấn.</p>
+				<ul class="lv-ds">
+					<li><a href="/phong-thi/">Phòng thi thử <small>Ch0–Ch7</small></a></li>
+					<li><a href="/thuat-toan/">Luyện thuật toán <small>{soThuatToan} bài</small></a></li>
+					<li><a href="/toan-thuat-toan/">Toán cho thuật toán <small>{soToan} bài</small></a></li>
+				</ul>
+				<a class="lv-vao" href="/luyen-tap/">Vào khu Luyện tập →</a>
+			</article>
+
+			<article class="lv-the lv-tra">
+				<p class="lv-nhan"><Icon ten="tra" /> Tra cứu</p>
+				<h3>Từ điển và notebook</h3>
+				<p>{soThuatNgu} thuật ngữ giải thích theo ngữ cảnh, {soNotebook} notebook chạy được trên Colab.</p>
+				<ul class="lv-ds">
+					<li><a href="/thuat-ngu/">Thuật ngữ <small>{soThuatNgu}</small></a></li>
+					<li><a href="/notebook/">Notebook <small>{soNotebook}</small></a></li>
+					<li><a href="/gioi-thieu/">Giới thiệu <small>Về site</small></a></li>
+				</ul>
+				<a class="lv-vao" href="/thuat-ngu/">Vào khu Tra cứu →</a>
+			</article>
 		</div>
 	</section>
 
-	<section class="luyen-tap" aria-labelledby="luyen-tap-ten">
-		<div class="lt-dau">
-			<h2 id="luyen-tap-ten">Luyện tập</h2>
-			<a class="lt-xem" href="/luyen-tap/">Xem tất cả →</a>
-		</div>
-		<div class="lt-luoi">
-			<a class="lt-the" href="/phong-thi/">
-				<span class="lt-nhan">MỚI</span>
-				<strong>Phòng thi thử</strong>
-				<span>Case thật cho Ch0-Ch7, chấm ngay trên máy, tự luận theo rubric, kèm bản đồ kiến thức và chỗ cần ôn.</span>
-			</a>
-			<a class="lt-the" href="/thuat-toan/">
-				<span class="lt-nhan">41 BÀI</span>
-				<strong>Luyện thuật toán</strong>
-				<span>40 bài tự soạn theo 12 dạng hay hỏi khi phỏng vấn, lộ trình từ dễ đến khó và đồ án tốt nghiệp tổng hợp 8 dạng; test ẩn, gợi ý ba nấc.</span>
-			</a>
-			<a class="lt-the" href="/phong-van/">
-				<span class="lt-nhan">8 PHONG CÁCH</span>
-				<strong>Phỏng vấn thử</strong>
-				<span>Code, ML, system design và hành vi STAR; bấm giờ, xin gợi ý bị trừ điểm, cuối buổi có phiếu đánh giá và chương cần ôn.</span>
-			</a>
-			<a class="lt-the" href="/toan-thuat-toan/">
-				<span class="lt-nhan">31 BÀI</span>
-				<strong>Toán cho thuật toán</strong>
-				<span>Độ phức tạp, chứng minh đúng, xác suất, đại số tuyến tính, tối ưu và đồ án toán; từ dễ đến khó, có chứng minh.</span>
-			</a>
-			<a class="lt-the" href="/ho-so/">
-				<span class="lt-nhan">THEO DÕI</span>
-				<strong>Hồ sơ học tập</strong>
-				<span>Tiến độ chương, điểm theo thời gian, luyện thuật toán theo dạng, bản đồ kiến thức và gợi ý học gì tiếp.</span>
-			</a>
-		</div>
-	</section>
+	<div class="ke-sach-wrap">
+		<KeSach />
+	</div>
+
+	<LoTrinhPhan />
 
 	<section class="cach-hoc">
 		<h2>Cách học trên trang này</h2>
@@ -240,17 +213,16 @@ const dsChuong = chuongDaXuatBan().map((c) => ({ slug: c.slug, so: c.so, ten: c.
 	.hero { text-align: center; padding: 0.5rem 0 1rem; }
 	/* h1 do Starlight sinh ra từ title của trang; chỉ tạo kiểu cho nó ở trang chủ. */
 	:global(main h1#_top) { font-size: clamp(1.7rem, 4.6vw, 2.7rem); font-weight: 800; color: var(--pri); text-align: center; line-height: 1.15; margin: 1.5rem auto 0; max-width: 36rem; }
-	.gioi-thieu { font-size: 1.15rem; max-width: 36rem; margin: 1rem auto; color: var(--tx); }
-	.nut-chinh { display: inline-block; background: var(--acc); color: #1a1208; font-weight: 600; padding: 0.7rem 1.6rem; border-radius: 6px; text-decoration: none; }
-	@media (prefers-reduced-motion: no-preference) { :global(html) { scroll-behavior: smooth; } }
+	.hero-dan { max-width: 38rem; margin: 0.7rem auto 0; font-size: 1rem; line-height: 1.55; color: var(--mut-chu); }
+	.hero-nut { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.6rem; margin-top: 1rem; }
+	.nut-chinh, .nut-phu { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 1.4rem; border-radius: 8px; font-weight: 700; text-decoration: none; }
+	.nut-chinh { background: var(--acc); color: #1a1208; border: 1px solid transparent; }
 	.nut-chinh:hover { filter: brightness(1.08); }
-	.nav-chung-mobile { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem 1.2rem; margin-top: 1rem; }
-	.nav-chung-mobile a { color: var(--pri); font-weight: 600; text-decoration: none; }
-	.doi-giao-dien { display: flex; justify-content: center; margin-top: 0.8rem; }
-	/* Trang splash không có menu ☰ trên điện thoại, nên đặt nút đổi giao diện và liên kết nhanh ngay trên trang. */
-	@media (min-width: 50rem) { .nav-chung-mobile, .doi-giao-dien { display: none; } }
+	.nut-phu { background: var(--bg); color: var(--pri); border: 1px solid var(--line); }
+	.nut-phu:hover { border-color: var(--pri); }
+	@media (prefers-reduced-motion: no-preference) { :global(html) { scroll-behavior: smooth; } }
 
-	.tien-do-tong { max-width: 32rem; margin: 1.1rem auto 0; }
+	.tien-do-tong { max-width: 32rem; margin: 1.2rem auto 0; }
 	.tdt-hang { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.85rem; color: var(--mut-chu); }
 	.tdt-hang strong { font-variant-numeric: tabular-nums; color: var(--tx); }
 	.tdt-thanh { margin-top: 0.35rem; height: 7px; border-radius: 4px; background: color-mix(in srgb, var(--mut) 25%, transparent); overflow: hidden; }
@@ -263,28 +235,28 @@ const dsChuong = chuongDaXuatBan().map((c) => ({ slug: c.slug, so: c.so, ten: c.
 	.ht-phu { margin: 0.1rem 0 0; font-size: 0.78rem; color: var(--mut-chu); }
 	.ht-nut { flex: none; font-weight: 700; color: var(--pri); text-decoration: none; white-space: nowrap; }
 	.ht-nut:hover { text-decoration: underline; }
+	.on-lai { border-left-color: var(--acc); }
+	.on-lai .ht-nhan { color: var(--acc-chu); }
 
-	.cac-phan h2 { border: 0; margin-top: 2.4rem; }
-	.luoi-phan { display: grid; grid-template-columns: 1fr; gap: 0.9rem; align-items: start; }
-	.the-phan { border: 1px solid var(--line); border-radius: 14px; background: var(--panel); overflow: hidden; }
-	.dau-phan { cursor: pointer; padding: 0.75rem 0.9rem; }
-	.dau-phan:focus-visible { outline: 2px solid var(--pri); outline-offset: -2px; }
-	.dau-hang { display: flex; align-items: baseline; justify-content: space-between; gap: 0.6rem; }
-	.ten-phan { font-weight: 800; color: var(--pri); font-size: 0.95rem; }
-	.so-phan { flex: none; font-size: 0.78rem; font-variant-numeric: tabular-nums; color: var(--mut-chu); }
-	.nhan-phan { display: inline-block; margin-top: 0.3rem; padding: 0 0.5em; border-radius: 999px; font-size: 0.68rem; font-weight: 600; border: 1px solid var(--line); color: var(--mut-chu); }
-	.tt-dang-viet .nhan-phan { color: var(--acc-chu); border-color: color-mix(in srgb, var(--acc) 45%, var(--line)); background: var(--accbg); }
-	.tt-xong .nhan-phan { color: var(--ok-chu); border-color: color-mix(in srgb, var(--ok) 45%, var(--line)); }
-	.vach-phan { display: block; margin-top: 0.5rem; height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--mut) 25%, transparent); overflow: hidden; }
-	.vach-phan > span { display: block; height: 100%; background: var(--ok); }
-	.tt-dang-viet .vach-phan > span { background: var(--acc); }
-	.tt-sap-co .vach-phan > span { background: var(--mut); }
-	.o-luoi { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); gap: 0.4rem; padding: 0 0.8rem 0.8rem; }
-	.o-chuong { display: flex; align-items: baseline; gap: 0.45rem; min-width: 0; padding: 0.4rem 0.5rem; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--tx); font-size: 0.82rem; line-height: 1.25; text-decoration: none; }
-	.o-chuong.xong:hover { border-color: var(--pri); color: var(--pri); }
-	.o-chuong.sap-co { opacity: 0.5; }
-	.o-so { flex: none; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--pri); }
-	.o-ten { overflow-wrap: anywhere; }
+	/* Ba lối vào: mỗi khu một màu, ba lối tắt và một lối vào cả khu. */
+	.loi-vao h2 { border: 0; margin-top: 2.4rem; }
+	.lv-luoi { display: grid; grid-template-columns: 1fr; gap: 0.8rem; }
+	@media (min-width: 50rem) { .lv-luoi { grid-template-columns: repeat(3, 1fr); } }
+	.lv-the { display: flex; flex-direction: column; gap: 0.45rem; padding: 1rem 1.05rem; border: 1px solid var(--line); border-top: 3px solid var(--khu-lv); border-radius: 14px; background: var(--bg); }
+	.lv-hoc { --khu-lv: var(--khu-hoc); }
+	.lv-luyen { --khu-lv: var(--khu-luyen); }
+	.lv-tra { --khu-lv: var(--khu-tra); }
+	.lv-nhan { display: flex; align-items: center; gap: 0.35rem; margin: 0; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--khu-lv); }
+	.lv-the h3 { margin: 0; font-size: 1.05rem; font-weight: 800; line-height: 1.3; }
+	.lv-the > p:not(.lv-nhan) { margin: 0; font-size: 0.85rem; line-height: 1.5; color: var(--mut-chu); }
+	.lv-ds { display: flex; flex-direction: column; gap: 0.1rem; margin: 0.2rem 0 0.4rem; padding: 0; list-style: none; }
+	.lv-ds a { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; padding: 0.3rem 0.1rem; border-bottom: 1px dashed color-mix(in srgb, var(--line) 80%, var(--mut)); color: var(--tx); font-size: 0.86rem; text-decoration: none; }
+	.lv-ds a:hover { color: var(--khu-lv); }
+	.lv-ds small { flex: none; font-size: 0.72rem; color: var(--mut-chu); white-space: nowrap; }
+	.lv-vao { margin-top: auto; font-size: 0.84rem; font-weight: 700; color: var(--khu-lv); text-decoration: none; }
+	.lv-vao:hover { text-decoration: underline; }
+
+	.ke-sach-wrap { max-width: 40rem; margin: 0 auto; }
 
 	.cach-hoc h2 { border: 0; margin-top: 2.4rem; }
 	.buoc { display: flex; flex-wrap: wrap; gap: 0.5rem; list-style: none; padding: 0; margin: 1rem 0; counter-reset: b; }
@@ -292,20 +264,6 @@ const dsChuong = chuongDaXuatBan().map((c) => ({ slug: c.slug, so: c.so, ten: c.
 	.buoc li::before { content: counter(b) '. '; color: var(--acc); }
 	.tinh-nang { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 0.8rem; margin: 1.5rem 0; }
 	.tinh-nang div { margin: 0; padding: 0.7rem 0.9rem; border-left: 3px solid var(--pri); background: var(--panel); }
-	.on-lai { border-left-color: var(--acc); }
-	.on-lai .ht-nhan { color: var(--acc-chu); }
-
-	.luyen-tap h2 { border: 0; margin-top: 2.4rem; }
-	.lt-dau { display: flex; align-items: baseline; justify-content: space-between; gap: 0.8rem; margin-top: 2.4rem; }
-	.lt-dau h2 { margin: 0; }
-	.lt-xem { font-size: 0.85rem; font-weight: 600; color: var(--pri); text-decoration: none; white-space: nowrap; }
-	.lt-xem:hover { text-decoration: underline; }
-	.lt-luoi { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 0.8rem; }
-	.lt-the { display: flex; flex-direction: column; gap: 0.3rem; padding: 0.9rem 1rem; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); text-decoration: none; color: var(--tx); }
-	.lt-the:hover { border-color: var(--pri); }
-	.lt-the strong { color: var(--pri); font-size: 1rem; }
-	.lt-the > span:last-child { font-size: 0.85rem; color: var(--mut-chu); line-height: 1.45; }
-	.lt-nhan { align-self: flex-start; font-size: 0.65rem; font-weight: 800; letter-spacing: 0.06em; color: var(--ok-chu); }
 	.tinh-nang dt { font-weight: 600; margin: 0; }
 	.tinh-nang dd { margin: 0.15rem 0 0; color: var(--mut); font-size: 0.92rem; }
 
