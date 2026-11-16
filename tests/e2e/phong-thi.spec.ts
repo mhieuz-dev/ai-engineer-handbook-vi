@@ -26,7 +26,7 @@ test('thi nhanh: 12 câu, nộp bài, ra điểm và bản đồ kiến thức',
 	test.setTimeout(120_000);
 	page.on('dialog', (d) => d.accept());
 	await page.goto('/phong-thi/');
-	await expect(page.locator('[data-pt-chuong-so]')).toHaveCount(5);
+	expect(await page.locator('[data-pt-chuong-so]').count()).toBeGreaterThanOrEqual(5);
 	await page.selectOption('[data-pt-kieu]', 'nhanh');
 	await page.uncheck('[data-pt-gio]');
 	await page.click('[data-pt-bat-dau]');

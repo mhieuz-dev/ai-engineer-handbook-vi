@@ -1,0 +1,203 @@
+chuong: 6
+ten: Giải tích cho ML
+
+khai_niem:
+  - id: dao-ham
+    ten: Đạo hàm
+    trang: /ai-engineer/ch06-giai-tich/01-dao-ham/
+  - id: quy-tac-chuoi
+    ten: Quy tắc chuỗi
+    trang: /ai-engineer/ch06-giai-tich/02-quy-tac-chuoi/
+  - id: gradient
+    ten: Đạo hàm riêng và gradient
+    trang: /ai-engineer/ch06-giai-tich/03-dao-ham-rieng-va-gradient/
+  - id: kiem-tra-gradient
+    ten: Kiểm tra gradient
+    trang: /ai-engineer/ch06-giai-tich/04-kiem-tra-gradient/
+
+cau_hoi:
+  - loai: trac-nghiem
+    id: ch06-tn-01
+    khai_niem: [dao-ham]
+    muc: de
+    diem: 1
+    de: "Đạo hàm của `f(x) = x^2` tại x là gì?"
+    lua_chon: ["x", "2x", "x^2", "2"]
+    dap_an: 1
+    giai_thich: "Theo quy tắc lũy thừa, đạo hàm của x^2 là 2x."
+
+  - loai: trac-nghiem
+    id: ch06-tn-02
+    khai_niem: [quy-tac-chuoi]
+    muc: vua
+    diem: 1
+    de: "Đạo hàm của `f(g(x))` theo quy tắc chuỗi là gì?"
+    lua_chon: ["f'(x) · g'(x)", "f'(g(x)) · g'(x)", "f(g'(x))", "f'(g(x)) + g'(x)"]
+    dap_an: 1
+    giai_thich: "Đạo hàm hàm hợp = đạo hàm ngoài tại giá trị trong × đạo hàm trong."
+
+  - loai: trac-nghiem
+    id: ch06-tn-03
+    khai_niem: [gradient]
+    muc: vua
+    diem: 1
+    de: "Đạo hàm riêng của `f(x, y) = x^2 y` theo x là gì?"
+    lua_chon: ["2x", "2xy", "x^2", "2y"]
+    dap_an: 1
+    giai_thich: "Coi y là hằng số; đạo hàm x^2 là 2x, nhân y được 2xy."
+
+  - loai: trac-nghiem
+    id: ch06-tn-04
+    khai_niem: [gradient]
+    muc: vua
+    diem: 1
+    de: "Gradient chỉ theo hướng nào?"
+    lua_chon: ["Hướng giảm nhanh nhất", "Hướng tăng nhanh nhất", "Luôn hướng về 0", "Hướng vuông góc với mọi trục"]
+    dap_an: 1
+    giai_thich: "Gradient chỉ hướng tăng nhanh nhất; muốn giảm thì đi ngược gradient."
+
+  - loai: trac-nghiem
+    id: ch06-tn-05
+    khai_niem: [gradient, dao-ham]
+    muc: vua
+    diem: 1
+    de: "Cập nhật gradient descent là gì?"
+    lua_chon: ["x ← x + lr · grad", "x ← x - lr · grad", "x ← grad / lr", "x ← -grad"]
+    dap_an: 1
+    giai_thich: "Đi ngược gradient với bước nhỏ `lr` để giảm hàm mất mát."
+
+  - loai: trac-nghiem
+    id: ch06-tn-06
+    khai_niem: [gradient]
+    muc: vua
+    diem: 1
+    de: "Learning rate quá lớn thường gây ra gì?"
+    lua_chon: ["Hội tụ nhanh hơn chắc chắn", "Dao động hoặc phân kỳ", "Không ảnh hưởng", "Tự giảm về 0"]
+    dap_an: 1
+    giai_thich: "Bước quá lớn có thể nhảy qua cực tiểu và làm loss tăng dần."
+
+  - loai: trac-nghiem
+    id: ch06-tn-07
+    khai_niem: [kiem-tra-gradient]
+    muc: vua
+    diem: 1
+    de: "Kiểm tra gradient bằng số dựa trên công thức nào?"
+    lua_chon: ["(f(x+h) - f(x)) / h", "(f(x+h) - f(x-h)) / (2h)", "f(x)/h", "(f(x+h) + f(x-h)) / h"]
+    dap_an: 1
+    giai_thich: "Sai phân trung tâm chính xác hơn sai phân một phía, sai số O(h^2)."
+
+  - loai: trac-nghiem
+    id: ch06-tn-08
+    khai_niem: [dao-ham]
+    muc: kho
+    diem: 1
+    de: "Đạo hàm của ReLU tại 0 theo nghĩa cổ điển là gì?"
+    lua_chon: ["0", "1", "Không xác định (dùng dưới đạo hàm trong thực tế)", "Vô cùng"]
+    dap_an: 2
+    giai_thich: "ReLU có góc tại 0 nên không khả vi cổ điển; thực tế chọn 0 hoặc 1 theo quy ước."
+
+  - loai: trac-nghiem
+    id: ch06-tn-09
+    khai_niem: [dao-ham]
+    muc: vua
+    diem: 1
+    de: "Với hàm lồi, cực tiểu địa phương có tính chất gì?"
+    lua_chon: ["Cũng là cực tiểu toàn cục", "Luôn có nhiều cực tiểu", "Không tồn tại", "Luôn ở biên"]
+    dap_an: 0
+    giai_thich: "Hàm lồi không có cực tiểu địa phương 'giả'; tìm được một cái là tốt nhất."
+
+  - loai: trac-nghiem
+    id: ch06-tn-10
+    khai_niem: [quy-tac-chuoi]
+    muc: kho
+    diem: 1
+    de: "Vì sao sigmoid gây tiêu biến gradient ở lớp sâu?"
+    lua_chon: ["Vì sigmoid luôn âm", "Vì đạo hàm sigmoid nhỏ hơn 0,25 nên nhân chuỗi nhiều lớp làm gradient teo dần", "Vì sigmoid không có đạo hàm", "Vì sigmoid dùng số nguyên"]
+    dap_an: 1
+    giai_thich: "Đạo hàm sigmoid lớn nhất 0,25; nhân qua nhiều lớp thì gradient giảm theo cấp số nhân."
+
+  - loai: tu-luan
+    id: ch06-tl-01
+    khai_niem: [gradient]
+    muc: vua
+    diem: 10
+    de: "Giải thích gradient descent cho một người không biết giải tích. Nêu vai trò của learning rate và một dấu hiệu cho thấy learning rate quá lớn."
+    rubric:
+      - y: "Ví dụ leo dốc/đi xuống: nhìn độ dốc để bước ngược hướng dốc."
+        diem: 4
+      - y: "Learning rate là độ dài bước; nhỏ thì chậm, lớn thì nhảy qua đáy."
+        diem: 4
+      - y: "Dấu hiệu: loss dao động hoặc tăng dần."
+        diem: 2
+    tra_loi_mau: "Hãy tưởng tượng bạn đứng trên sườn đồi trong sương mù, chỉ cảm nhận được độ dốc dưới chân. Muốn xuống thấp nhất, bạn bước ngược hướng dốc, mỗi bước dài bằng learning rate. Bước quá nhỏ thì lâu tới đáy; bước quá lớn thì có thể nhảy qua đáy sang sườn bên kia. Nếu loss dao động mạnh hoặc tăng dần, rất có thể learning rate quá lớn."
+
+  - loai: tu-luan
+    id: ch06-tl-02
+    khai_niem: [kiem-tra-gradient]
+    muc: vua
+    diem: 10
+    de: "Bạn viết một lớp mạng tự cài và nghi gradient bị sai. Trình bày cách kiểm tra bằng số và cách xử lý khi phát hiện lệch."
+    rubric:
+      - y: "Dùng sai phân trung tâm trên vài tham số ngẫu nhiên, so với gradient giải tích."
+        diem: 4
+      - y: "Chọn h nhỏ vừa (khoảng 1e-4 đến 1e-6), dùng float64, tránh h quá nhỏ gây sai số làm tròn."
+        diem: 3
+      - y: "Nếu lệch: kiểm từng lớp, kiểm dấu, kiểm công thức chuỗi; sửa rồi kiểm lại."
+        diem: 3
+    tra_loi_mau: "Chọn vài tham số ngẫu nhiên, tính gradient giải tích và gradient số bằng sai phân trung tâm `(f(x+h)-f(x-h))/(2h)`, so sai số tương đối. Dùng float64 và h khoảng 1e-4 đến 1e-6. Nếu lệch, kiểm từng lớp một, kiểm dấu và công thức quy tắc chuỗi, đặc biệt chỗ cộng bias hoặc chia batch. Sau khi sửa, kiểm lại trên nhiều tham số và cả trường hợp biên."
+
+  - loai: code
+    id: ch06-code-01
+    khai_niem: [dao-ham, kiem-tra-gradient]
+    muc: de
+    diem: 3
+    de: "Viết `dao_ham_so(f, x, h=1e-5)` trả về đạo hàm xấp xỉ bằng sai phân trung tâm."
+    khung: |
+      def dao_ham_so(f, x, h=1e-5):
+          # viết code ở đây
+          pass
+    kiem_tra: |
+      assert abs(dao_ham_so(lambda x: x * x, 3.0) - 6.0) < 1e-4
+      assert abs(dao_ham_so(lambda x: 3 * x + 1, 0.0) - 3.0) < 1e-6
+      print("OK")
+    loi_giai: |
+      def dao_ham_so(f, x, h=1e-5):
+          return (f(x + h) - f(x - h)) / (2 * h)
+
+  - loai: case
+    id: ch06-case-01
+    khai_niem: [gradient, kiem-tra-gradient]
+    muc: vua
+    diem: 10
+    boi_canh: "Một nhóm tự cài mạng nơ-ron. Sau khi đổi hàm mất mát, loss tăng dần dù learning rate vẫn nhỏ. Họ nghi gradient sai nhưng gradient descent vẫn chạy không báo lỗi."
+    du_lieu: []
+    bay:
+      - "Loss tăng dần có thể do dấu gradient bị ngược hoặc learning rate quá lớn."
+      - "Gradient số và gradient giải tích lệch nếu công thức chuỗi sai."
+      - "Không kiểm tra gradient thì lỗi âm thầm, không có exception."
+    nhiem_vu:
+      - loai: tu-luan
+        de: "Nêu hai giả thuyết cho việc loss tăng và cách kiểm nhanh từng giả thuyết."
+        diem: 4
+        rubric:
+          - y: "Dấu gradient ngược hoặc cập nhật sai dấu; kiểm bằng một bước nhỏ và so loss."
+            diem: 2
+          - y: "Learning rate quá lớn; kiểm bằng giảm 10 lần rồi chạy lại."
+            diem: 2
+      - loai: code
+        de: "Viết `kiem_gradient(f, grad, x, h=1e-5)` trả về sai số tương đối lớn nhất giữa gradient số và gradient giải tích cho vector x."
+        diem: 3
+        kiem_tra: |
+          f = lambda x: x[0] ** 2 + 3 * x[1]
+          g = lambda x: [2 * x[0], 3.0]
+          assert kiem_gradient(f, g, [2.0, 1.0]) < 1e-4
+          print("OK")
+      - loai: tu-luan
+        de: "Nêu quy trình kiểm gradient trước khi huấn luyện dài và cách ghi lại kết quả."
+        diem: 3
+        rubric:
+          - y: "Kiểm trên tham số ngẫu nhiên, float64, h hợp lý."
+            diem: 1.5
+          - y: "Ghi sai số tương đối và chặn huấn luyện nếu vượt ngưỡng."
+            diem: 1.5
+    dap_an_mau: "Loss tăng dần có thể do cập nhật ngược dấu (cộng gradient thay vì trừ) hoặc learning rate quá lớn. Kiểm nhanh: chạy một bước rất nhỏ và xem loss; giảm learning rate 10 lần và chạy lại. Kiểm gradient bằng sai phân trung tâm trên vài tham số, dùng float64, so sai số tương đối; nếu lệch thì kiểm từng lớp và công thức chuỗi. Trước khi huấn luyện dài, chạy kiểm gradient tự động và dừng nếu sai số vượt ngưỡng, ghi lại kết quả để so giữa các lần sửa."

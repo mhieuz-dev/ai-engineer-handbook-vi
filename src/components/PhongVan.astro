@@ -74,6 +74,7 @@ const jsonDe = JSON.stringify(de).replace(/</g, '\\u003c');
 <script>
 	import { MayChay } from '../lib/khung-code/chay';
 	import { thanhHtml } from '../lib/khung-code/markdown';
+	import { layIdToken } from '../lib/firebase';
 
 	const goc = document.querySelector<HTMLElement>('[data-pv]');
 	if (goc) {
@@ -385,9 +386,12 @@ const jsonDe = JSON.stringify(de).replace(/</g, '\\u003c');
 
 		const goiPhongVan = async (p: NonNullable<typeof phien>, daTraLoi: MucLichSu[]): Promise<Record<string, unknown> | null> => {
 			try {
+				const header: Record<string, string> = { 'content-type': 'application/json' };
+				const token = await layIdToken();
+				if (token) header.authorization = `Bearer ${token}`;
 				const r = await fetch('/api/ai', {
 					method: 'POST',
-					headers: { 'content-type': 'application/json' },
+					headers: header,
 					body: JSON.stringify({
 						mode: 'phong-van',
 						phongVan: {

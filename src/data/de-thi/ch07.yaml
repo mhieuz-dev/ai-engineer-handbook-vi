@@ -1,0 +1,208 @@
+chuong: 7
+ten: Xác suất và thống kê
+
+khai_niem:
+  - id: xac-suat
+    ten: Xác suất và mô phỏng
+    trang: /ai-engineer/ch07-xac-suat-thong-ke/01-xac-suat-va-mo-phong/
+  - id: phan-phoi-chuan
+    ten: Phân phối chuẩn
+    trang: /ai-engineer/ch07-xac-suat-thong-ke/02-phan-phoi-chuan/
+  - id: tuong-quan
+    ten: Tương quan và Bayes
+    trang: /ai-engineer/ch07-xac-suat-thong-ke/03-tuong-quan-va-bayes/
+  - id: mle
+    ten: Hợp lý cực đại
+    trang: /ai-engineer/ch07-xac-suat-thong-ke/04-hop-ly-cuc-dai/
+
+cau_hoi:
+  - loai: trac-nghiem
+    id: ch07-tn-01
+    khai_niem: [xac-suat]
+    muc: de
+    diem: 1
+    de: "Hai biến cố độc lập có P(A)=0,3 và P(B)=0,5. P(A và B) bằng bao nhiêu?"
+    lua_chon: ["0,8", "0,15", "0,2", "0,5"]
+    dap_an: 1
+    giai_thich: "Độc lập thì nhân xác suất: 0,3 × 0,5 = 0,15."
+
+  - loai: trac-nghiem
+    id: ch07-tn-02
+    khai_niem: [phan-phoi-chuan]
+    muc: de
+    diem: 1
+    de: "Với phân phối chuẩn, khoảng bao nhiêu phần trăm dữ liệu nằm trong ±2 độ lệch chuẩn?"
+    lua_chon: ["68%", "95%", "99,7%", "50%"]
+    dap_an: 1
+    giai_thich: "Quy tắc 68-95-99,7: ±2 độ lệch chuẩn khoảng 95%."
+
+  - loai: trac-nghiem
+    id: ch07-tn-03
+    khai_niem: [tuong-quan]
+    muc: vua
+    diem: 1
+    de: "Hệ số tương quan bằng 0 có nghĩa gì?"
+    lua_chon: ["Hai biến độc lập hoàn toàn", "Không có quan hệ tuyến tính", "Luôn có quan hệ phi tuyến", "Dữ liệu bị lỗi"]
+    dap_an: 1
+    giai_thich: "Tương quan đo quan hệ tuyến tính; bằng 0 không loại trừ quan hệ phi tuyến."
+
+  - loai: trac-nghiem
+    id: ch07-tn-04
+    khai_niem: [tuong-quan]
+    muc: vua
+    diem: 1
+    de: "Công thức Bayes cho P(A|B) là gì?"
+    lua_chon: ["P(A) · P(B)", "P(B|A) · P(A) / P(B)", "P(A) / P(B)", "P(A) + P(B)"]
+    dap_an: 1
+    giai_thich: "Hậu nghiệm = khả năng × tiền nghiệm / bằng chứng."
+
+  - loai: trac-nghiem
+    id: ch07-tn-05
+    khai_niem: [mle]
+    muc: vua
+    diem: 1
+    de: "Tung đồng xu 10 lần được 7 mặt ngửa. Ước lượng hợp lý cực đại cho xác suất ngửa là bao nhiêu?"
+    lua_chon: ["0,5", "0,7", "0,3", "1,0"]
+    dap_an: 1
+    giai_thich: "Với Bernoulli, MLE là số lần thành công / tổng số lần = 7/10 = 0,7."
+
+  - loai: trac-nghiem
+    id: ch07-tn-06
+    khai_niem: [xac-suat]
+    muc: vua
+    diem: 1
+    de: "Khi tăng cỡ mẫu lên 4 lần, sai số chuẩn của trung bình giảm bao nhiêu lần?"
+    lua_chon: ["2 lần", "4 lần", "8 lần", "Không đổi"]
+    dap_an: 0
+    giai_thich: "Sai số chuẩn tỉ lệ với 1/sqrt(n); n tăng 4 thì sai số giảm 2."
+
+  - loai: trac-nghiem
+    id: ch07-tn-07
+    khai_niem: [xac-suat]
+    muc: vua
+    diem: 1
+    de: "Định lý giới hạn trung tâm nói gì?"
+    lua_chon: ["Mọi dữ liệu đều chuẩn", "Trung bình mẫu xấp xỉ chuẩn khi cỡ mẫu lớn", "Tương quan luôn bằng 0", "Mẫu nhỏ chính xác hơn"]
+    dap_an: 1
+    giai_thich: "Phân phối của trung bình mẫu tiến về chuẩn khi n lớn, bất kể phân phối gốc (với điều kiện hợp lý)."
+
+  - loai: trac-nghiem
+    id: ch07-tn-08
+    khai_niem: [tuong-quan]
+    muc: de
+    diem: 1
+    de: "Trong Bayes, 'tiền nghiệm' là gì?"
+    lua_chon: ["Xác suất trước khi thấy bằng chứng", "Xác suất sau khi thấy bằng chứng", "Khả năng của bằng chứng", "Tổng xác suất"]
+    dap_an: 0
+    giai_thich: "Tiền nghiệm là niềm tin ban đầu; hậu nghiệm là sau khi cập nhật bằng chứng."
+
+  - loai: trac-nghiem
+    id: ch07-tn-09
+    khai_niem: [phan-phoi-chuan]
+    muc: kho
+    diem: 1
+    de: "Dữ liệu doanh thu có vài đơn sỉ rất lớn. Chỉ số nào mô tả 'đơn điển hình' tốt hơn?"
+    lua_chon: ["Trung bình", "Trung vị", "Độ lệch chuẩn", "Giá trị lớn nhất"]
+    dap_an: 1
+    giai_thich: "Trung vị ít bị ngoại lai kéo lệch; trung bình rất nhạy với đơn sỉ."
+
+  - loai: trac-nghiem
+    id: ch07-tn-10
+    khai_niem: [mle]
+    muc: kho
+    diem: 1
+    de: "Vì sao dùng log-likelihood thay vì likelihood khi tối ưu?"
+    lua_chon: ["Vì log làm xác suất âm", "Vì log biến tích thành tổng, ổn định số và dễ đạo hàm", "Vì log làm mất dữ liệu", "Vì likelihood luôn sai"]
+    dap_an: 1
+    giai_thich: "Log đơn điệu nên cùng cực trị; tích nhiều xác suất nhỏ dễ underflow, log biến thành tổng."
+
+  - loai: tu-luan
+    id: ch07-tl-01
+    khai_niem: [tuong-quan, xac-suat]
+    muc: vua
+    diem: 10
+    de: "Một mô hình phát hiện gian lận có độ chính xác 99% trên tập test, nhưng chỉ 1% giao dịch là gian lận. Giải thích vì sao 99% có thể gây hiểu nhầm và cách báo cáo đúng."
+    rubric:
+      - y: "Base rate thấp: đoán 'không gian lận' cho mọi giao dịch đã đạt 99%."
+        diem: 4
+      - y: "Cần precision/recall hoặc ma trận nhầm lẫn; nêu số dương tính giả."
+        diem: 4
+      - y: "Đề xuất báo cáo precision, recall, chi phí sai và ngưỡng theo chi phí."
+        diem: 2
+    tra_loi_mau: "Với 1% gian lận, một mô hình luôn đoán 'không gian lận' đã đúng 99%, nên accuracy 99% không nói lên nhiều. Cần xem precision (trong số bị gắn cờ, bao nhiêu thật sự gian lận), recall (bắt được bao nhiêu vụ thật) và số dương tính giả. Nên báo cáo ma trận nhầm lẫn, chi phí mỗi loại sai, và chọn ngưỡng theo chi phí thực tế."
+
+  - loai: tu-luan
+    id: ch07-tl-02
+    khai_niem: [tuong-quan]
+    muc: vua
+    diem: 10
+    de: "Cho ví dụ 'tương quan không phải nhân quả' trong dữ liệu sản phẩm và cách kiểm tra nhân quả."
+    rubric:
+      - y: "Ví dụ có biến gây nhiễu hoặc cả hai cùng do biến thứ ba."
+        diem: 4
+      - y: "Giải thích vì sao tương quan xuất hiện."
+        diem: 3
+      - y: "Cách kiểm: thí nghiệm A/B, kiểm soát biến, hoặc phân tích nhân quả."
+        diem: 3
+    tra_loi_mau: "Ví dụ: số lượt xem video và số lượt mua cùng tăng trong dịp lễ; không có nghĩa xem nhiều gây mua, mà cả hai cùng do nhu cầu lễ. Một ví dụ khác: người dùng cài app nhiều tính năng thì ở lại lâu hơn, nhưng có thể người vốn trung thành mới cài nhiều. Cách kiểm: làm A/B test, kiểm soát biến gây nhiễu, hoặc dùng phương pháp nhân quả như hồi quy có biến kiểm soát."
+
+  - loai: code
+    id: ch07-code-01
+    khai_niem: [tuong-quan, xac-suat]
+    muc: de
+    diem: 3
+    de: "Viết `hau_nghiem(p_a, p_b_a, p_b_khong_a)` trả về P(A|B); nếu P(B)=0 thì trả 0."
+    khung: |
+      def hau_nghiem(p_a, p_b_a, p_b_khong_a):
+          # viết code ở đây
+          pass
+    kiem_tra: |
+      assert abs(hau_nghiem(0.01, 0.9, 0.05) - (0.01 * 0.9) / (0.01 * 0.9 + 0.99 * 0.05)) < 1e-9
+      assert hau_nghiem(0.5, 0.0, 0.0) == 0.0
+      print("OK")
+    loi_giai: |
+      def hau_nghiem(p_a, p_b_a, p_b_khong_a):
+          p_b = p_b_a * p_a + p_b_khong_a * (1 - p_a)
+          if p_b == 0:
+              return 0.0
+          return (p_b_a * p_a) / p_b
+
+  - loai: case
+    id: ch07-case-01
+    khai_niem: [tuong-quan, xac-suat]
+    muc: kho
+    diem: 10
+    boi_canh: "Sếp nhận báo cáo: mô hình gian lận đạt độ chính xác 99,2% và muốn bật cho toàn bộ giao dịch. Dữ liệu thật có 0,8% giao dịch gian lận. Mỗi lần chặn nhầm gây bực bội; mỗi vụ lọt gây thiệt hại tiền."
+    du_lieu: []
+    bay:
+      - "Accuracy cao do mất cân bằng, không phản ánh khả năng bắt gian lận."
+      - "Precision thấp nếu mô hình gắn cờ quá nhiều."
+      - "Ngưỡng phải chọn theo chi phí hai loại sai, không theo accuracy."
+    nhiem_vu:
+      - loai: tu-luan
+        de: "Tính hoặc ước lượng số dương tính giả nếu mô hình gắn cờ 5% giao dịch, với 1 triệu giao dịch và 0,8% gian lận."
+        diem: 3
+        rubric:
+          - y: "5% của 1 triệu = 50.000 bị gắn cờ; 8.000 gian lận thật."
+            diem: 1.5
+          - y: "Dương tính giả khoảng 42.000 nếu bắt được gần hết; precision thấp."
+            diem: 1.5
+      - loai: code
+        de: "Viết `chon_nguong(y, diem, chi_phi_chan_nham, chi_phi_lot)` trả về ngưỡng trong `diem` làm tổng chi phí nhỏ nhất."
+        diem: 4
+        kiem_tra: |
+          y = [1, 0, 0, 1, 0]
+          diem = [0.9, 0.8, 0.2, 0.6, 0.1]
+          assert chon_nguong(y, diem, 1.0, 10.0) == 0.6
+          print("OK")
+      - loai: tu-luan
+        de: "Viết 3 câu trả lời cho sếp: vì sao accuracy gây hiểu nhầm, nên đọc chỉ số nào, và cách chọn ngưỡng."
+        diem: 3
+        rubric:
+          - y: "Accuracy cao vì đa số là không gian lận."
+            diem: 1
+          - y: "Đọc precision, recall, chi phí hai loại sai."
+            diem: 1
+          - y: "Chọn ngưỡng theo chi phí và thử trên dữ liệu thật."
+            diem: 1
+    dap_an_mau: "Với 1 triệu giao dịch và 0,8% gian lận, có 8.000 vụ thật. Nếu gắn cờ 5% thì 50.000 giao dịch bị chặn, trong đó tối đa 8.000 là thật, nên ít nhất 42.000 dương tính giả; precision rất thấp. Accuracy 99,2% có thể đạt được chỉ bằng cách đoán 'không gian lận' cho mọi giao dịch. Nên báo cáo precision, recall, số dương tính giả và chi phí mỗi loại sai; chọn ngưỡng làm tổng chi phí nhỏ nhất và kiểm trên dữ liệu thật trước khi bật toàn bộ."

@@ -1,0 +1,214 @@
+chuong: 5
+ten: Đại số tuyến tính cho ML
+
+khai_niem:
+  - id: vector
+    ten: Vector và tích vô hướng
+    trang: /ai-engineer/ch05-dai-so-tuyen-tinh/01-vector/
+  - id: ma-tran
+    ten: Ma trận là phép biến đổi
+    trang: /ai-engineer/ch05-dai-so-tuyen-tinh/02-ma-tran-la-bien-doi/
+  - id: he-phuong-trinh
+    ten: Giải hệ phương trình
+    trang: /ai-engineer/ch05-dai-so-tuyen-tinh/03-he-phuong-trinh/
+  - id: tri-rieng
+    ten: Trị riêng và vector riêng
+    trang: /ai-engineer/ch05-dai-so-tuyen-tinh/04-tri-rieng/
+
+cau_hoi:
+  - loai: trac-nghiem
+    id: ch05-tn-01
+    khai_niem: [vector]
+    muc: de
+    diem: 1
+    de: "Tích vô hướng của `[1, 2]` và `[3, 4]` bằng bao nhiêu?"
+    lua_chon: ["7", "10", "11", "14"]
+    dap_an: 2
+    giai_thich: "1·3 + 2·4 = 3 + 8 = 11. Đây là tổng các tích từng tọa độ."
+
+  - loai: trac-nghiem
+    id: ch05-tn-02
+    khai_niem: [vector]
+    muc: de
+    diem: 1
+    de: "Cosine giữa hai vector luôn nằm trong khoảng nào?"
+    lua_chon: ["0 đến 1", "-1 đến 1", "0 đến vô cùng", "Bất kỳ số thực"]
+    dap_an: 1
+    giai_thich: "Cosine = tích vô hướng / (độ dài × độ dài), nằm trong [-1, 1]. Giá trị càng gần 1 càng cùng hướng."
+
+  - loai: trac-nghiem
+    id: ch05-tn-03
+    khai_niem: [ma-tran]
+    muc: de
+    diem: 1
+    de: "Nhân ma trận `A` shape `(3, 4)` với `B` shape `(4, 2)` cho shape gì?"
+    lua_chon: ["(3, 2)", "(4, 4)", "(2, 3)", "Lỗi vì không cùng shape"]
+    dap_an: 0
+    giai_thich: "Số cột của A phải bằng số hàng của B; kết quả `(3, 2)`. Đây là điều kiện để phép nhân có nghĩa."
+
+  - loai: trac-nghiem
+    id: ch05-tn-04
+    khai_niem: [ma-tran]
+    muc: vua
+    diem: 1
+    de: "Với hai ma trận vuông A, B cùng cỡ, câu nào đúng?"
+    lua_chon: ["Luôn có A @ B = B @ A", "Nói chung A @ B khác B @ A", "A @ B luôn là ma trận đơn vị", "Không nhân được"]
+    dap_an: 1
+    giai_thich: "Nhân ma trận không giao hoán. Thứ tự nhân là thứ tự áp phép biến đổi, nên rất quan trọng."
+
+  - loai: trac-nghiem
+    id: ch05-tn-05
+    khai_niem: [ma-tran]
+    muc: vua
+    diem: 1
+    de: "`(A @ B).T` bằng gì?"
+    lua_chon: ["A.T @ B.T", "B.T @ A.T", "A @ B", "A.T + B.T"]
+    dap_an: 1
+    giai_thich: "Chuyển vị đảo thứ tự: `(AB)^T = B^T A^T`. Nhớ quy tắc đảo thứ tự khi chuyển vị tích."
+
+  - loai: trac-nghiem
+    id: ch05-tn-06
+    khai_niem: [he-phuong-trinh]
+    muc: vua
+    diem: 1
+    de: "Hệ `Ax = b` có nghiệm duy nhất khi nào (A vuông)?"
+    lua_chon: ["Khi b khác 0", "Khi A khả nghịch (định thức khác 0)", "Khi A đối xứng", "Luôn có nghiệm duy nhất"]
+    dap_an: 1
+    giai_thich: "A khả nghịch thì `x = A^{-1}b` duy nhất. Nếu định thức bằng 0, có thể vô nghiệm hoặc vô số nghiệm."
+
+  - loai: trac-nghiem
+    id: ch05-tn-07
+    khai_niem: [tri-rieng]
+    muc: vua
+    diem: 1
+    de: "Phương trình trị riêng là gì?"
+    lua_chon: ["A v = v", "A v = λ v", "A + v = λ", "A v = 0 với mọi v"]
+    dap_an: 1
+    giai_thich: "Vector riêng v chỉ bị co giãn bởi A, không đổi hướng: `A v = λ v`."
+
+  - loai: trac-nghiem
+    id: ch05-tn-08
+    khai_niem: [vector]
+    muc: de
+    diem: 1
+    de: "Độ dài Euclid của `[3, 4]` bằng bao nhiêu?"
+    lua_chon: ["5", "7", "12", "25"]
+    dap_an: 0
+    giai_thich: "`sqrt(3^2 + 4^2) = sqrt(25) = 5`."
+
+  - loai: trac-nghiem
+    id: ch05-tn-09
+    khai_niem: [vector]
+    muc: vua
+    diem: 1
+    de: "Hai vector vuông góc khi nào?"
+    lua_chon: ["Tích vô hướng bằng 0", "Độ dài bằng nhau", "Cùng số chiều", "Cosine bằng 1"]
+    dap_an: 0
+    giai_thich: "Vuông góc nghĩa là cosine bằng 0, tức tích vô hướng bằng 0."
+
+  - loai: trac-nghiem
+    id: ch05-tn-10
+    khai_niem: [ma-tran]
+    muc: kho
+    diem: 1
+    de: "Ma trận `A` shape `(1000, 3)` nhân với vector `x` shape `(3,)` cho gì?"
+    lua_chon: ["Vector 1000 chiều", "Vector 3 chiều", "Ma trận (1000, 3)", "Lỗi"]
+    dap_an: 0
+    giai_thich: "Mỗi hàng của A là một vector 3 chiều; nhân với x cho một số, gom 1000 hàng thành vector 1000 chiều."
+
+  - loai: tu-luan
+    id: ch05-tl-01
+    khai_niem: [vector]
+    muc: vua
+    diem: 10
+    de: "Trong hệ gợi ý, vì sao thường chuẩn hóa vector trước khi tính cosine? Nêu một trường hợp chuẩn hóa lại làm mất thông tin."
+    rubric:
+      - y: "Cosine đã chia độ dài, nên chuẩn hóa giúp ổn định số học và tránh vector dài áp đảo."
+        diem: 4
+      - y: "Chuẩn hóa làm mất độ lớn; nếu độ lớn có nghĩa (doanh thu, số lần xem) thì không nên bỏ."
+        diem: 4
+      - y: "Nêu ví dụ cụ thể và cách xử lý (giữ độ lớn thành đặc trưng riêng)."
+        diem: 2
+    tra_loi_mau: "Cosine chỉ quan tâm hướng, nên chuẩn hóa trước giúp mọi vector cùng thang đo, tránh lỗi số khi độ dài rất lớn hoặc rất nhỏ; với cosine thì chuẩn hóa không đổi kết quả về lý thuyết, nhưng ổn định tính toán. Tuy vậy, chuẩn hóa bỏ độ lớn. Nếu độ lớn mang thông tin (người dùng xem 100 video so với 2 video), bỏ đi sẽ làm hai người giống nhau. Cách xử lý: giữ độ lớn như một đặc trưng riêng, hoặc dùng tích vô hướng có trọng số thay vì cosine thuần."
+
+  - loai: tu-luan
+    id: ch05-tl-02
+    khai_niem: [tri-rieng]
+    muc: vua
+    diem: 10
+    de: "Giải thích trị riêng và vector riêng bằng lời, không dùng công thức. Cho một ví dụ trong giảm chiều (PCA)."
+    rubric:
+      - y: "Vector riêng là hướng không đổi khi áp phép biến đổi; trị riêng là hệ số co giãn theo hướng đó."
+        diem: 5
+      - y: "Trong PCA, các hướng phương sai lớn nhất là vector riêng của ma trận hiệp phương sai."
+        diem: 3
+      - y: "Ví dụ cụ thể, dễ hiểu."
+        diem: 2
+    tra_loi_mau: "Khi áp một phép biến đổi tuyến tính lên đa số vector, chúng bị xoay. Vector riêng là hướng đặc biệt không bị xoay, chỉ bị kéo dài hoặc co lại; trị riêng là mức kéo/co đó. Trong PCA, ta tìm các hướng mà dữ liệu biến thiên nhiều nhất, chính là vector riêng của ma trận hiệp phương sai, và giữ lại các hướng có trị riêng lớn. Ví dụ: đám điểm hình elip nghiêng 45 độ có trục dài theo hướng (1,1), đó là vector riêng lớn nhất."
+
+  - loai: code
+    id: ch05-code-01
+    khai_niem: [vector]
+    muc: de
+    diem: 3
+    de: "Viết `cosine(a, b)` trả về cosine giữa hai vector; nếu một vector toàn 0 thì trả 0.0."
+    khung: |
+      import math
+
+      def cosine(a, b):
+          # viết code ở đây
+          pass
+    kiem_tra: |
+      assert abs(cosine([1, 0], [1, 0]) - 1.0) < 1e-9
+      assert abs(cosine([1, 0], [0, 1])) < 1e-9
+      assert cosine([0, 0], [1, 2]) == 0.0
+      print("OK")
+    loi_giai: |
+      import math
+
+      def cosine(a, b):
+          tich = sum(x * y for x, y in zip(a, b))
+          na = math.sqrt(sum(x * x for x in a))
+          nb = math.sqrt(sum(y * y for y in b))
+          if na == 0 or nb == 0:
+              return 0.0
+          return tich / (na * nb)
+
+  - loai: case
+    id: ch05-case-01
+    khai_niem: [vector, ma-tran]
+    muc: vua
+    diem: 10
+    boi_canh: "Một nhóm làm hệ gợi ý sản phẩm bằng cosine. Có tài khoản mới chưa xem gì nên vector toàn 0; có tài khoản xem rất nhiều nên vector dài gấp trăm lần. Hệ thống trả về toàn sản phẩm giống nhau và thỉnh thoảng báo lỗi chia 0."
+    du_lieu: []
+    bay:
+      - "Vector toàn 0 làm mẫu số cosine bằng 0."
+      - "Vector dài áp đảo nếu dùng tích vô hướng không chuẩn hóa."
+      - "Cold start không thể giải bằng cosine với vector 0; cần fallback."
+    nhiem_vu:
+      - loai: tu-luan
+        de: "Nêu hai nguyên nhân gây kết quả kém và cách phát hiện."
+        diem: 3
+        rubric:
+          - y: "Vector 0/chia 0; phát hiện bằng kiểm tra độ dài trước khi chia."
+            diem: 1.5
+          - y: "Độ dài áp đảo; phát hiện bằng so phân bố độ dài hoặc kiểm tra top-k."
+            diem: 1.5
+      - loai: code
+        de: "Viết `goi_y_cosine(nguoi_dung, san_pham, k)` trả về `k` chỉ số sản phẩm giống người dùng nhất; bỏ qua vector 0 và trả [] nếu người dùng 0."
+        diem: 4
+        kiem_tra: |
+          u = [1, 0]
+          sp = [[1, 0], [0, 1], [1, 1]]
+          assert goi_y_cosine(u, sp, 2) == [0, 2]
+          assert goi_y_cosine([0, 0], sp, 2) == []
+          print("OK")
+      - loai: tu-luan
+        de: "Đề xuất cách xử lý cold start và cách giữ thông tin độ lớn mà không làm lệch cosine."
+        diem: 3
+        rubric:
+          - y: "Cold start: fallback theo sản phẩm phổ biến hoặc hỏi sở thích."
+            diem: 1.5
+          - y: "Giữ độ lớn thành đặc trưng riêng hoặc dùng trọng số."
+            diem: 1.5
+    dap_an_mau: "Vector toàn 0 làm mẫu số bằng 0, gây chia 0 hoặc điểm không xác định; vector quá dài làm tích vô hướng áp đảo nếu không chuẩn hóa. Cách phát hiện: kiểm độ dài trước khi chia, xem phân bố độ dài và top-k. Với cold start, dùng fallback sản phẩm phổ biến hoặc hỏi sở thích thay vì cosine với vector 0. Nếu độ lớn có nghĩa, giữ nó thành đặc trưng riêng (số lần xem, doanh thu) thay vì để nó lẫn vào cosine."

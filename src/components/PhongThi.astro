@@ -3,6 +3,7 @@ import { taiDeThi } from '../lib/de-thi';
 
 const de = await taiDeThi();
 const deJson = JSON.stringify(de).replace(/</g, '\\u003c');
+const khoangChuong = de.length ? `Ch${de[0].chuong}-Ch${de[de.length - 1].chuong}` : '';
 ---
 
 <div class="pt" data-pt>
@@ -30,7 +31,7 @@ const deJson = JSON.stringify(de).replace(/</g, '\\u003c');
 
 		<fieldset class="pt-pham-vi">
 			<legend>Phạm vi</legend>
-			<label class="pt-tatca"><input type="checkbox" data-pt-tatca checked /> Tất cả Ch0–Ch4</label>
+			<label class="pt-tatca"><input type="checkbox" data-pt-tatca checked /> Tất cả {khoangChuong}</label>
 			<div class="pt-chuong" data-pt-chuong></div>
 		</fieldset>
 
