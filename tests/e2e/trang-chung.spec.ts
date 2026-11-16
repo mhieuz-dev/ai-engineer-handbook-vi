@@ -165,7 +165,7 @@ test('desktop: menu phụ của sidebar ẩn, chỉ còn menu đầu trang', asy
 	await expect(page.locator('header .mn')).toBeVisible();
 });
 
-test('desktop: ba nhóm menu không chen chấm trang trí, nút Tải về là nút viền cuối hàng breadcrumb', async ({ page, isMobile }) => {
+test('desktop: ba nhóm menu không chen chấm trang trí, Tải về và Colab cùng một hàng', async ({ page, isMobile }) => {
 	test.skip(!!isMobile);
 	await page.goto('/ai-engineer/ch10-hoi-quy-tuyen-tinh/02-toan/');
 	const cham = await page.locator('header .mn-nut').evaluateAll((as) => as.map((a) => getComputedStyle(a, '::before').content));
@@ -173,9 +173,11 @@ test('desktop: ba nhóm menu không chen chấm trang trí, nút Tải về là 
 	const nut = page.getByRole('button', { name: 'Tải về' });
 	await expect(nut).toHaveText('Tải về');
 	expect(await nut.evaluate((e) => getComputedStyle(e).borderTopWidth)).toBe('1px');
+	const hangNut = page.locator('.dc-nut');
+	await expect(hangNut.getByRole('link', { name: /Colab/ })).toBeVisible();
 	const hNut = (await nut.boundingBox())!;
-	const hHang = (await page.locator('.crumb-hang').boundingBox())!;
-	expect(hNut.x + hNut.width).toBeGreaterThan(hHang.x + hHang.width - 2);
+	const hColab = (await hangNut.getByRole('link', { name: /Colab/ }).boundingBox())!;
+	expect(Math.abs(hNut.y + hNut.height / 2 - (hColab.y + hColab.height / 2))).toBeLessThanOrEqual(2);
 });
 
 test('trang chủ: thanh tiến độ tổng và lưới thẻ theo Phần đếm đúng theo chuong.ts', async ({ page }) => {

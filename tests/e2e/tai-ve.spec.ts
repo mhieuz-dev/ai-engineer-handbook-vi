@@ -60,7 +60,7 @@ test('desktop: Trang này gọi window.print, Escape đóng, cột phải có PD
 
 test('in trang thường: chỉ còn nội dung bài', async ({ page }) => {
 	await page.goto(TRANG);
-	const an = ['header.header', '.nut-da-doc', '.nut-tai-ve', '.pagination-links'];
+	const an = ['header.header', '.nut-da-doc', '.nut-tai-ve', '.dc-dieu-huong'];
 	for (const sel of an) await expect(page.locator(sel).first(), `${sel} hiện trên màn hình`).toBeVisible();
 	await page.emulateMedia({ media: 'print' });
 	await expect(page.locator('h1').first()).toBeVisible();

@@ -1,13 +1,113 @@
 ---
 import Default from '@astrojs/starlight/components/Pagination.astro';
+import { getCollection } from 'astro:content';
 import NutDaDoc from '../NutDaDoc.astro';
 import KhungCode from '../KhungCode.astro';
 import { slugTrangDaXuatBan } from '../../lib/slug-xuat-ban';
+import { timChuongTheoSlugTrang } from '../../data/chuong';
 
 const slug = Astro.locals.starlightRoute.id;
-const coNut = (await slugTrangDaXuatBan()).includes(slug);
+const dsSlug = await slugTrangDaXuatBan();
+const coNut = dsSlug.includes(slug);
+const viTri = dsSlug.indexOf(slug);
+const chuongHienTai = coNut ? timChuongTheoSlugTrang(slug) : undefined;
+
+interface The {
+	href: string;
+	ten: string;
+	nhan: string;
+	sangChuong: boolean;
+	chuongSo: number;
+}
+
+const tieuDe = new Map((await getCollection('docs')).map((e) => [e.id, e.data.title]));
+
+// Một trang thành thẻ điều hướng: cùng chương thì ghi "Trang i/n", sang chương khác thì ghi số chương.
+const thanhThe = (s: string | undefined): The | undefined => {
+	if (!s) return undefined;
+	const c = timChuongTheoSlugTrang(s);
+	if (!c) return undefined;
+	const trang = dsSlug.filter((x) => x.startsWith(`${c.slug}/`));
+	const i = trang.indexOf(s);
+	return {
+		href: `/${s}/`,
+		ten: tieuDe.get(s) ?? '',
+		nhan: `Chương ${c.so} · Trang ${i + 1}/${trang.length}`,
+		sangChuong: c.slug !== chuongHienTai?.slug,
+		chuongSo: c.so,
+	};
+};
+
+const truoc = coNut && viTri > 0 ? thanhThe(dsSlug[viTri - 1]) : undefined;
+const sau = coNut && viTri >= 0 ? thanhThe(dsSlug[viTri + 1]) : undefined;
 ---
 
 {coNut && <NutDaDoc slug={slug} />}
 {coNut && <KhungCode />}
-<Default><slot /></Default>
+{
+	coNut && (truoc || sau) && (
+		<nav class="dc-dieu-huong print:hidden" aria-label="Điều hướng trang và chương">
+			{truoc && (
+				<a class="dc-the dc-truoc" href={truoc.href} rel="prev">
+					<span class="dc-nhan-the">← {truoc.sangChuong ? 'Chương trước' : 'Trang trước'}</span>
+					<strong>{truoc.ten}</strong>
+					<span class="dc-phu">{truoc.nhan}</span>
+				</a>
+			)}
+			{sau && (
+				<a class="dc-the dc-sau" href={sau.href} rel="next">
+					<span class="dc-nhan-the">{sau.sangChuong ? `Sang Chương ${sau.chuongSo}` : 'Trang sau'} →</span>
+					<strong>{sau.ten}</strong>
+					<span class="dc-phu">{sau.nhan}</span>
+				</a>
+			)}
+		</nav>
+	)
+}
+{!coNut && <Default><slot /></Default>}
+
+<style>
+	.dc-dieu-huong {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr));
+		gap: 0.6rem;
+		margin: 2rem 0 0.5rem;
+	}
+	.dc-the {
+		display: flex;
+		flex-direction: column;
+		gap: 0.15rem;
+		padding: 0.8rem 0.9rem;
+		border: 1px solid var(--line);
+		border-radius: 12px;
+		background: var(--panel);
+		color: var(--tx);
+		text-decoration: none;
+	}
+	.dc-the:hover,
+	.dc-the:focus-visible {
+		border-color: var(--khu-hoc);
+	}
+	.dc-sau {
+		text-align: end;
+		align-items: flex-end;
+	}
+	.dc-nhan-the {
+		font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+		font-size: 0.7rem;
+		font-weight: 700;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--khu-hoc);
+	}
+	.dc-the strong {
+		font-size: 1rem;
+		font-weight: 700;
+		line-height: 1.35;
+	}
+	.dc-phu {
+		font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+		font-size: 0.74rem;
+		color: var(--mut-chu);
+	}
+</style>

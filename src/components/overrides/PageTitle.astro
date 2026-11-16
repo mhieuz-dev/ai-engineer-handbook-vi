@@ -1,7 +1,9 @@
 ---
 import Default from '@astrojs/starlight/components/PageTitle.astro';
+import { getCollection } from 'astro:content';
 import NutTaiVe from '../NutTaiVe.astro';
 import { PHAN, timChuongTheoSlugTrang } from '../../data/chuong';
+import { colabUrl } from '../../lib/tai-ve';
 
 const { id, entry } = Astro.locals.starlightRoute;
 const chuong = timChuongTheoSlugTrang(id);
@@ -9,33 +11,215 @@ const coKhung = chuong?.trangThai === 'xong';
 const nhanPhan = coKhung ? PHAN.find((p) => p.id === chuong!.phan)?.ten.split('.')[0] : undefined;
 const soTu = (entry.body ?? '').split(/\s+/).filter(Boolean).length;
 const phut = Math.max(1, Math.ceil(soTu / 200));
+
+// Các trang của chương theo đúng thứ tự tên tệp, để vẽ thanh bước đọc.
+const dsTrang = coKhung
+	? (await getCollection('docs'))
+			.filter((e) => e.id.startsWith(`${chuong!.slug}/`))
+			.sort((a, b) => a.id.localeCompare(b.id))
+			.map((e) => ({ id: e.id, ten: e.data.title }))
+	: [];
+const viTri = dsTrang.findIndex((t) => t.id === id) + 1;
 ---
 
 {
 	coKhung && (
-		<div class="crumb-hang">
-			<p class="crumb">
-				<span>{nhanPhan}</span> › <span>Chương {chuong!.so}</span> › <span>{entry.data.title}</span>
-				<span class="crumb-phut"> · ⏱ {phut} phút đọc</span>
-			</p>
-			<NutTaiVe chuong={chuong!} />
-		</div>
+		<p class="crumb">
+			<span>{nhanPhan}</span> › <span>Chương {chuong!.so}</span> › <span>{entry.data.title}</span>
+			<span class="crumb-phut"> · ⏱ {phut} phút đọc</span>
+		</p>
 	)
 }
-<Default><slot /></Default>
+
+{
+	coKhung && chuong ? (
+		<div class="dau-chuong">
+			<p class="dc-nhan">
+				<span>{nhanPhan}</span>
+				<span class="dc-cham" aria-hidden="true">·</span>
+				<span>Chương {chuong.so}</span>
+			</p>
+			<h1 id="_top">{entry.data.title}</h1>
+			<p class="dc-meta">
+				<span>Trang {viTri}/{dsTrang.length}</span>
+				<span class="dc-cham" aria-hidden="true">·</span>
+				<span>⏱ {phut} phút đọc</span>
+			</p>
+			<ol class="dc-buoc" aria-label={`Năm bước của chương ${chuong.so}`}>
+				{dsTrang.map((t, i) => (
+					<li class:list={{ 'dang-o': t.id === id }}>
+						<a
+							href={`/${t.id}/`}
+							aria-current={t.id === id ? 'page' : undefined}
+							data-dc-slug={t.id}
+							title={t.ten}
+						>
+							<span class="dc-so">{i + 1}</span>
+							<span class="dc-ten">{t.ten}</span>
+						</a>
+					</li>
+				))}
+			</ol>
+			<div class="dc-nut">
+				<NutTaiVe chuong={chuong} />
+				{chuong.notebook && (
+					<a class="dc-colab" href={colabUrl(chuong.notebook)} target="_blank" rel="noopener">
+						▶ Mở trong Colab
+					</a>
+				)}
+			</div>
+		</div>
+	) : (
+		<Default>
+			<slot />
+		</Default>
+	)
+}
+
+<script>
+	import { docTuStorage } from '../../lib/tien-do';
+
+	try {
+		const td = docTuStorage(localStorage);
+		document.querySelectorAll<HTMLElement>('[data-dc-slug]').forEach((a) => {
+			if (a.dataset.dcSlug! in td.daDoc) a.closest('li')?.classList.add('da-doc');
+		});
+	} catch {
+		/* trình duyệt chặn storage: chỉ mất màu đã đọc */
+	}
+</script>
 
 <style>
-	.crumb-hang {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		justify-content: space-between;
-		gap: 0.4rem 0.75rem;
-	}
 	.crumb {
 		margin: 0;
 		font-family: 'Be Vietnam Pro', system-ui, sans-serif;
 		font-size: 0.8rem;
 		color: var(--mut);
+	}
+	.dau-chuong {
+		padding: 0.9rem 1rem 0.8rem;
+		border: 1px solid var(--line);
+		border-radius: 14px;
+		background: var(--panel);
+	}
+	.dc-nhan {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		margin: 0;
+		font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+		font-size: 0.68rem;
+		font-weight: 700;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--khu-hoc);
+	}
+	.dc-cham {
+		color: var(--mut);
+	}
+	.dau-chuong h1 {
+		margin: 0.35rem 0 0.4rem;
+		font-size: var(--sl-text-h1);
+		line-height: var(--sl-line-height-headings);
+		font-weight: 600;
+		color: var(--sl-color-white);
+	}
+	.dc-meta {
+		margin: 0;
+		font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+		font-size: 0.78rem;
+		color: var(--mut-chu);
+	}
+	.dc-buoc {
+		display: flex;
+		gap: 0.3rem;
+		margin: 0.8rem 0 0;
+		padding: 0;
+		list-style: none;
+		overflow-x: auto;
+		scrollbar-width: thin;
+	}
+	.dc-buoc li {
+		flex: 1 1 0;
+		min-width: 5.2rem;
+		margin: 0;
+	}
+	.dc-buoc a {
+		display: flex;
+		flex-direction: column;
+		gap: 0.2rem;
+		height: 100%;
+		padding: 0.4rem 0.5rem 0.35rem;
+		border-top: 3px solid var(--line);
+		border-radius: 0 0 6px 6px;
+		color: var(--mut-chu);
+		text-decoration: none;
+	}
+	.dc-buoc a:hover,
+	.dc-buoc a:focus-visible {
+		background: var(--bg);
+		color: var(--tx);
+	}
+	.dc-so {
+		font-family: 'JetBrains Mono', monospace;
+		font-size: 0.66rem;
+		font-weight: 700;
+		color: var(--mut);
+	}
+	.dc-ten {
+		font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+		font-size: 0.72rem;
+		line-height: 1.3;
+	}
+	.dc-buoc li.da-doc a {
+		border-top-color: var(--ok);
+	}
+	.dc-buoc li.da-doc a .dc-so {
+		color: var(--ok-chu);
+	}
+	.dc-buoc li.dang-o a {
+		border-top-color: var(--khu-hoc);
+		color: var(--khu-hoc);
+		font-weight: 700;
+	}
+	.dc-buoc li.dang-o a .dc-so {
+		color: var(--khu-hoc);
+	}
+	.dc-nut {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.5rem;
+		margin-top: 0.75rem;
+	}
+	.dc-colab {
+		display: inline-flex;
+		align-items: center;
+		min-height: 36px;
+		padding: 0 0.8rem;
+		border: 1px solid var(--line);
+		border-radius: 8px;
+		background: var(--bg);
+		color: var(--pri);
+		font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+		font-size: 0.82rem;
+		font-weight: 600;
+		text-decoration: none;
+	}
+	.dc-colab:hover {
+		border-color: var(--pri);
+	}
+	/* Điện thoại: đủ sáu bước trong một hàng, tên bước cắt còn hai dòng. */
+	@media (max-width: 30rem) {
+		.dc-buoc { gap: 0.15rem; }
+		.dc-buoc li { min-width: 2.9rem; }
+		.dc-buoc a { padding: 0.35rem 0.3rem; }
+		.dc-ten {
+			display: -webkit-box;
+			-webkit-box-orient: vertical;
+			-webkit-line-clamp: 2;
+			overflow: hidden;
+			font-size: 0.64rem;
+		}
 	}
 </style>

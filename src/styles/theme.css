@@ -254,10 +254,13 @@ html .katex-display > .katex > .katex-html > .tag {
 .can-biet-truoc {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+	align-items: stretch;
 	gap: 0.8rem;
 	margin: 1.2rem 0;
 }
 .cbt-khoi {
+	display: flex;
+	flex-direction: column;
 	background: var(--panel);
 	border: 1px solid var(--line);
 	border-radius: 4px;
@@ -503,7 +506,7 @@ html .katex-display > .katex > .katex-html > .tag {
 	html, body { background: #fff !important; color: #1a1a1a; }
 	body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 	header.header, .sidebar, .right-sidebar, mobile-starlight-toc, starlight-menu-button,
-	.nut-da-doc, .nut-tai-ve, .pagination-links, footer, .sl-hidden, site-search,
+	.nut-da-doc, .nut-tai-ve, .pagination-links, .dc-dieu-huong, .dc-colab, footer, .sl-hidden, site-search,
 	input[type='range'], .tai-ve, .thu-ngay-lr, .tn-lr, .colab-hang { display: none !important; }
 	.main-pane, .main-frame { margin: 0 !important; padding: 0 !important; }
 	.sl-markdown-content { max-width: none; font-size: 11pt; line-height: 1.6; }
