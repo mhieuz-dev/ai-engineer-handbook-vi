@@ -1,0 +1,118 @@
+---
+title: Bài tập
+description: "Ba bài tập có đáp án chi tiết (đếm tay 494 triệu tham số của Qwen2.5-0.5B từ cấu hình; phân loại cảm xúc UIT-VSFC không cần huấn luyện bằng xác suất của nhãn, và vì sao cần chỉnh ngưỡng; đo độ lặp của giải mã tham lam so với lấy mẫu) và câu hỏi phỏng vấn."
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Đoán trước, rồi chạy code trong notebook để kiểm tra. Code dùng lại `llm`, `tok`, `llm_cd`, `tok_cd`, `sinh`, `va` và các import của các trang trước.
+
+<BaiTap so="47.1">
+**Đếm tham số bằng tay.** Từ cấu hình ở trang 1 (24 khối, $d = 896$, 14 đầu query mỗi đầu 64 chiều, 2 đầu key và value dùng chung, lớp ẩn truyền thẳng 4864, từ điển 151 936), đếm số tham số. Mỗi khối có: chiếu query, key, value (có bias), chiếu đầu ra (không bias), mạng truyền thẳng SwiGLU gồm ba ma trận không bias, hai lớp RMSNorm (mỗi lớp $d$ tham số). Bảng vector token **dùng chung** với lớp ra. Bảng vector token chiếm bao nhiêu phần trăm?
+
+<Fragment slot="dap-an">
+
+```python
+d, f, V, L, dk = 896, 4864, 151936, 24, 64
+kv = 2 * dk                                          # 2 đầu key, value dùng chung cho 14 đầu query
+moi_khoi = (d * d + d) + 2 * (d * kv + kv) + d * d + 3 * d * f + 2 * d
+tong = L * moi_khoi + V * d + d                      # + bảng vector token + RMSNorm cuối
+print(moi_khoi, tong, tong == sum(p.numel() for p in llm.parameters()), round(100 * V * d / tong, 1))
+```
+
+```text title="Output"
+14912384 494032768 True 27.6
+```
+
+Mỗi khối 14 912 384 tham số; tổng **khớp đúng** 494 032 768. Bảng vector token chiếm **27,6%** số tham số: $151\,936 \times 896 \approx 136$ triệu, chưa tính lớp ra vì dùng chung. Với mô hình nhỏ và từ điển lớn, phần này rất đáng kể; với mô hình vài chục tỷ tham số thì nó chỉ còn vài phần trăm. Mạng truyền thẳng là phần lớn nhất của mỗi khối: $3 \times 896 \times 4864 \approx 13{,}1$ triệu, gần 88% khối; attention chỉ khoảng 1,8 triệu, nhỏ đi nhờ 2 đầu key, value dùng chung.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="47.2">
+**Phân loại cảm xúc không cần huấn luyện.** Lấy các câu UIT-VSFC val có nhãn tích cực hoặc tiêu cực. Với mỗi câu, hỏi mô hình chỉ dẫn bằng khuôn hội thoại "Cảm xúc của câu sau là tích cực hay tiêu cực?", rồi lấy **điểm** là log xác suất của câu trả lời "Tích cực" trừ log xác suất của "Tiêu cực" (cộng log xác suất mọi token của câu trả lời). Đoán tích cực khi điểm dương. Đo trên 200 câu (từ câu thứ 101). Rồi thử cách khác: chọn ngưỡng của điểm trên 100 câu đầu (có nhãn), áp lên 200 câu kia.
+
+<Fragment slot="dap-an">
+
+```python
+def log_xs(khuon, tra_loi):                          # tổng log xác suất của tra_loi khi đứng sau khuon
+    a = tok_cd(khuon, return_tensors="pt")["input_ids"]
+    b = tok_cd(tra_loi, return_tensors="pt")["input_ids"]
+    ids = torch.cat([a, b], 1)
+    with torch.no_grad():
+        lp = llm_cd(ids).logits[0, :-1].log_softmax(-1)
+    vt = torch.arange(a.shape[1] - 1, ids.shape[1] - 1)   # vị trí đoán từng token của tra_loi
+    return lp[vt, ids[0, a.shape[1]:]].sum().item()
+
+def diem(s):
+    k = tok_cd.apply_chat_template([{"role": "user", "content": f'Cảm xúc của câu sau là tích cực hay tiêu cực? "{s}"'}],
+                                   tokenize=False, add_generation_prompt=True)
+    return log_xs(k, "Tích cực") - log_xs(k, "Tiêu cực")
+
+hai_lop = va[va.sentiment != 1]
+chon, do = hai_lop.iloc[:100], hai_lop.iloc[100:300]  # 100 câu để chọn ngưỡng, 200 câu để đo
+d_chon = np.array([diem(s) for s in chon.sentence])
+d_do = np.array([diem(s) for s in do.sentence])
+y_chon, y_do = chon.sentiment.values == 2, do.sentiment.values == 2
+print(np.bincount(do.sentiment, minlength=3), (d_do > 0).sum(), ((d_do > 0) == y_do).mean())
+nguong = max(sorted(d_chon), key=lambda t: ((d_chon > t) == y_chon).mean())   # ngưỡng tốt nhất trên 100 câu chọn
+print(round(nguong, 2), ((d_do > nguong) == y_do).mean())
+```
+
+```text title="Output"
+[ 90   0 110] 17 0.525
+-0.82 0.81
+```
+
+Với ngưỡng 0, mô hình chỉ đoán tích cực **17** lần trên 200 câu, trong khi 110 câu thật sự tích cực: độ chính xác **52,5%**, ngang đoán bừa. Nhưng đó không phải vì điểm vô dụng. Mô hình có một **thiên lệch**: nó ưa chuỗi "Tiêu cực" hơn "Tích cực" bất kể câu, nên điểm của hầu hết câu đều âm, kể cả câu khen. Chọn ngưỡng trên 100 câu có nhãn khác (được $-0{,}82$) rồi áp lên 200 câu đo: **81%**. Điểm vẫn xếp hạng câu khá đúng; chỉ có điểm cắt bị lệch.
+
+Bài học: đầu ra của LLM không tự hiệu chỉnh, và một vài chục câu có nhãn để chọn ngưỡng có thể đổi kết quả từ vô dụng thành dùng được. Dù vậy, 81% trên bài hai lớp vẫn kém xa PhoBERT tinh chỉnh (Chương 46: 95% trên cả ba lớp). Với mô hình nhỏ và bài toán có nhiều nhãn, một bộ mã hóa tinh chỉnh vẫn là lựa chọn tốt; Chương 48 thử cải thiện bằng cách viết câu lệnh tốt hơn.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="47.3">
+**Vì sao tham lam hay lặp.** Sinh 100 token từ "Trường đại học tốt nhất để học trí tuệ nhân tạo là" bằng tham lam và bằng top-p 0,9 ở nhiệt độ 0,7. Đo tỷ lệ bộ ba token **khác nhau** trên tổng số bộ ba của phần được sinh: càng thấp càng lặp.
+
+<Fragment slot="dap-an">
+
+```python
+def ty_le_khac(van_ban, mo_dau):
+    ids = tok(van_ban)["input_ids"][len(tok(mo_dau)["input_ids"]):]   # chỉ phần được sinh
+    ba = list(zip(ids, ids[1:], ids[2:]))
+    return round(len(set(ba)) / len(ba), 3)
+
+md = "Trường đại học tốt nhất để học trí tuệ nhân tạo là"
+print("tham lam", ty_le_khac(sinh(md, so_token=100), md))
+print("top-p 0.9, T 0.7", ty_le_khac(sinh(md, so_token=100, T=0.7, top_p=0.9), md))
+```
+
+```text title="Output"
+tham lam 0.276
+top-p 0.9, T 0.7 0.796
+```
+
+Tham lam: chỉ **27,6%** bộ ba token là khác nhau, tức gần ba phần tư văn bản là lặp lại những đoạn đã có. Lấy mẫu với top-p 0,9 và nhiệt độ 0,7: **79,6%**. Tham lam rơi vào vòng lặp vì một khi đã lặp, lặp tiếp là lựa chọn có xác suất cao nhất ở mỗi bước. Lấy mẫu có thể rút ra một token khác và thoát khỏi vòng. Các thư viện còn có thêm phạt lặp (giảm logits của token đã xuất hiện) cho những ứng dụng cần giải mã gần tham lam.
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Một LLM sinh văn bản thế nào? Nhiệt độ và top-p ảnh hưởng ra sao?**
+
+<p lang="en"><em>How does an LLM generate text, and how do temperature and top-p affect it?</em></p>
+
+*Gợi ý:* tự hồi quy: ở mỗi bước, mô hình cho phân phối trên từ điển cho token tiếp theo, chọn một token, nối vào, lặp lại tới token kết thúc. Nhiệt độ chia logits trước softmax: thấp thì gần tham lam, ổn định nhưng dễ lặp; cao thì đa dạng nhưng dễ lạc đề. Top-p chỉ rút trong nhóm token nhỏ nhất có tổng xác suất vượt p, cắt bỏ đuôi token vô lý.
+
+**2. Vì sao LLM bịa đặt (hallucinate)?**
+
+<p lang="en"><em>Why do LLMs hallucinate?</em></p>
+
+*Gợi ý:* mục tiêu huấn luyện là sinh văn bản có xác suất cao, không phải văn bản đúng; mô hình không có cơ chế tách điều nó biết chắc với điều nó đoán, và kiến thức được nén không đầy đủ vào trọng số. Giảm bằng: đưa tài liệu nguồn vào ngữ cảnh (RAG), yêu cầu trích dẫn, nhiệt độ thấp cho việc cần sự thật, kiểm chứng đầu ra, và huấn luyện để mô hình biết nói "không biết".
+
+**3. Mô hình gốc và mô hình đã dạy làm theo chỉ dẫn khác nhau thế nào?**
+
+<p lang="en"><em>What is the difference between a base model and an instruction-tuned model?</em></p>
+
+*Gợi ý:* bản gốc chỉ tiền huấn luyện để viết tiếp văn bản; bản chỉ dẫn được tinh chỉnh thêm trên các cặp chỉ dẫn, câu trả lời trong một khuôn hội thoại, thường kèm căn chỉnh theo sở thích (RLHF, DPO). Kiến thức chủ yếu đến từ tiền huấn luyện; bước sau dạy hình thức, cách dừng, cách từ chối. Dùng bản chỉ dẫn cho trợ lý; bản gốc cho tinh chỉnh tiếp hoặc chấm điểm văn bản.
+</Khung>

@@ -1,0 +1,78 @@
+---
+title: Đoán token tiếp theo
+description: "Đầu ra của LLM ở mỗi vị trí là một phân phối trên 151 nghìn token. Nhìn top 8 cho 'Thủ đô của Việt Nam là': token ' Hà' không có trong đó. Rồi perplexity như Chương 39: câu tự nhiên so với cùng các từ bị xáo trộn."
+---
+
+import Khung from '../../../../components/Khung.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Một phân phối ở mỗi bước
+
+Đưa vào một dãy token, mô hình trả về `logits` hình dạng (lô, số token, cỡ từ điển): ở **mỗi** vị trí, một điểm cho mọi token trong từ điển, nói token nào có thể đứng ngay sau. Lúc huấn luyện, mọi vị trí đều được dùng (mặt nạ nhân quả bảo đảm vị trí $i$ không thấy token $i+1$). Lúc dùng, ta chỉ cần vị trí **cuối**.
+
+```python
+def tiep_theo(van_ban, k=8):
+    x = tok(van_ban, return_tensors="pt")
+    with torch.no_grad():
+        p = llm(**x).logits[0, -1].softmax(-1)       # phân phối cho token ngay sau văn bản
+    xs, ids = p.topk(k)
+    return p, [(tok.decode(i), round(v.item(), 3)) for v, i in zip(xs, ids)]
+
+for van_ban in ["Thủ đô của Việt Nam là", "Hôm nay trời mưa nên em"]:
+    print(van_ban, tiep_theo(van_ban)[1])
+
+p, _ = tiep_theo("Thủ đô của Việt Nam là")
+for w in [" Hà", " thành"]:
+    i = tok.encode(w)[0]
+    print(repr(w), round(p[i].item(), 4), int((p > p[i]).sum()) + 1)   # xác suất và thứ hạng
+```
+
+```text title="Output"
+Thủ đô của Việt Nam là [(' một', 0.136), (' nơi', 0.13), (' gì', 0.115), (' thành', 0.108), (' thủ', 0.09), (' __', 0.02), (' địa', 0.017), (' đất', 0.013)]
+Hôm nay trời mưa nên em [(' đi', 0.144), (' không', 0.078), (' đã', 0.036), (' m', 0.025), (' về', 0.019), (' sẽ', 0.018), (' phải', 0.017), (' lại', 0.016)]
+' Hà' 0.0062 14
+' thành' 0.108 4
+```
+
+Sau "Thủ đô của Việt Nam là", token có xác suất cao nhất là " một" (0,136), rồi " nơi", " gì", " thành" (0,108, hạng 4). Token " Hà" chỉ có 0,0062, đứng hạng **14**. Điều đó chưa chắc là sai: "là một thành phố...", "là thành phố Hà Nội" đều là cách viết tiếp hợp lý, và mô hình chia xác suất cho nhiều cách. Nhưng cũng thấy mô hình 0,5 tỷ tham số này không chắc chắn gì về một sự thật rất phổ biến. Với "Hôm nay trời mưa nên em", các token đầu bảng (" đi", " không", " đã", " về", " phải") đều tự nhiên. Token " m" (hạng 4) là một mảnh: mô hình có thể đang định viết một âm tiết bắt đầu bằng "m" mà tokenizer cắt làm hai.
+
+## Perplexity
+
+Chương 39 định nghĩa perplexity là $e$ mũ cross-entropy trung bình trên mỗi token: mô hình "phân vân như chọn đều giữa bao nhiêu khả năng". Với `transformers`, truyền `labels=` bằng chính dãy đầu vào thì mô hình tự dịch đi một vị trí và trả về cross-entropy trung bình:
+
+```python
+import random
+
+def perplexity(van_ban):
+    ids = tok(van_ban, return_tensors="pt")["input_ids"]
+    with torch.no_grad():
+        return round(math.exp(llm(ids, labels=ids).loss.item()), 1)
+
+cau = "Thầy giảng dạy rất nhiệt tình và luôn giúp đỡ sinh viên."
+tu = cau[:-1].split()
+random.seed(0)
+random.shuffle(tu)
+xao = " ".join(tu) + "."
+print(perplexity(cau), cau)
+print(perplexity(xao), xao)
+```
+
+```text title="Output"
+31.6 Thầy giảng dạy rất nhiệt tình và luôn giúp đỡ sinh viên.
+3654.4 giảng đỡ giúp tình sinh dạy rất luôn nhiệt Thầy viên và.
+```
+
+Câu tự nhiên có perplexity **31,6**: ở mỗi bước, mô hình phân vân như chọn đều giữa khoảng 32 token, trong từ điển 151 nghìn. Cùng các từ đó bị xáo trộn: **3654**, gấp khoảng 115 lần. Mô hình không có quy tắc ngữ pháp nào được viết sẵn, nhưng nó nhận ra ngay văn bản nào giống tiếng Việt thật. Đó là cách perplexity được dùng trong thực tế: lọc dữ liệu rác khỏi kho huấn luyện, chấm độ trôi chảy, so các mô hình trên cùng một tập văn bản.
+
+<TuKiemTra
+	cauHoi="Một LLM có perplexity 30 trên một đoạn văn tiếng Việt và 8 trên một đoạn văn tiếng Anh. Có thể kết luận mô hình giỏi tiếng Anh hơn gần 4 lần không?"
+	luaChon={['Có, perplexity càng thấp càng giỏi', 'Không chắc: perplexity tính theo token, mà hai ngôn ngữ bị cắt thành token rất khác nhau, và hai đoạn văn khác nhau về độ khó; phải so trên cùng nội dung và quy về một đơn vị chung như bit trên mỗi byte', 'Có, vì cùng một mô hình', 'Không, vì perplexity không đo gì']}
+	dapAn={1}
+	giaiThich="Như câu phỏng vấn của Chương 39: perplexity phụ thuộc vào tokenizer và vào văn bản. Một token tiếng Anh thường mang nhiều ký tự hơn một token tiếng Việt, và đoạn văn dễ đoán thì perplexity thấp với mọi mô hình. So công bằng cần cùng một tập văn bản (ví dụ bản dịch song song) và một đơn vị không phụ thuộc tokenizer."
+/>
+
+<Khung loai="loi">
+**Đọc xác suất token như xác suất một sự thật là đúng.** Xác suất 0,0062 cho " Hà" không có nghĩa mô hình nghĩ Hà Nội chỉ đúng 0,6%: nó là xác suất token đó đứng **ngay** sau, trong khi có nhiều cách nói đúng khác ("thành phố Hà Nội", "một thành phố...").
+
+**Quên dấu cách đầu token.** Với tokenizer BPE mức byte, " Hà" (có dấu cách) và "Hà" là hai token khác nhau. Tra xác suất của từ sai dạng là đo nhầm.
+</Khung>

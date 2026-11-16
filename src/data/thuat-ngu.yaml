@@ -923,3 +923,18 @@
   tenTiengAnh: masked language modeling
   giaiThich: Mô hình ngôn ngữ che từ là nhiệm vụ tiền huấn luyện của BERT và PhoBERT. Che ngẫu nhiên khoảng 15% token của câu rồi bắt mô hình đoán lại từ cả hai phía, nên mô hình là một bộ mã hóa nhìn cả câu, hợp cho hiểu văn bản hơn là sinh văn bản.
   hocKy: ai-engineer/ch45-tokenization-pretrained
+- id: tinh-chinh
+  ten: Tinh chỉnh
+  tenTiengAnh: fine-tuning
+  giaiThich: Tinh chỉnh là huấn luyện tiếp toàn bộ một mô hình đã tiền huấn luyện trên dữ liệu có nhãn của nhiệm vụ mới, thường thêm một đầu ra nhỏ khởi tạo ngẫu nhiên, với tốc độ học rất nhỏ và ít epoch để không xóa những gì mô hình đã học.
+  hocKy: ai-engineer/ch46-fine-tune-phobert
+- id: llm
+  ten: Mô hình ngôn ngữ lớn
+  tenTiengAnh: large language model (LLM)
+  giaiThich: Mô hình ngôn ngữ lớn là một Transformer bộ giải mã có từ vài trăm triệu tới hàng trăm tỷ tham số, tiền huấn luyện để đoán token tiếp theo trên hàng nghìn tỷ token văn bản, thường được tinh chỉnh thêm để làm theo chỉ dẫn. Sinh văn bản bằng cách đoán và nối từng token một.
+  hocKy: ai-engineer/ch47-llm-hoat-dong
+- id: nhiet-do
+  ten: Nhiệt độ
+  tenTiengAnh: temperature
+  giaiThich: Nhiệt độ là số chia logits trước softmax khi lấy mẫu token. Nhỏ hơn 1 làm phân phối nhọn hơn, gần giải mã tham lam, ổn định nhưng dễ lặp; lớn hơn 1 làm phân phối phẳng hơn, đa dạng hơn nhưng dễ ra token vô lý. Bằng 0 nghĩa là luôn chọn token có xác suất cao nhất.
+  hocKy: ai-engineer/ch47-llm-hoat-dong

@@ -134,7 +134,7 @@ test('trang chủ: thanh tiến độ tổng và lưới thẻ theo Phần đế
 	await expect(page.locator('.o-chuong.xong')).toHaveCount(daXong);
 	await expect(page.locator('.o-chuong.sap-co')).toHaveCount(CHUONG.length - daXong);
 	await expect(page.locator('.o-chuong.xong').first()).toHaveAttribute('href', '/ai-engineer/ch00-lo-trinh-va-colab/01-lo-trinh/');
-	await expect(page.locator('.o-chuong.sap-co').first()).toContainText('Prompt engineering');
+	await expect(page.locator('.o-chuong.sap-co').filter({ hasText: 'Prompt engineering' })).toHaveCount(1);
 });
 
 test('trang chủ: Học tiếp ẩn khi chưa đọc, hiện đúng trang đọc gần nhất', async ({ page }) => {

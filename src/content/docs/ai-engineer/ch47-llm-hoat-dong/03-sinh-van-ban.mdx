@@ -1,0 +1,82 @@
+---
+title: Sinh văn bản
+description: "Tự viết vòng sinh từng token: tham lam, nhiệt độ, top-p. Giải mã tham lam của mô hình 0,5 tỷ tham số vừa bịa ('thành phố lớn nhất thế giới, với hơn 200 triệu dân') vừa lặp vòng. Nhiệt độ 0,7 cho văn bản trôi chảy, 1,5 thì vỡ ra thành chữ Việt, Trung, Anh, Ý lẫn lộn."
+---
+
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Một token mỗi lần
+
+Sinh văn bản là lặp lại: đưa dãy hiện có vào, lấy phân phối token tiếp theo, **chọn** một token, nối vào, lặp lại. Mọi khác biệt giữa các cách sinh nằm ở bước chọn:
+
+- **Tham lam** (greedy): luôn lấy token có xác suất cao nhất.
+- **Lấy mẫu có <Term id="nhiet-do">nhiệt độ</Term>** $T$: chia logits cho $T$ trước softmax (Chương 11), rồi rút ngẫu nhiên theo phân phối đó. $T < 1$ làm phân phối nhọn hơn, $T > 1$ làm nó phẳng hơn.
+- **Top-p** (nucleus sampling): chỉ giữ nhóm token xác suất cao nhất có tổng vừa vượt $p$, bỏ cái đuôi dài các token rất khó xảy ra, chuẩn hóa lại rồi mới rút.
+
+```python
+def sinh(van_ban, so_token=30, T=0.0, top_p=1.0, seed=0):
+    g = torch.Generator().manual_seed(seed)
+    ids = tok(van_ban, return_tensors="pt")["input_ids"]
+    for _ in range(so_token):
+        with torch.no_grad():
+            lg = llm(ids).logits[0, -1]               # chỉ cần vị trí cuối
+        if T == 0:
+            j = lg.argmax()                          # tham lam
+        else:
+            p = (lg / T).softmax(-1)                 # nhiệt độ
+            if top_p < 1:
+                xs, thu_tu = p.sort(descending=True)
+                giu = xs.cumsum(0) - xs < top_p      # giữ token cho tới khi tổng vừa vượt top_p
+                p = torch.zeros_like(p).scatter(0, thu_tu[giu], xs[giu])
+                p = p / p.sum()
+            j = torch.multinomial(p, 1, generator=g)[0]
+        ids = torch.cat([ids, j.view(1, 1)], 1)       # nối rồi đoán tiếp
+    return tok.decode(ids[0])
+
+t0 = time.time()
+print(repr(sinh("Thủ đô của Việt Nam là thành phố")))
+print(repr(sinh("Trường đại học tốt nhất để học trí tuệ nhân tạo là")))
+print(time.time() - t0 < 120)
+```
+
+```text title="Output"
+'Thủ đô của Việt Nam là thành phố lớn nhất thế giới, với hơn 200 triệu dân, 100 triệu người dân ở đây. Trong đó, có '
+'Trường đại học tốt nhất để học trí tuệ nhân tạo là gì? - Tin tức - Trường đại học tốt nhất để học trí tuệ nhân tạo là gì?\nTrường đại học tốt nhất để học trí'
+True
+```
+
+Hai thất bại kinh điển, trong 30 token. Câu đầu trôi chảy, đúng ngữ pháp và **bịa** hoàn toàn: "thành phố lớn nhất thế giới, với hơn 200 triệu dân", trong khi cả nước Việt Nam khoảng 100 triệu dân. Câu thứ hai **lặp vòng**: mô hình viết tiếp như tiêu đề một trang tin ("là gì? - Tin tức -"), rồi chép lại chính câu hỏi. Giải mã tham lam luôn đi theo con đường xác suất cao nhất ở từng bước, và khi đã lặp một lần, lặp tiếp lại là điều có xác suất cao nhất. Bài tập 47.3 đo độ lặp đó.
+
+## Nhiệt độ và top-p
+
+Cùng đoạn mở đầu, cùng seed, đổi nhiệt độ:
+
+```python
+for T in (0.7, 1.0, 1.5):
+    print(T, repr(sinh("Hôm nay trời mưa nên em", T=T)))
+print("top-p 0.9", repr(sinh("Hôm nay trời mưa nên em", T=1.0, top_p=0.9)))
+```
+
+```text title="Output"
+0.7 'Hôm nay trời mưa nên em rất thích đi bơi. Thấy em làm vậy em cảm thấy rất tự hào, vì em đã tự mình làm điều này, mình cũng'
+1.0 'Hôm nay trời mưa nên em họ tập không bầm bầm ở tối. Yêu Em hiện tại em Thiếu Ngọc mới bị kiểu kiểu chuyện như thế này, sao'
+1.5 'Hôm nay trời mưa nên em họ ta không憩 mùa愈旺 ởpellier啦 //AsVip一期 Aw lined da chorus perché ultimo contest headline serfs Fo_literals each Ausb'
+top-p 0.9 'Hôm nay trời mưa nên em họ tập không bọc luôn có ở thì làm gì em yêu tôi thấy em ho một đôi mắt bị mèo che thấy đâu nè\n'
+```
+
+Ở **0,7**, văn bản trôi chảy và gần như mạch lạc ("rất thích đi bơi" khi trời mưa thì hơi lạ, nhưng đúng tiếng Việt). Ở **1,0**, tức lấy mẫu theo đúng phân phối của mô hình, các từ vẫn là tiếng Việt nhưng câu mất nghĩa. Ở **1,5**, phân phối phẳng tới mức những token rất hiếm cũng được rút: chữ Trung, tiếng Anh, tiếng Ý ("perché ultimo"), mảnh tên biến lập trình lẫn lộn. Top-p 0,9 ở nhiệt độ 1,0 cắt cái đuôi đó đi: câu vẫn lộn xộn nhưng chỉ còn tiếng Việt. Ba lần lấy mẫu dùng cùng seed nên mở đầu giống nhau ("em họ tập không") cho tới khi phân phối khác đủ để rút ra token khác. Trong thực tế, nhiệt độ 0,7 tới 1 cùng top-p 0,9 tới 0,95 là cặp hay gặp cho văn bản tự do.
+
+<TuKiemTra
+	cauHoi="Bạn cần LLM trích một con số từ hóa đơn, luôn cùng một kết quả cho cùng một hóa đơn. Nên đặt nhiệt độ thế nào?"
+	luaChon={['Cao, khoảng 1,5, để mô hình suy nghĩ kỹ hơn', 'Bằng 0 (tham lam) hoặc rất thấp: việc trích xuất cần một đáp án ổn định, không cần đa dạng', 'Đúng 1', 'Không quan trọng']}
+	dapAn={1}
+	giaiThich="Nhiệt độ chỉ điều khiển độ ngẫu nhiên khi chọn token, không làm mô hình suy nghĩ kỹ hơn. Với trích xuất, phân loại, trả lời có đáp án đúng, dùng nhiệt độ 0 hoặc thấp. Nhiệt độ cao hơn hợp với viết sáng tạo, gợi ý nhiều phương án."
+/>
+
+<Khung loai="loi">
+**Tin rằng văn bản trôi chảy là văn bản đúng.** Câu về thủ đô ở trên đúng ngữ pháp, tự tin, và sai hoàn toàn. Mô hình được huấn luyện để sinh văn bản **có khả năng xảy ra**, không phải văn bản **đúng**. Mọi ứng dụng cần sự thật phải kiểm chứng đầu ra, hoặc đưa tài liệu đáng tin vào ngữ cảnh (RAG, Chương 52).
+
+**Gọi lại mô hình trên cả dãy ở mỗi bước như vòng ở trên.** Vòng này tính lại attention cho mọi token cũ ở mỗi bước, nên càng dài càng chậm. Thư viện thật lưu lại key và value của các token đã tính (KV cache, Chương 57); ở đây ta viết đơn giản để thấy rõ thuật toán.
+</Khung>

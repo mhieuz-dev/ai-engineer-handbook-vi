@@ -1,0 +1,109 @@
+---
+title: LLM là gì
+description: "Một mô hình ngôn ngữ lớn là một Transformer bộ giải mã, huấn luyện đúng một việc: đoán token tiếp theo, trên hàng nghìn tỷ token. Mở một mô hình thật, Qwen2.5-0.5B, chạy được trên CPU: 494 triệu tham số, 24 khối, và một tokenizer cắt tiếng Việt gọn gấp 3 lần GPT-2."
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+import VideoChuong from '../../../../components/VideoChuong.astro';
+
+<CanBietTruoc>
+Mô hình ngôn ngữ và perplexity (Chương 39). Mô hình ngôn ngữ ký tự và cách lấy mẫu (Chương 29). Softmax có nhiệt độ (Chương 11). Transformer, mặt nạ nhân quả, mã hóa vị trí (Chương 44). Tokenizer và tiền huấn luyện (Chương 45).
+
+<Fragment slot="sau-chuong">
+Biết một LLM thật gồm những gì và đọc được cấu hình của nó. Lấy phân phối token tiếp theo, tính perplexity. Tự viết vòng sinh văn bản với giải mã tham lam, nhiệt độ và top-p, và thấy tận mắt lặp vòng và bịa đặt. Hiểu khác biệt giữa mô hình gốc và mô hình đã được dạy làm theo chỉ dẫn.
+</Fragment>
+</CanBietTruoc>
+
+<VideoChuong so={47} />
+
+<ColabButton notebook="ch47_llm_hoat_dong.ipynb" />
+
+## Không có gì mới, chỉ lớn hơn
+
+Chương 29 cho một LSTM đọc một bài thơ rồi đoán ký tự tiếp theo. Chương 39 đếm n-gram để đoán từ tiếp theo. Một <Term id="llm">mô hình ngôn ngữ lớn</Term> (LLM) như GPT, Llama, Qwen làm **đúng việc đó**, chỉ khác ba điều đã hứa ở Chương 29:
+
+- Đơn vị là **token** của một tokenizer mảnh từ (Chương 45), không phải ký tự.
+- Mạng là **Transformer bộ giải mã** với mặt nạ nhân quả (Chương 44): mỗi token chỉ nhìn các token trước nó.
+- Dữ liệu là **hàng nghìn tỷ token** văn bản từ web, sách, mã nguồn, và mô hình có từ vài trăm triệu tới hàng trăm tỷ tham số.
+
+Nhiệm vụ huấn luyện vẫn là cross-entropy của token tiếp theo, trên mọi vị trí của mọi đoạn văn. Mọi khả năng khác (trả lời câu hỏi, dịch, viết code) xuất hiện vì đoán đúng token tiếp theo trên một kho đủ lớn và đủ đa dạng đòi hỏi những khả năng đó.
+
+## Mở một LLM thật
+
+Ta dùng **Qwen2.5-0.5B** của Alibaba: giấy phép Apache 2.0, nhỏ nhất trong họ Qwen2.5, đủ nhỏ để chạy trên CPU (khoảng 1 GB tải về một lần), và có học tiếng Việt. Đây là bản **gốc** (base), chỉ mới tiền huấn luyện; trang 4 so với bản đã được dạy làm theo chỉ dẫn.
+
+```python
+!pip install pyarrow transformers
+```
+
+```python
+import math
+import os
+import time
+import urllib.request
+import numpy as np
+import pandas as pd
+import torch
+from transformers import AutoTokenizer, AutoModelForCausalLM
+torch.set_num_threads(4)
+
+R_GOC = "060db6499f32faf8b98477b0a26969ef7d8b9987"   # ghim phiên bản
+tok = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-0.5B", revision=R_GOC)
+llm = AutoModelForCausalLM.from_pretrained("Qwen/Qwen2.5-0.5B", revision=R_GOC, dtype=torch.float32).eval()
+c = llm.config
+print(sum(p.numel() for p in llm.parameters()), len(tok))
+print(c.num_hidden_layers, c.hidden_size, c.num_attention_heads, c.num_key_value_heads,
+      c.intermediate_size, c.max_position_embeddings, c.vocab_size)
+```
+
+```text title="Output"
+494032768 151665
+24 896 14 2 4864 32768 151936
+```
+
+494 triệu tham số, khoảng 1000 lần Transformer của Chương 44 và 3,7 lần PhoBERT; ở số thực 4 byte, chừng 2 GB bộ nhớ. 24 khối, mỗi token là một vector 896 chiều, 14 đầu attention. Hai con số đáng chú ý. **2 đầu key, value**: 14 đầu query chia nhau chỉ 2 cặp key, value (attention nhóm truy vấn), để giảm bộ nhớ lưu key, value khi sinh văn bản dài (Chương 57). **32 768 vị trí**: độ dài ngữ cảnh tối đa, nhờ mã hóa vị trí RoPE (xoay query và key theo vị trí, như Chương 44 đã nhắc). Tokenizer có 151 665 token; ma trận vector token có 151 936 hàng, phần dư là chỗ để trống cho kích thước tròn.
+
+## Tokenizer: tiếng Việt rẻ hơn nhiều so với GPT-2
+
+Qwen2.5 dùng BPE **mức byte** như GPT-2 (Chương 45), nên không bao giờ có token lạ. Nhưng từ điển 151 nghìn token học trên kho đa ngôn ngữ, nên các âm tiết tiếng Việt thường gặp đã có token riêng. Đo trên đúng UIT-VSFC val như Chương 45:
+
+```python
+URL = "https://huggingface.co/api/datasets/uitnlp/vietnamese_students_feedback/parquet/default/{}/0.parquet"
+THU_MUC = os.path.expanduser("~/.cache/vsfc")
+
+def tai(phan):                                       # như Chương 38
+    os.makedirs(THU_MUC, exist_ok=True)
+    tep = os.path.join(THU_MUC, phan + ".parquet")
+    if not os.path.exists(tep):
+        urllib.request.urlretrieve(URL.format(phan), tep)
+    return pd.read_parquet(tep)
+
+va = tai("validation")
+print(round(np.mean([len(tok.tokenize(s)) for s in va.sentence]), 2))
+cau = "Thầy giảng dạy rất nhiệt tình, slide đầy đủ."
+print(len(tok.tokenize(cau)), [tok.convert_tokens_to_string([t]) for t in tok.tokenize(cau)])
+```
+
+```text title="Output"
+15.51
+12 ['Th', 'ầy', ' giảng', ' dạy', ' rất', ' nhiệt', ' tình', ',', ' slide', ' đầy', ' đủ', '.']
+```
+
+Trung bình **15,51** token mỗi câu val, so với 49,77 của GPT-2, 15,56 của XLM-R và 10,94 của PhoBERT trên văn bản đã tách từ (Chương 45): gần như mỗi âm tiết một token. Trong câu ví dụ, chỉ "Thầy" viết hoa bị cắt đôi; mọi âm tiết khác là một token có dấu cách đứng trước. Từ GPT-2 (2019) tới Qwen2.5 (2024), "thuế token" của tiếng Việt giảm khoảng 3 lần, nhờ từ điển lớn gấp 3 và kho huấn luyện đa ngôn ngữ.
+
+<TuKiemTra
+	cauHoi="Qwen2.5-0.5B có 24 khối Transformer với d = 896. Nếu chỉ nhìn kiến trúc, điều gì làm nó khác về bản chất so với Transformer 2 khối của Chương 44?"
+	luaChon={['Nó dùng một loại attention hoàn toàn khác', 'Không có gì khác về bản chất: vẫn là các khối attention có mặt nạ nhân quả và mạng truyền thẳng; khác ở cỡ, vài cải tiến kỹ thuật, và nhất là dữ liệu huấn luyện', 'Nó không dùng softmax', 'Nó không cần tokenizer']}
+	dapAn={1}
+	giaiThich="Các LLM hiện nay vẫn là chồng khối Transformer bộ giải mã. Các cải tiến như RoPE (mã hóa vị trí bằng phép xoay), RMSNorm, SwiGLU, attention nhóm truy vấn chỉ thay chi tiết. Điều làm nên khác biệt là số tham số, lượng và chất lượng dữ liệu, và các bước huấn luyện sau tiền huấn luyện."
+/>
+
+<Khung loai="loi">
+**Nghĩ rằng LLM tra cứu một cơ sở dữ liệu.** Mô hình không lưu văn bản để tìm lại; nó chỉ có trọng số, và sinh ra token có xác suất cao theo những gì đã học. Kiến thức bị nén lẫn vào trọng số, nên có thể sai, lẫn lộn hoặc lỗi thời, như trang 3 sẽ thấy.
+
+**Ước lượng chi phí theo số từ.** API và giới hạn ngữ cảnh tính theo **token** của đúng tokenizer của mô hình. Cùng một đoạn tiếng Việt có thể tốn số token chênh nhau tới 3 lần giữa hai mô hình; luôn đo bằng tokenizer thật.
+</Khung>

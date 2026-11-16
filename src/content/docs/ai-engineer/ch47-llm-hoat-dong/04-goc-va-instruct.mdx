@@ -1,0 +1,89 @@
+---
+title: Mô hình gốc và mô hình chỉ dẫn
+description: "Hỏi bản gốc 'Thủ đô của Việt Nam là gì?', nó viết tiếp như một trang tin. Hỏi bản Instruct, nó trả lời 'Hà Nội' rồi dừng. Nhưng bọc câu hỏi trong khuôn hội thoại thì chính bản gốc cũng trả lời đúng, chỉ không biết dừng: kiến thức đến từ tiền huấn luyện, còn bước dạy làm theo chỉ dẫn dạy hình thức."
+---
+
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Hai giai đoạn
+
+Mô hình ở trang 1 tới 3 là bản **gốc**: chỉ được tiền huấn luyện để đoán token tiếp theo trên văn bản web. Nó không "trả lời" ai cả; nó viết tiếp văn bản theo kiểu văn bản nó đã thấy. Các trợ lý như ChatGPT, Claude, Gemini đi thêm ít nhất hai bước sau tiền huấn luyện:
+
+1. **Tinh chỉnh có giám sát theo chỉ dẫn** (instruction tuning, SFT): tinh chỉnh tiếp (Chương 46) trên hàng chục nghìn tới hàng triệu cặp câu hỏi, câu trả lời mẫu, viết trong một **khuôn hội thoại** cố định với các token đặc biệt đánh dấu ai đang nói. Chương 49.
+2. **Căn chỉnh theo sở thích** (RLHF, DPO): dạy mô hình ưu tiên câu trả lời con người đánh giá là hữu ích, trung thực, vô hại hơn. Chương 50.
+
+Qwen2.5-0.5B-Instruct là bản gốc ở trên sau các bước đó. Cùng kiến trúc, cùng tokenizer, khác trọng số.
+
+## Khuôn hội thoại
+
+```python
+R_CD = "7ae557604adf67be50417f59c2c2f167def9a775"
+tok_cd = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-0.5B-Instruct", revision=R_CD)
+llm_cd = AutoModelForCausalLM.from_pretrained("Qwen/Qwen2.5-0.5B-Instruct", revision=R_CD, dtype=torch.float32).eval()
+
+hoi = "Thủ đô của Việt Nam là gì?"
+khuon = tok_cd.apply_chat_template([{"role": "user", "content": hoi}], tokenize=False, add_generation_prompt=True)
+print(khuon)
+```
+
+```text title="Output"
+<|im_start|>system
+You are Qwen, created by Alibaba Cloud. You are a helpful assistant.<|im_end|>
+<|im_start|>user
+Thủ đô của Việt Nam là gì?<|im_end|>
+<|im_start|>assistant
+```
+
+Khuôn hội thoại của Qwen bọc mỗi lượt nói giữa `<|im_start|>` và `<|im_end|>`, kèm vai trò: `system` (chỉ dẫn chung, tokenizer tự thêm một câu mặc định nếu ta không đưa), `user` (câu hỏi), và cuối cùng `assistant` để trống: mô hình sẽ viết tiếp từ đó. Mỗi họ mô hình có khuôn riêng; mô hình chỉ dẫn được huấn luyện trên đúng khuôn của nó.
+
+## Hỏi cả hai
+
+Vòng sinh tham lam như trang 3, thêm điều kiện dừng khi gặp token kết thúc lượt nói `<|im_end|>`:
+
+```python
+HET = tok_cd.convert_tokens_to_ids("<|im_end|>")
+
+def tra_loi(mo_hinh, van_ban, so_token=40):
+    ids = tok_cd(van_ban, return_tensors="pt")["input_ids"]
+    n0 = ids.shape[1]
+    for _ in range(so_token):
+        with torch.no_grad():
+            j = mo_hinh(ids).logits[0, -1].argmax()
+        ids = torch.cat([ids, j.view(1, 1)], 1)
+        if j.item() in (HET, tok_cd.eos_token_id):  # mô hình tự kết thúc lượt nói
+            break
+    return tok_cd.decode(ids[0, n0:])
+
+print("gốc, hỏi thẳng:   ", repr(tra_loi(llm, hoi)))
+print("chỉ dẫn, có khuôn:", repr(tra_loi(llm_cd, khuon)))
+print("gốc, có khuôn:    ", repr(tra_loi(llm, khuon)))
+```
+
+```text title="Output"
+gốc, hỏi thẳng:    ' - Tin tức - 24h.vn\nThủ đô của Việt Nam là gì?\nThủ đô của Việt Nam là gì? 24h.vn\nThủ đô của Việt Nam'
+chỉ dẫn, có khuôn: 'Thủ đô của Việt Nam là Hà Nội.<|im_end|>'
+gốc, có khuôn:     'Thủ đô của Việt Nam là Hà Nội.acco\nacco\nBạn có thể sử dụng các công cụ để tìm kiếm thông tin về thủ đô của Việt Nam.acco\nacco\nBạn có'
+```
+
+Ba dòng, ba hành vi:
+
+- **Bản gốc, hỏi thẳng**: không trả lời. Nó viết tiếp câu hỏi như tiêu đề một trang tin, rồi lặp lại câu hỏi. Với văn bản web, đó đúng là điều hay đứng sau một câu hỏi.
+- **Bản chỉ dẫn, có khuôn**: "Thủ đô của Việt Nam là Hà Nội." rồi tự sinh `<|im_end|>` để dừng.
+- **Bản gốc, có khuôn**: cũng trả lời **đúng** "Hà Nội", nhưng không biết dừng, sinh tiếp những mảnh vô nghĩa ("acco") và một câu không ai hỏi.
+
+Dòng thứ ba là bài học chính. Kiến thức "thủ đô Việt Nam là Hà Nội" đã có sẵn trong bản gốc từ tiền huấn luyện; chỉ cần đặt câu hỏi vào đúng ngữ cảnh là nó lộ ra. Bước dạy làm theo chỉ dẫn chủ yếu dạy **hình thức**: nhận ra lượt của mình, trả lời gọn, và dừng đúng lúc.
+
+<TuKiemTra
+	cauHoi="Một công ty muốn LLM của mình biết thêm về sản phẩm nội bộ, nên tinh chỉnh theo chỉ dẫn trên 500 cặp hỏi đáp về sản phẩm. Theo trang này, rủi ro chính là gì?"
+	luaChon={['Không có rủi ro', 'Tinh chỉnh theo chỉ dẫn chủ yếu dạy hình thức trả lời; 500 cặp khó nạp đủ kiến thức mới, nên mô hình có thể trả lời đúng giọng nhưng bịa chi tiết. Đưa tài liệu sản phẩm vào ngữ cảnh (RAG) thường hợp hơn cho kiến thức', 'Mô hình sẽ quên tiếng Việt', 'Mô hình sẽ không trả lời được câu hỏi nào']}
+	dapAn={1}
+	giaiThich="Kiến thức của mô hình đến chủ yếu từ tiền huấn luyện trên kho rất lớn. Tinh chỉnh với ít dữ liệu dạy cách trả lời, định dạng, giọng điệu; nạp sự thật mới bằng tinh chỉnh vừa tốn vừa không chắc chắn. Với kiến thức hay thay đổi, truy hồi tài liệu rồi đưa vào câu lệnh (Chương 52) dễ kiểm soát hơn."
+/>
+
+<Khung loai="loi">
+**Gửi văn bản thô cho mô hình chỉ dẫn mà không dùng khuôn hội thoại.** Mô hình được huấn luyện trên đúng khuôn của nó; thiếu khuôn, nó trở về hành vi gần giống bản gốc. Luôn dùng `apply_chat_template` của chính tokenizer đó, hoặc API đã làm việc này giúp.
+
+**Dùng bản gốc cho ứng dụng hội thoại.** Bản gốc hợp để tinh chỉnh tiếp hoặc chấm điểm văn bản (perplexity, trang 2), không hợp để trò chuyện. Tên mô hình trên Hugging Face thường ghi rõ: có "Instruct" hay "Chat" là bản đã dạy làm theo chỉ dẫn.
+</Khung>

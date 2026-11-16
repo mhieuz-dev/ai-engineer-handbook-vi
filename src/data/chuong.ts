@@ -73,7 +73,7 @@ const BANG: [number, string, string, string, XuatBan?][] = [
 	[44, 'phan-4', 'Transformer từ đầu', 'transformer', { trangThai: 'xong', notebook: 'ch44_transformer.ipynb' }],
 	[45, 'phan-4', 'Tokenization và mô hình tiền huấn luyện', 'tokenization-pretrained', { trangThai: 'xong', notebook: 'ch45_tokenization_pretrained.ipynb' }],
 	[46, 'phan-4', 'Fine-tune PhoBERT', 'fine-tune-phobert'],
-	[47, 'phan-5', 'LLM hoạt động thế nào', 'llm-hoat-dong'],
+	[47, 'phan-5', 'LLM hoạt động thế nào', 'llm-hoat-dong', { trangThai: 'xong', notebook: 'ch47_llm_hoat_dong.ipynb' }],
 	[48, 'phan-5', 'Prompt engineering', 'prompt-engineering'],
 	[49, 'phan-5', 'Fine-tune LLM', 'fine-tune-llm'],
 	[50, 'phan-5', 'Căn chỉnh: RLHF và DPO', 'can-chinh-rlhf-dpo'],
