@@ -7,15 +7,26 @@ import SiteTitle from 'virtual:starlight/components/SiteTitle';
 import SocialIcons from 'virtual:starlight/components/SocialIcons';
 import ThemeSelect from 'virtual:starlight/components/ThemeSelect';
 import MenuChinh from '../MenuChinh.astro';
+import MenuDiDong from '../MenuDiDong.astro';
 import HoSoButton from '../HoSoButton.astro';
 import DangNhap from '../DangNhap.astro';
+import { khuCuaDuongDan } from '../../data/khu';
+import { taiMenuKhu } from '../../data/menu-khu';
 
 /**
  * Render the `Search` component if Pagefind is enabled or the default search component has been overridden.
  */
 const shouldRenderSearch =
 	config.pagefind || config.components.Search !== '@astrojs/starlight/components/Search.astro';
+
+const { hasSidebar } = Astro.locals.starlightRoute;
+const nhom = await taiMenuKhu();
+const khu = khuCuaDuongDan(Astro.url.pathname);
 ---
+
+<script is:inline define:vars={{ khu }}>
+	document.documentElement.dataset.khu = khu;
+</script>
 
 <div class="header">
 	<div class="title-wrapper sl-flex">
@@ -25,7 +36,7 @@ const shouldRenderSearch =
 		{shouldRenderSearch && <Search />}
 	</div>
 	<div class="sl-hidden md:sl-flex print:hidden right-group">
-		<MenuChinh />
+		<MenuChinh nhom={nhom} khu={khu} />
 		<HoSoButton />
 		<DangNhap />
 		<div class="sl-flex social-icons">
@@ -34,6 +45,7 @@ const shouldRenderSearch =
 		<ThemeSelect />
 		<LanguageSelect />
 	</div>
+	{!hasSidebar && <MenuDiDong nhom={nhom} khu={khu} />}
 </div>
 
 <style>

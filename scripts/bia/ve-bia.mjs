@@ -330,8 +330,9 @@ function biaRobotics() {
 	b.tho(`<rect width="${W}" height="${H}" fill="url(#n)"/><rect width="${W}" height="${H}" fill="url(#q)"/>`);
 
 	// Tiêu đề dọc ở mép trái, đọc từ dưới lên.
-	const td = chu('ROBOTICS', 0, 0, 150, FONT_DAM, 4);
-	const x0 = 168;
+	// Cỡ chữ chọn để chữ dọc còn chừa ≥ 60 đơn vị ở hai đầu bìa: bản 390px từng bị cắt chân chữ R.
+	const td = chu('ROBOTICS', 0, 0, 142, FONT_DAM, 4);
+	const x0 = 170;
 	const y0 = (H + td.rong) / 2;
 	b.tho(`<path d="${td.d}" fill="#FFFFFF" filter="url(#b)" transform="translate(${x0} ${so(y0)}) rotate(-90)"/>`);
 

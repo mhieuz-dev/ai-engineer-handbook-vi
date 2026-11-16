@@ -12,23 +12,14 @@ const soTrang = (await slugTrangDaXuatBan()).length;
 </a>
 
 <script>
-	import { KHOA_STORAGE, docTuStorage } from '../lib/tien-do';
+	import { KHOA_STORAGE, docTuStorage, phanTramTheoSo } from '../lib/tien-do';
 
 	const nut = document.querySelector<HTMLElement>('[data-hoso-pt]');
 	if (nut) {
 		const tong = Number(nut.dataset.tong ?? 0);
 		const capNhat = () => {
 			try {
-				const td = docTuStorage(localStorage);
-				const doc = Object.keys(td.daDoc).length;
-				if (!tong || doc === 0) {
-					nut.textContent = '0%';
-					return;
-				}
-				let pt = Math.floor((doc * 100) / tong);
-				if (pt === 0) pt = 1;
-				if (doc < tong && pt === 100) pt = 99;
-				nut.textContent = `${pt}%`;
+				nut.textContent = `${phanTramTheoSo(docTuStorage(localStorage), tong)}%`;
 			} catch {
 				nut.textContent = '';
 			}

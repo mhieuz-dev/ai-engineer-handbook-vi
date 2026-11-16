@@ -1,0 +1,312 @@
+---
+import type { Khu } from '../data/khu';
+import type { NhomMenu } from '../data/menu-khu';
+import { slugTrangDaXuatBan } from '../lib/slug-xuat-ban';
+import Icon from './icon/Icon.astro';
+
+interface Props {
+	nhom: NhomMenu[];
+	khu: Khu;
+}
+const { nhom, khu } = Astro.props;
+const soTrang = (await slugTrangDaXuatBan()).length;
+---
+
+<div class="mdd" data-mdd>
+	<button class="mdd-nut" type="button" aria-expanded="false" aria-controls="mdd-bang" aria-label="Mở menu" data-mdd-nut>
+		<svg class="mdd-mo" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+			<path d="M4 7h16M4 12h16M4 17h16" />
+		</svg>
+		<svg class="mdd-dong-ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+			<path d="m6 6 12 12M18 6 6 18" />
+		</svg>
+	</button>
+	<div class="mdd-nen" data-mdd-nen hidden></div>
+	<nav class="mdd-bang" id="mdd-bang" aria-label="Menu di động" data-mdd-bang hidden>
+		<div class="mdd-dau">
+			<span class="mdd-tieu-de">Menu</span>
+			<button class="mdd-dong-nut" type="button" aria-label="Đóng menu" data-mdd-dong>
+				<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+					<path d="m6 6 12 12M18 6 6 18" />
+				</svg>
+			</button>
+		</div>
+
+		<a class:list={['mdd-hoso', { 'dang-o': khu === 'hoso' }]} href="/ho-so/">
+			<Icon ten="hoso" />
+			<span class="mdd-hoso-chu">Hồ sơ học tập</span>
+			<span class="mdd-pt" data-mdd-pt data-tong={soTrang}>0%</span>
+		</a>
+
+		{
+			nhom.map((g) => (
+				<section class="mdd-nhom" style={`--khu-nhom: var(--khu-${g.id})`}>
+					<h2 class:list={['mdd-nhom-ten', { 'dang-o': khu === g.id }]}>
+						<Icon ten={g.id} />
+						{g.ten}
+					</h2>
+					<p class="mdd-mo">{g.mo}</p>
+					{g.items.map((it) => (
+						<a class="mdd-muc" href={it.href}>
+							<span class="mdd-muc-ico"><Icon ten={it.icon} /></span>
+							<span class="mdd-chu">
+								<strong>{it.ten}</strong>
+								<small>{it.mo}</small>
+							</span>
+						</a>
+					))}
+				</section>
+			))
+		}
+	</nav>
+</div>
+
+<script>
+	import { KHOA_STORAGE, docTuStorage, phanTramTheoSo } from '../lib/tien-do';
+
+	const goc = document.querySelector<HTMLElement>('[data-mdd]');
+	if (goc) {
+		const nut = goc.querySelector<HTMLButtonElement>('[data-mdd-nut]')!;
+		const bang = goc.querySelector<HTMLElement>('[data-mdd-bang]')!;
+		const nen = goc.querySelector<HTMLElement>('[data-mdd-nen]')!;
+		const nutDong = goc.querySelector<HTMLButtonElement>('[data-mdd-dong]')!;
+		let dangMo = false;
+
+		const mo = () => {
+			dangMo = true;
+			bang.hidden = false;
+			nen.hidden = false;
+			nut.setAttribute('aria-expanded', 'true');
+			document.documentElement.classList.add('mdd-khoa-cuon');
+			nutDong.focus({ preventScroll: true });
+		};
+		const dong = () => {
+			if (!dangMo) return;
+			dangMo = false;
+			bang.hidden = true;
+			nen.hidden = true;
+			nut.setAttribute('aria-expanded', 'false');
+			document.documentElement.classList.remove('mdd-khoa-cuon');
+			nut.focus({ preventScroll: true });
+		};
+		nut.addEventListener('click', () => (dangMo ? dong() : mo()));
+		nutDong.addEventListener('click', dong);
+		nen.addEventListener('click', dong);
+		document.addEventListener('keydown', (e) => {
+			if (e.key === 'Escape' && dangMo && !e.defaultPrevented) dong();
+		});
+		// Chọn một mục thì đóng menu; không chặn điều hướng.
+		bang.addEventListener('click', (e) => {
+			if ((e.target as HTMLElement).closest('a')) dong();
+		});
+
+		const pt = goc.querySelector<HTMLElement>('[data-mdd-pt]');
+		if (pt) {
+			const tong = Number(pt.dataset.tong ?? 0);
+			const capNhat = () => {
+				try {
+					pt.textContent = `${phanTramTheoSo(docTuStorage(localStorage), tong)}%`;
+				} catch {
+					pt.textContent = '';
+				}
+			};
+			capNhat();
+			window.addEventListener('tien-do-doi', capNhat);
+			window.addEventListener('storage', (e) => {
+				if (e.key === null || e.key === KHOA_STORAGE) capNhat();
+			});
+		}
+	}
+</script>
+
+<style>
+	.mdd {
+		display: none;
+	}
+	@media (max-width: 49.999rem) {
+		.mdd {
+			display: block;
+		}
+	}
+
+	/* Trang không có sidebar chưa được Starlight chừa chỗ cho nút menu: chừa thêm để nút không đè ô tìm kiếm. */
+	@media (max-width: 49.999rem) {
+		:global(header.header) {
+			padding-inline-end: calc(
+				var(--sl-nav-gap) + var(--sl-nav-pad-x) + var(--sl-menu-button-size)
+			) !important;
+		}
+	}
+	.mdd-nut {
+		position: fixed;
+		top: calc((var(--sl-nav-height) - var(--sl-menu-button-size)) / 2);
+		inset-inline-end: var(--sl-nav-pad-x);
+		z-index: var(--sl-z-index-navbar);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: var(--sl-menu-button-size);
+		height: var(--sl-menu-button-size);
+		padding: 0;
+		border: 0;
+		border-radius: 50%;
+		background: var(--be-mat);
+		color: var(--tx);
+		box-shadow: var(--bong-2);
+		cursor: pointer;
+	}
+	.mdd-nut .mdd-dong-ico {
+		display: none;
+	}
+	.mdd-nut[aria-expanded='true'] .mdd-mo {
+		display: none;
+	}
+	.mdd-nut[aria-expanded='true'] .mdd-dong-ico {
+		display: block;
+	}
+	.mdd-nen {
+		position: fixed;
+		inset: 0;
+		z-index: calc(var(--sl-z-index-navbar) + 1);
+		background: rgb(20 20 20 / 0.42);
+	}
+	.mdd-nen[hidden],
+	.mdd-bang[hidden] {
+		display: none;
+	}
+	.mdd-bang {
+		position: fixed;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		z-index: calc(var(--sl-z-index-navbar) + 2);
+		width: min(21rem, 88vw);
+		padding: 0.9rem 1rem 2rem;
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		background: var(--bg);
+		border-left: 1px solid var(--line);
+		box-shadow: -18px 0 40px rgb(20 20 20 / 0.22);
+		animation: mdd-vao 0.22s ease-out;
+	}
+	@keyframes mdd-vao {
+		from {
+			transform: translateX(1.5rem);
+			opacity: 0;
+		}
+		to {
+			transform: none;
+			opacity: 1;
+		}
+	}
+	:global(html.mdd-khoa-cuon) {
+		overflow: hidden;
+	}
+	.mdd-dau {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 0.7rem;
+	}
+	.mdd-tieu-de {
+		font: 600 0.78rem 'Be Vietnam Pro', system-ui, sans-serif;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
+		color: var(--mut-chu);
+	}
+	.mdd-dong-nut {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 2rem;
+		height: 2rem;
+		border: 1px solid var(--line);
+		border-radius: 50%;
+		background: var(--bg);
+		color: var(--tx);
+		cursor: pointer;
+	}
+	.mdd-hoso {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.6rem 0.7rem;
+		border: 1px solid var(--line);
+		border-radius: 10px;
+		color: var(--tx);
+		text-decoration: none;
+		font: 600 0.88rem 'Be Vietnam Pro', system-ui, sans-serif;
+	}
+	.mdd-hoso.dang-o {
+		border-color: var(--khu-hoso);
+		color: var(--ok-chu);
+	}
+	.mdd-hoso > :global(svg) {
+		color: var(--ok-chu);
+	}
+	.mdd-hoso-chu {
+		flex: 1;
+	}
+	.mdd-pt {
+		font-family: 'JetBrains Mono', monospace;
+		font-size: 0.72rem;
+		color: var(--ok-chu);
+		font-variant-numeric: tabular-nums;
+	}
+	.mdd-nhom {
+		margin-top: 1.1rem;
+	}
+	.mdd-nhom-ten {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		margin: 0;
+		padding: 0;
+		border: 0;
+		font: 700 0.82rem 'Be Vietnam Pro', system-ui, sans-serif;
+		color: var(--khu-nhom);
+	}
+	.mdd-nhom-ten.dang-o {
+		text-decoration: underline;
+		text-underline-offset: 0.3rem;
+	}
+	.mdd-mo {
+		margin: 0.15rem 0 0.45rem;
+		font-size: 0.72rem;
+		line-height: 1.4;
+		color: var(--mut-chu);
+	}
+	.mdd-muc {
+		display: flex;
+		gap: 0.55rem;
+		align-items: flex-start;
+		padding: 0.45rem 0.5rem;
+		border-radius: 8px;
+		color: var(--tx);
+		text-decoration: none;
+	}
+	.mdd-muc:hover,
+	.mdd-muc:focus-visible {
+		background: var(--panel);
+	}
+	.mdd-muc-ico {
+		flex: none;
+		margin-top: 0.1rem;
+		color: var(--khu-nhom);
+	}
+	.mdd-chu {
+		display: flex;
+		flex-direction: column;
+		gap: 0.05rem;
+		min-width: 0;
+	}
+	.mdd-chu strong {
+		font-size: 0.86rem;
+		font-weight: 600;
+	}
+	.mdd-chu small {
+		font-size: 0.72rem;
+		line-height: 1.35;
+		color: var(--mut-chu);
+	}
+</style>

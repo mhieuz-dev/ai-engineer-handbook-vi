@@ -53,6 +53,16 @@ export function phanTram(td: TienDo, cacSlugTrangDaXuatBan: string[]): number {
 	return pt;
 }
 
+/** Phần trăm trên tổng số trang đã phát hành (dùng cho nút Hồ sơ và menu di động). */
+export function phanTramTheoSo(td: TienDo, tong: number): number {
+	if (!tong) return 0;
+	const doc = Object.keys(td.daDoc).length;
+	const pt = Math.floor((doc * 100) / tong);
+	if (doc > 0 && pt === 0) return 1;
+	if (doc < tong && pt === 100) return 99;
+	return pt;
+}
+
 export function docTuStorage(s: Pick<Storage, 'getItem'> | undefined): TienDo {
 	try {
 		const raw = s?.getItem(KHOA_STORAGE);
