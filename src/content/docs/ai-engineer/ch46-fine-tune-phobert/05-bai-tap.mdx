@@ -1,0 +1,114 @@
+---
+title: Bài tập
+description: "Ba bài tập có đáp án chi tiết (tốc độ học 1e-3 so với 2e-5; khi chỉ có 500 câu có nhãn, tinh chỉnh hay trích đặc trưng; bộ nhớ cần để tinh chỉnh PhoBERT và một mô hình 7 tỷ tham số) và câu hỏi phỏng vấn."
+---
+
+import BaiTap from '../../../../components/BaiTap.astro';
+import Khung from '../../../../components/Khung.astro';
+
+Đoán trước, rồi chạy code trong notebook để kiểm tra. Code dùng lại `tinh_chinh`, `du_doan`, `cham`, `goc`, `I_tr`, `y_tr`, `I_va` và các import của các trang trước. Hai bài đầu huấn luyện thật trên một phần nhỏ của train, mỗi bài vài phút trên CPU.
+
+<BaiTap so="46.1">
+**Tốc độ học quá lớn.** Tinh chỉnh trên 2000 câu train đầu tiên, 1 epoch, với tốc độ học $10^{-3}$ (mức thường dùng khi học từ đầu) và $2 \times 10^{-5}$. Đoán trước: bản nào tốt hơn, và tốt hơn bao nhiêu?
+
+<Fragment slot="dap-an">
+
+```python
+for lr in (1e-3, 2e-5):
+    print("lr", lr)
+    _ = tinh_chinh(I_tr[:2000], y_tr[:2000], lr=lr, so_epoch=1)
+```
+
+```text title="Output"
+lr 0.001
+1 0.8889 0.4454 0.2054
+lr 2e-05
+1 0.7241 0.8857 0.604
+```
+
+Với $10^{-3}$, sau một epoch mô hình đoán **mọi** câu val là tiêu cực: độ chính xác 44,54% đúng bằng tỷ lệ câu tiêu cực của val (705 trên 1583), và macro-F1 0,205 là F1 của riêng lớp tiêu cực chia ba. Loss train trung bình 0,889 vẫn cao. Những bước lớn đã phá phần thân đã tiền huấn luyện, và mô hình rơi về lời giải tầm thường nhất. Với $2 \times 10^{-5}$, cùng 2000 câu và 1 epoch cho 88,57% và macro-F1 0,604 (macro-F1 thấp vì lớp trung tính chưa kịp được học với ít câu như vậy). Tốc độ học là siêu tham số đầu tiên cần kiểm khi tinh chỉnh không học được gì.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="46.2">
+**Khi chỉ có 500 câu có nhãn.** Dự án thật thường bắt đầu với rất ít nhãn. Trên 500 câu train đầu tiên, so tinh chỉnh (3 epoch, hai seed khác nhau) với PhoBERT đóng băng cộng hồi quy logistic (trung bình các token như Chương 45, C = 0,1). Đo macro-F1 trên val.
+
+<Fragment slot="dap-an">
+
+```python
+from sklearn.linear_model import LogisticRegression
+
+def vector_tb(m, I, lo=128):                         # trung bình vector các token, mô hình đóng băng
+    ra = []
+    with torch.no_grad():
+        for k in range(0, len(I), lo):
+            x = pho.pad({"input_ids": I[k:k + lo]}, return_tensors="pt")
+            h = m(**x).last_hidden_state
+            mk = x["attention_mask"][..., None]
+            ra.append(((h * mk).sum(1) / mk.sum(1)).numpy())
+    return np.concatenate(ra)
+
+goc.eval()
+lr_dt = LogisticRegression(C=0.1, max_iter=3000).fit(vector_tb(goc.roberta, I_tr[:500]), y_tr[:500].numpy())
+print("đóng băng", cham(y_va, lr_dt.predict(vector_tb(goc.roberta, I_va))))
+for seed in (0, 1):
+    m500 = tinh_chinh(I_tr[:500], y_tr[:500], seed=seed)
+    print("tinh chỉnh, seed", seed, cham(y_va, du_doan(m500, I_va)))
+```
+
+```text title="Output"
+đóng băng (0.8888, 0.6064)
+1 0.9496 0.7896 0.5354
+2 0.6758 0.8503 0.58
+3 0.5633 0.8692 0.593
+tinh chỉnh, seed 0 (0.8692, 0.593)
+1 0.9154 0.7922 0.5399
+2 0.7177 0.8389 0.5723
+3 0.6322 0.8503 0.58
+tinh chỉnh, seed 1 (0.8503, 0.58)
+```
+
+Với 500 câu, **trích đặc trưng thắng**: 88,88% và macro-F1 0,606, so với tinh chỉnh 86,92% / 0,593 (seed 0) và 85,03% / 0,580 (seed 1). Hai lần tinh chỉnh chỉ khác seed (đầu phân loại khởi tạo khác, thứ tự lô khác) đã lệch nhau 1,9 điểm độ chính xác. Với ít dữ liệu, tinh chỉnh 135 triệu tham số kém ổn định, còn hồi quy logistic trên vector cố định có rất ít thứ để học sai. Với toàn bộ 11 426 câu thì ngược lại: tinh chỉnh 0,851 so với 0,797 trên val. Thứ tự giữa hai cách phụ thuộc vào lượng nhãn: với rất ít nhãn, bắt đầu bằng trích đặc trưng; khi có vài nghìn nhãn, tinh chỉnh.
+</Fragment>
+</BaiTap>
+
+<BaiTap so="46.3">
+**Bộ nhớ để tinh chỉnh.** Tinh chỉnh toàn bộ bằng AdamW với số thực 4 byte cần giữ cho mỗi tham số: trọng số, gradient, và hai trung bình động của AdamW. Tính bộ nhớ đó (chưa kể các giá trị trung gian của lượt xuôi) cho PhoBERT và cho một mô hình ngôn ngữ 7 tỷ tham số.
+
+<Fragment slot="dap-an">
+
+```python
+for ten, n in (("PhoBERT", sum(p.numel() for p in goc.parameters())), ("7 tỷ", 7e9)):
+    print(ten, round(n * 4 * 4 / 1e9, 2), "GB")
+```
+
+```text title="Output"
+PhoBERT 2.16 GB
+7 tỷ 112.0 GB
+```
+
+PhoBERT cần khoảng **2,16 GB** chỉ cho trọng số, gradient và trạng thái AdamW ở số thực 4 byte; vừa với RAM của một máy tính bình thường, nên chương này tinh chỉnh được trên CPU. Mô hình 7 tỷ tham số cần **112 GB**, chưa kể các giá trị trung gian của lượt xuôi: vượt xa bộ nhớ của một GPU phổ thông. Đó là lý do tinh chỉnh mô hình ngôn ngữ lớn dùng những cách tiết kiệm như LoRA (chỉ học một phần rất nhỏ tham số) và lượng tử hóa trọng số gốc (Chương 49).
+</Fragment>
+</BaiTap>
+
+<Khung loai="phong-van">
+Phỏng vấn AI Engineer thường bằng tiếng Anh. Mỗi câu có bản tiếng Anh in nghiêng ngay bên dưới, hãy tập trả lời bằng cả hai thứ tiếng.
+
+**1. Tinh chỉnh khác trích đặc trưng thế nào? Khi nào chọn cách nào?**
+
+<p lang="en"><em>How does fine-tuning differ from feature extraction, and when would you choose each?</em></p>
+
+*Gợi ý:* trích đặc trưng giữ mô hình đóng băng, chỉ học một mô hình nhỏ trên vector của nó: rẻ, nhanh, tính vector một lần rồi thử nhiều mô hình. Tinh chỉnh cập nhật mọi trọng số theo nhiệm vụ: thường tốt hơn rõ khi có vài nghìn nhãn, nhưng tốn tính toán, cần GPU cho mô hình lớn, và phải lưu một bản mô hình đầy đủ cho mỗi nhiệm vụ. Với rất ít nhãn hoặc tài nguyên hạn chế, bắt đầu từ trích đặc trưng.
+
+**2. Những siêu tham số nào quan trọng nhất khi tinh chỉnh một mô hình kiểu BERT?**
+
+<p lang="en"><em>Which hyperparameters matter most when fine-tuning a BERT-style model?</em></p>
+
+*Gợi ý:* tốc độ học (cỡ 1e-5 tới 5e-5, quá lớn thì phá trọng số đã học), số epoch (2 tới 4, giữ bản tốt nhất theo val), khởi động dần và lịch giảm tốc độ học, cỡ lô và độ dài tối đa (theo bộ nhớ). Kết quả còn dao động theo seed, nhất là với ít dữ liệu, nên báo cáo trên vài seed.
+
+**3. Vì sao tinh chỉnh toàn bộ một mô hình ngôn ngữ lớn lại khó, và người ta làm gì thay thế?**
+
+<p lang="en"><em>Why is full fine-tuning of large language models hard, and what are the alternatives?</em></p>
+
+*Gợi ý:* bộ nhớ: trọng số, gradient và trạng thái của AdamW tốn khoảng 16 byte mỗi tham số ở số thực 4 byte, tức hơn 100 GB cho 7 tỷ tham số, chưa kể giá trị trung gian; và mỗi nhiệm vụ cần lưu một bản đầy đủ. Thay thế: tinh chỉnh hiệu quả tham số như LoRA (chỉ học các ma trận hạng thấp cộng vào trọng số), lượng tử hóa mô hình gốc (QLoRA), hoặc không tinh chỉnh mà dùng câu lệnh và truy hồi (Phần V).
+</Khung>

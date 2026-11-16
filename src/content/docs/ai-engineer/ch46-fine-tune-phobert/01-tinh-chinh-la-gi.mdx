@@ -1,0 +1,136 @@
+---
+title: Tinh chỉnh là gì
+description: "Chương 45 đóng băng PhoBERT và chỉ học một lớp tuyến tính ở trên. Tinh chỉnh thì cập nhật cả 135 triệu tham số theo đúng nhiệm vụ, với tốc độ học rất nhỏ. Lắp một đầu phân loại lên token đầu câu, và nhìn mô hình trước khi học: đầu ra ngẫu nhiên, đoán gần như toàn một lớp."
+---
+
+import CanBietTruoc from '../../../../components/CanBietTruoc.astro';
+import ColabButton from '../../../../components/ColabButton.astro';
+import Khung from '../../../../components/Khung.astro';
+import Term from '../../../../components/Term.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+import VideoChuong from '../../../../components/VideoChuong.astro';
+
+<CanBietTruoc>
+Transfer learning với ResNet (Chương 28). Lịch tốc độ học, AdamW (Chương 26). Transformer (Chương 44). Tokenizer và PhoBERT đóng băng trên UIT-VSFC (Chương 45). Các mô hình của Chương 41 trên cùng bộ dữ liệu.
+
+<Fragment slot="sau-chuong">
+Tinh chỉnh PhoBERT cho phân loại cảm xúc bằng vòng huấn luyện PyTorch tự viết: tốc độ học nhỏ, khởi động dần, cắt gradient. So trung thực với mọi mô hình trước trên cùng val và test. Nhìn vào bên trong: lớp nào thay đổi nhiều nhất, và vector theo ngữ cảnh của "tốt" và "tệ" bị kéo xa nhau ra sao.
+</Fragment>
+</CanBietTruoc>
+
+<VideoChuong so={46} />
+
+<ColabButton notebook="ch46_fine_tune_phobert.ipynb" />
+
+## Ba cách dùng một mô hình tiền huấn luyện
+
+Trên cùng bài cảm xúc UIT-VSFC, ta đã thấy hai cách và sắp thấy cách thứ ba:
+
+| Cách | Học gì | Ở đâu |
+|---|---|---|
+| Học từ đầu | mọi tham số, khởi tạo ngẫu nhiên | Chương 44: Transformer 462 nghìn tham số |
+| Trích đặc trưng | chỉ một lớp ở trên, mô hình đóng băng | Chương 45: PhoBERT + hồi quy logistic |
+| <Term id="tinh-chinh">Tinh chỉnh</Term> | **mọi** tham số, bắt đầu từ trọng số đã tiền huấn luyện | chương này |
+
+Tinh chỉnh là transfer learning của Chương 28, áp cho ngôn ngữ: giữ trọng số đã học trên 20 GB văn bản làm điểm xuất phát, thêm một đầu ra nhỏ cho nhiệm vụ mới, rồi huấn luyện **tất cả** trên dữ liệu có nhãn. Ba điều khác với huấn luyện từ đầu:
+
+- **Tốc độ học rất nhỏ**, cỡ $2 \times 10^{-5}$, nhỏ hơn khoảng 50 lần so với mức $10^{-3}$ của Chương 44. Trọng số đã tốt; ta chỉ muốn chỉnh nhẹ. Bước lớn sẽ xóa những gì mô hình đã học.
+- **Ít epoch**: 2 tới 4 thường đủ. Mô hình có 135 triệu tham số mà chỉ có 11 nghìn câu: học lâu là học thuộc.
+- **Khởi động dần** (warmup): tốc độ học tăng từ 0 lên mức đỉnh trong khoảng 10% số bước đầu, rồi giảm tuyến tính về 0. Lúc đầu, đầu ra còn ngẫu nhiên nên gradient lớn và lộn xộn; bước nhỏ lúc đó tránh làm hỏng phần thân.
+
+## Đầu phân loại
+
+```python
+!pip install pyarrow underthesea transformers
+```
+
+```python
+import copy
+import os
+import time
+import urllib.request
+os.environ["DISABLE_SAFETENSORS_CONVERSION"] = "1"   # không tải thêm bản chuyển đổi 540 MB (Chương 45)
+import numpy as np
+import pandas as pd
+import torch
+import torch.nn.functional as F
+from sklearn.metrics import accuracy_score, f1_score
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from underthesea import word_tokenize
+torch.set_num_threads(4)
+
+R = "01daacda68afe13d83023d16ec647239e344a1e6"       # phiên bản PhoBERT đã ghim ở Chương 45
+pho = AutoTokenizer.from_pretrained("vinai/phobert-base", revision=R)
+torch.manual_seed(0)
+goc = AutoModelForSequenceClassification.from_pretrained("vinai/phobert-base", revision=R, num_labels=3)
+print(goc.classifier)
+print(sum(p.numel() for p in goc.parameters()), sum(p.numel() for p in goc.classifier.parameters()))
+```
+
+```text title="Output"
+RobertaClassificationHead(
+  (dense): Linear(in_features=768, out_features=768, bias=True)
+  (dropout): Dropout(p=0.1, inplace=False)
+  (out_proj): Linear(in_features=768, out_features=3, bias=True)
+)
+135000579 592899
+```
+
+`AutoModelForSequenceClassification` lấy phần thân PhoBERT đã tiền huấn luyện, bỏ đầu đoán từ của Chương 45, và lắp một **đầu phân loại** mới: lấy vector của token đầu câu `<s>`, qua một lớp tuyến tính 768 sang 768, tanh, rồi một lớp 768 sang 3 lớp cảm xúc. Đầu này có khoảng 593 nghìn tham số, khởi tạo **ngẫu nhiên** (thư viện in một cảnh báo về chuyện này, đó là điều bình thường). Phần thân có hơn 134 triệu.
+
+Bài tập 45.3 đã thấy vector của token đầu câu là đặc trưng **kém** khi mô hình đóng băng. Khi tinh chỉnh, điều đó không còn quan trọng: gradient đi từ đầu phân loại ngược vào mọi lớp, và mô hình học dồn thông tin cần cho cảm xúc về đúng vị trí đó.
+
+## Trước khi học
+
+Mã hóa dữ liệu một lần (tách từ rồi tokenizer, như Chương 45), rồi xem mô hình chưa học đoán gì trên val:
+
+```python
+URL = "https://huggingface.co/api/datasets/uitnlp/vietnamese_students_feedback/parquet/default/{}/0.parquet"
+THU_MUC = os.path.expanduser("~/.cache/vsfc")
+
+def tai(phan):                                       # như Chương 38
+    os.makedirs(THU_MUC, exist_ok=True)
+    tep = os.path.join(THU_MUC, phan + ".parquet")
+    if not os.path.exists(tep):
+        urllib.request.urlretrieve(URL.format(phan), tep)
+    return pd.read_parquet(tep)
+
+tr, va, te = tai("train"), tai("validation"), tai("test")
+ma_hoa = lambda ds: [pho(word_tokenize(s, format="text"), truncation=True, max_length=64)["input_ids"] for s in ds.sentence]
+I_tr, I_va, I_te = ma_hoa(tr), ma_hoa(va), ma_hoa(te)
+y_tr, y_va, y_te = torch.tensor(tr.sentiment.values), va.sentiment.values, te.sentiment.values
+
+def du_doan(m, I, lo=128):
+    m.eval()
+    ra = []
+    with torch.no_grad():
+        for k in range(0, len(I), lo):
+            x = pho.pad({"input_ids": I[k:k + lo]}, return_tensors="pt")   # đệm lô, kèm mặt nạ
+            ra.append(m(**x).logits.argmax(-1))
+    return torch.cat(ra).numpy()
+
+def cham(y, p):
+    return round(accuracy_score(y, p), 4), round(f1_score(y, p, average="macro"), 4)
+
+p0 = du_doan(goc, I_va)
+print(cham(y_va, p0), np.bincount(p0, minlength=3), np.bincount(y_va))
+```
+
+```text title="Output"
+(0.0701, 0.0626) [  27 1456  100] [705  73 805]
+```
+
+Mô hình chưa học đoán 1456 trên 1583 câu val là **trung tính**, đúng lớp hiếm nhất (chỉ 73 câu thật, 4,6%), nên độ chính xác chỉ **7%**, tệ hơn cả đoán bừa đều ba lớp. Không có gì lạ: đầu phân loại ngẫu nhiên đặt ranh giới ở một chỗ tùy ý, và vì vector của mọi câu từ PhoBERT khá giống nhau (chúng cùng nằm trong một vùng hẹp của không gian), hầu hết rơi về cùng một phía. Mọi thứ mô hình biết về cảm xúc sẽ đến từ tinh chỉnh.
+
+<TuKiemTra
+	cauHoi="Vì sao tinh chỉnh dùng tốc độ học khoảng 2e-5 thay vì 1e-3 như khi học từ đầu?"
+	luaChon={['Vì mô hình lớn nên tính chậm', 'Vì trọng số đã tiền huấn luyện là điểm xuất phát tốt; bước lớn sẽ đẩy chúng đi xa và xóa mất những gì mô hình đã học', 'Vì dữ liệu tiếng Việt ít', 'Vì AdamW không chạy được với tốc độ học lớn']}
+	dapAn={1}
+	giaiThich="Tinh chỉnh muốn ở gần điểm xuất phát: giữ kiến thức ngôn ngữ chung, chỉ chỉnh cho nhiệm vụ mới. Với 1e-3, vài trăm bước đầu (khi đầu phân loại còn ngẫu nhiên và gradient lớn) đủ làm hỏng phần thân; bài tập 46.1 đo điều này."
+/>
+
+<Khung loai="loi">
+**Quên rằng đầu phân loại khởi tạo ngẫu nhiên.** Cảnh báo "newly initialized" khi tải mô hình không phải lỗi; nó nhắc rằng mô hình **chưa** phân loại được gì cho tới khi tinh chỉnh. Dùng mô hình đó để dự đoán ngay là nhận kết quả ngẫu nhiên.
+
+**Tinh chỉnh với cỡ lô hoặc độ dài quá lớn trên máy yếu.** Bộ nhớ cho tinh chỉnh lớn gấp nhiều lần lúc chỉ dự đoán (gradient, trạng thái của AdamW, các giá trị trung gian); bài tập 46.3 tính con số đó. Giảm độ dài tối đa và cỡ lô trước khi nghĩ tới máy mạnh hơn.
+</Khung>

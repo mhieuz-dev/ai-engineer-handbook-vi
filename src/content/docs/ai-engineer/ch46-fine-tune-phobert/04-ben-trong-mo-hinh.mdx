@@ -1,0 +1,75 @@
+---
+title: Bên trong mô hình đã tinh chỉnh
+description: "Tinh chỉnh thay đổi trọng số ít đến bất ngờ, và không đều: đo độ thay đổi tương đối của từng lớp. Rồi giữ lời hứa của Chương 40: vector theo ngữ cảnh của 'tốt' và 'tệ', trước và sau tinh chỉnh."
+---
+
+import HinhKetQua from '../../../../components/HinhKetQua.astro';
+import Khung from '../../../../components/Khung.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Trọng số đã đi bao xa
+
+`goc` ở trang 1 được tạo với cùng seed như trong `tinh_chinh`, nên nó là **đúng** điểm xuất phát của `tc`, kể cả đầu phân loại ngẫu nhiên. So từng phần: độ thay đổi tương đối $\lVert W_{\text{sau}} - W_{\text{trước}} \rVert / \lVert W_{\text{trước}} \rVert$, tính gộp mọi ma trận của phần đó.
+
+```python
+truoc = dict(goc.named_parameters())
+
+def doi(tien_to):                                    # % thay đổi tương đối của mọi tham số có tên bắt đầu bằng tien_to
+    tu = sum(((p - truoc[n]) ** 2).sum().item() for n, p in tc.named_parameters() if n.startswith(tien_to))
+    mau = sum((truoc[n] ** 2).sum().item() for n, p in tc.named_parameters() if n.startswith(tien_to))
+    return round(100 * (tu / mau) ** 0.5, 3)
+
+phan = ["roberta.embeddings."] + [f"roberta.encoder.layer.{i}." for i in range(12)] + ["classifier."]
+muc_doi = [doi(t) for t in phan]
+print(muc_doi)
+```
+
+```text title="Output"
+[0.127, 0.664, 0.652, 0.651, 0.684, 0.694, 0.715, 0.718, 0.712, 0.767, 0.803, 0.814, 1.02, 4.525]
+```
+
+<HinhKetQua src="/hinh/ch46/h1_muc_doi.svg" alt="Biểu đồ cột, trục ngang là 14 phần của mô hình: vector từ, khối 0 tới khối 11, đầu phân loại; trục dọc là phần trăm thay đổi của trọng số. Cột vector từ rất thấp, khoảng 0,13%. Các cột khối gần bằng nhau quanh 0,65 tới 0,72% ở tám khối đầu, rồi cao dần ở bốn khối cuối tới khoảng 1,02% ở khối 11. Cột đầu phân loại cao vượt hẳn, khoảng 4,5%." so="46.1" chuThich="Độ thay đổi tương đối của trọng số sau tinh chỉnh, theo từng phần của PhoBERT.">
+**Đọc hình.** Mỗi cột là một phần của mô hình, từ lớp vector từ (trái) qua 12 khối Transformer tới đầu phân loại (phải). Chiều cao là độ thay đổi tương đối của trọng số, tính bằng phần trăm.
+
+**Điều cần thấy.** Phần thân thay đổi chưa tới 1,1%: lớp vector từ 0,13%, các khối Transformer nhìn chung tăng theo độ sâu: 0,65 tới 0,72% ở tám khối đầu, rồi 0,77; 0,80; 0,81 và 1,02% ở bốn khối cuối. Chỉ đầu phân loại, vốn khởi tạo ngẫu nhiên, đổi 4,5%.
+</HinhKetQua>
+
+Tinh chỉnh hầu như **không đi xa** điểm xuất phát: 3 epoch với tốc độ học $2 \times 10^{-5}$ chỉ dịch mỗi khối Transformer khoảng 1% độ lớn của nó, và lớp vector từ gần như đứng yên. Vậy mà macro-F1 val đi từ 0,06 lên 0,85. Kiến thức ngôn ngữ vẫn nằm nguyên trong trọng số tiền huấn luyện; tinh chỉnh chỉ xoay nhẹ cho nó phục vụ nhiệm vụ mới. Các khối sâu đổi nhiều hơn các khối nông, khớp với điều đã thấy ở ResNet trong Chương 28: lớp nông học những thứ chung, lớp sâu gần với nhiệm vụ hơn. Thay đổi cần thiết nhỏ như vậy cũng gợi ý vì sao có thể tinh chỉnh bằng rất ít tham số, ý tưởng của LoRA (Chương 49).
+
+## "Tốt" và "tệ" trước và sau
+
+Chương 40 đã thấy với Word2Vec trên UIT-VSFC, từ gần "tốt" nhất là "**tệ**": hai từ xuất hiện trong cùng ngữ cảnh ("thầy dạy rất ..."), mà vector từ tĩnh chỉ học từ ngữ cảnh. Vector theo ngữ cảnh của PhoBERT được tính lại cho từng câu. Lấy vector đầu ra của lớp cuối tại đúng vị trí của từ, trong hai câu chỉ khác nhau ở từ đó, và so độ tương đồng cosine, trước và sau tinh chỉnh:
+
+```python
+def vector_tu(m, cau, tu):                           # vector lớp cuối tại vị trí của từ tu trong câu
+    x = pho(cau, return_tensors="pt")
+    vt = pho.convert_ids_to_tokens(x["input_ids"][0]).index(tu)
+    m.eval()
+    with torch.no_grad():
+        return m.roberta(**x).last_hidden_state[0, vt]
+
+for a, b, khung in [("tốt", "tệ", "thầy dạy rất {} ."), ("hay", "dở", "môn học này {} ."), ("tốt", "hay", "thầy dạy rất {} .")]:
+    cos = [round(F.cosine_similarity(vector_tu(m, khung.format(a), a), vector_tu(m, khung.format(b), b), dim=0).item(), 3) for m in (goc, tc)]
+    print(a, b, cos)
+```
+
+```text title="Output"
+tốt tệ [0.605, -0.049]
+hay dở [0.565, -0.137]
+tốt hay [0.612, 0.992]
+```
+
+Trước tinh chỉnh, vector của "tốt" và "tệ" trong "thầy dạy rất ... ." có cosine **0,605**, gần ngang "tốt" với "hay" (0,612): với PhoBERT gốc, từ trái nghĩa gần nhau chẳng kém từ đồng nghĩa, như vector từ tĩnh của Chương 40. Sau tinh chỉnh: "tốt" và "tệ" xuống **-0,049**, "hay" và "dở" từ 0,565 xuống **-0,137**, gần như vuông góc; còn "tốt" và "hay" lên **0,992**, gần như trùng nhau. Mô hình đã kéo các từ về hai phía theo đúng chiều mà nhiệm vụ cần, như Chương 40 đã hứa. Đổi lại, nó cũng xóa bớt khác biệt mà nhiệm vụ không cần: với mô hình cảm xúc này, "tốt" và "hay" gần như là một.
+
+<TuKiemTra
+	cauHoi="Sau tinh chỉnh, vector theo ngữ cảnh của hai từ trái nghĩa trong cùng khung câu bị kéo xa nhau. Vì sao tinh chỉnh làm được điều mà tiền huấn luyện không làm?"
+	luaChon={['Vì tinh chỉnh dùng nhiều dữ liệu hơn', 'Vì nhiệm vụ đoán từ bị che không cần phân biệt chúng (cả hai đều điền hợp vào cùng chỗ trống), còn nhiệm vụ cảm xúc thì bắt buộc phải phân biệt, nên gradient đẩy chúng về hai phía', 'Vì tinh chỉnh dùng tốc độ học nhỏ', 'Vì PhoBERT không biết từ tệ']}
+	dapAn={1}
+	giaiThich="Biểu diễn học được phản ánh nhiệm vụ đã dùng để học nó. Với nhiệm vụ đoán từ bị che, tốt và tệ đều là câu trả lời hợp lý cho thầy dạy rất ..., nên không có lực nào tách chúng ra. Nhiệm vụ cảm xúc thì đặt chúng ở hai đầu đối lập, và đầu phân loại chỉ có thể làm đúng nếu chúng khác nhau."
+/>
+
+<Khung loai="loi">
+**So vector của hai mô hình khác nhau như thể cùng một không gian.** Ở trên, ta chỉ so hai vector **trong cùng** một mô hình (độ tương đồng của tốt với tệ trong `goc`, rồi trong `tc`), không so vector của `goc` với vector của `tc`. Hai mô hình có thể xoay không gian vector khác nhau mà vẫn mã hóa cùng thông tin.
+
+**Kết luận từ ba cặp từ.** Đây là minh họa, không phải phép đo. Muốn khẳng định điều gì về biểu diễn của mô hình, cần hàng trăm cặp và một phép kiểm thống kê, như các bài báo về phân tích biểu diễn vẫn làm.
+</Khung>

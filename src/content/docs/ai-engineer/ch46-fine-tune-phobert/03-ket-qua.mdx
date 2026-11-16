@@ -1,0 +1,90 @@
+---
+title: Kết quả và so sánh
+description: "Đo test một lần: 93,94%, macro-F1 0,823, cao nhất trên UIT-VSFC từ Chương 41, hơn SVM 4,3 điểm. Nhìn từng lớp: lớp trung tính, chỉ chiếm 4 tới 5% dữ liệu, vẫn yếu (F1 0,558). Đọc vài câu đoán sai: một phần lỗi nằm ở chính nhãn gốc."
+---
+
+import Khung from '../../../../components/Khung.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Đo test một lần
+
+```python
+from sklearn.metrics import classification_report, confusion_matrix
+p_te = du_doan(tc, I_te)
+print(cham(y_te, p_te))
+print(classification_report(y_te, p_te, target_names=["tiêu cực", "trung tính", "tích cực"], digits=3))
+print(confusion_matrix(y_te, p_te))
+```
+
+```text title="Output"
+(0.9394, 0.8235)
+              precision    recall  f1-score   support
+
+    tiêu cực      0.946     0.972     0.959      1409
+  trung tính      0.735     0.449     0.558       167
+    tích cực      0.946     0.962     0.954      1590
+
+    accuracy                          0.939      3166
+   macro avg      0.876     0.794     0.823      3166
+weighted avg      0.935     0.939     0.935      3166
+
+[[1369   12   28]
+ [  33   75   59]
+ [  45   15 1530]]
+```
+
+Test: **93,94%, macro-F1 0,823**. Hai lớp lớn gần như đã giải xong: F1 0,959 cho tiêu cực, 0,954 cho tích cực. Lớp trung tính thì không: F1 0,558, mô hình chỉ nhận ra 75 trên 167 câu trung tính (recall 0,449); hàng thứ hai của ma trận nhầm lẫn cho thấy 59 câu trung tính bị đoán là tích cực, 33 câu là tiêu cực. Khi mô hình đã đoán đúng gần hết hai lớp lớn, phần còn lại của macro-F1 nằm gần như hoàn toàn ở lớp nhỏ này.
+
+## Mọi mô hình trên cùng bộ dữ liệu
+
+| Mô hình | Chương | Val: độ chính xác | Val: macro-F1 | Test: độ chính xác | Test: macro-F1 |
+|---|---|---|---|---|---|
+| SVM bigram âm tiết | 41 | 91,91% | 0,778 | | |
+| BiLSTM | 41 | 92,0% | 0,799 | | |
+| SVM, trọng số lớp cân bằng (được chọn) | 41 | 91,85% | 0,801 | 89,67% | 0,753 |
+| Transformer học từ đầu (được chọn) | 44 | 90,52% | 0,765 | 88,79% | 0,728 |
+| PhoBERT đóng băng + hồi quy logistic | 45 | 93,24% | 0,797 | 92,17% | 0,773 |
+| PhoBERT tinh chỉnh | 46 | 95,26% | 0,851 | 93,94% | 0,823 |
+
+Ô trống là những mô hình không được chọn ở chương của chúng, nên chưa bao giờ đo trên test: đúng quy tắc chỉ đo test cho mô hình đã chọn.
+
+Trên test, tinh chỉnh hơn PhoBERT đóng băng 1,8 điểm độ chính xác và 0,05 macro-F1, hơn SVM được chọn ở Chương 41 4,3 điểm và 0,07. Với 3166 câu test, mỗi con số độ chính xác dao động cỡ nửa điểm, nên cả hai chênh lệch đều lớn hơn mức nhiễu. Một giới hạn cần nói rõ: bản tinh chỉnh đầy đủ chỉ được chạy với **một** seed (40 phút mỗi lần trên CPU), nên ta không đo được nó dao động bao nhiêu theo seed; bài tập 46.2 cho thấy với ít dữ liệu, mức dao động đó không nhỏ.
+
+## Những câu đoán sai
+
+Con số không nói mô hình sai **kiểu gì**. Đọc vài câu test đầu tiên bị đoán sai, nhãn đúng trước, nhãn đoán sau:
+
+```python
+ten = ["tiêu cực", "trung tính", "tích cực"]
+sai = np.flatnonzero(p_te != y_te)
+print(len(sai))
+for i in sai[:8]:
+    print(ten[y_te[i]], "->", ten[p_te[i]], "|", te.sentence[i])
+```
+
+```text title="Output"
+192
+tích cực -> trung tính | tính điểm thi đua các nhóm .
+tích cực -> tiêu cực | trong trường macbook thầy số hai thì không có máy nào số một .
+trung tính -> tích cực | môn học này giúp chúng em hiểu ra những vấn đề cơ bản .
+tích cực -> tiêu cực | phần lớn chỉ là lý thuyết và bài tập .
+trung tính -> tích cực | như vậy tụi em sẽ định hướng tốt hơn và tập trung vào những thứ cần thiết .
+tiêu cực -> tích cực | thêm hoạt động của sinh viên , giúp sinh viên chủ động hơn .
+tích cực -> trung tính | giảng bài xúc tích .
+trung tính -> tích cực | ví dụ phù hợp với nội dung kiến thức , hướng dẫn chi tiết .
+```
+
+192 trên 3166 câu test bị đoán sai. Đọc kỹ tám câu đầu: có lỗi thật của mô hình ("giảng bài xúc tích" là lời khen, mô hình đoán trung tính), nhưng cũng có những câu mà chính **nhãn gốc** đáng bàn. "Môn học này giúp chúng em hiểu ra những vấn đề cơ bản" được gán trung tính, mô hình đoán tích cực; "phần lớn chỉ là lý thuyết và bài tập" được gán tích cực, mô hình đoán tiêu cực; "thêm hoạt động của sinh viên, giúp sinh viên chủ động hơn" là một đề xuất, được gán tiêu cực. Khi độ chính xác đã vượt 90%, một phần đáng kể lỗi còn lại nằm ở chỗ người gán nhãn cũng có thể không đồng ý với nhau, và mức trần thật của bài toán thấp hơn 100%. Cải thiện tiếp lớp trung tính thường cần thêm dữ liệu trung tính hoặc định nghĩa lại nhãn, nhiều hơn là một mô hình to hơn.
+
+<TuKiemTra
+	cauHoi="Lớp trung tính chiếm khoảng 4 tới 5% dữ liệu. Nếu chỉ nhìn độ chính xác, điều gì dễ bị bỏ qua?"
+	luaChon={['Không gì, độ chính xác đã đủ', 'Một mô hình có thể gần như bỏ qua lớp trung tính mà độ chính xác chỉ giảm vài phần trăm; macro-F1 và bảng theo từng lớp mới cho thấy chỗ yếu đó', 'Lớp tích cực bị đoán sai', 'Test quá nhỏ']}
+	dapAn={1}
+	giaiThich="Với khoảng 5% dữ liệu, đoán sai toàn bộ lớp trung tính chỉ làm mất khoảng 5 điểm độ chính xác. Macro-F1 lấy trung bình đều F1 của ba lớp, nên lớp nhỏ có trọng lượng bằng lớp lớn; đó là lý do Chương 41 chốt macro-F1 làm thước đo chính."
+/>
+
+<Khung loai="loi">
+**Chọn mô hình theo test.** Bảng trên có nhiều con số test, nhưng mỗi mô hình được **chọn** trên val trước, rồi mới đo test một lần. Nếu nhìn bảng test rồi quay lại chỉnh siêu tham số, con số test không còn là ước lượng trung thực cho dữ liệu mới.
+
+**Tin rằng một con số cao hơn là tốt hơn.** Chênh lệch giữa hai mô hình phải được đặt cạnh mức nhiễu của tập đánh giá (Chương 41), và với mạng nơ-ron, cạnh mức dao động theo seed. Bài tập 46.2 thấy một ví dụ.
+</Khung>

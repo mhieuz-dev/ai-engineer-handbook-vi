@@ -1,0 +1,75 @@
+---
+title: Vòng huấn luyện
+description: "Một vòng tinh chỉnh tự viết bằng PyTorch: AdamW với tốc độ học 2e-5, khởi động dần 10% rồi giảm tuyến tính, cắt gradient, lô 32, 3 epoch, giữ bản có macro-F1 val cao nhất. Khoảng 40 phút trên CPU của máy viết sách; macro-F1 val vượt mọi mô hình trước ngay từ epoch đầu."
+---
+
+import Khung from '../../../../components/Khung.astro';
+import TuKiemTra from '../../../../components/TuKiemTra.astro';
+
+## Không cần thư viện huấn luyện
+
+Thư viện `transformers` có lớp `Trainer` làm sẵn mọi thứ, nhưng nó giấu đúng những chỗ ta muốn hiểu. Vòng dưới đây chỉ là vòng huấn luyện của Chương 25, thêm ba chi tiết của tinh chỉnh:
+
+1. **Lịch tốc độ học** `get_linear_schedule_with_warmup`: tăng tuyến tính từ 0 tới $2 \times 10^{-5}$ trong 10% số bước đầu, rồi giảm tuyến tính về 0 ở bước cuối. Gọi `lich.step()` sau **mỗi lô**, không phải mỗi epoch.
+2. **Cắt gradient** theo chuẩn, tối đa 1 (Chương 29): chặn những bước quá lớn khi gặp một lô bất thường.
+3. **Đệm theo từng lô**: `pho.pad` đệm các câu của lô tới câu dài nhất của lô đó và tạo mặt nạ, như Chương 41.
+
+Hàm nhận dữ liệu và các siêu tham số làm đối số, để bài tập dùng lại với dữ liệu ít hơn hoặc tốc độ học khác.
+
+```python
+from transformers import get_linear_schedule_with_warmup
+
+def tinh_chinh(I, y, lr=2e-5, so_epoch=3, lo=32, seed=0):
+    torch.manual_seed(seed)
+    m = AutoModelForSequenceClassification.from_pretrained("vinai/phobert-base", revision=R, num_labels=3)
+    opt = torch.optim.AdamW(m.parameters(), lr=lr, weight_decay=0.01, fused=True)
+    so_buoc = so_epoch * ((len(I) + lo - 1) // lo)
+    lich = get_linear_schedule_with_warmup(opt, int(0.1 * so_buoc), so_buoc)
+    tot, ban_tot = -1, None
+    for ep in range(1, so_epoch + 1):
+        m.train()
+        thu_tu = torch.randperm(len(I))
+        tong = 0.0
+        for k in range(0, len(I), lo):
+            idx = thu_tu[k:k + lo]
+            x = pho.pad({"input_ids": [I[i] for i in idx]}, return_tensors="pt")
+            loss = F.cross_entropy(m(**x).logits, y[idx])
+            opt.zero_grad()
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(m.parameters(), 1.0)   # cắt gradient
+            opt.step()
+            lich.step()                              # lịch tốc độ học theo từng lô
+            tong += loss.item() * len(idx)
+        acc, f1 = cham(y_va, du_doan(m, I_va))
+        print(ep, round(tong / len(I), 4), acc, f1)
+        if f1 > tot:
+            tot, ban_tot = f1, copy.deepcopy(m.state_dict())
+    m.load_state_dict(ban_tot)                       # giữ bản có macro-F1 val cao nhất
+    return m
+
+t0 = time.time()
+tc = tinh_chinh(I_tr, y_tr)
+print(round(time.time() - t0) < 7200)
+```
+
+```text title="Output"
+1 0.3922 0.9431 0.8319
+2 0.1773 0.9476 0.8492
+3 0.1323 0.9526 0.8507
+True
+```
+
+2412 giây, khoảng **40 phút** cho 3 epoch trên CPU của máy viết sách (4 luồng, khoảng 2 giây mỗi lô 32 câu). Loss trung bình trên train giảm 0,392, 0,177, 0,132. Macro-F1 val: **0,832** ngay sau epoch 1, đã hơn mọi mô hình trước (cao nhất là SVM cân bằng của Chương 41 với 0,801), rồi 0,849 và **0,851**; độ chính xác val 95,26% ở epoch 3, bản được giữ lại. Từ epoch 2 sang 3, loss train còn giảm khoảng 25% mà macro-F1 val chỉ nhích 0,0015: phần lớn những gì mô hình học được về bài này đã có sau 2 epoch.
+
+<TuKiemTra
+	cauHoi="Bạn gọi lich.step() một lần sau mỗi epoch thay vì sau mỗi lô, với lịch khởi động 10% tính theo tổng số lô. Điều gì xảy ra trong 3 epoch?"
+	luaChon={['Không khác gì', 'Lịch chỉ tiến 3 bước trên hàng nghìn bước đã tính, nên tốc độ học gần như kẹt ở 0 suốt quá trình và mô hình gần như không học', 'Tốc độ học lớn gấp 3 lần', 'Chương trình báo lỗi']}
+	dapAn={1}
+	giaiThich="Lịch được tính theo số lô (ở đây hơn một nghìn). Gọi step mỗi epoch thì sau 3 epoch lịch mới ở bước 3, vẫn còn rất sâu trong giai đoạn khởi động: tốc độ học chỉ bằng vài phần nghìn mức đỉnh. Không có lỗi nào được báo; chỉ thấy loss gần như không giảm."
+/>
+
+<Khung loai="loi">
+**Đánh giá trên val mà quên `m.eval()`.** Dropout vẫn bật thì dự đoán đổi mỗi lần chạy và thường kém hơn; `du_doan` gọi `eval()` ở đầu, còn vòng huấn luyện gọi lại `train()` ở đầu mỗi epoch.
+
+**Giữ bản tốt nhất bằng cách gán `ban_tot = m.state_dict()`.** `state_dict()` trả về **tham chiếu** tới các tensor đang được cập nhật, nên "bản tốt nhất" lặng lẽ đổi theo mô hình. Phải `copy.deepcopy`.
+</Khung>
