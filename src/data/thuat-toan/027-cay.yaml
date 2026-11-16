@@ -1,0 +1,42 @@
+so: 27
+ten: Duyệt cây theo từng mức
+dang: cay
+muc: vua
+de: Trả về danh sách các mức của cây nhị phân, mỗi mức là danh sách giá trị từ trái sang phải.
+vi_du:
+- vao: '[3, 9, 20, null, null, 15, 7]'
+  ra: '[[3], [9, 20], [15, 7]]'
+rang_buoc:
+- 0 ≤ số nút ≤ 100 000
+khung: "class Nut:\n    def __init__(self, gia, trai=None, phai=None):\n        self.gia = gia\n     \
+  \   self.trai = trai\n        self.phai = phai\n\ndef theo_muc(goc):\n    pass"
+test_vi_du: 'g = Nut(3, Nut(9), Nut(20, Nut(15), Nut(7)))
+
+  assert theo_muc(g) == [[3], [9, 20], [15, 7]]
+
+  assert theo_muc(None) == []
+
+  print("OK")'
+test_an: 'g = Nut(0); nut = g
+
+  for i in range(1, 20000): nut.trai = Nut(i); nut = nut.trai
+
+  kq = theo_muc(g)
+
+  assert len(kq) == 20000
+
+  print("OK")'
+loi_giai: "from collections import deque\nclass Nut:\n    def __init__(self, gia, trai=None, phai=None):\n\
+  \        self.gia = gia\n        self.trai = trai\n        self.phai = phai\n\ndef theo_muc(goc):\n\
+  \    if not goc:\n        return []\n    kq = []\n    hang = deque([goc])\n    while hang:\n       \
+  \ muc = []\n        for _ in range(len(hang)):\n            n = hang.popleft()\n            muc.append(n.gia)\n\
+  \            if n.trai: hang.append(n.trai)\n            if n.phai: hang.append(n.phai)\n        kq.append(muc)\n\
+  \    return kq"
+phuc_tap: O(n) thời gian.
+goi_y:
+- Dùng hàng đợi BFS.
+- Mỗi vòng xử lý đúng số nút của một mức.
+- Đưa con vào hàng đợi.
+tuong_tu:
+  ten: Binary Tree Level Order Traversal
+  link: https://leetcode.com/problems/binary-tree-level-order-traversal/

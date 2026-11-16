@@ -1,0 +1,29 @@
+so: 22
+ten: Đảo chiều danh sách đơn
+dang: danh-sach-lien-ket
+muc: de
+de: Cho đầu danh sách liên kết đơn, đảo chiều và trả về đầu mới.
+vi_du:
+- vao: '[1, 2, 3]'
+  ra: '[3, 2, 1]'
+rang_buoc:
+- 0 ≤ số nút ≤ 100 000
+khung: "class Nut:\n    def __init__(self, gia, tiep=None):\n        self.gia = gia\n        self.tiep\
+  \ = tiep\n\ndef dao(dau):\n    pass"
+test_vi_du: "def tao(xs):\n    d = None\n    for x in reversed(xs): d = Nut(x, d)\n    return d\ndef ra(n):\n\
+  \    ds = []\n    while n: ds.append(n.gia); n = n.tiep\n    return ds\nassert ra(dao(tao([1,2,3])))\
+  \ == [3,2,1]\nprint(\"OK\")"
+test_an: "def tao(xs):\n    d = None\n    for x in reversed(xs): d = Nut(x, d)\n    return d\ndef ra(n):\n\
+  \    ds = []\n    while n: ds.append(n.gia); n = n.tiep\n    return ds\nassert ra(dao(tao(list(range(30000)))))\
+  \ == list(reversed(range(30000)))\nprint(\"OK\")"
+loi_giai: "class Nut:\n    def __init__(self, gia, tiep=None):\n        self.gia = gia\n        self.tiep\
+  \ = tiep\n\ndef dao(dau):\n    truoc = None\n    while dau:\n        sau = dau.tiep\n        dau.tiep\
+  \ = truoc\n        truoc, dau = dau, sau\n    return truoc"
+phuc_tap: O(n) thời gian, O(1) bộ nhớ.
+goi_y:
+- Lưu nút sau trước khi đổi liên kết.
+- Trỏ nút hiện tại về trước.
+- Tiến cả hai con trỏ.
+tuong_tu:
+  ten: Reverse Linked List
+  link: https://leetcode.com/problems/reverse-linked-list/

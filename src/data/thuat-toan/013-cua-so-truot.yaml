@@ -1,0 +1,38 @@
+so: 13
+ten: Thay ký tự để đoạn lặp dài nhất
+dang: cua-so-truot
+muc: vua
+de: Cho chuỗi và số lần thay `k`. Được đổi tối đa `k` ký tự thành ký tự khác; tìm độ dài đoạn con dài
+  nhất có thể toàn một ký tự.
+vi_du:
+- vao: '"AABABBA", 1'
+  ra: '4'
+rang_buoc:
+- 1 ≤ len(s) ≤ 100 000
+khung: "def thay_dai_nhat(s, k):\n    pass"
+test_vi_du: 'assert thay_dai_nhat("AABABBA", 1) == 4
+
+  assert thay_dai_nhat("AAAA", 2) == 4
+
+  print("OK")'
+test_an: 'import random, string
+
+  rng = random.Random(9)
+
+  s = "".join(rng.choice("AB") for _ in range(50000))
+
+  assert isinstance(thay_dai_nhat(s, 3), int)
+
+  print("OK")'
+loi_giai: "from collections import Counter\ndef thay_dai_nhat(s, k):\n    dem = Counter()\n    trai =\
+  \ 0\n    tot = 0\n    for phai, c in enumerate(s):\n        dem[c] += 1\n        while (phai - trai\
+  \ + 1) - max(dem.values()) > k:\n            dem[s[trai]] -= 1\n            trai += 1\n        tot =\
+  \ max(tot, phai - trai + 1)\n    return tot"
+phuc_tap: O(n) thời gian.
+goi_y:
+- Cửa sổ hợp lệ khi độ dài - tần suất lớn nhất ≤ k.
+- Thu trái khi vượt k.
+- Ghi độ dài lớn nhất.
+tuong_tu:
+  ten: Longest Repeating Character Replacement
+  link: https://leetcode.com/problems/longest-repeating-character-replacement/

@@ -1,0 +1,39 @@
+so: 30
+ten: Kiểm tra thứ tự học các môn
+dang: do-thi
+muc: vua
+de: Có `n` môn và danh sách cặp `[a, b]` nghĩa là phải học `b` trước `a`. Kiểm tra có thể học hết không
+  (đồ thị không có chu trình).
+vi_du:
+- vao: 2, [[1,0]]
+  ra: 'true'
+- vao: 2, [[1,0],[0,1]]
+  ra: 'false'
+rang_buoc:
+- 1 ≤ n ≤ 100 000
+khung: "def hoc_duoc(n, tien_quyet):\n    pass"
+test_vi_du: 'assert hoc_duoc(2, [[1,0]]) is True
+
+  assert hoc_duoc(2, [[1,0],[0,1]]) is False
+
+  print("OK")'
+test_an: 'n = 50000
+
+  ds = [[i, i-1] for i in range(1, n)]
+
+  assert hoc_duoc(n, ds) is True
+
+  print("OK")'
+loi_giai: "from collections import deque\ndef hoc_duoc(n, tien_quyet):\n    ke = [[] for _ in range(n)]\n\
+  \    vao = [0] * n\n    for a, b in tien_quyet:\n        ke[b].append(a)\n        vao[a] += 1\n    hang\
+  \ = deque(i for i in range(n) if vao[i] == 0)\n    dem = 0\n    while hang:\n        x = hang.popleft()\n\
+  \        dem += 1\n        for y in ke[x]:\n            vao[y] -= 1\n            if vao[y] == 0:\n \
+  \               hang.append(y)\n    return dem == n"
+phuc_tap: O(n + e) thời gian.
+goi_y:
+- Đếm bậc vào của từng môn.
+- 'Kahn: bắt đầu từ môn bậc vào 0.'
+- Nếu duyệt đủ n môn thì không có chu trình.
+tuong_tu:
+  ten: Course Schedule
+  link: https://leetcode.com/problems/course-schedule/

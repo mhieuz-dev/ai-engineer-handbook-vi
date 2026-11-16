@@ -1,0 +1,38 @@
+so: 32
+ten: Top-k từ phổ biến trong phản hồi
+dang: heap
+muc: vua
+de: Cho danh sách từ và số `k`. Trả về `k` từ xuất hiện nhiều nhất, sắp theo số lần giảm dần; hòa thì
+  theo thứ tự từ điển tăng.
+vi_du:
+- vao: '[i, love, ai, i, love, coding], 2'
+  ra: '[i, love]'
+rang_buoc:
+- 1 ≤ k ≤ số từ khác nhau
+khung: "import heapq\n\ndef top_k(ds, k):\n    pass"
+test_vi_du: 'assert top_k(["i","love","ai","i","love","coding"], 2) == ["i","love"]
+
+  assert top_k(["a","b","a","c","b","a"], 2) == ["a","b"]
+
+  print("OK")'
+test_an: 'import random, string
+
+  rng = random.Random(14)
+
+  ds = [rng.choice(string.ascii_lowercase) for _ in range(100000)]
+
+  kq = top_k(ds, 5)
+
+  assert len(kq) == 5
+
+  print("OK")'
+loi_giai: "from collections import Counter\nimport heapq\ndef top_k(ds, k):\n    dem = Counter(ds)\n \
+  \   return [x for x in heapq.nsmallest(k, dem, key=lambda x: (-dem[x], x))]"
+phuc_tap: O(n + u log u) với u là số từ khác nhau.
+goi_y:
+- Đếm tần suất.
+- Dùng heap k phần tử hoặc sắp xếp.
+- Khóa (-đếm, từ) để hòa theo từ điển.
+tuong_tu:
+  ten: Top K Frequent Words
+  link: https://leetcode.com/problems/top-k-frequent-words/

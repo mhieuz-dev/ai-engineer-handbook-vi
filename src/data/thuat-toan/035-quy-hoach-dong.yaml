@@ -1,0 +1,31 @@
+so: 35
+ten: Số cách leo cầu thang dữ liệu
+dang: quy-hoach-dong
+muc: de
+de: Mỗi bước leo 1 hoặc 2 bậc. Có bao nhiêu cách leo hết `n` bậc?
+vi_du:
+- vao: '3'
+  ra: '3'
+rang_buoc:
+- 1 ≤ n ≤ 45
+khung: "def so_cach(n):\n    pass"
+test_vi_du: 'assert so_cach(3) == 3
+
+  assert so_cach(1) == 1
+
+  assert so_cach(2) == 2
+
+  print("OK")'
+test_an: 'assert so_cach(45) == 1836311903
+
+  print("OK")'
+loi_giai: "def so_cach(n):\n    a, b = 1, 1\n    for _ in range(n):\n        a, b = b, a + b\n    return\
+  \ a"
+phuc_tap: O(n) thời gian, O(1) bộ nhớ.
+goi_y:
+- Cách leo n = cách leo n-1 + cách leo n-2.
+- Đây là Fibonacci.
+- Giữ hai biến thay vì cả mảng.
+tuong_tu:
+  ten: Climbing Stairs
+  link: https://leetcode.com/problems/climbing-stairs/

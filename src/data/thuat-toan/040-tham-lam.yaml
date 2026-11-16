@@ -1,0 +1,35 @@
+so: 40
+ten: Gộp các ca chạy GPU bị chồng giờ
+dang: tham-lam
+muc: vua
+de: Cho danh sách ca `[bat_dau, ket_thuc]` (giây). Gộp các ca chồng nhau hoặc chạm nhau thành ca lớn hơn,
+  trả về danh sách đã sắp và không chồng.
+vi_du:
+- vao: '[[1,3],[2,6],[8,10],[15,18]]'
+  ra: '[[1,6],[8,10],[15,18]]'
+rang_buoc:
+- 0 ≤ số ca ≤ 100 000
+khung: "def gop_ca(ca):\n    pass"
+test_vi_du: 'assert gop_ca([[1,3],[2,6],[8,10],[15,18]]) == [[1,6],[8,10],[15,18]]
+
+  assert gop_ca([]) == []
+
+  print("OK")'
+test_an: 'ca = [[i, i + 3] for i in range(0, 99999, 3)]
+
+  kq = gop_ca(ca)
+
+  assert kq == [[0, 99999]]
+
+  print("OK")'
+loi_giai: "def gop_ca(ca):\n    if not ca:\n        return []\n    ca = sorted(ca)\n    kq = [list(ca[0])]\n\
+  \    for a, b in ca[1:]:\n        if a <= kq[-1][1]:\n            kq[-1][1] = max(kq[-1][1], b)\n  \
+  \      else:\n            kq.append([a, b])\n    return kq"
+phuc_tap: O(n log n) thời gian do sắp xếp.
+goi_y:
+- Sắp theo thời điểm bắt đầu.
+- Ca mới chồng/chạm ca cuối thì nới cuối.
+- Không thì thêm ca mới.
+tuong_tu:
+  ten: Merge Intervals
+  link: https://leetcode.com/problems/merge-intervals/

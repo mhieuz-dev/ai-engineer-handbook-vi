@@ -1,0 +1,41 @@
+so: 4
+ten: Chuỗi ngày giao hàng liên tiếp
+dang: mang-bang-bam
+muc: vua
+de: Cho danh sách các ngày giao hàng (số nguyên). Tìm độ dài chuỗi ngày liên tiếp dài nhất, không cần
+  các ngày đứng cạnh nhau trong danh sách.
+vi_du:
+- vao: '[100, 4, 200, 1, 3, 2]'
+  ra: '4'
+- vao: '[0, 3, 7, 2, 5, 8, 4, 6, 0, 1]'
+  ra: '9'
+rang_buoc:
+- 0 ≤ len(ds) ≤ 100 000
+khung: "def chuoi_lien_tiep(ds):\n    pass"
+test_vi_du: 'assert chuoi_lien_tiep([100, 4, 200, 1, 3, 2]) == 4
+
+  assert chuoi_lien_tiep([0, 3, 7, 2, 5, 8, 4, 6, 0, 1]) == 9
+
+  assert chuoi_lien_tiep([]) == 0
+
+  print("OK")'
+test_an: 'import random
+
+  rng = random.Random(2)
+
+  ds = list(range(-20000, 20001)) + [rng.randint(-30000, 30000) for _ in range(30000)]
+
+  assert chuoi_lien_tiep(ds) >= 40001
+
+  print("OK")'
+loi_giai: "def chuoi_lien_tiep(ds):\n    s = set(ds)\n    dai = 0\n    for x in s:\n        if x - 1 not\
+  \ in s:\n            y = x\n            while y + 1 in s:\n                y += 1\n            dai =\
+  \ max(dai, y - x + 1)\n    return dai"
+phuc_tap: O(n) thời gian, O(n) bộ nhớ.
+goi_y:
+- Đưa vào set để kiểm tra tồn tại O(1).
+- Chỉ bắt đầu đếm từ số không có số liền trước.
+- Mỗi phần tử được thăm tối đa hai lần.
+tuong_tu:
+  ten: Longest Consecutive Sequence
+  link: https://leetcode.com/problems/longest-consecutive-sequence/

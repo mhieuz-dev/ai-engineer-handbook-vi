@@ -75,7 +75,44 @@ const deThi = defineCollection({
 	}),
 });
 
+const DANG_THUAT_TOAN = [
+	'mang-bang-bam',
+	'hai-con-tro',
+	'cua-so-truot',
+	'ngan-xep',
+	'tim-kiem-nhi-phan',
+	'danh-sach-lien-ket',
+	'cay',
+	'do-thi',
+	'heap',
+	'quy-hoach-dong',
+	'quay-lui',
+	'tham-lam',
+] as const;
+
+const thuatToan = defineCollection({
+	loader: glob({ pattern: '**/*.yaml', base: './src/data/thuat-toan' }),
+	schema: z.object({
+		so: z.number().int().min(1),
+		ten: z.string(),
+		dang: z.enum(DANG_THUAT_TOAN),
+		muc: z.enum(['de', 'vua', 'kho']),
+		de: z.string(),
+		vi_du: z.array(z.object({ vao: z.string(), ra: z.string() })).min(1),
+		rang_buoc: z.array(z.string()).default([]),
+		khung: z.string(),
+		test_vi_du: z.string(),
+		test_an: z.string(),
+		loi_giai: z.string(),
+		phuc_tap: z.string(),
+		goi_y: z.array(z.string()).length(3),
+		tuong_tu: z.object({ ten: z.string(), link: z.string().url() }),
+	}),
+});
+
 export const collections = {
+	deThi: deThi,
+	thuatToan: thuatToan,
 	docs: defineCollection({ loader: docsLoader(), schema: docsSchema() }),
 	thuatNgu: defineCollection({
 		loader: file('src/data/thuat-ngu.yaml'),
@@ -87,5 +124,4 @@ export const collections = {
 			hocKy: z.string().optional(),
 		}),
 	}),
-	deThi: deThi,
 };

@@ -1,0 +1,38 @@
+so: 23
+ten: Phát hiện vòng lặp trong nhật ký
+dang: danh-sach-lien-ket
+muc: vua
+de: Danh sách liên kết có thể bị nối vòng do lỗi ghi log. Kiểm tra xem danh sách có chu trình không, dùng
+  O(1) bộ nhớ phụ.
+vi_du:
+- vao: '[3, 2, 0, -4] nối đuôi về nút 1'
+  ra: 'true'
+rang_buoc:
+- 0 ≤ số nút ≤ 100 000
+khung: "class Nut:\n    def __init__(self, gia, tiep=None):\n        self.gia = gia\n        self.tiep\
+  \ = tiep\n\ndef co_vong(dau):\n    pass"
+test_vi_du: 'a = Nut(1); b = Nut(2); c = Nut(3)
+
+  a.tiep = b; b.tiep = c; c.tiep = b
+
+  assert co_vong(a) is True
+
+  x = Nut(1); y = Nut(2); x.tiep = y
+
+  assert co_vong(x) is False
+
+  print("OK")'
+test_an: "a = Nut(0); cuoi = a\nfor i in range(1, 50000):\n    cuoi.tiep = Nut(i); cuoi = cuoi.tiep\n\
+  assert co_vong(a) is False\ncuoi.tiep = a\nassert co_vong(a) is True\nprint(\"OK\")"
+loi_giai: "class Nut:\n    def __init__(self, gia, tiep=None):\n        self.gia = gia\n        self.tiep\
+  \ = tiep\n\ndef co_vong(dau):\n    cham = nhanh = dau\n    while nhanh and nhanh.tiep:\n        cham\
+  \ = cham.tiep\n        nhanh = nhanh.tiep.tiep\n        if cham is nhanh:\n            return True\n\
+  \    return False"
+phuc_tap: O(n) thời gian, O(1) bộ nhớ.
+goi_y:
+- Dùng hai con trỏ nhanh/chậm.
+- Nếu có vòng, nhanh sẽ đuổi kịp chậm.
+- Nếu nhanh tới cuối thì không có vòng.
+tuong_tu:
+  ten: Linked List Cycle
+  link: https://leetcode.com/problems/linked-list-cycle/

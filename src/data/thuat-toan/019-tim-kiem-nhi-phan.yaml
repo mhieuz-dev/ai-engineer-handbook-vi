@@ -1,0 +1,42 @@
+so: 19
+ten: Tìm đỉnh trong dãy tín hiệu
+dang: tim-kiem-nhi-phan
+muc: vua
+de: Cho dãy tín hiệu mà hai đầu nhỏ hơn phần tử bên trong. Tìm một chỉ số đỉnh (lớn hơn cả hai bên) trong
+  O(log n).
+vi_du:
+- vao: '[1, 2, 3, 1]'
+  ra: '2'
+rang_buoc:
+- 1 ≤ len(ds) ≤ 100 000
+- Có ít nhất một đỉnh.
+khung: "def tim_dinh(ds):\n    pass"
+test_vi_du: 'ds = [1, 2, 3, 1]
+
+  i = tim_dinh(ds)
+
+  assert ds[i] > ds[i - 1] and ds[i] > ds[i + 1]
+
+  print("OK")'
+test_an: 'import random
+
+  rng = random.Random(12)
+
+  ds = sorted(rng.sample(range(100000), 20000)) + sorted(rng.sample(range(100000), 20000), reverse=True)
+
+  i = tim_dinh(ds)
+
+  assert ds[i] >= ds[i-1] and ds[i] >= ds[i+1]
+
+  print("OK")'
+loi_giai: "def tim_dinh(ds):\n    lo, hi = 0, len(ds) - 1\n    while lo < hi:\n        giua = (lo + hi)\
+  \ // 2\n        if ds[giua] < ds[giua + 1]:\n            lo = giua + 1\n        else:\n            hi\
+  \ = giua\n    return lo"
+phuc_tap: O(log n) thời gian.
+goi_y:
+- So giữa với bên phải để biết đang lên hay xuống.
+- Đi về phía dốc lên.
+- Khi lo == hi là đỉnh.
+tuong_tu:
+  ten: Find Peak Element
+  link: https://leetcode.com/problems/find-peak-element/

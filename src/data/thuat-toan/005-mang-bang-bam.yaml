@@ -1,0 +1,40 @@
+so: 5
+ten: Đếm đoạn doanh thu đúng mục tiêu
+dang: mang-bang-bam
+muc: vua
+de: Cho dãy doanh thu theo ngày (có thể âm do hoàn tiền) và mục tiêu `k`. Đếm số đoạn con liên tiếp có
+  tổng đúng bằng `k`.
+vi_du:
+- vao: '[1, 1, 1], 2'
+  ra: '2'
+- vao: '[1, -1, 0], 0'
+  ra: '3'
+rang_buoc:
+- 1 ≤ len(ds) ≤ 100 000
+- Doanh thu có thể âm.
+khung: "def dem_doan_tong(ds, k):\n    pass"
+test_vi_du: 'assert dem_doan_tong([1, 1, 1], 2) == 2
+
+  assert dem_doan_tong([1, -1, 0], 0) == 3
+
+  print("OK")'
+test_an: 'import random
+
+  rng = random.Random(3)
+
+  ds = [rng.randint(-2, 2) for _ in range(20000)]
+
+  assert isinstance(dem_doan_tong(ds, 0), int)
+
+  print("OK")'
+loi_giai: "from collections import defaultdict\ndef dem_doan_tong(ds, k):\n    dem = defaultdict(int)\n\
+  \    dem[0] = 1\n    tong = 0\n    kq = 0\n    for x in ds:\n        tong += x\n        kq += dem[tong\
+  \ - k]\n        dem[tong] += 1\n    return kq"
+phuc_tap: O(n) thời gian, O(n) bộ nhớ.
+goi_y:
+- Tổng đoạn i..j = tiền tố[j] - tiền tố[i-1].
+- Đếm số tiền tố đã gặp bằng tong - k.
+- Bảng băm tiền tố → số lần.
+tuong_tu:
+  ten: Subarray Sum Equals K
+  link: https://leetcode.com/problems/subarray-sum-equals-k/

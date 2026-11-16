@@ -1,0 +1,35 @@
+so: 11
+ten: Tổng doanh thu cao nhất trong k ngày
+dang: cua-so-truot
+muc: de
+de: Cho doanh thu từng ngày và số ngày `k`. Tìm tổng lớn nhất của một đoạn liên tiếp đúng `k` ngày.
+vi_du:
+- vao: '[2, 1, 5, 1, 3, 2], 3'
+  ra: '9'
+rang_buoc:
+- 1 ≤ k ≤ len(ds) ≤ 100 000
+khung: "def tong_cao_nhat(ds, k):\n    pass"
+test_vi_du: 'assert tong_cao_nhat([2, 1, 5, 1, 3, 2], 3) == 9
+
+  assert tong_cao_nhat([1], 1) == 1
+
+  print("OK")'
+test_an: 'import random
+
+  rng = random.Random(7)
+
+  ds = [rng.randint(-100, 100) for _ in range(100000)]
+
+  assert isinstance(tong_cao_nhat(ds, 500), int)
+
+  print("OK")'
+loi_giai: "def tong_cao_nhat(ds, k):\n    tong = sum(ds[:k])\n    tot = tong\n    for i in range(k, len(ds)):\n\
+  \        tong += ds[i] - ds[i - k]\n        tot = max(tot, tong)\n    return tot"
+phuc_tap: O(n) thời gian, O(1) bộ nhớ phụ.
+goi_y:
+- Tính tổng cửa sổ đầu.
+- 'Trượt: cộng phần tử mới, trừ phần tử ra.'
+- Giữ tổng lớn nhất.
+tuong_tu:
+  ten: Maximum Average Subarray I
+  link: https://leetcode.com/problems/maximum-average-subarray-i/

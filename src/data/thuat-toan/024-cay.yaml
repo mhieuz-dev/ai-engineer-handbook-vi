@@ -1,0 +1,35 @@
+so: 24
+ten: Độ sâu cây quyết định
+dang: cay
+muc: de
+de: Cho gốc cây nhị phân biểu diễn các câu hỏi quyết định. Trả về độ sâu lớn nhất (số nút trên đường dài
+  nhất).
+vi_du:
+- vao: '[3, 9, 20, null, null, 15, 7]'
+  ra: '3'
+rang_buoc:
+- 0 ≤ số nút ≤ 100 000
+khung: "class Nut:\n    def __init__(self, gia, trai=None, phai=None):\n        self.gia = gia\n     \
+  \   self.trai = trai\n        self.phai = phai\n\ndef do_sau(goc):\n    pass"
+test_vi_du: 'n = Nut(3, Nut(9), Nut(20, Nut(15), Nut(7)))
+
+  assert do_sau(n) == 3
+
+  assert do_sau(None) == 0
+
+  print("OK")'
+test_an: "goc = Nut(0)\nnut = goc\nfor i in range(1, 20000):\n    nut.trai = Nut(i); nut = nut.trai\n\
+  assert do_sau(goc) == 20000\nprint(\"OK\")"
+loi_giai: "class Nut:\n    def __init__(self, gia, trai=None, phai=None):\n        self.gia = gia\n  \
+  \      self.trai = trai\n        self.phai = phai\n\ndef do_sau(goc):\n    if not goc:\n        return\
+  \ 0\n    ngan = [(goc, 1)]\n    tot = 0\n    while ngan:\n        n, d = ngan.pop()\n        tot = max(tot,\
+  \ d)\n        if n.trai:\n            ngan.append((n.trai, d + 1))\n        if n.phai:\n           \
+  \ ngan.append((n.phai, d + 1))\n    return tot"
+phuc_tap: O(n) thời gian. Đệ quy sâu 20 000 có thể chạm giới hạn; bản lặp dùng ngăn xếp an toàn hơn.
+goi_y:
+- Độ sâu = 1 + max(độ sâu trái, phải).
+- Gốc rỗng có độ sâu 0.
+- Có thể duyệt lặp bằng ngăn xếp.
+tuong_tu:
+  ten: Maximum Depth of Binary Tree
+  link: https://leetcode.com/problems/maximum-depth-of-binary-tree/

@@ -1,0 +1,42 @@
+so: 20
+ten: Chọn tốc độ ăn tối thiểu
+dang: tim-kiem-nhi-phan
+muc: vua
+de: Có các đống dữ liệu với khối lượng cho trước. Mỗi giờ chọn một đống và ăn tối đa `v` đơn vị; đống
+  còn thì giờ sau ăn tiếp. Tìm `v` nhỏ nhất để ăn hết trong `h` giờ.
+vi_du:
+- vao: '[3, 6, 7, 11], 8'
+  ra: '4'
+rang_buoc:
+- 1 ≤ len(dong) ≤ 100 000
+- 1 ≤ h ≤ 10^9
+khung: "def toc_do_nho_nhat(dong, h):\n    pass"
+test_vi_du: 'assert toc_do_nho_nhat([3, 6, 7, 11], 8) == 4
+
+  assert toc_do_nho_nhat([30, 11, 23, 4, 20], 5) == 30
+
+  print("OK")'
+test_an: 'import random
+
+  rng = random.Random(13)
+
+  dong = [rng.randint(1, 10**9) for _ in range(20000)]
+
+  h = len(dong) + 5000
+
+  v = toc_do_nho_nhat(dong, h)
+
+  assert sum((x + v - 1) // v for x in dong) <= h
+
+  print("OK")'
+loi_giai: "def toc_do_nho_nhat(dong, h):\n    lo, hi = 1, max(dong)\n    while lo < hi:\n        giua\
+  \ = (lo + hi) // 2\n        if sum((x + giua - 1) // giua for x in dong) <= h:\n            hi = giua\n\
+  \        else:\n            lo = giua + 1\n    return lo"
+phuc_tap: O(n log max) thời gian.
+goi_y:
+- 'Số giờ giảm khi tốc độ tăng: tìm nhị phân trên đáp án.'
+- 'Hàm kiểm tra: tổng ceil(x/v).'
+- Tìm v nhỏ nhất thỏa.
+tuong_tu:
+  ten: Koko Eating Bananas
+  link: https://leetcode.com/problems/koko-eating-bananas/

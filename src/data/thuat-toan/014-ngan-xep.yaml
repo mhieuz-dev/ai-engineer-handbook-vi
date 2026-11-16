@@ -1,0 +1,38 @@
+so: 14
+ten: Kiểm tra ngoặc trong công thức LaTeX
+dang: ngan-xep
+muc: de
+de: Cho chuỗi chỉ gồm các ngoặc `()[]{}`. Kiểm tra mọi ngoặc mở đều được đóng đúng thứ tự và đúng loại.
+vi_du:
+- vao: '"()[]{}"'
+  ra: 'true'
+- vao: '"(]"'
+  ra: 'false'
+rang_buoc:
+- 0 ≤ len(s) ≤ 200 000
+khung: "def ngoac_hop_le(s):\n    pass"
+test_vi_du: 'assert ngoac_hop_le("()[]{}") is True
+
+  assert ngoac_hop_le("(]") is False
+
+  assert ngoac_hop_le("([)]") is False
+
+  assert ngoac_hop_le("") is True
+
+  print("OK")'
+test_an: 's = "(" * 50000 + ")" * 50000
+
+  assert ngoac_hop_le(s) is True
+
+  print("OK")'
+loi_giai: "def ngoac_hop_le(s):\n    cap = {\")\": \"(\", \"]\": \"[\", \"}\": \"{\"}\n    ngan = []\n\
+  \    for c in s:\n        if c in \"([{\":\n            ngan.append(c)\n        elif c in cap:\n   \
+  \         if not ngan or ngan.pop() != cap[c]:\n                return False\n    return not ngan"
+phuc_tap: O(n) thời gian, O(n) bộ nhớ.
+goi_y:
+- Dùng ngăn xếp cho ngoặc mở.
+- Ngoặc đóng phải khớp đỉnh.
+- Cuối cùng ngăn xếp phải rỗng.
+tuong_tu:
+  ten: Valid Parentheses
+  link: https://leetcode.com/problems/valid-parentheses/

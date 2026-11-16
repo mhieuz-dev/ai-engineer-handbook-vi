@@ -1,0 +1,32 @@
+so: 21
+ten: Gộp hai hàng đợi in đã sắp
+dang: danh-sach-lien-ket
+muc: de
+de: Hai hàng đợi in là hai danh sách liên kết đã sắp tăng. Gộp thành một danh sách đã sắp và trả về đầu
+  danh sách.
+vi_du:
+- vao: '[1, 2, 4], [1, 3, 4]'
+  ra: '[1, 1, 2, 3, 4, 4]'
+rang_buoc:
+- 0 ≤ số nút mỗi danh sách ≤ 50 000
+khung: "class Nut:\n    def __init__(self, gia, tiep=None):\n        self.gia = gia\n        self.tiep\
+  \ = tiep\n\ndef gop(a, b):\n    pass"
+test_vi_du: "def tao(xs):\n    dau = None\n    for x in reversed(xs):\n        dau = Nut(x, dau)\n   \
+  \ return dau\ndef ra(n):\n    ds = []\n    while n:\n        ds.append(n.gia); n = n.tiep\n    return\
+  \ ds\nassert ra(gop(tao([1,2,4]), tao([1,3,4]))) == [1,1,2,3,4,4]\nprint(\"OK\")"
+test_an: "def tao(xs):\n    dau = None\n    for x in reversed(xs):\n        dau = Nut(x, dau)\n    return\
+  \ dau\ndef ra(n):\n    ds = []\n    while n:\n        ds.append(n.gia); n = n.tiep\n    return ds\n\
+  a = tao(list(range(0, 20000, 2)))\nb = tao(list(range(1, 20000, 2)))\nassert ra(gop(a, b)) == list(range(20000))\n\
+  print(\"OK\")"
+loi_giai: "class Nut:\n    def __init__(self, gia, tiep=None):\n        self.gia = gia\n        self.tiep\
+  \ = tiep\n\ndef gop(a, b):\n    gia = Nut(0)\n    cuoi = gia\n    while a and b:\n        if a.gia <=\
+  \ b.gia:\n            cuoi.tiep, a = a, a.tiep\n        else:\n            cuoi.tiep, b = b, b.tiep\n\
+  \        cuoi = cuoi.tiep\n    cuoi.tiep = a or b\n    return gia.tiep"
+phuc_tap: O(n + m) thời gian.
+goi_y:
+- Dùng nút giả làm đầu.
+- So hai đầu, nối nút nhỏ hơn.
+- Cuối cùng nối phần còn lại.
+tuong_tu:
+  ten: Merge Two Sorted Lists
+  link: https://leetcode.com/problems/merge-two-sorted-lists/

@@ -183,6 +183,8 @@ test('trang chủ: thẻ Phòng thi thử và thẻ Ôn lại từ kết quả t
 	await page.goto('/');
 	const theThi = page.locator('.luyen-tap .lt-the', { hasText: 'Phòng thi thử' });
 	await expect(theThi).toHaveAttribute('href', '/phong-thi/');
+	const theThuatToan = page.locator('.luyen-tap .lt-the', { hasText: 'Luyện thuật toán' });
+	await expect(theThuatToan).toHaveAttribute('href', '/thuat-toan/');
 	await expect(page.locator('.on-lai')).toBeHidden();
 
 	await page.addInitScript(() => {

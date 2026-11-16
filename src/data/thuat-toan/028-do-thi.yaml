@@ -1,0 +1,38 @@
+so: 28
+ten: Robot tìm đường ngắn nhất trong kho
+dang: do-thi
+muc: vua
+de: Kho là lưới `0` (đi được) và `1` (kệ hàng). Robot đi 4 hướng, từ (0,0) tới (n-1,m-1). Trả về số bước
+  ít nhất hoặc -1.
+vi_du:
+- vao: '[[0,0,0],[1,1,0],[1,1,0]]'
+  ra: '4'
+rang_buoc:
+- 1 ≤ n, m ≤ 200
+khung: "from collections import deque\n\ndef duong_ngan_nhat(luoi):\n    pass"
+test_vi_du: 'assert duong_ngan_nhat([[0,0,0],[1,1,0],[1,1,0]]) == 4
+
+  assert duong_ngan_nhat([[0,1],[1,0]]) == -1
+
+  print("OK")'
+test_an: 'n = 200
+
+  luoi = [[0] * n for _ in range(n)]
+
+  assert duong_ngan_nhat(luoi) == 2 * n - 2
+
+  print("OK")'
+loi_giai: "from collections import deque\ndef duong_ngan_nhat(luoi):\n    n, m = len(luoi), len(luoi[0])\n\
+  \    if luoi[0][0] or luoi[-1][-1]:\n        return -1\n    hang = deque([(0, 0, 0)])\n    thay = {(0,\
+  \ 0)}\n    while hang:\n        x, y, d = hang.popleft()\n        if (x, y) == (n - 1, m - 1):\n   \
+  \         return d\n        for dx, dy in ((1,0),(-1,0),(0,1),(0,-1)):\n            a, b = x + dx, y\
+  \ + dy\n            if 0 <= a < n and 0 <= b < m and luoi[a][b] == 0 and (a, b) not in thay:\n     \
+  \           thay.add((a, b))\n                hang.append((a, b, d + 1))\n    return -1"
+phuc_tap: O(n·m) thời gian.
+goi_y:
+- BFS cho đường ngắn nhất trên lưới không trọng số.
+- Đánh dấu đã thăm khi đưa vào hàng đợi.
+- Kiểm tra ô đầu/cuối bị chặn.
+tuong_tu:
+  ten: Shortest Path in Binary Matrix
+  link: https://leetcode.com/problems/shortest-path-in-binary-matrix/

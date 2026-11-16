@@ -1,0 +1,42 @@
+so: 31
+ten: Thời gian làm lạnh kho hàng
+dang: do-thi
+muc: kho
+de: Lưới có 0 (trống), 1 (cam tươi), 2 (cam hỏng). Mỗi phút cam hỏng lây 4 hướng. Trả về số phút tới khi
+  không còn cam tươi, hoặc -1 nếu không thể.
+vi_du:
+- vao: '[[2,1,1],[1,1,0],[0,1,1]]'
+  ra: '4'
+rang_buoc:
+- 1 ≤ n, m ≤ 200
+khung: "from collections import deque\n\ndef phut_lanh(luoi):\n    pass"
+test_vi_du: 'assert phut_lanh([[2,1,1],[1,1,0],[0,1,1]]) == 4
+
+  assert phut_lanh([[2,1],[1,1]]) == 2
+
+  assert phut_lanh([[2,0,0]]) == 0
+
+  print("OK")'
+test_an: 'n = 200
+
+  luoi = [[2] + [1] * (n - 1) for _ in range(n)]
+
+  assert phut_lanh(luoi) >= 0
+
+  print("OK")'
+loi_giai: "from collections import deque\ndef phut_lanh(luoi):\n    n, m = len(luoi), len(luoi[0])\n \
+  \   hang = deque()\n    tuoi = 0\n    for i in range(n):\n        for j in range(m):\n            if\
+  \ luoi[i][j] == 2:\n                hang.append((i, j, 0))\n            elif luoi[i][j] == 1:\n    \
+  \            tuoi += 1\n    if tuoi == 0:\n        return 0\n    while hang:\n        x, y, p = hang.popleft()\n\
+  \        for dx, dy in ((1,0),(-1,0),(0,1),(0,-1)):\n            a, b = x + dx, y + dy\n           \
+  \ if 0 <= a < n and 0 <= b < m and luoi[a][b] == 1:\n                luoi[a][b] = 2\n              \
+  \  tuoi -= 1\n                if tuoi == 0:\n                    return p + 1\n                hang.append((a,\
+  \ b, p + 1))\n    return -1"
+phuc_tap: O(n·m) thời gian.
+goi_y:
+- BFS nhiều nguồn từ mọi cam hỏng.
+- Đếm số cam tươi còn lại.
+- Trả phút khi hết cam tươi.
+tuong_tu:
+  ten: Rotting Oranges
+  link: https://leetcode.com/problems/rotting-oranges/

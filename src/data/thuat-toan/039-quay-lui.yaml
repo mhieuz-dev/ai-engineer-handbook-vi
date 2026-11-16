@@ -1,0 +1,38 @@
+so: 39
+ten: Sinh mọi tổ hợp siêu tham số
+dang: quay-lui
+muc: vua
+de: Cho dict `khong_gian` ánh xạ tên tham số → danh sách giá trị. Sinh mọi tổ hợp (mỗi tham số chọn một
+  giá trị). Trả về list các dict; thứ tự không quan trọng.
+vi_du:
+- vao: '{"lr": [0.1, 0.01], "batch": [16, 32]}'
+  ra: 4 tổ hợp
+rang_buoc:
+- 1 ≤ số tham số ≤ 8
+- Mỗi danh sách không rỗng.
+khung: "def to_hop(khong_gian):\n    pass"
+test_vi_du: 'kq = to_hop({"lr": [0.1, 0.01], "batch": [16, 32]})
+
+  assert len(kq) == 4
+
+  assert all(set(x) == {"lr", "batch"} for x in kq)
+
+  print("OK")'
+test_an: 'kg = {f"p{i}": [0, 1] for i in range(8)}
+
+  kq = to_hop(kg)
+
+  assert len(kq) == 256
+
+  print("OK")'
+loi_giai: "def to_hop(khong_gian):\n    ten = list(khong_gian)\n    kq = []\n    def lui(i, hien):\n \
+  \       if i == len(ten):\n            kq.append(dict(hien))\n            return\n        for v in khong_gian[ten[i]]:\n\
+  \            hien[ten[i]] = v\n            lui(i + 1, hien)\n    lui(0, {})\n    return kq"
+phuc_tap: O(số tổ hợp · số tham số) thời gian.
+goi_y:
+- Đệ quy theo từng tham số.
+- Chọn một giá trị rồi sang tham số kế.
+- Đủ tham số thì ghi bản sao.
+tuong_tu:
+  ten: Combinations
+  link: https://leetcode.com/problems/combinations/

@@ -1,0 +1,41 @@
+so: 3
+ten: Gom đơn theo cùng bộ chữ cái
+dang: mang-bang-bam
+muc: vua
+de: Mỗi đơn có một mã gồm các chữ cái. Hai mã được coi là cùng nhóm nếu sắp lại chữ cái thì giống nhau.
+  Trả về danh sách các nhóm (mỗi nhóm là danh sách mã). Thứ tự nhóm và thứ tự trong nhóm không quan trọng.
+vi_du:
+- vao: '[eat, tea, tan, ate, nat, bat]'
+  ra: '[[eat, tea, ate], [tan, nat], [bat]]'
+rang_buoc:
+- 1 ≤ len(ds) ≤ 20 000
+- Mã chỉ gồm chữ thường.
+khung: "def nhom_don(ds):\n    pass"
+test_vi_du: 'kq = nhom_don(["eat", "tea", "tan", "ate", "nat", "bat"])
+
+  chuan = sorted(sorted(g) for g in kq)
+
+  assert chuan == sorted([["ate", "eat", "tea"], ["nat", "tan"], ["bat"]])
+
+  print("OK")'
+test_an: 'import random
+
+  rng = random.Random(1)
+
+  ds = ["".join(sorted(rng.sample("abcdef", 5))) for _ in range(5000)]
+
+  kq = nhom_don(ds)
+
+  assert sum(len(g) for g in kq) == len(ds)
+
+  print("OK")'
+loi_giai: "from collections import defaultdict\ndef nhom_don(ds):\n    nhom = defaultdict(list)\n    for\
+  \ s in ds:\n        nhom[\"\".join(sorted(s))].append(s)\n    return list(nhom.values())"
+phuc_tap: O(n · k log k) với k là độ dài mã.
+goi_y:
+- Hai mã cùng nhóm có cùng khóa sau khi sắp chữ.
+- Dùng dict khóa → danh sách.
+- Với mỗi mã, khóa = ''.join(sorted(s)); thêm vào nhóm.
+tuong_tu:
+  ten: Group Anagrams
+  link: https://leetcode.com/problems/group-anagrams/

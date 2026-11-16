@@ -1,0 +1,38 @@
+so: 29
+ten: Đếm ổ dữ liệu rời rạc
+dang: do-thi
+muc: vua
+de: Lưới `1` là điểm dữ liệu, `0` là trống. Đếm số vùng liên thông 4 hướng của các điểm dữ liệu.
+vi_du:
+- vao: '[[1,1,0],[1,0,0],[0,0,1]]'
+  ra: '2'
+rang_buoc:
+- 1 ≤ n, m ≤ 300
+khung: "def dem_vung(luoi):\n    pass"
+test_vi_du: 'assert dem_vung([[1,1,0],[1,0,0],[0,0,1]]) == 2
+
+  assert dem_vung([[0]]) == 0
+
+  print("OK")'
+test_an: 'n = 300
+
+  luoi = [[1] * n for _ in range(n)]
+
+  assert dem_vung(luoi) == 1
+
+  print("OK")'
+loi_giai: "def dem_vung(luoi):\n    n, m = len(luoi), len(luoi[0])\n    dem = 0\n    for i in range(n):\n\
+  \        for j in range(m):\n            if luoi[i][j] != 1:\n                continue\n           \
+  \ dem += 1\n            ngan = [(i, j)]\n            luoi[i][j] = 0\n            while ngan:\n     \
+  \           x, y = ngan.pop()\n                for dx, dy in ((1,0),(-1,0),(0,1),(0,-1)):\n        \
+  \            a, b = x + dx, y + dy\n                    if 0 <= a < n and 0 <= b < m and luoi[a][b]\
+  \ == 1:\n                        luoi[a][b] = 0\n                        ngan.append((a, b))\n    return\
+  \ dem"
+phuc_tap: O(n·m) thời gian.
+goi_y:
+- Duyệt từng ô, gặp 1 thì tăng đếm.
+- DFS/BFS xoá cả vùng.
+- Không cần đệ quy, dùng ngăn xếp.
+tuong_tu:
+  ten: Number of Islands
+  link: https://leetcode.com/problems/number-of-islands/

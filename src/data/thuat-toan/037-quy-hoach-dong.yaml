@@ -1,0 +1,36 @@
+so: 37
+ten: Dãy con tăng dài nhất
+dang: quy-hoach-dong
+muc: vua
+de: Tìm độ dài dãy con tăng nghiêm ngặt dài nhất (không cần liên tiếp).
+vi_du:
+- vao: '[10,9,2,5,3,7,101,18]'
+  ra: '4'
+rang_buoc:
+- 1 ≤ len(ds) ≤ 100 000
+khung: "import bisect\n\ndef lis(ds):\n    pass"
+test_vi_du: 'assert lis([10,9,2,5,3,7,101,18]) == 4
+
+  assert lis([7,7,7]) == 1
+
+  print("OK")'
+test_an: 'import random
+
+  rng = random.Random(18)
+
+  ds = list(range(50000))
+
+  assert lis(ds) == 50000
+
+  print("OK")'
+loi_giai: "import bisect\ndef lis(ds):\n    duoi = []\n    for x in ds:\n        i = bisect.bisect_left(duoi,\
+  \ x)\n        if i == len(duoi):\n            duoi.append(x)\n        else:\n            duoi[i] = x\n\
+  \    return len(duoi)"
+phuc_tap: O(n log n) thời gian.
+goi_y:
+- Giữ mảng đuôi nhỏ nhất cho mỗi độ dài.
+- Tìm nhị phân vị trí chèn.
+- Độ dài mảng đuôi là đáp án.
+tuong_tu:
+  ten: Longest Increasing Subsequence
+  link: https://leetcode.com/problems/longest-increasing-subsequence/

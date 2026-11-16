@@ -1,0 +1,39 @@
+so: 34
+ten: Gộp k hàng đợi đã sắp
+dang: heap
+muc: kho
+de: Có `k` danh sách đã sắp. Gộp thành một danh sách đã sắp.
+vi_du:
+- vao: '[[1,4,5],[1,3,4],[2,6]]'
+  ra: '[1,1,2,3,4,4,5,6]'
+rang_buoc:
+- 0 ≤ k ≤ 10 000
+khung: "import heapq\n\ndef gop_k(ds):\n    pass"
+test_vi_du: 'assert gop_k([[1,4,5],[1,3,4],[2,6]]) == [1,1,2,3,4,4,5,6]
+
+  assert gop_k([]) == []
+
+  print("OK")'
+test_an: 'import random
+
+  rng = random.Random(16)
+
+  ds = [sorted(rng.randint(0, 10000) for _ in range(1000)) for _ in range(100)]
+
+  kq = gop_k(ds)
+
+  assert kq == sorted(sum(ds, []))
+
+  print("OK")'
+loi_giai: "import heapq\ndef gop_k(ds):\n    hang = []\n    for i, a in enumerate(ds):\n        if a:\n\
+  \            heapq.heappush(hang, (a[0], i, 0))\n    kq = []\n    while hang:\n        x, i, j = heapq.heappop(hang)\n\
+  \        kq.append(x)\n        if j + 1 < len(ds[i]):\n            heapq.heappush(hang, (ds[i][j + 1],\
+  \ i, j + 1))\n    return kq"
+phuc_tap: O(N log k) với N là tổng số phần tử.
+goi_y:
+- Đưa phần tử đầu của mỗi danh sách vào heap.
+- Lấy nhỏ nhất, đẩy phần tử kế của danh sách đó.
+- Lặp tới khi heap rỗng.
+tuong_tu:
+  ten: Merge k Sorted Lists
+  link: https://leetcode.com/problems/merge-k-sorted-lists/

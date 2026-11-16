@@ -1,0 +1,40 @@
+so: 1
+ten: Hai đơn hàng đúng mã giảm giá
+dang: mang-bang-bam
+muc: de
+de: Một sàn thương mại điện tử có danh sách giá trị đơn hàng. Một mã giảm giá chỉ áp dụng khi chọn đúng
+  hai đơn có tổng bằng giá trị mã. Cho `gia` là danh sách số nguyên và `tong`, trả về chỉ số của hai đơn
+  (chỉ số nhỏ trước). Dữ liệu đảm bảo có đúng một cặp.
+vi_du:
+- vao: '[2, 7, 11, 15], 9'
+  ra: '[0, 1]'
+- vao: '[3, 2, 4], 6'
+  ra: '[1, 2]'
+rang_buoc:
+- 2 ≤ len(gia) ≤ 100 000
+- Mỗi đơn có đúng một cặp.
+khung: "def hai_don(gia, tong):\n    # trả về [i, j] với i < j\n    pass"
+test_vi_du: 'assert hai_don([2, 7, 11, 15], 9) == [0, 1]
+
+  assert hai_don([3, 2, 4], 6) == [1, 2]
+
+  print("OK")'
+test_an: 'gia = list(range(1, 50001)) + [10**9]
+
+  tong = 10**9 + 1
+
+  kq = hai_don(gia, tong)
+
+  assert kq[0] < kq[1] and gia[kq[0]] + gia[kq[1]] == tong
+
+  print("OK")'
+loi_giai: "def hai_don(gia, tong):\n    thay = {}\n    for j, x in enumerate(gia):\n        if tong -\
+  \ x in thay:\n            return [thay[tong - x], j]\n        thay[x] = j\n    return []"
+phuc_tap: O(n) thời gian, O(n) bộ nhớ.
+goi_y:
+- Duyệt một lần, với mỗi đơn xem phần bù đã gặp chưa.
+- Bảng băm lưu giá trị → chỉ số.
+- 'for j, x: nếu tong-x trong thay thì trả [thay[tong-x], j]; thay[x]=j.'
+tuong_tu:
+  ten: Two Sum
+  link: https://leetcode.com/problems/two-sum/

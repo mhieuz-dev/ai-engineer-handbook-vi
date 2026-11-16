@@ -1,0 +1,40 @@
+so: 26
+ten: Kiểm tra cây tìm kiếm nhị phân
+dang: cay
+muc: vua
+de: Cho gốc cây nhị phân, kiểm tra xem nó có phải cây tìm kiếm nhị phân (trái < gốc < phải, đúng cho mọi
+  nút).
+vi_du:
+- vao: '[2, 1, 3]'
+  ra: 'true'
+- vao: '[5, 1, 4, null, null, 3, 6]'
+  ra: 'false'
+rang_buoc:
+- 0 ≤ số nút ≤ 100 000
+khung: "class Nut:\n    def __init__(self, gia, trai=None, phai=None):\n        self.gia = gia\n     \
+  \   self.trai = trai\n        self.phai = phai\n\ndef la_bst(goc):\n    pass"
+test_vi_du: 'assert la_bst(Nut(2, Nut(1), Nut(3))) is True
+
+  assert la_bst(Nut(5, Nut(1), Nut(4, Nut(3), Nut(6)))) is False
+
+  print("OK")'
+test_an: 'g = Nut(0); nut = g
+
+  for i in range(1, 20000): nut.phai = Nut(i); nut = nut.phai
+
+  assert la_bst(g) is True
+
+  print("OK")'
+loi_giai: "class Nut:\n    def __init__(self, gia, trai=None, phai=None):\n        self.gia = gia\n  \
+  \      self.trai = trai\n        self.phai = phai\n\ndef la_bst(goc):\n    ngan = []\n    truoc = None\n\
+  \    nut = goc\n    while ngan or nut:\n        while nut:\n            ngan.append(nut)\n         \
+  \   nut = nut.trai\n        nut = ngan.pop()\n        if truoc is not None and nut.gia <= truoc:\n \
+  \           return False\n        truoc = nut.gia\n        nut = nut.phai\n    return True"
+phuc_tap: O(n) thời gian, O(h) bộ nhớ.
+goi_y:
+- Duyệt giữa (inorder) phải tăng nghiêm ngặt.
+- Có thể dùng khoảng (min, max) truyền xuống.
+- Cẩn thận nhánh phải của nút nhỏ.
+tuong_tu:
+  ten: Validate Binary Search Tree
+  link: https://leetcode.com/problems/validate-binary-search-tree/

@@ -1,0 +1,40 @@
+so: 16
+ten: Ngăn xếp có lấy giá nhỏ nhất
+dang: ngan-xep
+muc: vua
+de: Cài `MinStack` có `push(x)`, `pop()`, `top()`, `getMin()` đều O(1). `getMin` trả giá nhỏ nhất đang
+  có.
+vi_du:
+- vao: push(3), push(1), getMin(), pop(), getMin()
+  ra: 1, 3
+rang_buoc:
+- Số thao tác ≤ 100 000
+khung: "class MinStack:\n    def __init__(self):\n        pass\n    def push(self, x):\n        pass\n\
+  \    def pop(self):\n        pass\n    def top(self):\n        pass\n    def getMin(self):\n       \
+  \ pass"
+test_vi_du: 's = MinStack()
+
+  s.push(3); s.push(1); s.push(2)
+
+  assert s.getMin() == 1
+
+  s.pop()
+
+  assert s.top() == 1 and s.getMin() == 1
+
+  print("OK")'
+test_an: "import random\nrng = random.Random(11)\ns = MinStack()\ngia = []\nfor _ in range(20000):\n \
+  \   x = rng.randint(-1000, 1000)\n    s.push(x); gia.append(x)\n    assert s.getMin() == min(gia)\n\
+  print(\"OK\")"
+loi_giai: "class MinStack:\n    def __init__(self):\n        self.ngan = []\n        self.nho = []\n \
+  \   def push(self, x):\n        self.ngan.append(x)\n        self.nho.append(x if not self.nho else\
+  \ min(x, self.nho[-1]))\n    def pop(self):\n        self.ngan.pop()\n        self.nho.pop()\n    def\
+  \ top(self):\n        return self.ngan[-1]\n    def getMin(self):\n        return self.nho[-1]"
+phuc_tap: O(1) cho mọi thao tác.
+goi_y:
+- Lưu thêm ngăn xếp giá nhỏ nhất tới từng thời điểm.
+- 'push: nhỏ = min(x, nhỏ trước).'
+- 'pop: bỏ cả hai.'
+tuong_tu:
+  ten: Min Stack
+  link: https://leetcode.com/problems/min-stack/

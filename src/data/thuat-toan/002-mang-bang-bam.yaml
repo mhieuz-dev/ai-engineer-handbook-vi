@@ -1,0 +1,42 @@
+so: 2
+ten: Món bán chạy nhất trong tuần
+dang: mang-bang-bam
+muc: de
+de: Bạn có danh sách mã món đã bán trong tuần. Tìm mã xuất hiện nhiều nhất; nếu hòa thì chọn mã nhỏ hơn
+  (theo thứ tự từ điển).
+vi_du:
+- vao: '[a, b, a, c, b, a]'
+  ra: a
+- vao: '[x, y, y, x]'
+  ra: x
+rang_buoc:
+- 1 ≤ len(ds) ≤ 100 000
+khung: "def mon_ban_chay(ds):\n    pass"
+test_vi_du: 'assert mon_ban_chay(["a", "b", "a", "c", "b", "a"]) == "a"
+
+  assert mon_ban_chay(["x", "y", "y", "x"]) == "x"
+
+  print("OK")'
+test_an: 'import random
+
+  rng = random.Random(0)
+
+  ds = [f"m{i%50}" for i in range(20000)]
+
+  ds += ["m7"] * 500
+
+  rng.shuffle(ds)
+
+  assert mon_ban_chay(ds) == "m7"
+
+  print("OK")'
+loi_giai: "from collections import Counter\ndef mon_ban_chay(ds):\n    return min(Counter(ds).items(),\
+  \ key=lambda kv: (-kv[1], kv[0]))[0]"
+phuc_tap: O(n) thời gian, O(k) bộ nhớ.
+goi_y:
+- Đếm tần suất bằng dict.
+- Khi hòa, so chuỗi để chọn nhỏ hơn.
+- Dùng Counter rồi min theo (-đếm, tên).
+tuong_tu:
+  ten: Top K Frequent Elements
+  link: https://leetcode.com/problems/top-k-frequent-elements/

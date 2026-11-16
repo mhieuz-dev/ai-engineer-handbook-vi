@@ -1,0 +1,37 @@
+so: 8
+ten: Bể chứa nước lớn nhất
+dang: hai-con-tro
+muc: vua
+de: Cho chiều cao các tấm chắn đặt dọc. Chọn hai tấm để giữ được nhiều nước nhất; thể tích = khoảng cách
+  × chiều cao thấp hơn. Trả về thể tích lớn nhất.
+vi_du:
+- vao: '[1, 8, 6, 2, 5, 4, 8, 3, 7]'
+  ra: '49'
+rang_buoc:
+- 2 ≤ len(cao) ≤ 100 000
+khung: "def chua_nuoc(cao):\n    pass"
+test_vi_du: 'assert chua_nuoc([1, 8, 6, 2, 5, 4, 8, 3, 7]) == 49
+
+  assert chua_nuoc([1, 1]) == 1
+
+  print("OK")'
+test_an: 'import random
+
+  rng = random.Random(5)
+
+  cao = [rng.randint(0, 10000) for _ in range(50000)]
+
+  assert isinstance(chua_nuoc(cao), int)
+
+  print("OK")'
+loi_giai: "def chua_nuoc(cao):\n    i, j = 0, len(cao) - 1\n    tot = 0\n    while i < j:\n        tot\
+  \ = max(tot, (j - i) * min(cao[i], cao[j]))\n        if cao[i] < cao[j]:\n            i += 1\n     \
+  \   else:\n            j -= 1\n    return tot"
+phuc_tap: O(n) thời gian, O(1) bộ nhớ.
+goi_y:
+- Bắt đầu hai đầu, bề rộng lớn nhất.
+- Di chuyển bên thấp hơn vì bên đó giới hạn chiều cao.
+- Cập nhật diện tích trước khi di chuyển.
+tuong_tu:
+  ten: Container With Most Water
+  link: https://leetcode.com/problems/container-with-most-water/

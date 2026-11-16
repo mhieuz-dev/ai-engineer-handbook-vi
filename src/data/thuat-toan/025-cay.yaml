@@ -1,0 +1,37 @@
+so: 25
+ten: Lật cây thư mục dữ liệu
+dang: cay
+muc: de
+de: Cho gốc cây nhị phân, đổi chỗ toàn bộ cây con trái và phải, trả về gốc.
+vi_du:
+- vao: '[4, 2, 7, 1, 3, 6, 9]'
+  ra: '[4, 7, 2, 9, 6, 3, 1]'
+rang_buoc:
+- 0 ≤ số nút ≤ 100 000
+khung: "class Nut:\n    def __init__(self, gia, trai=None, phai=None):\n        self.gia = gia\n     \
+  \   self.trai = trai\n        self.phai = phai\n\ndef lat(goc):\n    pass"
+test_vi_du: "def ra(n):\n    if not n: return []\n    return [n.gia] + ra(n.trai) + ra(n.phai)\ng = Nut(4,\
+  \ Nut(2, Nut(1), Nut(3)), Nut(7, Nut(6), Nut(9)))\nassert ra(lat(g)) == [4,7,9,6,2,3,1]\nprint(\"OK\"\
+  )"
+test_an: 'g = Nut(0); nut = g
+
+  for i in range(1, 15000): nut.trai = Nut(i); nut = nut.trai
+
+  lat(g)
+
+  assert g.trai is None
+
+  print("OK")'
+loi_giai: "class Nut:\n    def __init__(self, gia, trai=None, phai=None):\n        self.gia = gia\n  \
+  \      self.trai = trai\n        self.phai = phai\n\ndef lat(goc):\n    if not goc:\n        return\
+  \ None\n    ngan = [goc]\n    while ngan:\n        n = ngan.pop()\n        n.trai, n.phai = n.phai,\
+  \ n.trai\n        if n.trai:\n            ngan.append(n.trai)\n        if n.phai:\n            ngan.append(n.phai)\n\
+  \    return goc"
+phuc_tap: O(n) thời gian.
+goi_y:
+- Đổi hai con của mỗi nút.
+- Đệ quy xuống hai bên.
+- Trả gốc sau khi đổi.
+tuong_tu:
+  ten: Invert Binary Tree
+  link: https://leetcode.com/problems/invert-binary-tree/

@@ -1,0 +1,44 @@
+so: 6
+ten: Ghép cặp tình nguyện viên theo chiều cao
+dang: hai-con-tro
+muc: de
+de: Có hai danh sách chiều cao đã sắp tăng. Ghép mỗi cặp một người từ mỗi danh sách sao cho chênh lệch
+  chiều cao nhỏ nhất. Trả về `[cao_a, cao_b]` của cặp tốt nhất; hòa thì chọn cặp có tổng nhỏ hơn.
+vi_du:
+- vao: '[150, 160, 170], [155, 165]'
+  ra: '[150, 155]'
+rang_buoc:
+- 1 ≤ len(a), len(b) ≤ 100 000
+- Hai danh sách đã sắp tăng.
+khung: "def ghep_cap(a, b):\n    pass"
+test_vi_du: 'assert ghep_cap([150, 160, 170], [155, 165]) == [150, 155]
+
+  assert ghep_cap([1, 10], [5]) == [1, 5] or ghep_cap([1, 10], [5]) == [10, 5]
+
+  print("OK")'
+test_an: 'import random
+
+  rng = random.Random(4)
+
+  a = sorted(rng.sample(range(100000), 20000))
+
+  b = sorted(rng.sample(range(100000), 20000))
+
+  x, y = ghep_cap(a, b)
+
+  assert x in a and y in b
+
+  print("OK")'
+loi_giai: "def ghep_cap(a, b):\n    i = j = 0\n    tot = None\n    while i < len(a) and j < len(b):\n\
+  \        cap = [a[i], b[j]]\n        if tot is None or abs(cap[0] - cap[1]) < abs(tot[0] - tot[1]) or\
+  \ (\n            abs(cap[0] - cap[1]) == abs(tot[0] - tot[1]) and sum(cap) < sum(tot)\n        ):\n\
+  \            tot = cap\n        if a[i] < b[j]:\n            i += 1\n        else:\n            j +=\
+  \ 1\n    return tot"
+phuc_tap: O(len(a) + len(b)) thời gian.
+goi_y:
+- Hai danh sách đã sắp nên dùng hai con trỏ.
+- Mỗi bước tiến con trỏ ở bên nhỏ hơn.
+- Cập nhật cặp tốt nhất trước khi tiến.
+tuong_tu:
+  ten: Two Sum II - Input Array Is Sorted
+  link: https://leetcode.com/problems/two-sum-ii-input-array-is-sorted/

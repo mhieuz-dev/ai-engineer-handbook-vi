@@ -1,0 +1,41 @@
+so: 10
+ten: Đoạn bình luận dài nhất không lặp âm tiết
+dang: cua-so-truot
+muc: vua
+de: Cho chuỗi các âm tiết (mỗi âm tiết là một ký tự). Tìm độ dài đoạn con liên tiếp dài nhất mà không
+  có âm tiết nào lặp lại.
+vi_du:
+- vao: '"abcabcbb"'
+  ra: '3'
+- vao: '"bbbbb"'
+  ra: '1'
+rang_buoc:
+- 0 ≤ len(s) ≤ 200 000
+khung: "def doan_dai_nhat(s):\n    pass"
+test_vi_du: 'assert doan_dai_nhat("abcabcbb") == 3
+
+  assert doan_dai_nhat("bbbbb") == 1
+
+  assert doan_dai_nhat("") == 0
+
+  print("OK")'
+test_an: 'import string, random
+
+  rng = random.Random(6)
+
+  s = "".join(rng.choice(string.ascii_letters) for _ in range(50000))
+
+  assert isinstance(doan_dai_nhat(s), int)
+
+  print("OK")'
+loi_giai: "def doan_dai_nhat(s):\n    thay = {}\n    trai = 0\n    dai = 0\n    for phai, c in enumerate(s):\n\
+  \        if c in thay and thay[c] >= trai:\n            trai = thay[c] + 1\n        thay[c] = phai\n\
+  \        dai = max(dai, phai - trai + 1)\n    return dai"
+phuc_tap: O(n) thời gian, O(k) bộ nhớ.
+goi_y:
+- Cửa sổ trượt với vị trí gần nhất của mỗi ký tự.
+- Khi gặp ký tự đã có trong cửa sổ, dời trái.
+- Cập nhật độ dài sau mỗi bước.
+tuong_tu:
+  ten: Longest Substring Without Repeating Characters
+  link: https://leetcode.com/problems/longest-substring-without-repeating-characters/

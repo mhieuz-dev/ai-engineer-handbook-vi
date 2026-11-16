@@ -1,0 +1,37 @@
+so: 9
+ten: Kiểm tra câu phản hồi đối xứng
+dang: hai-con-tro
+muc: de
+de: Bỏ qua dấu câu, khoảng trắng và phân biệt hoa thường; kiểm tra chuỗi phản hồi có đọc xuôi ngược giống
+  nhau không.
+vi_du:
+- vao: '"A man, a plan, a canal: Panama"'
+  ra: 'true'
+- vao: '"xin chào"'
+  ra: 'false'
+rang_buoc:
+- 0 ≤ len(s) ≤ 200 000
+khung: "def la_doi_xung(s):\n    pass"
+test_vi_du: 'assert la_doi_xung("A man, a plan, a canal: Panama") is True
+
+  assert la_doi_xung("xin chào") is False
+
+  assert la_doi_xung("") is True
+
+  print("OK")'
+test_an: 's = ("abc123" * 30000) + "cba321"
+
+  assert isinstance(la_doi_xung(s), bool)
+
+  print("OK")'
+loi_giai: "def la_doi_xung(s):\n    s = [c.lower() for c in s if c.isalnum()]\n    i, j = 0, len(s) -\
+  \ 1\n    while i < j:\n        if s[i] != s[j]:\n            return False\n        i += 1\n        j\
+  \ -= 1\n    return True"
+phuc_tap: O(n) thời gian, O(n) bộ nhớ (có thể O(1) nếu duyệt tại chỗ).
+goi_y:
+- Lọc ký tự chữ/số, đưa về chữ thường.
+- Hai con trỏ từ hai đầu.
+- So từng cặp, khác thì false.
+tuong_tu:
+  ten: Valid Palindrome
+  link: https://leetcode.com/problems/valid-palindrome/

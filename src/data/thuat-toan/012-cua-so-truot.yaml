@@ -1,0 +1,42 @@
+so: 12
+ten: Đoạn ngắn nhất chứa đủ từ khóa
+dang: cua-so-truot
+muc: kho
+de: Cho chuỗi văn bản `s` và chuỗi từ khóa `t`. Tìm đoạn con ngắn nhất của `s` chứa đủ mọi ký tự của `t`
+  (kể cả số lần). Không có thì trả về chuỗi rỗng.
+vi_du:
+- vao: '"ADOBECODEBANC", "ABC"'
+  ra: '"BANC"'
+rang_buoc:
+- 1 ≤ len(s), len(t) ≤ 100 000
+khung: "def doan_ngan_nhat(s, t):\n    pass"
+test_vi_du: 'assert doan_ngan_nhat("ADOBECODEBANC", "ABC") == "BANC"
+
+  assert doan_ngan_nhat("a", "a") == "a"
+
+  assert doan_ngan_nhat("a", "aa") == ""
+
+  print("OK")'
+test_an: 'import random, string
+
+  rng = random.Random(8)
+
+  s = "".join(rng.choice("abcde") for _ in range(20000))
+
+  assert isinstance(doan_ngan_nhat(s, "abcde"), str)
+
+  print("OK")'
+loi_giai: "from collections import Counter\ndef doan_ngan_nhat(s, t):\n    can = Counter(t)\n    thieu\
+  \ = len(t)\n    trai = 0\n    tot = None\n    for phai, c in enumerate(s):\n        if can[c] > 0:\n\
+  \            thieu -= 1\n        can[c] -= 1\n        while thieu == 0:\n            if tot is None\
+  \ or phai - trai + 1 < len(tot):\n                tot = s[trai : phai + 1]\n            can[s[trai]]\
+  \ += 1\n            if can[s[trai]] > 0:\n                thieu += 1\n            trai += 1\n    return\
+  \ tot or ''"
+phuc_tap: O(n + m) thời gian.
+goi_y:
+- Đếm nhu cầu của t.
+- Mở rộng phải tới khi đủ, rồi thu trái.
+- Ghi đoạn ngắn nhất.
+tuong_tu:
+  ten: Minimum Window Substring
+  link: https://leetcode.com/problems/minimum-window-substring/

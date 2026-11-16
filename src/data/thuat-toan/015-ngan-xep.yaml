@@ -1,0 +1,36 @@
+so: 15
+ten: Giá lớn hơn gần nhất bên phải
+dang: ngan-xep
+muc: vua
+de: Cho dãy giá sản phẩm. Với mỗi ngày, tìm giá lớn hơn gần nhất về bên phải; không có thì -1.
+vi_du:
+- vao: '[2, 1, 2, 4, 3]'
+  ra: '[4, 2, 4, -1, -1]'
+rang_buoc:
+- 1 ≤ len(gia) ≤ 100 000
+khung: "def lon_hon_ben_phai(gia):\n    pass"
+test_vi_du: 'assert lon_hon_ben_phai([2, 1, 2, 4, 3]) == [4, 2, 4, -1, -1]
+
+  print("OK")'
+test_an: 'import random
+
+  rng = random.Random(10)
+
+  gia = [rng.randint(0, 10000) for _ in range(50000)]
+
+  kq = lon_hon_ben_phai(gia)
+
+  assert len(kq) == len(gia)
+
+  print("OK")'
+loi_giai: "def lon_hon_ben_phai(gia):\n    kq = [-1] * len(gia)\n    ngan = []\n    for i, x in enumerate(gia):\n\
+  \        while ngan and gia[ngan[-1]] < x:\n            kq[ngan.pop()] = x\n        ngan.append(i)\n\
+  \    return kq"
+phuc_tap: O(n) thời gian.
+goi_y:
+- Duyệt trái sang phải với ngăn xếp chỉ số giảm dần.
+- Khi gặp giá lớn hơn, gán cho các đỉnh nhỏ hơn.
+- Đẩy chỉ số hiện tại vào.
+tuong_tu:
+  ten: Next Greater Element I
+  link: https://leetcode.com/problems/next-greater-element-i/
