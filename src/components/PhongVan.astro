@@ -476,7 +476,7 @@ const jsonDe = JSON.stringify(de).replace(/</g, '\\u003c');
 				const diem = truGoiY((ds.reduce((a, b) => a + b, 0) / ds.length / 4) * 10, p);
 				const muc = mucTuDiem(diem);
 				luuLichSu(diem, muc);
-				elKq.querySelector<HTMLElement>('[data-pv-td-kq]')!.innerHTML = `<p class="pv-diem"><strong>${diem.toFixed(1)}</strong><span>/10 · ${muc}</span></p>${p.goiY.size ? `<p>Đã trừ ${(p.goiY.size * 0.5).toFixed(1)} vì xin gợi ý.</p>` : ''}<p>Gợi ý ôn: <a href="/thuat-toan/">luyện thuật toán</a> · <a href="/phong-thi/">thi thử Ch0–Ch4</a> · <a href="/ai-engineer/ch62-ml-system-design/01-bai-toan-he-thong/">ML system design</a></p>`;
+				elKq.querySelector<HTMLElement>('[data-pv-td-kq]')!.innerHTML = `<p class="pv-diem"><strong>${diem.toFixed(1)}</strong><span>/10 · ${muc}</span></p>${p.goiY.size ? `<p>Đã trừ ${(p.goiY.size * 0.5).toFixed(1)} vì xin gợi ý.</p>` : ''}<p>Gợi ý ôn: <a href="/thuat-toan/">luyện thuật toán</a> · <a href="/phong-thi/">thi thử Ch0–Ch4</a> · <a href="/phong-thi/">thi thử ML</a></p>`;
 			});
 			elKq.querySelector('[data-pv-lam-lai]')?.addEventListener('click', () => {
 				elKq.hidden = true;
