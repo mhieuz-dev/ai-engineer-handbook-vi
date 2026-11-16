@@ -3,12 +3,34 @@ import Default from '@astrojs/starlight/components/TableOfContents.astro';
 import { luaChonTaiVe } from '../../lib/tai-ve';
 import IconTaiVe from '../icon/IconTaiVe.astro';
 import { timChuongTheoSlugTrang } from '../../data/chuong';
+import { getCollection } from 'astro:content';
+import { BANG_CHU_CAI, chuCai } from '../../lib/thuat-ngu-muc';
 
-const chuong = timChuongTheoSlugTrang(Astro.locals.starlightRoute.id);
+const id = Astro.locals.starlightRoute.id;
+const chuong = timChuongTheoSlugTrang(id);
 const coKhung = chuong?.trangThai === 'xong';
+// Trang thuật ngữ: mục lục phải là A–Z, không phải danh sách tiêu đề.
+const laThuatNgu = id === 'thuat-ngu';
+const coChu = new Set(laThuatNgu ? (await getCollection('thuatNgu')).map((m) => chuCai(m.data.ten)) : []);
 ---
 
-<Default><slot /></Default>
+{
+	laThuatNgu ? (
+		<nav class="toc-az" aria-labelledby="starlight__on-this-page">
+			<h2 id="starlight__on-this-page">A–Z</h2>
+			<ul>
+				{BANG_CHU_CAI.map((c) => (
+					<li>
+						{coChu.has(c) ? <a href={`#chu-${c.toLowerCase()}`}>{c}</a> : <span aria-disabled="true">{c}</span>}
+					</li>
+				))}
+				{coChu.has('#') && <li><a href="#chu-khac">#</a></li>}
+			</ul>
+		</nav>
+	) : (
+		<Default><slot /></Default>
+	)
+}
 {
 	coKhung && (
 		<nav class="tai-ve" aria-labelledby="tai-ve-nhan">
@@ -23,6 +45,49 @@ const coKhung = chuong?.trangThai === 'xong';
 }
 
 <style>
+	.toc-az {
+		font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+	}
+	.toc-az h2 {
+		margin: 0 0 0.4rem;
+		font-size: var(--sl-text-xs);
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		color: var(--mut);
+	}
+	.toc-az ul {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.18rem;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+	.toc-az li {
+		margin: 0;
+	}
+	.toc-az a,
+	.toc-az span {
+		display: grid;
+		place-items: center;
+		width: 1.35rem;
+		height: 1.35rem;
+		border: 1px solid var(--line);
+		border-radius: 5px;
+		font-size: 0.72rem;
+		font-weight: 700;
+		text-decoration: none;
+		color: var(--khu-tra);
+	}
+	.toc-az a:hover,
+	.toc-az a:focus-visible {
+		background: var(--khu-tra);
+		color: var(--bg);
+	}
+	.toc-az span {
+		opacity: 0.35;
+		border-color: transparent;
+	}
 	.tai-ve {
 		margin-top: 1.5rem;
 		font-family: 'Be Vietnam Pro', system-ui, sans-serif;
