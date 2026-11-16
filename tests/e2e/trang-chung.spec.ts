@@ -62,7 +62,7 @@ test('giới thiệu: Mhz, MIT, GitHub, báo lỗi', async ({ page }) => {
 test('menu trên cùng có Lộ trình, Thuật ngữ, Notebook', async ({ page, isMobile }) => {
 	await page.goto('/');
 	const nav = page.locator(isMobile ? '.nav-chung-mobile' : 'header .nav-chung');
-	for (const [ten, href] of [['Lộ trình', '/lo-trinh/'], ['Thuật ngữ', '/thuat-ngu/'], ['Notebook', '/notebook/']]) {
+	for (const [ten, href] of [['Lộ trình', '/lo-trinh/'], ['Luyện tập', '/luyen-tap/'], ['Thuật ngữ', '/thuat-ngu/'], ['Notebook', '/notebook/']]) {
 		await expect(nav.getByRole('link', { name: ten })).toHaveAttribute('href', href);
 	}
 });
@@ -91,7 +91,7 @@ for (const [rong, cao] of [[820, 1180], [900, 1200]]) {
 		await page.setViewportSize({ width: rong, height: cao });
 		await page.goto('/ai-engineer/ch10-hoi-quy-tuyen-tinh/02-toan/');
 		const nhan = page.locator('header .nav-chung a, header button[data-open-modal] > span');
-		await expect(nhan).toHaveCount(5);
+		await expect(nhan).toHaveCount(6);
 		for (const el of await nhan.all()) {
 			const { cao: h, dong } = await el.evaluate((e) => ({ cao: e.getBoundingClientRect().height, dong: parseFloat(getComputedStyle(e).lineHeight) }));
 			expect(h, (await el.textContent()) ?? '').toBeLessThan(1.6 * dong);
@@ -114,7 +114,7 @@ test('desktop: link đầu trang cách nhau bằng chấm nhỏ, nút Tải về
 	await page.goto('/ai-engineer/ch10-hoi-quy-tuyen-tinh/02-toan/');
 	const links = page.locator('header .nav-chung a');
 	const cham = await links.evaluateAll((as) => as.map((a) => getComputedStyle(a, '::before').width));
-	expect(cham).toEqual(['auto', '3px', '3px', '3px']);
+	expect(cham).toEqual(['auto', '3px', '3px', '3px', '3px']);
 	const nut = page.getByRole('button', { name: 'Tải về' });
 	await expect(nut).toHaveText('Tải về');
 	expect(await nut.evaluate((e) => getComputedStyle(e).borderTopWidth)).toBe('1px');

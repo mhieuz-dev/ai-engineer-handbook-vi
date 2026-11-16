@@ -1,0 +1,136 @@
+---
+import { taiDeThi } from '../lib/de-thi';
+
+const de = await taiDeThi();
+const nhom = de.map((d) => ({
+	chuong: d.chuong,
+	ten: d.ten,
+	khaiNiem: d.khai_niem
+		.map((k) => ({ ...k, so: d.cau_hoi.filter((q) => q.khai_niem?.includes(k.id)).length }))
+		.filter((k) => k.so > 0),
+}));
+const cheDo = [
+	{ href: '/phong-thi/', ten: 'Phòng thi thử', mo: 'Theo chương, theo chủ đề, kiểm tra nhanh hay case lớn; chấm ngay, có bản đồ kiến thức.' },
+	{ href: '/thuat-toan/', ten: 'Luyện thuật toán', mo: '41 bài tự soạn theo 12 dạng, lộ trình dễ đến khó và đồ án tốt nghiệp.' },
+	{ href: '/toan-thuat-toan/', ten: 'Toán cho thuật toán', mo: '31 bài nền: độ phức tạp, chứng minh, xác suất, đại số, tối ưu và đồ án toán.' },
+	{ href: '/phong-van/', ten: 'Phỏng vấn thử', mo: '8 phong cách, vòng code thật, bấm giờ và phiếu đánh giá cuối buổi.' },
+	{ href: '/ho-so/', ten: 'Hồ sơ học tập', mo: 'Tiến độ, điểm theo thời gian, bản đồ kiến thức và gợi ý học gì tiếp.' },
+];
+---
+
+<div class="lt">
+	<p class="lt-mo">
+		Một chỗ cho mọi kiểu luyện: thi thử, thuật toán, toán nền, phỏng vấn và xem lại tiến độ. Không cần đăng nhập; tiến độ lưu trong trình duyệt,
+		đăng nhập Google thì đồng bộ nhiều máy.
+	</p>
+
+	<div class="lt-mode">
+		{cheDo.map((m) => (
+			<a class="lt-the" href={m.href}>
+				<strong>{m.ten}</strong>
+				<span>{m.mo}</span>
+			</a>
+		))}
+	</div>
+
+	<h2>Thi nhanh theo chủ đề</h2>
+	<p class="lt-mo">
+		Chọn một khái niệm; đề chỉ gồm các câu về khái niệm đó, 15 phút. Làm xong sẽ thấy đúng/sai từng câu và chỗ cần ôn.
+	</p>
+	{
+		nhom.map((n) => (
+			<section class="lt-nhom">
+				<h3>
+					Ch{n.chuong} · {n.ten}
+				</h3>
+				<div class="lt-chude">
+					{n.khaiNiem.map((k) => (
+						<a href={`/phong-thi/?chu-de=${encodeURIComponent(k.id)}`}>
+							{k.ten} <span>{k.so} câu</span>
+						</a>
+					))}
+				</div>
+			</section>
+		))
+	}
+	<p class="lt-ghi">Chủ đề lấy từ ngân hàng đề Ch0–Ch7. Các chương sau sẽ tự hiện khi có đề.</p>
+</div>
+
+<style>
+	.lt {
+		font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+	}
+	.lt-mo {
+		line-height: 1.65;
+	}
+	.lt-mode {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+		gap: 0.6rem;
+		margin: 1rem 0 1.6rem;
+	}
+	.lt-the {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		padding: 0.8rem 0.95rem;
+		border: 1px solid var(--line);
+		border-radius: 12px;
+		background: var(--panel);
+		color: var(--tx);
+		text-decoration: none;
+	}
+	.lt-the:hover {
+		border-color: var(--pri);
+	}
+	.lt-the strong {
+		color: var(--pri);
+		font-size: 1rem;
+	}
+	.lt-the span {
+		font-size: 0.84rem;
+		line-height: 1.5;
+		color: var(--mut-chu);
+	}
+	.lt h2 {
+		margin-top: 1.8rem;
+		font-size: 1.2rem;
+	}
+	.lt-nhom {
+		margin-top: 1rem;
+	}
+	.lt-nhom h3 {
+		margin: 0 0 0.4rem;
+		font-size: 0.95rem;
+	}
+	.lt-chude {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
+	}
+	.lt-chude a {
+		display: inline-flex;
+		align-items: baseline;
+		gap: 0.35rem;
+		padding: 0.35rem 0.65rem;
+		border: 1px solid var(--line);
+		border-radius: 999px;
+		background: var(--bg);
+		color: var(--tx);
+		font-size: 0.84rem;
+		text-decoration: none;
+	}
+	.lt-chude a:hover {
+		border-color: var(--pri);
+		color: var(--pri);
+	}
+	.lt-chude a span {
+		font-size: 0.7rem;
+		color: var(--mut-chu);
+	}
+	.lt-ghi {
+		margin-top: 1.4rem;
+		font-size: 0.8rem;
+		color: var(--mut-chu);
+	}
+</style>

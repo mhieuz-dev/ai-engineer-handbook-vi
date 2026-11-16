@@ -11,6 +11,11 @@ const khoangChuong = de.length ? `Ch${de[0].chuong}-Ch${de[de.length - 1].chuong
 
 	<section class="pt-setup" data-pt-setup>
 		<h2>Chọn đề</h2>
+		<section class="pt-chude" aria-labelledby="pt-chude-ten">
+			<h3 id="pt-chude-ten">Thi nhanh theo chủ đề</h3>
+			<p class="pt-chude-mo">Chọn một khái niệm; đề chỉ gồm các câu về khái niệm đó, 15 phút.</p>
+			<div class="pt-chude-luoi" data-pt-chude></div>
+		</section>
 		<div class="pt-luoi">
 			<label class="pt-nhan">Kiểu đề
 				<select data-pt-kieu>
@@ -98,6 +103,7 @@ const khoangChuong = de.length ? `Ch${de[0].chuong}-Ch${de[de.length - 1].chuong
 		const elThi = $<HTMLElement>('[data-pt-thi]');
 		const elKq = $<HTMLElement>('[data-pt-kq]');
 		const elChuong = $<HTMLElement>('[data-pt-chuong]');
+		const elChuDe = $<HTMLElement>('[data-pt-chude]');
 		const elMoTa = $<HTMLElement>('[data-pt-mo-ta]');
 		const elLoi = $<HTMLElement>('[data-pt-loi]');
 		const elCau = $<HTMLElement>('[data-pt-cau]');
@@ -152,6 +158,20 @@ const khoangChuong = de.length ? `Ch${de[0].chuong}-Ch${de[de.length - 1].chuong
 		elChuong.innerHTML = DE.map(
 			(d) => `<label class="pt-o-chuong"><input type="checkbox" data-pt-chuong-so value="${d.chuong}" checked /> Ch${d.chuong} · ${esc(d.ten)}</label>`,
 		).join('');
+		const khaiNiem = new Map<string, { ten: string; trang: string; so: number; chuong: Set<number> }>();
+		for (const d of DE) {
+			for (const k of d.khai_niem) {
+				const c = khaiNiem.get(k.id) ?? { ten: k.ten, trang: k.trang, so: 0, chuong: new Set<number>() };
+				c.so += d.cau_hoi.filter((q) => q.khai_niem?.includes(k.id)).length;
+				c.chuong.add(d.chuong);
+				khaiNiem.set(k.id, c);
+			}
+		}
+		elChuDe.innerHTML = [...khaiNiem.entries()]
+			.filter(([, c]) => c.so > 0)
+			.sort((a, b) => a[1].ten.localeCompare(b[1].ten, 'vi'))
+			.map(([id, c]) => `<button type="button" class="pt-chude-the" data-pt-chude-id="${id}"><strong>${esc(c.ten)}</strong><span>${c.so} câu · Ch${[...c.chuong].join(', Ch')}</span></button>`)
+			.join('');
 		const capNhatMoTa = () => {
 			const kieu = selKieu.value as KieuDe;
 			elMoTa.textContent = `${SO_CAU[kieu]}, ${PHUT[kieu]} phút. ${cbGio.checked ? 'Hết giờ tự nộp.' : 'Không bấm giờ.'}`;
@@ -392,6 +412,25 @@ const khoangChuong = de.length ? `Ch${de[0].chuong}-Ch${de[de.length - 1].chuong
 			luuPhien();
 		};
 
+		const batDauChuDe = (id: string) => {
+			const ds: CauThi[] = DE.flatMap((d) =>
+				d.cau_hoi
+					.filter((q) => q.khai_niem?.includes(id))
+					.map((q) => ({ khoa: `ch${d.chuong}-${q.id}`, chuong: d.chuong, tenChuong: d.ten, cau: q })),
+			);
+			if (!ds.length) {
+				elLoi.textContent = 'Chủ đề này chưa có câu hỏi.';
+				return;
+			}
+			const phamVi = [...new Set(ds.map((c) => c.chuong))];
+			elLoi.textContent = '';
+			batDau(ds, 'nhanh', phamVi, 'tron', false, cbGio.checked);
+		};
+		elChuDe.addEventListener('click', (e) => {
+			const b = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-pt-chude-id]');
+			if (b) batDauChuDe(b.dataset.ptChudeId!);
+		});
+
 		$<HTMLButtonElement>('[data-pt-bat-dau]').addEventListener('click', () => {
 			const phamVi = [...goc.querySelectorAll<HTMLInputElement>('[data-pt-chuong-so]')].filter((x) => x.checked).map((x) => Number(x.value));
 			if (!phamVi.length) {
@@ -620,6 +659,8 @@ const khoangChuong = de.length ? `Ch${de[0].chuong}-Ch${de[de.length - 1].chuong
 						`<label><input type="checkbox" data-khoa="${khoa}" data-nv="${nv ?? ''}" data-diem="${y.diem}" ${(tl.diem ?? 0) >= y.diem ? '' : ''}/> ${esc(y.y)} <span>(${y.diem} điểm)</span></label>`,
 				)
 				.join('')}<p class="pt-tucham-tt">Điểm tự chấm hiện tại: ${(tl.diem ?? 0).toFixed(1)}/10</p></div>`;
+		const chuDe = new URLSearchParams(location.search).get('chu-de');
+		if (chuDe) batDauChuDe(chuDe);
 	}
 </script>
 
@@ -636,6 +677,14 @@ const khoangChuong = de.length ? `Ch${de[0].chuong}-Ch${de[de.length - 1].chuong
 	.pt-kq {
 		max-width: 56rem;
 	}
+	.pt-chude { margin: 0.4rem 0 1rem; }
+	.pt-chude h3 { margin: 0 0 0.2rem; font-size: 1rem; }
+	.pt-chude-mo { margin: 0 0 0.5rem; font-size: 0.82rem; color: var(--mut-chu); }
+	.pt-chude-luoi { display: grid; grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); gap: 0.4rem; max-height: 15rem; overflow: auto; padding-right: 0.2rem; }
+	.pt-chude-the { display: flex; flex-direction: column; align-items: flex-start; gap: 0.1rem; padding: 0.45rem 0.6rem; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--tx); text-align: left; cursor: pointer; }
+	.pt-chude-the:hover { border-color: var(--pri); }
+	.pt-chude-the strong { font-size: 0.82rem; color: var(--pri); }
+	.pt-chude-the span { font-size: 0.7rem; color: var(--mut-chu); }
 	.pt-luoi {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
