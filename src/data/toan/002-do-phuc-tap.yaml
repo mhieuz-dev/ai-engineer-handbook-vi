@@ -1,0 +1,24 @@
+so: 2
+ten: Truy hồi T(n)=2T(n/2)+n
+module: do-phuc-tap
+loai: chung-minh
+muc: vua
+de: Giải truy hồi `T(n)=2T(n/2)+n`, `T(1)=1`. Chứng minh `T(n)=O(n log n)`.
+goi_y:
+- Vẽ cây đệ quy; mỗi mức có tổng bao nhiêu?
+- Có bao nhiêu mức trước khi chạm 1?
+- Đây là trường hợp 2 của Master theorem.
+loi_giai: T(n)=O(n log n).
+lien_quan:
+- ten: Độ phức tạp thuật toán
+  trang: /thuat-toan/
+chung_minh: 'Cây đệ quy: mức 0 có n, mức 1 có 2·(n/2)=n, …, mức k có n. Có log₂n+1 mức, nên tổng n(log₂n+1)=O(n
+  log n).'
+phuc_tap: O(n log n).
+rubric:
+- y: Vẽ/giải thích cây đệ quy
+  diem: 4
+- y: Đếm số mức log n
+  diem: 3
+- y: Kết luận O(n log n)
+  diem: 3

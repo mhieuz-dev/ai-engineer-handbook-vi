@@ -34,3 +34,6 @@ goi_y:
 tuong_tu:
   ten: Coin Change
   link: https://leetcode.com/problems/coin-change/
+vi_sao_dung: dp[x] là số xu ít nhất cho x; đồng cuối cùng là m, nên dp[x]=1+min dp[x-m]; quy nạp theo
+  x cho tính đúng.
+do_phuc_tap_chat: O(so_tien · số mệnh giá) thời gian.

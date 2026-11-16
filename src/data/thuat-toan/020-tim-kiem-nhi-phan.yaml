@@ -40,3 +40,6 @@ goi_y:
 tuong_tu:
   ten: Koko Eating Bananas
   link: https://leetcode.com/problems/koko-eating-bananas/
+vi_sao_dung: Số giờ cần là tổng ceil(x/v), giảm khi v tăng; tính đơn điệu cho phép tìm nhị phân v nhỏ
+  nhất thỏa giờ ≤ h.
+do_phuc_tap_chat: O(n log max) thời gian.

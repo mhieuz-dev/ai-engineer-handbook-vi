@@ -34,3 +34,6 @@ goi_y:
 tuong_tu:
   ten: Longest Increasing Subsequence
   link: https://leetcode.com/problems/longest-increasing-subsequence/
+vi_sao_dung: Mảng đuôi giữ phần tử kết thúc nhỏ nhất cho mỗi độ dài; thay bằng phần tử mới không làm mất
+  khả năng tạo dãy dài hơn, nên độ dài cuối là LIS.
+do_phuc_tap_chat: O(n log n) thời gian.

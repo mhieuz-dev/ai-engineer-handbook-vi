@@ -1,0 +1,26 @@
+so: 12
+ten: Dijkstra cần cạnh không âm
+module: chung-minh
+loai: chung-minh
+muc: vua
+de: 'Cho phản ví dụ Dijkstra sai khi có cạnh âm: A→B=1, A→C=2, C→B=-2. Dijkstra làm gì và đường ngắn nhất
+  thật là gì?'
+goi_y:
+- Dijkstra chốt B khi khoảng cách 1.
+- Sau đó xét C=2, cập nhật B=0.
+- Vì B đã chốt nên không cập nhật lại.
+loi_giai: Dijkstra lấy B với 1 và đánh dấu chốt; sau đó C=2, cập nhật B=0 nhưng B đã chốt nên bỏ qua.
+  Đường thật A→C→B=0. Cạnh âm có thể làm đường đi ngắn hơn sau khi đã chốt, nên Dijkstra chỉ đúng với
+  cạnh không âm.
+lien_quan:
+- ten: BFS/DFS
+  trang: /thuat-toan/
+chung_minh: Phản ví dụ; với cạnh không âm, khi chốt u thì mọi đường khác tới u không thể ngắn hơn.
+phuc_tap: O((V+E) log V) với heap.
+rubric:
+- y: Mô tả đúng Dijkstra chốt B
+  diem: 3
+- y: Chỉ ra đường thật 0
+  diem: 4
+- y: Kết luận điều kiện không âm
+  diem: 3

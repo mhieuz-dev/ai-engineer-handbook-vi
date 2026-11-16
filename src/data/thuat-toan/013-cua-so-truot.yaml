@@ -36,3 +36,6 @@ goi_y:
 tuong_tu:
   ten: Longest Repeating Character Replacement
   link: https://leetcode.com/problems/longest-repeating-character-replacement/
+vi_sao_dung: Cửa sổ hợp lệ khi độ dài trừ tần suất lớn nhất không quá k; thu trái khi vượt, nên mọi cửa
+  sổ hợp lệ đều được xét.
+do_phuc_tap_chat: O(n) thời gian.

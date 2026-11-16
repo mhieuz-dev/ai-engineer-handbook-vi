@@ -1,0 +1,43 @@
+so: 23
+ten: PCA bằng SVD
+module: dai-so
+loai: code
+muc: kho
+de: 'Viết `pca(X, k)` trả về `(Z, V)`: `Z` là dữ liệu đã chiếu `(n,k)`, `V` là `k` thành phần chính `(k,d)`,
+  dùng SVD sau khi trừ trung bình.'
+goi_y:
+- Trừ trung bình từng cột.
+- SVD của Xc.
+- Lấy k hàng đầu của V^T và chiếu.
+loi_giai: "import numpy as np\n\ndef pca(X, k):\n    X = np.asarray(X, dtype=float)\n    Xc = X - X.mean(axis=0)\n\
+  \    _, _, Vt = np.linalg.svd(Xc, full_matrices=False)\n    V = Vt[:k]\n    return Xc @ V.T, V"
+lien_quan: []
+chung_minh: SVD Xc=U S V^T; các hàng V^T là hướng chính; chiếu Xc V.
+phuc_tap: O(n d²) cho SVD gọn.
+khung: "import numpy as np\n\ndef pca(X, k):\n    # viết code ở đây\n    pass"
+test_vi_du: 'import numpy as np
+
+  X = np.array([[1., 1.], [2., 2.], [3., 3.]])
+
+  Z, V = pca(X, 1)
+
+  assert Z.shape == (3, 1) and V.shape == (1, 2)
+
+  assert np.allclose(Z.mean(0), 0)
+
+  assert abs(abs(V[0, 0]) - abs(V[0, 1])) < 1e-8
+
+  print("OK")'
+test_an: 'import numpy as np
+
+  rng = np.random.default_rng(0)
+
+  X = rng.normal(size=(50, 4))
+
+  Z, V = pca(X, 2)
+
+  assert Z.shape == (50, 2) and V.shape == (2, 4)
+
+  assert np.allclose(V @ V.T, np.eye(2), atol=1e-8)
+
+  print("OK")'

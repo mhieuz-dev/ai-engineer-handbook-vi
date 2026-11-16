@@ -1,0 +1,24 @@
+so: 13
+ten: Kỳ vọng so sánh randomized quicksort
+module: xac-suat
+loai: chung-minh
+muc: vua
+de: Chứng minh kỳ vọng số so sánh của randomized quicksort là O(n log n).
+goi_y:
+- Xác suất hai phần tử i<j được so sánh bằng 2/(j-i+1).
+- Tổng theo mọi cặp.
+- Đưa về tổng harmonic.
+loi_giai: E = Σ_{i<j} 2/(j-i+1) = 2Σ_{k=1}^{n-1}(n-k)/k < 2n H_n = O(n log n).
+lien_quan:
+- ten: Xác suất và thống kê
+  trang: /ai-engineer/ch07-xac-suat-thong-ke/01-xac-suat-va-mo-phong/
+chung_minh: i và j bị so sánh nếu chốt đầu tiên trong đoạn [i,j] là i hoặc j; xác suất 2/(j-i+1). Tổng
+  theo cặp cho O(n log n).
+phuc_tap: O(n log n) kỳ vọng.
+rubric:
+- y: Nêu xác suất so sánh cặp
+  diem: 4
+- y: Lập tổng
+  diem: 3
+- y: Đưa về harmonic
+  diem: 3

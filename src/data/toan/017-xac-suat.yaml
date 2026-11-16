@@ -1,0 +1,22 @@
+so: 17
+ten: Reservoir sampling
+module: xac-suat
+loai: chung-minh
+muc: kho
+de: Chứng minh reservoir sampling với k=1 chọn mỗi phần tử với xác suất 1/n sau khi đọc n phần tử.
+goi_y:
+- Quy nạp theo n.
+- Khi gặp phần tử thứ n, thay với xác suất 1/n.
+- Phần tử cũ sống sót nếu không bị thay.
+loi_giai: 'Sau n bước, mỗi phần tử có xác suất 1/n. Quy nạp: phần tử mới được chọn 1/n; phần tử cũ sống
+  sót với (1-1/n) và trước đó có 1/(n-1), nhân lại 1/n.'
+lien_quan: []
+chung_minh: Quy nạp; đây là mẫu đều một phần tử.
+phuc_tap: O(n) thời gian, O(1) bộ nhớ.
+rubric:
+- y: Nêu quy nạp
+  diem: 3
+- y: Tính xác suất sống sót
+  diem: 5
+- y: Kết luận 1/n
+  diem: 2

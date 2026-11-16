@@ -38,3 +38,6 @@ goi_y:
 tuong_tu:
   ten: Validate Binary Search Tree
   link: https://leetcode.com/problems/validate-binary-search-tree/
+vi_sao_dung: Duyệt giữa của BST phải tăng nghiêm ngặt; ngược lại nếu duyệt giữa tăng nghiêm ngặt thì mọi
+  nút trái nhỏ hơn và phải lớn hơn, nên là BST.
+do_phuc_tap_chat: O(n) thời gian, O(h) bộ nhớ.

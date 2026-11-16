@@ -1,0 +1,24 @@
+so: 25
+ten: Kiểm tra hàm lồi
+module: toi-uu
+loai: chung-minh
+muc: de
+de: Kiểm tra `f(x)=x²`, `g(x)=x³`, `h(x)=|x|` có lồi trên R không; giải thích.
+goi_y:
+- Dùng đạo hàm bậc hai nếu có.
+- Hoặc dùng định nghĩa f(λx+(1-λ)y) ≤ λf(x)+(1-λ)f(y).
+- '|x| có điểm gãy tại 0 nhưng vẫn lồi.'
+loi_giai: x² lồi vì f''=2>0. x³ không lồi vì f''=6x đổi dấu. |x| lồi theo định nghĩa (đồ thị nằm dưới
+  dây cung).
+lien_quan:
+- ten: Tối ưu hóa
+  trang: /ai-engineer/ch08-toi-uu-hoa/01-gradient-descent/
+chung_minh: Kiểm tra đạo hàm bậc hai hoặc định nghĩa.
+phuc_tap: Không áp dụng.
+rubric:
+- y: x² lồi
+  diem: 3
+- y: x³ không lồi
+  diem: 4
+- y: '|x| lồi'
+  diem: 3

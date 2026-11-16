@@ -33,6 +33,7 @@ test('nộp bài: sai thì chưa đạt, đúng thì đạt và mở lời giả
 	await expect(page.locator('[data-tt-kq]')).toContainText('toàn bộ test ẩn', { timeout: 120_000 });
 	await expect(page.locator('[data-tt-loi-giai]')).toBeVisible();
 	await expect(page.locator('[data-tt-loi-giai]')).toContainText('Độ phức tạp');
+	await expect(page.locator('.tt-chung-minh')).toContainText('bảng băm');
 
 	await page.locator('[data-tt-quay]').click();
 	await expect(page.locator('[data-tt-tong]')).toContainText('1/41');

@@ -1,0 +1,24 @@
+so: 26
+ten: GD giảm hàm với bước 1/L
+module: toi-uu
+loai: chung-minh
+muc: vua
+de: 'Cho f L-trơn: `f(y) ≤ f(x)+∇f(x)^T(y-x)+(L/2)||y-x||²`. Chứng minh bước `x''=x-(1/L)∇f(x)` làm f
+  giảm ít nhất `(1/(2L))||∇f(x)||²`.'
+goi_y:
+- Thay y=x' vào bất đẳng thức.
+- Tính hai hạng tử.
+- Cộng lại.
+loi_giai: 'Thay y=x'': ∇^T(y-x)=-(1/L)||∇||²; (L/2)||y-x||²=(1/(2L))||∇||². Vậy f(x'') ≤ f(x) - (1/(2L))||∇||².'
+lien_quan:
+- ten: Gradient descent
+  trang: /ai-engineer/ch08-toi-uu-hoa/01-gradient-descent/
+chung_minh: Descent lemma cho hàm L-trơn.
+phuc_tap: O(1) mỗi bước.
+rubric:
+- y: Thay bước đúng
+  diem: 3
+- y: Tính hai hạng tử
+  diem: 4
+- y: Kết luận giảm
+  diem: 3

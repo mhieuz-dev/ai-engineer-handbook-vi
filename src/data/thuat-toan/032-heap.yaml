@@ -36,3 +36,5 @@ goi_y:
 tuong_tu:
   ten: Top K Frequent Words
   link: https://leetcode.com/problems/top-k-frequent-words/
+vi_sao_dung: Đếm đúng tần suất; sắp theo (-đếm, từ) hoặc heap k phần tử cho top-k đúng thứ tự hòa.
+do_phuc_tap_chat: O(n + u log u) với u là số từ khác nhau.

@@ -1,0 +1,21 @@
+so: 3
+ten: Truy hồi T(n)=T(n-1)+n
+module: do-phuc-tap
+loai: chung-minh
+muc: de
+de: Giải truy hồi `T(n)=T(n-1)+n`, `T(1)=1`.
+goi_y:
+- Khai triển từng bước.
+- Cộng 1+2+...+n.
+- Dùng công thức tổng cấp số cộng.
+loi_giai: T(n)=n(n+1)/2=O(n²).
+lien_quan: []
+chung_minh: T(n)=n+(n-1)+…+1=n(n+1)/2; chứng minh bằng quy nạp hoặc công thức Gauss.
+phuc_tap: O(n²).
+rubric:
+- y: Khai triển đúng
+  diem: 4
+- y: Tính tổng 1..n
+  diem: 4
+- y: Kết luận O(n²)
+  diem: 2

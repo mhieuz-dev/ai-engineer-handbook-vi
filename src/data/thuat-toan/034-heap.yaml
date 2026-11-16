@@ -37,3 +37,6 @@ goi_y:
 tuong_tu:
   ten: Merge k Sorted Lists
   link: https://leetcode.com/problems/merge-k-sorted-lists/
+vi_sao_dung: Heap chứa đầu của mỗi danh sách; mỗi lần lấy nhỏ nhất và đẩy phần tử kế, nên đầu ra là hợp
+  đã sắp.
+do_phuc_tap_chat: O(N log k) với N là tổng số phần tử.

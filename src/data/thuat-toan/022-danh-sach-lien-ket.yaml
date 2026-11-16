@@ -27,3 +27,6 @@ goi_y:
 tuong_tu:
   ten: Reverse Linked List
   link: https://leetcode.com/problems/reverse-linked-list/
+vi_sao_dung: Mỗi bước lưu nút sau, trỏ nút hiện tại về trước, rồi tiến; sau khi duyệt hết, trước là đầu
+  danh sách đã đảo.
+do_phuc_tap_chat: O(n) thời gian, O(1) bộ nhớ.

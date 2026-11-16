@@ -1,0 +1,22 @@
+so: 8
+ten: Quy nạp tổng 1..n
+module: chung-minh
+loai: chung-minh
+muc: de
+de: Chứng minh `1+2+...+n = n(n+1)/2` bằng quy nạp.
+goi_y:
+- Cơ sở n=1.
+- Giả thiết đúng tới n, xét n+1.
+- Cộng thêm n+1 và rút gọn.
+loi_giai: 'Cơ sở: n=1, 1=1·2/2. Giả sử đúng tới n. Với n+1: n(n+1)/2+(n+1)=(n+1)(n+2)/2. Vậy đúng với
+  mọi n≥1.'
+lien_quan: []
+chung_minh: Quy nạp toán học.
+phuc_tap: O(1) để tính tổng.
+rubric:
+- y: Cơ sở đúng
+  diem: 3
+- y: Bước quy nạp đúng
+  diem: 5
+- y: Kết luận
+  diem: 2

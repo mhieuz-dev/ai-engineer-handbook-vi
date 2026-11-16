@@ -1,0 +1,24 @@
+so: 20
+ten: Bình phương tối thiểu
+module: dai-so
+loai: chung-minh
+muc: vua
+de: Chứng minh nghiệm bình phương tối thiểu của `Ax≈b` thỏa `A^T A x = A^T b`.
+goi_y:
+- Cực tiểu ||Ax-b||².
+- 'Đạo hàm theo x: 2A^T(Ax-b).'
+- Cho gradient bằng 0.
+loi_giai: f(x)=||Ax-b||²; ∇f=2A^T(Ax-b); đặt 0 được A^T A x = A^T b. Nếu A^T A khả nghịch thì x=(A^T A)^{-1}A^T
+  b.
+lien_quan:
+- ten: Đại số tuyến tính
+  trang: /ai-engineer/ch05-dai-so-tuyen-tinh/03-he-phuong-trinh/
+chung_minh: Tính gradient của dạng toàn phương và giải phương trình chuẩn.
+phuc_tap: O(n²m + n³) nếu giải trực tiếp.
+rubric:
+- y: Lập hàm mất mát
+  diem: 2
+- y: Tính gradient đúng
+  diem: 4
+- y: Suy ra phương trình chuẩn
+  diem: 4

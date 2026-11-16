@@ -1,0 +1,24 @@
+so: 1
+ten: Sắp xếp hàm theo tốc độ tăng
+module: do-phuc-tap
+loai: chung-minh
+muc: de
+de: 'Sắp các hàm sau từ chậm đến nhanh khi n lớn: `log n`, `n`, `n log n`, `n²`, `2^n`, `n!`.'
+goi_y:
+- 'So tỉ số hai hàm: nếu tỉ số tiến về 0 thì tử chậm hơn.'
+- 'Dùng các giới hạn quen: log n / n → 0, n² / 2^n → 0, 2^n / n! → 0.'
+- 'Thứ tự cuối: log n < n < n log n < n² < 2^n < n!.'
+loi_giai: log n < n < n log n < n² < 2^n < n!.
+lien_quan:
+- ten: Giải tích cho ML
+  trang: /ai-engineer/ch06-giai-tich/01-dao-ham/
+chung_minh: log n/n→0; n/(n log n)=1/log n→0; n log n/n²=log n/n→0; n²/2^n→0; 2^n/n!→0 vì n! có các thừa
+  số lớn hơn 2.
+phuc_tap: So sánh bằng giới hạn tỉ số, không dựa vào vài giá trị nhỏ.
+rubric:
+- y: Xác định đúng 6 hàm
+  diem: 3
+- y: Dùng tỉ số/giới hạn để so
+  diem: 4
+- y: Kết luận đúng thứ tự
+  diem: 3

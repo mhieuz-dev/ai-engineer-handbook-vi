@@ -1,0 +1,25 @@
+so: 21
+ten: PCA và trị riêng
+module: dai-so
+loai: chung-minh
+muc: vua
+de: Chứng minh hướng phương sai lớn nhất của dữ liệu đã chuẩn hóa là vector riêng ứng với trị riêng lớn
+  nhất của ma trận hiệp phương sai.
+goi_y:
+- Phương sai theo hướng đơn vị u là u^T Σ u.
+- Dùng phân tích trị riêng Σ=QΛQ^T.
+- Đổi biến v=Q^T u.
+loi_giai: Var(u)=u^TΣu. Với Σ=QΛQ^T, đặt v=Q^T u, Var=Σλ_i v_i² ≤ λ_max Σv_i²=λ_max; đạt khi v=e_max,
+  tức u=q_max.
+lien_quan:
+- ten: Trị riêng
+  trang: /ai-engineer/ch05-dai-so-tuyen-tinh/04-tri-rieng/
+chung_minh: Chặn trên bằng trị riêng lớn nhất; đẳng thức tại vector riêng.
+phuc_tap: O(d³) nếu phân tích đầy đủ; SVD O(nd²).
+rubric:
+- y: Viết phương sai theo u
+  diem: 3
+- y: Dùng trị riêng để chặn
+  diem: 5
+- y: Kết luận hướng chính
+  diem: 2

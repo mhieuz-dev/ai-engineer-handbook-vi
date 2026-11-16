@@ -16,7 +16,7 @@ describe('ngân hàng bài thuật toán', () => {
 	});
 	it('mỗi bài đủ trường, 3 gợi ý, có test in OK', () => {
 		for (const b of BAI) {
-			for (const k of ['ten', 'dang', 'muc', 'de', 'khung', 'test_vi_du', 'test_an', 'loi_giai', 'phuc_tap', 'tuong_tu']) {
+			for (const k of ['ten', 'dang', 'muc', 'de', 'khung', 'test_vi_du', 'test_an', 'loi_giai', 'phuc_tap', 'vi_sao_dung', 'tuong_tu']) {
 				expect(b[k], `${b.so} thiếu ${k}`).toBeTruthy();
 			}
 			expect(b.goi_y, `${b.so} gợi ý`).toHaveLength(3);

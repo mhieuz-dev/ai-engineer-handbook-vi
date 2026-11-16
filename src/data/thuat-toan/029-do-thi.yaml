@@ -36,3 +36,6 @@ goi_y:
 tuong_tu:
   ten: Number of Islands
   link: https://leetcode.com/problems/number-of-islands/
+vi_sao_dung: Mỗi ô 1 chưa thăm khởi đầu một vùng; DFS/BFS xoá toàn vùng, nên mỗi vùng được đếm đúng một
+  lần.
+do_phuc_tap_chat: O(n·m) thời gian.

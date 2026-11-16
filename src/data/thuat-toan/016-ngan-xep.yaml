@@ -38,3 +38,6 @@ goi_y:
 tuong_tu:
   ten: Min Stack
   link: https://leetcode.com/problems/min-stack/
+vi_sao_dung: Ngăn xếp phụ lưu giá nhỏ nhất tới từng thời điểm; push/pop cập nhật cả hai, nên đỉnh ngăn
+  phụ luôn là min hiện tại.
+do_phuc_tap_chat: O(1) cho mọi thao tác.

@@ -1,0 +1,21 @@
+so: 29
+ten: KKT bài toán đơn giản
+module: toi-uu
+loai: chung-minh
+muc: vua
+de: Giải `min x²` với ràng buộc `x≥1` bằng điều kiện KKT.
+goi_y:
+- Lập Lagrangian L=x²+λ(1-x).
+- 'Đạo hàm theo x: 2x-λ=0.'
+- Điều kiện bù λ(1-x)=0, λ≥0.
+loi_giai: L=x²+λ(1-x). 2x-λ=0; λ(1-x)=0. Nếu x>1 thì λ=0 → x=0, mâu thuẫn x≥1. Vậy x=1, λ=2.
+lien_quan: []
+chung_minh: Điều kiện KKT cho bài toán lồi có ràng buộc.
+phuc_tap: O(1).
+rubric:
+- y: Lập Lagrangian
+  diem: 3
+- y: Đạo hàm và bù
+  diem: 4
+- y: Kết luận x=1, λ=2
+  diem: 3

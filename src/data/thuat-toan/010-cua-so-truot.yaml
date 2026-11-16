@@ -39,3 +39,6 @@ goi_y:
 tuong_tu:
   ten: Longest Substring Without Repeating Characters
   link: https://leetcode.com/problems/longest-substring-without-repeating-characters/
+vi_sao_dung: Cửa sổ luôn không có ký tự lặp; khi gặp ký tự đã có trong cửa sổ, dời trái tới sau vị trí
+  cũ, nên mọi đoạn hợp lệ đều được xét.
+do_phuc_tap_chat: O(n) thời gian, O(k) bộ nhớ.

@@ -1751,6 +1751,53 @@ def dieu_phoi(don_hang, kho, truy_van):
 )
 
 
+CM = {
+    1: "Mỗi lần gặp x, bảng băm cho biết phần bù tong-x đã xuất hiện chưa; cặp đầu tiên tìm được là hợp lệ, và mỗi chỉ số được xét một lần.",
+    2: "Bộ đếm cộng đúng một lần cho mỗi phần tử; chọn khóa có (-đếm, tên) nhỏ nhất nên đúng cả khi hòa.",
+    3: "Hai chuỗi là hoán vị của nhau khi và chỉ khi chuỗi sắp chữ cái giống nhau; khóa này gom đúng nhóm.",
+    4: "Chỉ bắt đầu đếm từ số không có số liền trước, nên mỗi số thuộc đúng một chuỗi và được thăm tối đa hai lần.",
+    5: "Tổng đoạn i..j bằng hiệu hai tổng tiền tố; số tiền tố bằng tong-k đã gặp chính là số đoạn kết thúc tại j.",
+    6: "Nếu a[i] < b[j], mọi b[j'] với j' > j đều lớn hơn b[j] nên xa a[i] hơn; bỏ a[i] không mất cặp tốt hơn. Lập luận đối xứng cho bên kia.",
+    7: "Con trỏ ghi giữ tiền tố ds[0..n) toàn phần tử khác nhau theo thứ tự; khi gặp giá trị mới, ghi vào n và tăng n.",
+    8: "Nếu giữ nguyên tấm thấp hơn và dịch tấm cao hơn, chiều rộng giảm còn chiều cao không tăng, nên không thể tốt hơn; vậy chỉ cần dịch tấm thấp.",
+    9: "Sau khi lọc, hai con trỏ so từng cặp đối xứng; chuỗi là palindrome khi và chỉ khi mọi cặp bằng nhau.",
+    10: "Cửa sổ luôn không có ký tự lặp; khi gặp ký tự đã có trong cửa sổ, dời trái tới sau vị trí cũ, nên mọi đoạn hợp lệ đều được xét.",
+    11: "Cửa sổ đầu có tổng đúng; mỗi bước thêm phần tử mới và bớt phần tử cũ, nên tổng luôn là tổng của đúng k phần tử liên tiếp.",
+    12: "Khi cửa sổ đã chứa đủ t, thu trái tới khi không còn đủ; mọi đoạn tối thiểu đều xuất hiện ở một bước thu, nên tìm được đoạn ngắn nhất.",
+    13: "Cửa sổ hợp lệ khi độ dài trừ tần suất lớn nhất không quá k; thu trái khi vượt, nên mọi cửa sổ hợp lệ đều được xét.",
+    14: "Ngăn xếp giữ các ngoặc mở chưa đóng; ngoặc đóng phải khớp đỉnh. Cuối cùng ngăn xếp rỗng khi và chỉ khi mọi ngoặc được đóng đúng.",
+    15: "Ngăn xếp giữ các chỉ số có giá giảm dần; khi gặp x lớn hơn, x là phần tử lớn hơn gần nhất cho mọi đỉnh bị bật, nên mỗi chỉ số vào/ra một lần.",
+    16: "Ngăn xếp phụ lưu giá nhỏ nhất tới từng thời điểm; push/pop cập nhật cả hai, nên đỉnh ngăn phụ luôn là min hiện tại.",
+    17: "Mỗi bước thu hẹp khoảng còn một nửa; sau log₂n bước khoảng rỗng, nên tìm thấy hoặc kết luận không có trong O(log n).",
+    18: "Bất biến: mọi vị trí < lo có giá < x, mọi vị trí ≥ hi có giá ≥ x; khi lo=hi, lo là vị trí chèn đầu tiên.",
+    19: "Nếu ds[mid] < ds[mid+1] thì phía phải có đỉnh (dãy tăng rồi phải giảm); ngược lại phía trái có đỉnh; mỗi bước giảm nửa khoảng.",
+    20: "Số giờ cần là tổng ceil(x/v), giảm khi v tăng; tính đơn điệu cho phép tìm nhị phân v nhỏ nhất thỏa giờ ≤ h.",
+    21: "Nút giả và con trỏ cuối nối dần nút nhỏ hơn của hai đầu; mỗi nút được nối đúng một lần, phần còn lại nối sau.",
+    22: "Mỗi bước lưu nút sau, trỏ nút hiện tại về trước, rồi tiến; sau khi duyệt hết, trước là đầu danh sách đã đảo.",
+    23: "Nếu không có chu trình, con trỏ nhanh tới cuối. Nếu có, nhanh vào vòng và đuổi kịp chậm vì mỗi bước khoảng cách giảm một.",
+    24: "Độ sâu của cây là 1 + max độ sâu hai con; quy nạp theo số nút cho kết quả đúng. Bản lặp dùng ngăn xếp tương đương.",
+    25: "Mỗi nút được thăm một lần và đổi hai con; sau khi thăm hết, mọi cây con đã bị lật, nên cả cây bị lật.",
+    26: "Duyệt giữa của BST phải tăng nghiêm ngặt; ngược lại nếu duyệt giữa tăng nghiêm ngặt thì mọi nút trái nhỏ hơn và phải lớn hơn, nên là BST.",
+    27: "BFS xử lý đúng số nút của từng mức trước khi sang mức sau; mỗi nút vào hàng đợi một lần.",
+    28: "BFS trên lưới không trọng số thăm các ô theo thứ tự khoảng cách tăng dần; lần đầu tới đích là đường ngắn nhất.",
+    29: "Mỗi ô 1 chưa thăm khởi đầu một vùng; DFS/BFS xoá toàn vùng, nên mỗi vùng được đếm đúng một lần.",
+    30: "Kahn chỉ lấy môn có bậc vào 0; nếu duyệt đủ n môn thì mọi cạnh được bỏ, tức không có chu trình. Nếu thiếu, phần còn lại chứa chu trình.",
+    31: "BFS nhiều nguồn từ mọi cam hỏng; mỗi cam tươi bị lây ở khoảng cách ngắn nhất, nên phút cuối là khoảng cách lớn nhất.",
+    32: "Đếm đúng tần suất; sắp theo (-đếm, từ) hoặc heap k phần tử cho top-k đúng thứ tự hòa.",
+    33: "Heap k phần tử lớn nhất giữ đúng k giá trị lớn nhất; phần tử nhỏ nhất trong heap là lớn thứ k.",
+    34: "Heap chứa đầu của mỗi danh sách; mỗi lần lấy nhỏ nhất và đẩy phần tử kế, nên đầu ra là hợp đã sắp.",
+    35: "Cách leo n bậc bằng cách leo n-1 rồi 1 bậc hoặc n-2 rồi 2 bậc; hai tập rời nhau, nên cộng lại. Quy nạp cho công thức.",
+    36: "Thao tác cuối là xoá, chèn hoặc thay/giữ; mỗi trường hợp dẫn tới bài toán nhỏ hơn, nên công thức DP đúng và tối ưu con.",
+    37: "Mảng đuôi giữ phần tử kết thúc nhỏ nhất cho mỗi độ dài; thay bằng phần tử mới không làm mất khả năng tạo dãy dài hơn, nên độ dài cuối là LIS.",
+    38: "dp[x] là số xu ít nhất cho x; đồng cuối cùng là m, nên dp[x]=1+min dp[x-m]; quy nạp theo x cho tính đúng.",
+    39: "Quay lui chọn một giá trị cho từng tham số; mỗi tổ hợp được sinh đúng một lần vì mỗi nhánh cố định một tham số.",
+    40: "Sau khi sắp theo đầu, ca mới chỉ có thể chồng với ca cuối trong kết quả; nới cuối nếu chồng, ngược lại thêm ca mới. Mỗi ca xử lý một lần.",
+    41: "Mỗi phần dùng chứng minh của một dạng: bảng băm đúng cặp, cửa sổ trượt đúng tổng, BFS đúng đường ngắn nhất, heap đúng top-k, gộp khoảng đúng sau sắp xếp, DP đúng tập con, bisect đúng vị trí chèn, ngăn xếp đúng ngoặc.",
+}
+for _b in BAI:
+    _b["vi_sao_dung"] = CM[_b["so"]]
+    _b["do_phuc_tap_chat"] = _b["phuc_tap"]
+
 def main() -> None:
     assert len(BAI) == 41, len(BAI)
     so = [b["so"] for b in BAI]

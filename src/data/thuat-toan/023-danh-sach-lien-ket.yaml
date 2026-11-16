@@ -36,3 +36,6 @@ goi_y:
 tuong_tu:
   ten: Linked List Cycle
   link: https://leetcode.com/problems/linked-list-cycle/
+vi_sao_dung: Nếu không có chu trình, con trỏ nhanh tới cuối. Nếu có, nhanh vào vòng và đuổi kịp chậm vì
+  mỗi bước khoảng cách giảm một.
+do_phuc_tap_chat: O(n) thời gian, O(1) bộ nhớ.

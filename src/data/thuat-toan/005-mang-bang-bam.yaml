@@ -38,3 +38,6 @@ goi_y:
 tuong_tu:
   ten: Subarray Sum Equals K
   link: https://leetcode.com/problems/subarray-sum-equals-k/
+vi_sao_dung: Tổng đoạn i..j bằng hiệu hai tổng tiền tố; số tiền tố bằng tong-k đã gặp chính là số đoạn
+  kết thúc tại j.
+do_phuc_tap_chat: O(n) thời gian, O(n) bộ nhớ.

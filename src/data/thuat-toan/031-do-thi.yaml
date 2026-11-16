@@ -40,3 +40,6 @@ goi_y:
 tuong_tu:
   ten: Rotting Oranges
   link: https://leetcode.com/problems/rotting-oranges/
+vi_sao_dung: BFS nhiều nguồn từ mọi cam hỏng; mỗi cam tươi bị lây ở khoảng cách ngắn nhất, nên phút cuối
+  là khoảng cách lớn nhất.
+do_phuc_tap_chat: O(n·m) thời gian.

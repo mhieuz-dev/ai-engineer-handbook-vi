@@ -35,3 +35,6 @@ goi_y:
 tuong_tu:
   ten: Search Insert Position
   link: https://leetcode.com/problems/search-insert-position/
+vi_sao_dung: 'Bất biến: mọi vị trí < lo có giá < x, mọi vị trí ≥ hi có giá ≥ x; khi lo=hi, lo là vị trí
+  chèn đầu tiên.'
+do_phuc_tap_chat: O(log n) thời gian.

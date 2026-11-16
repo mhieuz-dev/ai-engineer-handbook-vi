@@ -33,3 +33,6 @@ goi_y:
 tuong_tu:
   ten: Merge Intervals
   link: https://leetcode.com/problems/merge-intervals/
+vi_sao_dung: Sau khi sắp theo đầu, ca mới chỉ có thể chồng với ca cuối trong kết quả; nới cuối nếu chồng,
+  ngược lại thêm ca mới. Mỗi ca xử lý một lần.
+do_phuc_tap_chat: O(n log n) thời gian do sắp xếp.

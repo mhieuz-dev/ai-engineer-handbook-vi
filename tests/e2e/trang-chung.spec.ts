@@ -185,6 +185,7 @@ test('trang chủ: thẻ Phòng thi thử và thẻ Ôn lại từ kết quả t
 	await expect(theLuyenTap('Phòng thi thử')).toHaveAttribute('href', '/phong-thi/');
 	await expect(theLuyenTap('Luyện thuật toán')).toHaveAttribute('href', '/thuat-toan/');
 	await expect(theLuyenTap('Phỏng vấn thử')).toHaveAttribute('href', '/phong-van/');
+	await expect(theLuyenTap('Toán cho thuật toán')).toHaveAttribute('href', '/toan-thuat-toan/');
 	await expect(theLuyenTap('Hồ sơ học tập')).toHaveAttribute('href', '/ho-so/');
 	await expect(page.locator('.on-lai')).toBeHidden();
 

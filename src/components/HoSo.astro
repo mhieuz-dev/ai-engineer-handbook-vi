@@ -2,6 +2,7 @@
 import { chuongDaXuatBan } from '../data/chuong';
 import { trangDauCuaChuong } from '../lib/trang-dau';
 import { taiBaiThuatToan } from '../lib/thuat-toan';
+import { taiBaiToan } from '../lib/toan';
 import { DANG, THU_TU_DANG } from '../lib/thuat-toan-dang';
 
 const chuong = await Promise.all(
@@ -13,12 +14,13 @@ const chuong = await Promise.all(
 	})),
 );
 const bai = await taiBaiThuatToan();
+const soToan = (await taiBaiToan()).length;
 const demDang = THU_TU_DANG.map((d) => ({ id: d, ten: DANG[d], tong: bai.filter((b) => b.dang === d).length, so: bai.filter((b) => b.dang === d).map((b) => b.so) }));
 const jsonChuong = JSON.stringify(chuong).replace(/</g, '\\u003c');
 const jsonDang = JSON.stringify(demDang).replace(/</g, '\\u003c');
 ---
 
-<div class="hs" data-hs>
+<div class="hs" data-hs data-toan={soToan}>
 	<script type="application/json" id="hs-chuong" set:html={jsonChuong}></script>
 	<script type="application/json" id="hs-dang" set:html={jsonDang}></script>
 
@@ -63,6 +65,7 @@ const jsonDang = JSON.stringify(demDang).replace(/</g, '\\u003c');
 		const CH = JSON.parse(document.getElementById('hs-chuong')!.textContent ?? '[]') as { so: number; ten: string; slug: string; href: string }[];
 		const DANG = JSON.parse(document.getElementById('hs-dang')!.textContent ?? '[]') as { id: string; ten: string; tong: number; so: number[] }[];
 		const TONG_BAI = DANG.reduce((s, d) => s + d.tong, 0);
+		const TONG_TOAN = Number(goc.dataset.toan ?? 0);
 		const elTong = $<HTMLElement>('[data-hs-tong]');
 		const elChart = $<HTMLElement>('[data-hs-chart]');
 		const elTT = $<HTMLElement>('[data-hs-tt]');
@@ -111,6 +114,7 @@ const jsonDang = JSON.stringify(demDang).replace(/</g, '\\u003c');
 			const td = doc<TienDo>(KHOA_STORAGE, { daDoc: {}, ngayHoc: [] });
 			const baiThi = doc<BaiThi[]>('air-bai-thi-v1', []);
 			const thuatToan = doc<TienDoTT>('air-thuat-toan-v1', { daGiai: {}, daThu: {}, ngay: [] });
+			const toan = doc<{ daGiai: Record<string, string>; ngay: string[] }>('air-toan-v1', { daGiai: {}, ngay: [] });
 			const phongVan = doc<PhongVan[]>('air-phong-van-v1', []);
 			const docChuong = CH.filter((c) => Object.keys(td.daDoc).some((k) => k.startsWith(`${c.slug}/`)));
 			const chuoi = chuoiNgay({ daDoc: {}, ngayHoc: td.ngayHoc }, homNay);
@@ -120,6 +124,7 @@ const jsonDang = JSON.stringify(demDang).replace(/</g, '\\u003c');
 				<div class="hs-o"><strong>${chuoi}</strong><span>ngày liên tiếp</span></div>
 				<div class="hs-o"><strong>${baiThi.length}</strong><span>bài thi đã làm</span></div>
 				<div class="hs-o"><strong>${Object.keys(thuatToan.daGiai).length}/${TONG_BAI}</strong><span>bài thuật toán</span></div>
+				<div class="hs-o"><strong>${Object.keys(toan.daGiai).length}/${TONG_TOAN}</strong><span>bài toán</span></div>
 				<div class="hs-o"><strong>${phongVan.length}</strong><span>buổi phỏng vấn</span></div>`;
 
 			// Điểm theo thời gian

@@ -1,0 +1,21 @@
+so: 14
+ten: Hệ số tải bảng băm
+module: xac-suat
+loai: chung-minh
+muc: de
+de: Bảng băm m ô, n khóa, hệ số tải α=n/m. Chứng minh tìm kiếm trung bình O(1+α) với nối chuỗi.
+goi_y:
+- Mỗi ô có kỳ vọng n/m khóa.
+- Tìm kiếm xem qua 1+α phần tử trung bình.
+- Nếu α=O(1) thì O(1).
+loi_giai: Mỗi ô có kỳ vọng α khóa; tìm kiếm trung bình 1+α; với α=O(1) là O(1).
+lien_quan: []
+chung_minh: Tính kỳ vọng số khóa mỗi ô; cộng 1 lần so khóa.
+phuc_tap: O(1+α) trung bình.
+rubric:
+- y: Nêu kỳ vọng mỗi ô
+  diem: 4
+- y: Suy ra 1+α
+  diem: 4
+- y: Kết luận α=O(1)
+  diem: 2

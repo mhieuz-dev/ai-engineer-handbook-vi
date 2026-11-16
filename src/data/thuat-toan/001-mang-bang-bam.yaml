@@ -38,3 +38,6 @@ goi_y:
 tuong_tu:
   ten: Two Sum
   link: https://leetcode.com/problems/two-sum/
+vi_sao_dung: Mỗi lần gặp x, bảng băm cho biết phần bù tong-x đã xuất hiện chưa; cặp đầu tiên tìm được
+  là hợp lệ, và mỗi chỉ số được xét một lần.
+do_phuc_tap_chat: O(n) thời gian, O(n) bộ nhớ.

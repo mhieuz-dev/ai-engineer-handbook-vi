@@ -34,3 +34,6 @@ goi_y:
 tuong_tu:
   ten: Next Greater Element I
   link: https://leetcode.com/problems/next-greater-element-i/
+vi_sao_dung: Ngăn xếp giữ các chỉ số có giá giảm dần; khi gặp x lớn hơn, x là phần tử lớn hơn gần nhất
+  cho mọi đỉnh bị bật, nên mỗi chỉ số vào/ra một lần.
+do_phuc_tap_chat: O(n) thời gian.

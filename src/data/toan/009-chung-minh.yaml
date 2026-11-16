@@ -1,0 +1,23 @@
+so: 9
+ten: Exchange argument cho interval scheduling
+module: chung-minh
+loai: chung-minh
+muc: vua
+de: Chứng minh tham lam chọn cuộc họp kết thúc sớm nhất cho số cuộc họp không chồng tối đa.
+goi_y:
+- So nghiệm tham lam với một nghiệm tối ưu.
+- Thay cuộc đầu tiên của tối ưu bằng cuộc tham lam.
+- Chứng minh thay không làm giảm số cuộc.
+loi_giai: Gọi g là cuộc kết thúc sớm nhất, O là nghiệm tối ưu. Nếu O không chứa g, thay cuộc đầu tiên
+  của O bằng g; vì g kết thúc không muộn hơn, các cuộc sau vẫn tương thích, số cuộc không giảm. Lặp lại
+  cho phần còn lại, ta được nghiệm tham lam có cùng số cuộc với O.
+lien_quan: []
+chung_minh: Exchange argument.
+phuc_tap: O(n log n) do sắp xếp.
+rubric:
+- y: Nêu nghiệm tham lam và tối ưu
+  diem: 3
+- y: Thay cuộc đầu không giảm số cuộc
+  diem: 5
+- y: Kết luận tối ưu
+  diem: 2

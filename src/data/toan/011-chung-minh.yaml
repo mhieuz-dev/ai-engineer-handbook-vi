@@ -1,0 +1,22 @@
+so: 11
+ten: Tối ưu con của edit distance
+module: chung-minh
+loai: chung-minh
+muc: vua
+de: Chứng minh công thức `dp[i][j] = min(dp[i-1][j]+1, dp[i][j-1]+1, dp[i-1][j-1]+(a[i-1]!=b[j-1]))`.
+goi_y:
+- Xét thao tác cuối cùng để biến tiền tố a[0..i) thành b[0..j).
+- 'Ba thao tác: xoá, chèn, thay/giữ.'
+- Mỗi thao tác giảm một chỉ số.
+loi_giai: Thao tác cuối là xoá a[i-1] → dp[i-1][j]+1; chèn b[j-1] → dp[i][j-1]+1; thay/giữ → dp[i-1][j-1]+(a[i-1]!=b[j-1]).
+  Lấy min. Tối ưu con vì phần còn lại là bài toán nhỏ hơn cùng dạng.
+lien_quan: []
+chung_minh: Chứng minh theo thao tác cuối (optimal substructure).
+phuc_tap: O(n·m) thời gian.
+rubric:
+- y: Xét đủ ba thao tác cuối
+  diem: 4
+- y: Lập công thức đúng
+  diem: 4
+- y: Nêu tối ưu con
+  diem: 2

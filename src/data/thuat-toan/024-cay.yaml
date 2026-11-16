@@ -33,3 +33,7 @@ goi_y:
 tuong_tu:
   ten: Maximum Depth of Binary Tree
   link: https://leetcode.com/problems/maximum-depth-of-binary-tree/
+vi_sao_dung: Độ sâu của cây là 1 + max độ sâu hai con; quy nạp theo số nút cho kết quả đúng. Bản lặp dùng
+  ngăn xếp tương đương.
+do_phuc_tap_chat: O(n) thời gian. Đệ quy sâu 20 000 có thể chạm giới hạn; bản lặp dùng ngăn xếp an toàn
+  hơn.

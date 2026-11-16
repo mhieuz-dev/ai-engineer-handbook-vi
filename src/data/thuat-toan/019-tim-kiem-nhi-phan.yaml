@@ -40,3 +40,6 @@ goi_y:
 tuong_tu:
   ten: Find Peak Element
   link: https://leetcode.com/problems/find-peak-element/
+vi_sao_dung: Nếu ds[mid] < ds[mid+1] thì phía phải có đỉnh (dãy tăng rồi phải giảm); ngược lại phía trái
+  có đỉnh; mỗi bước giảm nửa khoảng.
+do_phuc_tap_chat: O(log n) thời gian.

@@ -109,6 +109,27 @@ const phongVan = defineCollection({
 	}),
 });
 
+const toan = defineCollection({
+	loader: glob({ pattern: '**/*.yaml', base: './src/data/toan' }),
+	schema: z.object({
+		so: z.number().int().min(1),
+		ten: z.string(),
+		module: z.enum(['do-phuc-tap', 'chung-minh', 'xac-suat', 'dai-so', 'toi-uu', 'do-an']),
+		loai: z.enum(['code', 'chung-minh']),
+		muc: z.enum(['de', 'vua', 'kho']),
+		de: z.string(),
+		goi_y: z.array(z.string()).length(3),
+		khung: z.string().optional(),
+		test_vi_du: z.string().optional(),
+		test_an: z.string().optional(),
+		loi_giai: z.string(),
+		chung_minh: z.string().optional(),
+		phuc_tap: z.string().optional(),
+		rubric: z.array(z.object({ y: z.string(), diem: z.number() })).optional(),
+		lien_quan: z.array(z.object({ ten: z.string(), trang: z.string() })).default([]),
+	}),
+});
+
 const thuatToan = defineCollection({
 	loader: glob({ pattern: '**/*.yaml', base: './src/data/thuat-toan' }),
 	schema: z.object({
@@ -124,6 +145,8 @@ const thuatToan = defineCollection({
 		test_an: z.string(),
 		loi_giai: z.string(),
 		phuc_tap: z.string(),
+		vi_sao_dung: z.string().optional(),
+		do_phuc_tap_chat: z.string().optional(),
 		goi_y: z.array(z.string()).length(3),
 		tuong_tu: z.object({ ten: z.string(), link: z.string().url() }),
 	}),
@@ -132,6 +155,7 @@ const thuatToan = defineCollection({
 export const collections = {
 	deThi: deThi,
 	phongVan: phongVan,
+	toan: toan,
 	thuatToan: thuatToan,
 	docs: defineCollection({ loader: docsLoader(), schema: docsSchema() }),
 	thuatNgu: defineCollection({

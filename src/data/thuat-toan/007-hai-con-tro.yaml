@@ -34,3 +34,6 @@ goi_y:
 tuong_tu:
   ten: Remove Duplicates from Sorted Array
   link: https://leetcode.com/problems/remove-duplicates-from-sorted-array/
+vi_sao_dung: Con trỏ ghi giữ tiền tố ds[0..n) toàn phần tử khác nhau theo thứ tự; khi gặp giá trị mới,
+  ghi vào n và tăng n.
+do_phuc_tap_chat: O(n) thời gian, O(1) bộ nhớ phụ.

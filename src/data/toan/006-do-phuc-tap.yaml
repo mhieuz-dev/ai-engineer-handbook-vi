@@ -1,0 +1,36 @@
+so: 6
+ten: Đếm số phép so sánh tìm kiếm nhị phân
+module: do-phuc-tap
+loai: code
+muc: de
+de: Viết `dem_so_sanh(xs, x)` trả về số phép so sánh của tìm kiếm nhị phân trên mảng đã sắp tăng; mảng
+  rỗng trả 0. Mỗi lần so `xs[mid]` với x tính 1.
+goi_y:
+- Dùng lo/hi và vòng while.
+- Tăng biến đếm mỗi lần so sánh.
+- Mỗi bước giảm nửa khoảng nên ≤ ceil(log2 n)+1.
+loi_giai: "def dem_so_sanh(xs, x):\n    lo, hi, dem = 0, len(xs) - 1, 0\n    while lo <= hi:\n       \
+  \ mid = (lo + hi) // 2\n        dem += 1\n        if xs[mid] == x:\n            return dem\n       \
+  \ if xs[mid] < x:\n            lo = mid + 1\n        else:\n            hi = mid - 1\n    return dem"
+lien_quan: []
+chung_minh: Mỗi bước giảm nửa khoảng nên số so sánh ≤ ceil(log₂ n)+1.
+phuc_tap: O(log n).
+khung: "def dem_so_sanh(xs, x):\n    # viết code ở đây\n    pass"
+test_vi_du: 'assert dem_so_sanh([], 1) == 0
+
+  assert dem_so_sanh(list(range(15)), 7) == 1
+
+  assert dem_so_sanh(list(range(15)), 14) <= 5
+
+  assert dem_so_sanh(list(range(15)), 0) <= 5
+
+  print("OK")'
+test_an: 'import random
+
+  rng = random.Random(0)
+
+  xs = sorted(rng.sample(range(10000), 1023))
+
+  assert all(dem_so_sanh(xs, xs[i]) <= 11 for i in range(0, 1023, 37))
+
+  print("OK")'

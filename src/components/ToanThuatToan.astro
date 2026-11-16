@@ -1,0 +1,574 @@
+---
+import { taiBaiToan } from '../lib/toan';
+
+const bai = await taiBaiToan();
+const jsonBai = JSON.stringify(bai).replace(/</g, '\\u003c');
+---
+
+<div class="tn" data-tn>
+	<script type="application/json" id="tn-bai" set:html={jsonBai}></script>
+
+	<section class="tn-ds" data-tn-ds>
+		<div class="tn-tong" data-tn-tong></div>
+		<div data-tn-nhom></div>
+	</section>
+	<section class="tn-noi" data-tn-noi hidden></section>
+</div>
+
+<script>
+	import { MODULE_TOAN, THU_TU_MODULE, type BaiToan } from '../lib/toan-dang';
+	import { MayChay } from '../lib/khung-code/chay';
+	import { thanhHtml } from '../lib/khung-code/markdown';
+	import { hoiTroLy } from '../lib/khung-code/tro-ly';
+	import { chuoiNgay, ngayDiaPhuong } from '../lib/tien-do';
+
+	const goc = document.querySelector<HTMLElement>('[data-tn]');
+	if (goc) {
+		const $ = <T extends HTMLElement>(s: string) => goc.querySelector<T>(s)!;
+		const BAI: BaiToan[] = JSON.parse(document.getElementById('tn-bai')!.textContent ?? '[]');
+		const elDs = $<HTMLElement>('[data-tn-ds]');
+		const elTong = $<HTMLElement>('[data-tn-tong]');
+		const elNhom = goc.querySelector<HTMLElement>('[data-tn-nhom]')!;
+		const elNoi = $<HTMLElement>('[data-tn-noi]');
+		const KHOA = 'air-toan-v1';
+		const KHOA_NHAP = 'air-tn-nhap-v1';
+
+		interface TienDoToan {
+			daGiai: Record<string, string>;
+			ngay: string[];
+		}
+		const docTT = (): TienDoToan => {
+			try {
+				const o = JSON.parse(localStorage.getItem(KHOA) ?? '{}');
+				return {
+					daGiai: o && typeof o.daGiai === 'object' && o.daGiai ? o.daGiai : {},
+					ngay: Array.isArray(o?.ngay) ? o.ngay.filter((x: unknown) => typeof x === 'string') : [],
+				};
+			} catch {
+				return { daGiai: {}, ngay: [] };
+			}
+		};
+		const ghiTT = (tt: TienDoToan) => {
+			try {
+				localStorage.setItem(KHOA, JSON.stringify(tt));
+			} catch {
+				/* bỏ qua */
+			}
+			window.dispatchEvent(new CustomEvent('du-lieu-doi'));
+		};
+		const docNhap = (): Record<string, string> => {
+			try {
+				const o = JSON.parse(localStorage.getItem(KHOA_NHAP) ?? '{}');
+				return o && typeof o === 'object' && !Array.isArray(o) ? o : {};
+			} catch {
+				return {};
+			}
+		};
+		const luuNhap = (so: number, ma: string) => {
+			const o = docNhap();
+			o[String(so)] = ma;
+			try {
+				localStorage.setItem(KHOA_NHAP, JSON.stringify(o));
+			} catch {
+				/* bỏ qua */
+			}
+		};
+
+		const esc = (s: unknown) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+		const nhanMuc = (m: string) => (m === 'de' ? 'Dễ' : m === 'kho' ? 'Khó' : 'Vừa');
+		const nhanLoai = (l: string) => (l === 'code' ? 'Code' : 'Chứng minh');
+		const thuTuMuc: Record<string, number> = { de: 0, vua: 1, kho: 2 };
+
+		const veDanhSach = () => {
+			const tt = docTT();
+			const homNay = ngayDiaPhuong(new Date());
+			const chuoi = chuoiNgay({ daDoc: {}, ngayHoc: tt.ngay }, homNay);
+			elTong.innerHTML = `<p class="tn-tong-chu"><strong>${Object.keys(tt.daGiai).length}/${BAI.length}</strong> bài toán đã hiểu<span> · ${chuoi} ngày liên tiếp</span></p>
+				<p class="tn-tong-mo">Năm module nền và một đồ án toán, từ dễ đến khó. Bài code chạy test thật; bài chứng minh có lời giải, chứng minh và rubric tự chấm.</p>`;
+			elNhom.innerHTML = THU_TU_MODULE.map((mod) => {
+				const ds = BAI.filter((b) => b.module === mod).sort((a, b) => (thuTuMuc[a.muc] - thuTuMuc[b.muc]) || (a.so - b.so));
+				if (!ds.length) return '';
+				const da = ds.filter((b) => tt.daGiai[b.so]).length;
+				return `<section class="tn-nhom"><h3>${esc(MODULE_TOAN[mod])} <span>${da}/${ds.length}</span></h3>
+					<div class="tn-luoi">${ds
+						.map(
+							(b) =>
+								`<button class="tn-the ${tt.daGiai[b.so] ? 'da-giai' : ''}" type="button" data-tn-mo="${b.so}">
+									<span class="tn-so">${String(b.so).padStart(2, '0')}</span>
+									<span class="tn-ten">${esc(b.ten)}</span>
+									<span class="tn-loai">${nhanLoai(b.loai)}</span>
+									<span class="tn-muc tn-m-${b.muc}">${nhanMuc(b.muc)}</span>
+									${tt.daGiai[b.so] ? '<span class="tn-xong" aria-label="đã hiểu">✓</span>' : ''}
+								</button>`,
+						)
+						.join('')}</div></section>`;
+			}).join('');
+		};
+
+		let may: MayChay | null = null;
+		const chayCode = async (ma: string, test: string): Promise<{ dat: boolean; out: string; loi: string }> => {
+			if (!may) may = new MayChay();
+			await may.nap();
+			let out = '';
+			let loi = '';
+			const chay = may.chay([ma, test], (m) => {
+				if (m.loai === 'stdout' || m.loai === 'stderr') out += m.s ?? '';
+				else if (m.loai === 'loi') loi = m.message ?? '';
+			});
+			let het = false;
+			const dongHo = window.setTimeout(() => {
+				het = true;
+				may?.huy();
+				loi = 'Quá 45 giây. Kiểm tra vòng lặp hoặc độ phức tạp.';
+			}, 45000);
+			await Promise.race([chay, new Promise<void>((xong) => window.setTimeout(xong, 46000))]);
+			window.clearTimeout(dongHo);
+			if (het) return { dat: false, out, loi };
+			return { dat: !loi && out.includes('OK'), out, loi };
+		};
+
+		const danhDau = (so: number) => {
+			const tt = docTT();
+			if (tt.daGiai[so]) return;
+			const homNay = ngayDiaPhuong(new Date());
+			tt.daGiai[so] = homNay;
+			if (!tt.ngay.includes(homNay)) tt.ngay.push(homNay);
+			ghiTT(tt);
+		};
+
+		const moBai = (so: number) => {
+			const b = BAI.find((x) => x.so === so);
+			if (!b) return;
+			const nhap = docNhap()[String(so)] ?? b.khung ?? '';
+			elDs.hidden = true;
+			elNoi.hidden = false;
+			elNoi.innerHTML = `<button class="tn-quay" type="button" data-tn-quay>← Danh sách bài</button>
+				<header class="tn-dau">
+					<h2>${b.so}. ${esc(b.ten)}</h2>
+					<p class="tn-dau-nhan">${esc(MODULE_TOAN[b.module])} · ${nhanLoai(b.loai)} · ${nhanMuc(b.muc)}${b.phuc_tap ? ` · ${esc(b.phuc_tap)}` : ''}</p>
+				</header>
+				<div class="tn-tach">
+					<div class="tn-de">
+						<p class="tn-mota">${esc(b.de)}</p>
+						${b.lien_quan.length ? `<p class="tn-lien-quan">Liên quan: ${b.lien_quan.map((x) => `<a href="${esc(x.trang)}">${esc(x.ten)}</a>`).join(' · ')}</p>` : ''}
+					</div>
+					<div class="tn-lam">
+						${b.loai === 'code' ? `<label class="tn-nhan-code" for="tn-nhap">Code Python</label><textarea id="tn-nhap" class="tn-nhap" rows="16" spellcheck="false">${esc(nhap)}</textarea><div class="tn-nut"><button class="tn-chay" type="button" data-tn-chay>▶ Chạy ví dụ</button><button class="tn-nop" type="button" data-tn-nop>Nộp (test ẩn)</button></div><pre class="tn-kq" data-tn-kq aria-live="polite"></pre>` : `<label class="tn-nhan-code" for="tn-nhap">Bài làm của bạn (không bắt buộc)</label><textarea id="tn-nhap" class="tn-nhap" rows="8" placeholder="Viết ý chính hoặc chứng minh trước khi xem lời giải.">${esc(nhap)}</textarea><button class="tn-xem" type="button" data-tn-xem>Xem lời giải và chứng minh</button>`}
+						<div class="tn-goiy">
+							<p class="tn-goiy-nhan">Gợi ý theo nấc</p>
+							<div class="tn-goiy-nut">${b.goi_y.map((_, i) => `<button type="button" data-tn-goiy="${i}">Gợi ý ${i + 1}</button>`).join('')}</div>
+							<div data-tn-goiy-noi class="tn-goiy-noi"></div>
+						</div>
+						<div class="tn-troly" data-tn-troly></div>
+						<button class="tn-ai" type="button" data-tn-ai>Hỏi trợ lý (không đưa đáp án)</button>
+						<div class="tn-loi-giai" data-tn-loi-giai hidden>
+							<h3>Lời giải</h3><pre>${esc(b.loi_giai)}</pre>
+							${b.chung_minh ? `<h3>Vì sao đúng</h3><p>${esc(b.chung_minh)}</p>` : ''}
+							${b.phuc_tap ? `<p class="tn-phuc-tap">Độ phức tạp: ${esc(b.phuc_tap)}</p>` : ''}
+							${b.rubric ? `<h3>Tự chấm theo rubric</h3><div class="tn-rubric">${b.rubric.map((y, i) => `<label><input type="checkbox" data-tn-rubric="${i}" data-diem="${y.diem}" /> ${esc(y.y)} <span>(${y.diem} điểm)</span></label>`).join('')}</div><p class="tn-diem" data-tn-diem>Điểm tự chấm: 0/10</p>` : ''}
+							<button class="tn-hieu" type="button" data-tn-hieu>Đã hiểu, đánh dấu xong</button>
+						</div>
+					</div>
+				</div>`;
+			window.scrollTo({ top: 0, behavior: 'smooth' });
+		};
+
+		elDs.addEventListener('click', (e) => {
+			const b = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-tn-mo]');
+			if (b) moBai(Number(b.dataset.tnMo));
+		});
+
+		let henNhap: number | undefined;
+		elNoi.addEventListener('input', (e) => {
+			const ta = (e.target as HTMLElement).closest<HTMLTextAreaElement>('.tn-nhap');
+			if (!ta) return;
+			const so = Number((elNoi.querySelector('.tn-dau h2')?.textContent ?? '0').split('.')[0]);
+			window.clearTimeout(henNhap);
+			henNhap = window.setTimeout(() => luuNhap(so, ta.value), 400);
+		});
+		elNoi.addEventListener('change', (e) => {
+			if (!(e.target as HTMLElement).closest('.tn-rubric')) return;
+			const ds = [...elNoi.querySelectorAll<HTMLInputElement>('[data-tn-rubric]')];
+			const diem = ds.filter((x) => x.checked).reduce((s, x) => s + Number(x.dataset.diem), 0);
+			elNoi.querySelector<HTMLElement>('[data-tn-diem]')!.textContent = `Điểm tự chấm: ${diem}/10`;
+		});
+
+		elNoi.addEventListener('click', async (e) => {
+			const t = e.target as HTMLElement;
+			if (t.closest('[data-tn-quay]')) {
+				elNoi.hidden = true;
+				elDs.hidden = false;
+				veDanhSach();
+				return;
+			}
+			const so = Number((elNoi.querySelector('.tn-dau h2')?.textContent ?? '0').split('.')[0]);
+			const b = BAI.find((x) => x.so === so);
+			if (!b) return;
+			const nutGoiY = t.closest<HTMLButtonElement>('[data-tn-goiy]');
+			if (nutGoiY) {
+				const i = Number(nutGoiY.dataset.tnGoiy);
+				elNoi.querySelector<HTMLElement>('[data-tn-goiy-noi]')!.textContent = b.goi_y.slice(0, i + 1).map((x, j) => `Nấc ${j + 1}: ${x}`).join('\n\n');
+				return;
+			}
+			if (t.closest('[data-tn-xem]')) {
+				(elNoi.querySelector('[data-tn-loi-giai]') as HTMLElement).hidden = false;
+				return;
+			}
+			if (t.closest('[data-tn-hieu]')) {
+				danhDau(so);
+				elNoi.querySelector<HTMLElement>('[data-tn-hieu]')!.textContent = 'Đã đánh dấu xong ✓';
+				return;
+			}
+			if (t.closest('[data-tn-ai]')) {
+				const ma = (elNoi.querySelector('.tn-nhap') as HTMLTextAreaElement)?.value ?? '';
+				const o = elNoi.querySelector<HTMLElement>('[data-tn-troly]')!;
+				o.innerHTML = '<p class="tn-dang">Đang hỏi trợ lý...</p>';
+				const kq = await hoiTroLy({
+					messages: [
+						{
+							role: 'user',
+							content: `Bài toán: ${b.de}\n\nBài làm hiện tại:\n${ma}\n\nHãy gợi ý hướng nghĩ và cách chứng minh. Tuyệt đối không đưa lời giải đầy đủ; kết thúc bằng một câu hỏi để tôi tự nghĩ.`,
+						},
+					],
+					context: { trang: location.pathname, tieuDe: b.ten },
+				});
+				if (kq.text) o.innerHTML = await thanhHtml(kq.text);
+				else o.textContent = [kq.thongBao, `Gợi ý cục bộ: ${b.goi_y[0]}`].filter(Boolean).join('\n\n');
+				return;
+			}
+			const laNop = !!t.closest('[data-tn-nop]');
+			if (!laNop && !t.closest('[data-tn-chay]')) return;
+			const ma = (elNoi.querySelector('.tn-nhap') as HTMLTextAreaElement).value;
+			const o = elNoi.querySelector<HTMLElement>('[data-tn-kq]')!;
+			const nutNop = elNoi.querySelector<HTMLButtonElement>('[data-tn-nop]')!;
+			const nutChay = elNoi.querySelector<HTMLButtonElement>('[data-tn-chay]')!;
+			o.textContent = 'Đang chạy...';
+			nutNop.disabled = nutChay.disabled = true;
+			luuNhap(so, ma);
+			const kq = await chayCode(ma, laNop ? b.test_an ?? 'print("OK")' : b.test_vi_du ?? 'print("OK")');
+			nutNop.disabled = nutChay.disabled = false;
+			if (kq.dat) {
+				o.textContent = `✔ Đạt${laNop ? ' toàn bộ test ẩn' : ' ví dụ'}.\n${kq.out}`.trim();
+				o.className = 'tn-kq dat';
+				(elNoi.querySelector('[data-tn-loi-giai]') as HTMLElement).hidden = false;
+				if (laNop) danhDau(so);
+			} else {
+				o.textContent = `Chưa đạt.${kq.loi ? `\n${kq.loi}` : ''}${kq.out ? `\n${kq.out}` : ''}`;
+				o.className = 'tn-kq chua';
+			}
+		});
+
+		veDanhSach();
+	}
+</script>
+
+<style is:global>
+	.tn {
+		font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+	}
+	.tn-ds[hidden],
+	.tn-noi[hidden],
+	.tn-loi-giai[hidden] {
+		display: none;
+	}
+	.tn-tong {
+		margin: 0.6rem 0 1rem;
+		padding: 0.8rem 1rem;
+		border: 1px solid var(--line);
+		border-radius: 12px;
+		background: var(--panel);
+	}
+	.tn-tong-chu {
+		margin: 0;
+		font-size: 0.95rem;
+	}
+	.tn-tong-chu strong {
+		font-size: 1.5rem;
+		color: var(--pri);
+	}
+	.tn-tong-chu span {
+		color: var(--mut-chu);
+		font-size: 0.85rem;
+	}
+	.tn-tong-mo {
+		margin: 0.2rem 0 0;
+		font-size: 0.82rem;
+		color: var(--mut-chu);
+	}
+	.tn-nhom h3 {
+		margin: 1.4rem 0 0.5rem;
+		font-size: 1rem;
+	}
+	.tn-nhom h3 span {
+		font-weight: 400;
+		color: var(--mut-chu);
+		font-size: 0.82rem;
+	}
+	.tn-luoi {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+		gap: 0.5rem;
+	}
+	.tn-the {
+		display: flex;
+		align-items: baseline;
+		gap: 0.45rem;
+		padding: 0.55rem 0.7rem;
+		border: 1px solid var(--line);
+		border-radius: 9px;
+		background: var(--bg);
+		color: var(--tx);
+		font: 0.88rem 'Be Vietnam Pro', sans-serif;
+		text-align: left;
+		cursor: pointer;
+	}
+	.tn-the:hover {
+		border-color: var(--pri);
+	}
+	.tn-the.da-giai {
+		border-color: var(--ok);
+		background: color-mix(in srgb, var(--ok) 8%, var(--bg));
+	}
+	.tn-so {
+		flex: none;
+		font-family: 'JetBrains Mono', monospace;
+		font-weight: 700;
+		color: var(--pri);
+		font-size: 0.78rem;
+	}
+	.tn-ten {
+		flex: 1;
+		min-width: 0;
+	}
+	.tn-loai {
+		flex: none;
+		font-size: 0.66rem;
+		color: var(--mut-chu);
+	}
+	.tn-muc {
+		flex: none;
+		padding: 0.05rem 0.45rem;
+		border-radius: 999px;
+		font-size: 0.68rem;
+		font-weight: 600;
+	}
+	.tn-m-de {
+		background: color-mix(in srgb, var(--ok) 15%, transparent);
+		color: var(--ok-chu);
+	}
+	.tn-m-vua {
+		background: var(--accbg);
+		color: var(--acc-chu);
+	}
+	.tn-m-kho {
+		background: color-mix(in srgb, var(--red) 14%, transparent);
+		color: var(--red-chu);
+	}
+	.tn-xong {
+		color: var(--ok-chu);
+		font-weight: 800;
+	}
+	.tn-quay {
+		margin-top: 0.4rem;
+		padding: 0.35rem 0.7rem;
+		border: 1px solid var(--line);
+		border-radius: 8px;
+		background: var(--bg);
+		color: var(--pri);
+		font: 600 0.82rem 'Be Vietnam Pro', sans-serif;
+		cursor: pointer;
+	}
+	.tn-dau h2 {
+		margin: 0.7rem 0 0.2rem;
+		font-size: 1.4rem;
+	}
+	.tn-dau-nhan {
+		margin: 0 0 1rem;
+		font-size: 0.82rem;
+		color: var(--mut-chu);
+	}
+	.tn-tach {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+		gap: 1.2rem;
+		align-items: start;
+	}
+	.tn-mota {
+		line-height: 1.7;
+		white-space: pre-wrap;
+	}
+	.tn-lien-quan {
+		font-size: 0.82rem;
+		color: var(--mut-chu);
+	}
+	.tn-lien-quan a {
+		color: var(--pri);
+	}
+	.tn-nhan-code {
+		display: block;
+		font-size: 0.8rem;
+		font-weight: 600;
+		margin-bottom: 0.25rem;
+	}
+	.tn-nhap {
+		width: 100%;
+		padding: 0.6rem 0.7rem;
+		border: 1px solid var(--line);
+		border-radius: 8px;
+		background: var(--bg);
+		color: var(--tx);
+		font: 0.82rem/1.5 'JetBrains Mono', ui-monospace, monospace;
+		resize: vertical;
+	}
+	.tn-nut {
+		display: flex;
+		gap: 0.4rem;
+		margin-top: 0.5rem;
+	}
+	.tn-nut button,
+	.tn-xem,
+	.tn-hieu,
+	.tn-ai {
+		padding: 0.35rem 0.75rem;
+		border-radius: 8px;
+		font: 600 0.82rem 'Be Vietnam Pro', sans-serif;
+		cursor: pointer;
+	}
+	.tn-chay {
+		border: 1px solid var(--pri);
+		background: var(--bg);
+		color: var(--pri);
+	}
+	.tn-nop,
+	.tn-xem,
+	.tn-hieu {
+		border: 0;
+		background: var(--ok);
+		color: #fff;
+	}
+	.tn-xem {
+		margin-top: 0.5rem;
+	}
+	.tn-ai {
+		border: 1px solid var(--line);
+		background: var(--panel);
+		color: var(--tx);
+		margin-top: 0.5rem;
+	}
+	.tn-kq {
+		margin: 0.6rem 0;
+		padding: 0.55rem 0.65rem;
+		max-height: 16rem;
+		overflow: auto;
+		white-space: pre-wrap;
+		overflow-wrap: anywhere;
+		border-radius: 8px;
+		background: var(--panel);
+		font: 0.78rem/1.45 'JetBrains Mono', monospace;
+	}
+	.tn-kq.dat {
+		border-left: 3px solid var(--ok);
+	}
+	.tn-kq.chua {
+		border-left: 3px solid var(--red);
+	}
+	.tn-goiy {
+		margin-top: 0.7rem;
+	}
+	.tn-goiy-nhan {
+		margin: 0 0 0.3rem;
+		font-size: 0.8rem;
+		font-weight: 600;
+	}
+	.tn-goiy-nut {
+		display: flex;
+		gap: 0.3rem;
+	}
+	.tn-goiy-nut button {
+		padding: 0.28rem 0.6rem;
+		border: 1px solid var(--line);
+		border-radius: 999px;
+		background: var(--bg);
+		color: var(--tx);
+		font: 600 0.75rem 'Be Vietnam Pro', sans-serif;
+		cursor: pointer;
+	}
+	.tn-goiy-noi {
+		margin-top: 0.4rem;
+		font-size: 0.85rem;
+		line-height: 1.55;
+		white-space: pre-wrap;
+	}
+	.tn-troly {
+		margin-top: 0.7rem;
+		font-size: 0.88rem;
+		line-height: 1.55;
+	}
+	.tn-troly:not(:empty) {
+		padding: 0.6rem 0.8rem;
+		border-left: 3px solid var(--pri);
+		background: var(--panel);
+	}
+	.tn-troly pre {
+		overflow: auto;
+		padding: 0.4rem;
+		border-radius: 6px;
+		background: var(--bg);
+		font-size: 0.8rem;
+	}
+	.tn-dang {
+		color: var(--mut-chu);
+		font-style: italic;
+	}
+	.tn-loi-giai {
+		margin-top: 0.8rem;
+		padding: 0.7rem 0.8rem;
+		border: 1px solid var(--line);
+		border-radius: 10px;
+		background: var(--panel);
+	}
+	.tn-loi-giai h3 {
+		margin: 0.6rem 0 0.3rem;
+		font-size: 0.9rem;
+	}
+	.tn-loi-giai h3:first-child {
+		margin-top: 0;
+	}
+	.tn-loi-giai pre {
+		margin: 0;
+		overflow: auto;
+		white-space: pre-wrap;
+		overflow-wrap: anywhere;
+		font: 0.78rem/1.5 'JetBrains Mono', monospace;
+	}
+	.tn-loi-giai p {
+		font-size: 0.88rem;
+		line-height: 1.6;
+	}
+	.tn-phuc-tap {
+		font-size: 0.8rem !important;
+		color: var(--mut-chu);
+	}
+	.tn-rubric {
+		display: grid;
+		gap: 0.25rem;
+		font-size: 0.85rem;
+	}
+	.tn-rubric label {
+		display: flex;
+		gap: 0.4rem;
+		align-items: baseline;
+	}
+	.tn-diem {
+		font-weight: 600;
+		font-size: 0.85rem !important;
+	}
+	.tn-hieu {
+		margin-top: 0.5rem;
+	}
+	@media (max-width: 900px) {
+		.tn-tach {
+			grid-template-columns: 1fr;
+		}
+	}
+</style>

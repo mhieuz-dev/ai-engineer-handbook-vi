@@ -1,0 +1,23 @@
+so: 4
+ten: Mảng động append O(1) khấu hao
+module: do-phuc-tap
+loai: chung-minh
+muc: vua
+de: Mảng động tăng gấp đôi dung lượng khi đầy. Chứng minh n lần append có tổng chi phí O(n), nên trung
+  bình O(1).
+goi_y:
+- Đếm số phần tử bị sao chép khi dung lượng là 1,2,4,...,2^k.
+- Tổng 1+2+...+2^k < 2n.
+- Cộng thêm n lần ghi.
+loi_giai: Tổng chi phí O(n), khấu hao O(1) mỗi lần append.
+lien_quan: []
+chung_minh: Khi dung lượng 2^i đầy, sao chép 2^i phần tử. Tổng sao chép tới n là 1+2+…+2^k < 2n; cộng
+  n lần ghi được ≤3n=O(n). Chia cho n lần append được O(1) khấu hao.
+phuc_tap: O(1) khấu hao.
+rubric:
+- y: Đếm đúng các lần sao chép
+  diem: 4
+- y: Tính tổng hình học <2n
+  diem: 4
+- y: Kết luận O(1) khấu hao
+  diem: 2

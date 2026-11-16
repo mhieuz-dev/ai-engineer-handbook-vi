@@ -1,0 +1,22 @@
+so: 5
+ten: Bộ nhớ merge sort và quicksort
+module: do-phuc-tap
+loai: chung-minh
+muc: de
+de: So sánh bộ nhớ phụ của merge sort và quicksort bản đệ quy. Khi nào quicksort tốn O(n)?
+goi_y:
+- Merge sort cần mảng tạm khi trộn.
+- Quicksort sắp tại chỗ, nhưng đệ quy chiếm ngăn xếp.
+- Trường hợp xấu nhất của quicksort là phân hoạch lệch.
+loi_giai: Merge sort O(n); quicksort trung bình O(log n), xấu nhất O(n) do ngăn xếp đệ quy.
+lien_quan: []
+chung_minh: Merge sort trộn hai nửa nên cần mảng tạm n. Quicksort đổi chỗ tại chỗ; độ sâu đệ quy trung
+  bình log n, xấu nhất n khi chốt luôn là min/max.
+phuc_tap: O(n) so với O(log n) trung bình.
+rubric:
+- y: Nêu bộ nhớ merge sort
+  diem: 3
+- y: Nêu bộ nhớ quicksort
+  diem: 4
+- y: Chỉ ra trường hợp xấu nhất
+  diem: 3

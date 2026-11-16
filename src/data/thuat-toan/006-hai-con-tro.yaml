@@ -42,3 +42,6 @@ goi_y:
 tuong_tu:
   ten: Two Sum II - Input Array Is Sorted
   link: https://leetcode.com/problems/two-sum-ii-input-array-is-sorted/
+vi_sao_dung: Nếu a[i] < b[j], mọi b[j'] với j' > j đều lớn hơn b[j] nên xa a[i] hơn; bỏ a[i] không mất
+  cặp tốt hơn. Lập luận đối xứng cho bên kia.
+do_phuc_tap_chat: O(len(a) + len(b)) thời gian.

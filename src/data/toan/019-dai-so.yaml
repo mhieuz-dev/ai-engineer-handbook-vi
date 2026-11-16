@@ -1,0 +1,25 @@
+so: 19
+ten: Hạng và nghiệm Ax=b
+module: dai-so
+loai: chung-minh
+muc: vua
+de: Nêu điều kiện để `Ax=b` có nghiệm, vô nghiệm, vô số nghiệm theo hạng. Ví dụ `A=[[1,2],[2,4]]`, `b=[1,2]`
+  và `b=[1,3]`.
+goi_y:
+- So rank(A) với rank([A|b]).
+- Nếu rank(A)=rank([A|b])=n thì duy nhất.
+- Nếu rank < n thì vô số.
+loi_giai: Có nghiệm khi rank(A)=rank([A|b]); duy nhất khi rank=n; vô số khi rank<n. A có rank 1; b=[1,2]
+  tương thích nên vô số; b=[1,3] không tương thích nên vô nghiệm.
+lien_quan:
+- ten: Đại số tuyến tính
+  trang: /ai-engineer/ch05-dai-so-tuyen-tinh/03-he-phuong-trinh/
+chung_minh: Định lý Kronecker-Capelli và số ẩn tự do.
+phuc_tap: O(min(n,m)²·max(n,m)) nếu khử Gauss.
+rubric:
+- y: Nêu điều kiện có nghiệm
+  diem: 4
+- y: Nêu điều kiện duy nhất/vô số
+  diem: 3
+- y: Áp dụng đúng ví dụ
+  diem: 3

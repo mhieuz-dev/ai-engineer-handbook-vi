@@ -39,3 +39,6 @@ goi_y:
 tuong_tu:
   ten: Group Anagrams
   link: https://leetcode.com/problems/group-anagrams/
+vi_sao_dung: Hai chuỗi là hoán vị của nhau khi và chỉ khi chuỗi sắp chữ cái giống nhau; khóa này gom đúng
+  nhóm.
+do_phuc_tap_chat: O(n · k log k) với k là độ dài mã.

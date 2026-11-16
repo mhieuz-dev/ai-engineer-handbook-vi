@@ -1,0 +1,26 @@
+so: 7
+ten: Bất biến vòng lặp tìm kiếm nhị phân
+module: chung-minh
+loai: chung-minh
+muc: de
+de: 'Phát biểu và chứng minh bất biến vòng lặp của tìm kiếm nhị phân: nếu x có trong mảng thì vị trí của
+  nó luôn nằm trong đoạn [lo, hi].'
+goi_y:
+- 'Chứng minh ba phần: khởi tạo, duy trì, kết thúc.'
+- Khi xs[mid] < x, bỏ nửa trái; ngược lại bỏ nửa phải.
+- 'Kết thúc khi lo > hi: đoạn rỗng, x không có.'
+loi_giai: 'Bất biến: nếu x có trong xs thì vị trí của nó nằm trong [lo, hi]. Khởi tạo [0, n-1] đúng. Duy
+  trì: nếu xs[mid] < x thì mọi vị trí ≤ mid không thể chứa x, đặt lo = mid+1; nếu xs[mid] > x thì đặt
+  hi = mid-1. Kết thúc: nếu tìm thấy, trả về; nếu lo > hi, đoạn rỗng nên x không có.'
+lien_quan:
+- ten: Tìm kiếm nhị phân
+  trang: /thuat-toan/
+chung_minh: Chứng minh bằng bất biến vòng lặp (khởi tạo, duy trì, kết thúc).
+phuc_tap: O(log n).
+rubric:
+- y: Phát biểu bất biến đúng
+  diem: 3
+- y: Chứng minh khởi tạo và duy trì
+  diem: 4
+- y: Chứng minh kết thúc
+  diem: 3

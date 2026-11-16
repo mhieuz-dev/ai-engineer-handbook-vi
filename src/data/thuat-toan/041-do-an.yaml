@@ -97,3 +97,8 @@ goi_y:
 tuong_tu:
   ten: Merge Intervals (một phần của đồ án)
   link: https://leetcode.com/problems/merge-intervals/
+vi_sao_dung: 'Mỗi phần dùng chứng minh của một dạng: bảng băm đúng cặp, cửa sổ trượt đúng tổng, BFS đúng
+  đường ngắn nhất, heap đúng top-k, gộp khoảng đúng sau sắp xếp, DP đúng tập con, bisect đúng vị trí chèn,
+  ngăn xếp đúng ngoặc.'
+do_phuc_tap_chat: O(n log n + n·m + C·|w|) thời gian, O(n + n·m + C) bộ nhớ; n là số đơn, lưới n×m, C
+  sức chứa.

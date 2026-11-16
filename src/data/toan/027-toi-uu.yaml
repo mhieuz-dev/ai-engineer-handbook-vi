@@ -1,0 +1,25 @@
+so: 27
+ten: Tốc độ hội tụ hàm lồi mạnh
+module: toi-uu
+loai: chung-minh
+muc: kho
+de: Cho f μ-lồi mạnh, L-trơn. Nêu và chứng minh phác tốc độ `f(x_k)-f* ≤ (1-μ/L)^k (f(x_0)-f*)` với bước
+  1/L.
+goi_y:
+- Kết hợp bất đẳng thức giảm và lồi mạnh.
+- '||∇f||² ≥ 2μ(f-f*).'
+- Lặp lại.
+loi_giai: 'Từ descent: f_{k+1} ≤ f_k - (1/(2L))||∇f_k||². Lồi mạnh: ||∇f_k||² ≥ 2μ(f_k-f*). Suy ra f_{k+1}-f*
+  ≤ (1-μ/L)(f_k-f*); lặp k lần.'
+lien_quan:
+- ten: Learning rate
+  trang: /ai-engineer/ch08-toi-uu-hoa/02-learning-rate/
+chung_minh: Ghép descent lemma và bất đẳng thức lồi mạnh.
+phuc_tap: O((L/μ) log(1/ε)) bước để đạt ε.
+rubric:
+- y: Nêu descent
+  diem: 3
+- y: Dùng lồi mạnh
+  diem: 4
+- y: Lặp ra tốc độ
+  diem: 3

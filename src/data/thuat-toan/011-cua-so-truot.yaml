@@ -33,3 +33,6 @@ goi_y:
 tuong_tu:
   ten: Maximum Average Subarray I
   link: https://leetcode.com/problems/maximum-average-subarray-i/
+vi_sao_dung: Cửa sổ đầu có tổng đúng; mỗi bước thêm phần tử mới và bớt phần tử cũ, nên tổng luôn là tổng
+  của đúng k phần tử liên tiếp.
+do_phuc_tap_chat: O(n) thời gian, O(1) bộ nhớ phụ.

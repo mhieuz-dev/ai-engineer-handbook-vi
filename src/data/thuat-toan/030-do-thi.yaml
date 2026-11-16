@@ -37,3 +37,6 @@ goi_y:
 tuong_tu:
   ten: Course Schedule
   link: https://leetcode.com/problems/course-schedule/
+vi_sao_dung: Kahn chỉ lấy môn có bậc vào 0; nếu duyệt đủ n môn thì mọi cạnh được bỏ, tức không có chu
+  trình. Nếu thiếu, phần còn lại chứa chu trình.
+do_phuc_tap_chat: O(n + e) thời gian.

@@ -1,0 +1,23 @@
+so: 10
+ten: Phản ví dụ tham lam đổi tiền
+module: chung-minh
+loai: chung-minh
+muc: vua
+de: Cho mệnh giá `[1,3,4]`, số tiền 6. Tham lam chọn đồng lớn nhất trước cho mấy đồng? Tối ưu là mấy?
+  Kết luận gì?
+goi_y:
+- 'Tham lam: 4, rồi 1, rồi 1.'
+- 'Tối ưu: 3+3.'
+- Tìm bộ tiền mà tham lam không tối ưu.
+loi_giai: 'Tham lam: 4+1+1 = 3 đồng. Tối ưu: 3+3 = 2 đồng. Vậy tham lam không tối ưu với bộ tiền không
+  chính tắc; cần DP hoặc chứng minh bộ tiền chính tắc.'
+lien_quan: []
+chung_minh: Phản ví dụ đủ để bác bỏ mệnh đề 'tham lam luôn tối ưu'.
+phuc_tap: O(số tiền × số mệnh giá) nếu dùng DP.
+rubric:
+- y: Tính đúng tham lam
+  diem: 3
+- y: Tính đúng tối ưu
+  diem: 4
+- y: Kết luận đúng
+  diem: 3

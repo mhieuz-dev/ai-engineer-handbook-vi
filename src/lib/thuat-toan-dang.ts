@@ -38,6 +38,8 @@ export interface BaiThuatToan {
 	test_an: string;
 	loi_giai: string;
 	phuc_tap: string;
+	vi_sao_dung?: string;
+	do_phuc_tap_chat?: string;
 	goi_y: string[];
 	tuong_tu: { ten: string; link: string };
 }

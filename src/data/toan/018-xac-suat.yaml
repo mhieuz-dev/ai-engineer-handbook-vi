@@ -1,0 +1,28 @@
+so: 18
+ten: Mô phỏng coupon collector
+module: xac-suat
+loai: code
+muc: vua
+de: Viết `so_lan_rut(n, seed)` mô phỏng rút đều tới khi đủ n loại; trả về số lần rút. Dùng `random.Random(seed)`
+  để tái lập.
+goi_y:
+- Dùng set để đếm loại đã gặp.
+- Rút tới khi len(set)==n.
+- Mỗi lần rút tăng biến đếm.
+loi_giai: "import random\n\ndef so_lan_rut(n, seed):\n    rng = random.Random(seed)\n    thay = set()\n\
+  \    dem = 0\n    while len(thay) < n:\n        thay.add(rng.randrange(n))\n        dem += 1\n    return\
+  \ dem"
+lien_quan: []
+chung_minh: Kỳ vọng n H_n; mô phỏng dùng để kiểm chứng trực giác.
+phuc_tap: O(n log n) kỳ vọng.
+khung: "import random\n\ndef so_lan_rut(n, seed):\n    # viết code ở đây\n    pass"
+test_vi_du: 'assert so_lan_rut(1, 0) == 1
+
+  assert so_lan_rut(5, 0) >= 5
+
+  assert so_lan_rut(5, 0) <= 100
+
+  assert so_lan_rut(5, 0) == so_lan_rut(5, 0)
+
+  print("OK")'
+test_an: "for seed in range(5):\n    assert so_lan_rut(10, seed) >= 10\nprint(\"OK\")"

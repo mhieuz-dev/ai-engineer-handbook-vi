@@ -1,0 +1,57 @@
+so: 31
+ten: 'Đồ án toán: chứng minh một pipeline học máy nhỏ'
+module: do-an
+loai: chung-minh
+muc: kho
+de: 'Một pipeline: băm `n` người dùng vào `m` ô, lấy top-`k`, giải bình phương tối thiểu, rồi chạy gradient
+  descent. Hãy chứng minh và trả lời 5 phần:
+
+
+  (a) Kỳ vọng va chạm khi băm và độ phức tạp của băm + top-k.
+
+  (b) Chứng minh nghiệm bình phương tối thiểu `A^T A x = A^T b`.
+
+  (c) Điều kiện gradient descent hội tụ và tốc độ khi hàm lồi mạnh.
+
+  (d) Rò rỉ dữ liệu ảnh hưởng thế nào tới đánh giá?
+
+  (e) Nêu 2 kiểm tra để tin pipeline trước khi triển khai.'
+goi_y:
+- Dùng kết quả 5 module.
+- 'Băm: α=n/m; top-k: heap O(n log k).'
+- Ghép các chứng minh đã học, không cần mới hoàn toàn.
+loi_giai: '(a) Số cặp va chạm kỳ vọng C(n,2)/m ≈ n²/(2m); băm O(n), top-k bằng heap O(n log k), hoặc O(n
+  + u log u) nếu đếm.
+
+  (b) f(x)=||Ax-b||²; ∇f=2A^T(Ax-b); đặt 0 được A^T A x=A^T b; nếu A^T A khả nghịch thì x=(A^T A)^{-1}A^T
+  b.
+
+  (c) Với f L-trơn, bước 1/L giảm; nếu μ-lồi mạnh thì f_k-f* ≤ (1-μ/L)^k(f_0-f*); cần 0<lr<2/λ_max.
+
+  (d) Nếu chuẩn hóa/thống kê tính trên test hoặc đặc trưng chứa nhãn tương lai, điểm test cao giả tạo;
+  phải chia train/val/test trước khi fit mọi bước.
+
+  (e) Kiểm tra bằng golden set và kiểm tra rò rỉ: so điểm trên dữ liệu sạch, kiểm tra từng đặc trưng có
+  sẵn trước thời điểm dự đoán, và chạy kiểm tra gradient trước khi huấn luyện dài.'
+lien_quan:
+- ten: Xác suất
+  trang: /ai-engineer/ch07-xac-suat-thong-ke/01-xac-suat-va-mo-phong/
+- ten: Đại số tuyến tính
+  trang: /ai-engineer/ch05-dai-so-tuyen-tinh/03-he-phuong-trinh/
+- ten: Tối ưu hóa
+  trang: /ai-engineer/ch08-toi-uu-hoa/01-gradient-descent/
+- ten: Đồ án thuật toán
+  trang: /thuat-toan/
+chung_minh: 'Ghép chứng minh của 5 module: xác suất, đại số, tối ưu, quy trình ML.'
+phuc_tap: Tổng hợp; chi phí chính là O(n log k + n d² + bước GD·d²).
+rubric:
+- y: 'Phần a: va chạm và độ phức tạp'
+  diem: 2
+- y: 'Phần b: phương trình chuẩn'
+  diem: 2
+- y: 'Phần c: điều kiện và tốc độ GD'
+  diem: 2
+- y: 'Phần d: rò rỉ dữ liệu'
+  diem: 2
+- y: 'Phần e: hai kiểm tra'
+  diem: 2

@@ -181,7 +181,8 @@ const jsonDang = JSON.stringify(DANG).replace(/</g, '\\u003c');
 						<div class="tt-loi-giai" data-tt-loi-giai ${b.so && docTT().daGiai[b.so] ? '' : 'hidden'}>
 							<h3>Lời giải mẫu</h3>
 							<pre>${esc(b.loi_giai)}</pre>
-							<p class="tt-phuc-tap">Độ phức tạp: ${esc(b.phuc_tap)}</p>
+							${b.vi_sao_dung ? `<h3>Vì sao đúng</h3><p class="tt-chung-minh">${esc(b.vi_sao_dung)}</p>` : ''}
+							<p class="tt-phuc-tap">Độ phức tạp: ${esc(b.phuc_tap)}${b.do_phuc_tap_chat && b.do_phuc_tap_chat !== b.phuc_tap ? ` · chặt: ${esc(b.do_phuc_tap_chat)}` : ''}</p>
 						</div>
 						<button class="tt-chiu" type="button" data-tt-chiu>Chịu thua, xem lời giải</button>
 					</div>
@@ -615,6 +616,11 @@ const jsonDang = JSON.stringify(DANG).replace(/</g, '\\u003c');
 		margin: 0.4rem 0 0;
 		font-size: 0.8rem;
 		color: var(--mut-chu);
+	}
+	.tt-chung-minh {
+		margin: 0.2rem 0 0;
+		font-size: 0.88rem;
+		line-height: 1.6;
 	}
 	.tt-chiu[hidden] {
 		display: none;

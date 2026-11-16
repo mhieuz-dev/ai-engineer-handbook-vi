@@ -36,3 +36,6 @@ goi_y:
 tuong_tu:
   ten: Valid Parentheses
   link: https://leetcode.com/problems/valid-parentheses/
+vi_sao_dung: Ngăn xếp giữ các ngoặc mở chưa đóng; ngoặc đóng phải khớp đỉnh. Cuối cùng ngăn xếp rỗng khi
+  và chỉ khi mọi ngoặc được đóng đúng.
+do_phuc_tap_chat: O(n) thời gian, O(n) bộ nhớ.

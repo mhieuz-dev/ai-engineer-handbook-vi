@@ -1,0 +1,21 @@
+so: 28
+ten: SGD không lệch
+module: toi-uu
+loai: chung-minh
+muc: vua
+de: Chứng minh gradient mini-batch là ước lượng không lệch của gradient đầy đủ khi lấy mẫu đều.
+goi_y:
+- Kỳ vọng của trung bình mẫu.
+- Tuyến tính của kỳ vọng.
+- Mỗi chỉ số được chọn với xác suất 1/n.
+loi_giai: E[1/|B| Σ_{i∈B} ∇f_i] = 1/|B| Σ E[∇f_i] = 1/n Σ ∇f_i = ∇f.
+lien_quan: []
+chung_minh: Tính kỳ vọng của trung bình; không cần độc lập nếu lấy đều.
+phuc_tap: O(|B|) mỗi bước.
+rubric:
+- y: Viết trung bình batch
+  diem: 3
+- y: Dùng tuyến tính kỳ vọng
+  diem: 4
+- y: Kết luận không lệch
+  diem: 3

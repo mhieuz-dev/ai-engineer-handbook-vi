@@ -29,3 +29,6 @@ goi_y:
 tuong_tu:
   ten: Climbing Stairs
   link: https://leetcode.com/problems/climbing-stairs/
+vi_sao_dung: Cách leo n bậc bằng cách leo n-1 rồi 1 bậc hoặc n-2 rồi 2 bậc; hai tập rời nhau, nên cộng
+  lại. Quy nạp cho công thức.
+do_phuc_tap_chat: O(n) thời gian, O(1) bộ nhớ.

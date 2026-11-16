@@ -36,3 +36,6 @@ goi_y:
 tuong_tu:
   ten: Shortest Path in Binary Matrix
   link: https://leetcode.com/problems/shortest-path-in-binary-matrix/
+vi_sao_dung: BFS trên lưới không trọng số thăm các ô theo thứ tự khoảng cách tăng dần; lần đầu tới đích
+  là đường ngắn nhất.
+do_phuc_tap_chat: O(n·m) thời gian.

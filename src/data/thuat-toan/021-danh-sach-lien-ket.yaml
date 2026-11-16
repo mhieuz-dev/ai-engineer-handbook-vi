@@ -30,3 +30,6 @@ goi_y:
 tuong_tu:
   ten: Merge Two Sorted Lists
   link: https://leetcode.com/problems/merge-two-sorted-lists/
+vi_sao_dung: Nút giả và con trỏ cuối nối dần nút nhỏ hơn của hai đầu; mỗi nút được nối đúng một lần, phần
+  còn lại nối sau.
+do_phuc_tap_chat: O(n + m) thời gian.

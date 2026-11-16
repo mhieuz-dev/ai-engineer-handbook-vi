@@ -1,7 +1,7 @@
 /** Lớp lưu trữ chung: chưa đăng nhập thì localStorage, đã đăng nhập thì đồng bộ Firestore. */
 import { docNguoiDung, ghiNguoiDung } from './firebase';
 
-export const KHOA_LUU = ['air-tien-do-v1', 'air-bai-thi-v1', 'air-thuat-toan-v1', 'air-phong-van-v1'] as const;
+export const KHOA_LUU = ['air-tien-do-v1', 'air-bai-thi-v1', 'air-thuat-toan-v1', 'air-toan-v1', 'air-phong-van-v1'] as const;
 
 export type DuLieu = Record<string, unknown>;
 

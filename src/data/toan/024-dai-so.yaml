@@ -1,0 +1,25 @@
+so: 24
+ten: Số điều kiện
+module: dai-so
+loai: chung-minh
+muc: kho
+de: Định nghĩa số điều kiện `cond(A)=||A||·||A^{-1}||`. Giải thích vì sao hệ với cond lớn dễ sai; ví dụ
+  `A=[[1,1],[1,1.0001]]`.
+goi_y:
+- Sai số tương đối của x bị khuếch đại bởi cond(A).
+- A gần suy biến thì A^{-1} lớn.
+- Ví dụ hai cột gần phụ thuộc.
+loi_giai: Với Ax=b, nhiễu δb cho δx/x ≤ cond(A)·δb/b. A gần suy biến, cond lớn, nghiệm nhạy với nhiễu.
+  A=[[1,1],[1,1.0001]] có định thức 1e-4 và cond lớn, nên thay đổi nhỏ ở b làm x đổi mạnh.
+lien_quan:
+- ten: Ma trận và phép biến đổi
+  trang: /ai-engineer/ch05-dai-so-tuyen-tinh/02-ma-tran-la-bien-doi/
+chung_minh: Chặn sai số qua chuẩn ma trận.
+phuc_tap: O(n³) để tính cond chính xác.
+rubric:
+- y: Định nghĩa cond
+  diem: 3
+- y: Giải thích khuếch đại sai số
+  diem: 4
+- y: Áp dụng ví dụ
+  diem: 3

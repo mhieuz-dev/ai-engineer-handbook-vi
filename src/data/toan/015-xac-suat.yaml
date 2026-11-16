@@ -1,0 +1,21 @@
+so: 15
+ten: Coupon collector
+module: xac-suat
+loai: chung-minh
+muc: vua
+de: Có n loại coupon, mỗi lần rút đều. Chứng minh kỳ vọng số lần để đủ bộ là n H_n.
+goi_y:
+- 'Chia giai đoạn: đã có k loại, xác suất gặp loại mới (n-k)/n.'
+- Thời gian chờ kỳ vọng là nghịch đảo xác suất.
+- Cộng n/(n-k).
+loi_giai: E = Σ_{k=0}^{n-1} n/(n-k) = n Σ_{j=1}^n 1/j = n H_n.
+lien_quan: []
+chung_minh: Mỗi giai đoạn là biến hình học với xác suất thành công (n-k)/n; kỳ vọng n/(n-k); cộng lại.
+phuc_tap: O(n log n) kỳ vọng.
+rubric:
+- y: Chia giai đoạn đúng
+  diem: 4
+- y: Kỳ vọng hình học
+  diem: 3
+- y: Cộng thành nH_n
+  diem: 3

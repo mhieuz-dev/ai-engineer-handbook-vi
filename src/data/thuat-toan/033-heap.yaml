@@ -32,3 +32,6 @@ goi_y:
 tuong_tu:
   ten: Kth Largest Element in an Array
   link: https://leetcode.com/problems/kth-largest-element-in-an-array/
+vi_sao_dung: Heap k phần tử lớn nhất giữ đúng k giá trị lớn nhất; phần tử nhỏ nhất trong heap là lớn thứ
+  k.
+do_phuc_tap_chat: O(n log k) thời gian.

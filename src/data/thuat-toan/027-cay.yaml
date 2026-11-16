@@ -40,3 +40,5 @@ goi_y:
 tuong_tu:
   ten: Binary Tree Level Order Traversal
   link: https://leetcode.com/problems/binary-tree-level-order-traversal/
+vi_sao_dung: BFS xử lý đúng số nút của từng mức trước khi sang mức sau; mỗi nút vào hàng đợi một lần.
+do_phuc_tap_chat: O(n) thời gian.

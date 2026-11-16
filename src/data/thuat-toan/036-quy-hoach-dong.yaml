@@ -44,3 +44,6 @@ goi_y:
 tuong_tu:
   ten: Edit Distance
   link: https://leetcode.com/problems/edit-distance/
+vi_sao_dung: Thao tác cuối là xoá, chèn hoặc thay/giữ; mỗi trường hợp dẫn tới bài toán nhỏ hơn, nên công
+  thức DP đúng và tối ưu con.
+do_phuc_tap_chat: O(n·m) thời gian, O(m) bộ nhớ.

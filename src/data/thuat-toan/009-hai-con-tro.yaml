@@ -35,3 +35,6 @@ goi_y:
 tuong_tu:
   ten: Valid Palindrome
   link: https://leetcode.com/problems/valid-palindrome/
+vi_sao_dung: Sau khi lọc, hai con trỏ so từng cặp đối xứng; chuỗi là palindrome khi và chỉ khi mọi cặp
+  bằng nhau.
+do_phuc_tap_chat: O(n) thời gian, O(n) bộ nhớ (có thể O(1) nếu duyệt tại chỗ).

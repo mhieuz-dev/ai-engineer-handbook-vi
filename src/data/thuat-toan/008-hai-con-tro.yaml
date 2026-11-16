@@ -35,3 +35,6 @@ goi_y:
 tuong_tu:
   ten: Container With Most Water
   link: https://leetcode.com/problems/container-with-most-water/
+vi_sao_dung: Nếu giữ nguyên tấm thấp hơn và dịch tấm cao hơn, chiều rộng giảm còn chiều cao không tăng,
+  nên không thể tốt hơn; vậy chỉ cần dịch tấm thấp.
+do_phuc_tap_chat: O(n) thời gian, O(1) bộ nhớ.

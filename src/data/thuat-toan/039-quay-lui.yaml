@@ -36,3 +36,6 @@ goi_y:
 tuong_tu:
   ten: Combinations
   link: https://leetcode.com/problems/combinations/
+vi_sao_dung: Quay lui chọn một giá trị cho từng tham số; mỗi tổ hợp được sinh đúng một lần vì mỗi nhánh
+  cố định một tham số.
+do_phuc_tap_chat: O(số tổ hợp · số tham số) thời gian.

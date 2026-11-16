@@ -1,0 +1,22 @@
+so: 22
+ten: Cosine bất biến với tỉ lệ dương
+module: dai-so
+loai: chung-minh
+muc: de
+de: Chứng minh `cos(αa,b)=cos(a,b)` với α>0. Nêu khi nào chuẩn hóa làm mất thông tin.
+goi_y:
+- Tích vô hướng nhân α.
+- Chuẩn của αa nhân α.
+- Tỉ số không đổi.
+loi_giai: Tích vô hướng và chuẩn đều nhân α, nên tỉ số không đổi. Nếu độ lớn có nghĩa (số lần xem, doanh
+  thu) thì chuẩn hóa bỏ mất thông tin; giữ độ lớn thành đặc trưng riêng.
+lien_quan:
+- ten: Vector và tích vô hướng
+  trang: /ai-engineer/ch05-dai-so-tuyen-tinh/01-vector/
+chung_minh: Tính trực tiếp; α dương để không đổi dấu.
+phuc_tap: O(d).
+rubric:
+- y: Chứng minh bất biến
+  diem: 5
+- y: Nêu trường hợp mất thông tin
+  diem: 5

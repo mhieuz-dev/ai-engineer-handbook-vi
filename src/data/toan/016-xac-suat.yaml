@@ -1,0 +1,22 @@
+so: 16
+ten: Markov và Chebyshev
+module: xac-suat
+loai: chung-minh
+muc: vua
+de: Phát biểu và chứng minh bất đẳng thức Markov; dùng nó chứng minh Chebyshev.
+goi_y:
+- 'Markov: P(X≥a) ≤ E[X]/a với X không âm.'
+- Chebyshev áp Markov cho (X-μ)².
+- P(|X-μ|≥a) = P((X-μ)²≥a²).
+loi_giai: 'Markov: E[X] = Σ x P(X=x) ≥ a P(X≥a). Chebyshev: P(|X-μ|≥a) = P((X-μ)²≥a²) ≤ E[(X-μ)²]/a² =
+  σ²/a².'
+lien_quan: []
+chung_minh: Chứng minh trực tiếp từ tổng kỳ vọng.
+phuc_tap: Không áp dụng cho thuật toán cụ thể.
+rubric:
+- y: Phát biểu Markov
+  diem: 3
+- y: Chứng minh Markov
+  diem: 3
+- y: Suy ra Chebyshev
+  diem: 4

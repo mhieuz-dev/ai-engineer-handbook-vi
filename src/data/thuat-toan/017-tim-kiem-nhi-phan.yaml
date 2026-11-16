@@ -32,3 +32,6 @@ goi_y:
 tuong_tu:
   ten: Binary Search
   link: https://leetcode.com/problems/binary-search/
+vi_sao_dung: Mỗi bước thu hẹp khoảng còn một nửa; sau log₂n bước khoảng rỗng, nên tìm thấy hoặc kết luận
+  không có trong O(log n).
+do_phuc_tap_chat: O(log n) thời gian.

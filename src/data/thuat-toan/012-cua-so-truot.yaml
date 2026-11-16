@@ -40,3 +40,6 @@ goi_y:
 tuong_tu:
   ten: Minimum Window Substring
   link: https://leetcode.com/problems/minimum-window-substring/
+vi_sao_dung: Khi cửa sổ đã chứa đủ t, thu trái tới khi không còn đủ; mọi đoạn tối thiểu đều xuất hiện
+  ở một bước thu, nên tìm được đoạn ngắn nhất.
+do_phuc_tap_chat: O(n + m) thời gian.

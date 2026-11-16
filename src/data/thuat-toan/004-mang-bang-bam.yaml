@@ -39,3 +39,6 @@ goi_y:
 tuong_tu:
   ten: Longest Consecutive Sequence
   link: https://leetcode.com/problems/longest-consecutive-sequence/
+vi_sao_dung: Chỉ bắt đầu đếm từ số không có số liền trước, nên mỗi số thuộc đúng một chuỗi và được thăm
+  tối đa hai lần.
+do_phuc_tap_chat: O(n) thời gian, O(n) bộ nhớ.

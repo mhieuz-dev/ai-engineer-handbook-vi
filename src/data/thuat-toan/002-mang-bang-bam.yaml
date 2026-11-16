@@ -40,3 +40,6 @@ goi_y:
 tuong_tu:
   ten: Top K Frequent Elements
   link: https://leetcode.com/problems/top-k-frequent-elements/
+vi_sao_dung: Bộ đếm cộng đúng một lần cho mỗi phần tử; chọn khóa có (-đếm, tên) nhỏ nhất nên đúng cả khi
+  hòa.
+do_phuc_tap_chat: O(n) thời gian, O(k) bộ nhớ.

@@ -35,3 +35,6 @@ goi_y:
 tuong_tu:
   ten: Invert Binary Tree
   link: https://leetcode.com/problems/invert-binary-tree/
+vi_sao_dung: Mỗi nút được thăm một lần và đổi hai con; sau khi thăm hết, mọi cây con đã bị lật, nên cả
+  cây bị lật.
+do_phuc_tap_chat: O(n) thời gian.
