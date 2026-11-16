@@ -1,13 +1,41 @@
 ---
 import MobileMenuFooter from 'virtual:starlight/components/MobileMenuFooter';
 import SidebarPersister from '@astrojs/starlight/components/SidebarPersister.astro';
-import { NHANH, PHAN, CHUONG } from '../../data/chuong';
+import { getCollection } from 'astro:content';
+import { NHANH, PHAN, CHUONG, timChuongTheoSlugTrang } from '../../data/chuong';
 import { dungCay, type Nut } from '../../lib/sidebar-cay';
+import { khuCuaDuongDan, KHU } from '../../data/khu';
+import { taiMenuKhu, type MucMenu } from '../../data/menu-khu';
 import SidebarCay from './SidebarCay.astro';
 import { MENU_CHUNG } from '../../data/menu-chung';
 import TienDoSidebar from '../TienDoSidebar.astro';
+import Icon from '../icon/Icon.astro';
 
 const cay = dungCay(Astro.locals.starlightRoute.sidebar as Nut[], NHANH, PHAN, CHUONG);
+
+const id = Astro.locals.starlightRoute.id;
+const duongDan = Astro.url.pathname;
+const khu = khuCuaDuongDan(duongDan);
+const chuong = khu === 'hoc' ? timChuongTheoSlugTrang(id) : undefined;
+const laTrangChuong = !!chuong && id.startsWith(`${chuong.slug}/`);
+// Danh sách trang của chương đang đọc, để hiện "Chương N · Trang i/n" và thanh tiến độ chương.
+const dsTrang = laTrangChuong
+	? (await getCollection('docs'))
+			.map((e) => e.id)
+			.filter((x) => x.startsWith(`${chuong!.slug}/`))
+			.sort()
+	: [];
+const viTriTrang = dsTrang.indexOf(id) + 1;
+const nhomKhu = (await taiMenuKhu()).find((n) => n.id === khu);
+const mucHoso: MucMenu[] = [
+	{ ten: 'Hồ sơ học tập', href: '/ho-so/', mo: 'Tiến độ, điểm thi, bản đồ kiến thức', icon: 'hoso' },
+	{ ten: 'Phòng thi', href: '/phong-thi/', mo: 'Xem lại kết quả thi', icon: 'thi' },
+	{ ten: 'Luyện thuật toán', href: '/thuat-toan/', mo: 'Tiến độ theo dạng bài', icon: 'code' },
+	{ ten: 'Toán cho thuật toán', href: '/toan-thuat-toan/', mo: '31 bài nền', icon: 'math' },
+	{ ten: 'Phỏng vấn thử', href: '/phong-van/', mo: 'Lịch sử phỏng vấn', icon: 'interview' },
+];
+const dangO = (href: string) =>
+	href === '/' ? duongDan === '/' : duongDan === href || duongDan.startsWith(`${href.replace(/\/$/, '')}/`);
 ---
 
 <button type="button" class="nut-thu-gon" aria-controls="starlight__sidebar" aria-expanded="true" aria-label="Thu gọn mục lục">
@@ -27,13 +55,88 @@ const cay = dungCay(Astro.locals.starlightRoute.sidebar as Nut[], NHANH, PHAN, C
 	})();
 </script>
 
-<TienDoSidebar />
-
-<p class="sb-nhan">Menu · Chương trình</p>
-
-<SidebarPersister>
-	<SidebarCay sublist={cay} />
-</SidebarPersister>
+{
+	laTrangChuong && chuong ? (
+		<>
+			<div class="sb-chuong">
+				<p class="sb-chuong-nhan">
+					<span>Chương {chuong.so}</span>
+					<span class="sb-chuong-trang">
+						Trang {viTriTrang}/{dsTrang.length}
+					</span>
+				</p>
+				<p class="sb-chuong-ten">{chuong.ten}</p>
+				<div
+					class="sb-chuong-thanh"
+					role="progressbar"
+					aria-label={`Tiến độ chương ${chuong.so}`}
+					aria-valuemin="0"
+					aria-valuemax={dsTrang.length}
+					aria-valuenow={viTriTrang}
+				>
+					<div class="sb-chuong-day" style={`width:${(viTriTrang * 100) / dsTrang.length}%`} />
+				</div>
+				<div class="sb-chuong-ds">
+					{dsTrang.map((slug, i) => (
+						<a
+							href={`/${slug}/`}
+							class:list={['sb-chuong-o', { 'dang-o': slug === id }]}
+							aria-label={`Trang ${i + 1}${slug === id ? ' (đang đọc)' : ''}`}
+						>
+							{i + 1}
+						</a>
+					))}
+				</div>
+			</div>
+			<TienDoSidebar />
+			<p class="sb-nhan">Menu · Chương trình</p>
+			<SidebarPersister>
+				<SidebarCay sublist={cay} moTheoTrang />
+			</SidebarPersister>
+		</>
+	) : khu === 'hoc' ? (
+		<>
+			<TienDoSidebar />
+			<p class="sb-nhan">Menu · Chương trình</p>
+			<SidebarPersister>
+				<SidebarCay sublist={cay} />
+			</SidebarPersister>
+		</>
+	) : (
+		<>
+			<div class="sb-khu" style={`--khu-nhom: var(--khu-${khu})`}>
+				<p class="sb-khu-nhan">
+					<Icon ten={khu} />
+					{KHU[khu].ten}
+				</p>
+				<p class="sb-khu-mo">{KHU[khu].moTa}</p>
+			</div>
+			<nav class="sb-menu" aria-label={`Menu ${KHU[khu].ten}`}>
+				{(nhomKhu?.items ?? mucHoso).map((it) => (
+					<a
+						class:list={['sb-muc', { 'dang-o': dangO(it.href) }]}
+						href={it.href}
+						aria-current={dangO(it.href) ? 'page' : undefined}
+					>
+						<span class="sb-muc-ico">
+							<Icon ten={it.icon} />
+						</span>
+						<span class="sb-muc-chu">
+							<strong>{it.ten}</strong>
+							<small>{it.mo}</small>
+						</span>
+					</a>
+				))}
+			</nav>
+			{khu !== 'hoso' && (
+				<a class="sb-hoso" href="/ho-so/">
+					<Icon ten="hoso" />
+					<span>Hồ sơ tiến độ</span>
+				</a>
+			)}
+		</>
+	)
+}
 
 <div class="md:sl-hidden">
 	<nav class="nav-sidebar" aria-label="Menu chính">
@@ -142,4 +245,30 @@ const cay = dungCay(Astro.locals.starlightRoute.sidebar as Nut[], NHANH, PHAN, C
 		:global(:root[data-sb-thu-gon] .sidebar-pane) { visibility: hidden; }
 		:global(:root[data-sb-thu-gon][data-has-sidebar]) { --sl-content-inline-start: 3.5rem; }
 	}
+
+	/* Ô chương đang đọc: số chương, trang i/n, vạch tiến độ và các ô số trang. */
+	.sb-chuong { margin-bottom: 0.9rem; padding: 0.7rem 0.8rem; border: 1px solid var(--line); border-radius: 12px; background: var(--be-mat); box-shadow: var(--bong-1); }
+	.sb-chuong-nhan { display: flex; justify-content: space-between; gap: 0.5rem; margin: 0; font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--mut-chu); }
+	.sb-chuong-ten { margin: 0.2rem 0 0.5rem; font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 0.9rem; font-weight: 700; line-height: 1.35; color: var(--tx); }
+	.sb-chuong-thanh { height: 4px; border-radius: 99px; background: var(--panel); overflow: hidden; }
+	.sb-chuong-day { height: 100%; border-radius: 99px; background: var(--khu-hoc); }
+	.sb-chuong-ds { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.55rem; }
+	.sb-chuong-o { display: grid; place-items: center; width: 1.45rem; height: 1.45rem; border: 1px solid var(--line); border-radius: 6px; font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 0.68rem; font-weight: 600; color: var(--mut-chu); text-decoration: none; }
+	.sb-chuong-o:hover { border-color: var(--khu-hoc); color: var(--khu-hoc); }
+	.sb-chuong-o.dang-o { background: var(--khu-hoc); border-color: var(--khu-hoc); color: var(--bg); }
+
+	/* Trang khu khác: sidebar là menu của khu, không phải cây 65 chương. */
+	.sb-khu { margin-bottom: 0.6rem; }
+	.sb-khu-nhan { display: flex; align-items: center; gap: 0.4rem; margin: 0; font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--khu-nhom); }
+	.sb-khu-mo { margin: 0.2rem 0 0; font-size: 0.72rem; line-height: 1.4; color: var(--mut-chu); }
+	.sb-menu { display: flex; flex-direction: column; gap: 0.15rem; }
+	.sb-muc { display: flex; gap: 0.55rem; align-items: flex-start; padding: 0.45rem 0.5rem; border-radius: 10px; color: var(--tx); text-decoration: none; }
+	.sb-muc:hover, .sb-muc:focus-visible { background: var(--panel); }
+	.sb-muc.dang-o { background: var(--be-mat); box-shadow: var(--bong-1); color: var(--khu-nhom); }
+	.sb-muc-ico { flex: none; margin-top: 0.1rem; color: var(--khu-nhom); }
+	.sb-muc-chu { display: flex; flex-direction: column; gap: 0.05rem; min-width: 0; }
+	.sb-muc-chu strong { font-size: 0.86rem; font-weight: 600; }
+	.sb-muc-chu small { font-size: 0.72rem; line-height: 1.35; color: var(--mut-chu); }
+	.sb-hoso { display: flex; align-items: center; gap: 0.4rem; margin-top: 1rem; padding-top: 0.8rem; border-top: 1px solid var(--line); font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 0.82rem; font-weight: 600; color: var(--ok-chu); text-decoration: none; }
+	.sb-hoso:hover { text-decoration: underline; }
 </style>

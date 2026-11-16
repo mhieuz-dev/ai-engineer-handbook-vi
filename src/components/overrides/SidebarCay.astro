@@ -3,13 +3,15 @@
 import { Icon } from '@astrojs/starlight/components';
 import SidebarRestorePoint from '@astrojs/starlight/components/SidebarRestorePoint.astro';
 
-import type { Nut } from '../../lib/sidebar-cay';
+import type { Nut, NutNhom } from '../../lib/sidebar-cay';
 
-interface Props { sublist: Nut[]; nested?: boolean }
-const { sublist, nested } = Astro.props;
+interface Props { sublist: Nut[]; nested?: boolean; moTheoTrang?: boolean }
+const { sublist, nested = false, moTheoTrang = false } = Astro.props;
 const coTrangHienTai = (e: Nut): boolean =>
 	e.type === 'link' ? !!e.isCurrent : e.type === 'group' ? e.entries.some(coTrangHienTai) : false;
 const slugCua = (href: string) => href.replace(/^\/|\/$/g, '');
+// `moTheoTrang`: chỉ mở nhánh chứa trang đang đọc (Nhánh > Phần > Chương), các nhánh khác gập.
+const moNhom = (e: NutNhom) => (moTheoTrang ? coTrangHienTai(e) : coTrangHienTai(e) || !e.collapsed);
 ---
 
 <ul class:list={{ 'top-level': !nested }}>
@@ -31,7 +33,7 @@ const slugCua = (href: string) => href.replace(/^\/|\/$/g, '');
 						<span class="nhan-sap-co">Sắp có</span>
 					</span>
 				) : (
-					<details open={coTrangHienTai(entry) || !entry.collapsed}>
+					<details open={moNhom(entry)}>
 						<summary>
 							<span class="group-label">
 								<span class="large">{entry.label}</span>
@@ -40,7 +42,7 @@ const slugCua = (href: string) => href.replace(/^\/|\/$/g, '');
 							<Icon name="right-caret" class="caret" size="1.25rem" />
 						</summary>
 						<SidebarRestorePoint />
-						<Astro.self sublist={entry.entries} nested />
+						<Astro.self sublist={entry.entries} nested moTheoTrang={moTheoTrang} />
 					</details>
 				)}
 			</li>
