@@ -32,6 +32,13 @@ interface YeuCau {
 		rubric?: { y: string; diem: number }[];
 		baiLam?: string;
 	};
+	/** Dùng cho phỏng vấn thử: gửi cả buổi một lần để chấm, tốn 15 điểm. */
+	phongVan?: {
+		preset?: string;
+		cap?: string;
+		ngonNgu?: string;
+		lichSu?: { vong: string; cauHoi: string; traLoi: string; goiY?: boolean; code?: string; ketQuaCode?: boolean }[];
+	};
 }
 
 const DIEM: Record<Loai, number> = { 'tro-ly': 1, cham: 3, 'phong-van': 15 };
@@ -49,6 +56,17 @@ Quy tắc:
 - Khi chưa chắc, nói rõ chưa chắc, đừng bịa số liệu hay tên tài liệu.
 - Cuối câu trả lời, nếu hợp lý, chỉ 1-2 trang liên quan trong giáo trình (dạng /ai-engineer/...) và hỏi ngược lại một câu để người học tự nghĩ.
 - Trả lời bằng tiếng Việt, xưng "mình", gọi người học là "bạn".`;
+
+const LOI_NHAC_PHONG_VAN = `Bạn là người phỏng vấn AI Engineer giàu kinh nghiệm, chấm một buổi phỏng vấn mô phỏng.
+Sáu tiêu chí, mỗi tiêu chí 1 đến 4 điểm, phải trích nguyên văn một câu trong bài làm làm bằng chứng:
+kiến thức nền, độ sâu kỹ thuật, code, thiết kế hệ thống, giải thích và giao tiếp, hành vi STAR.
+Quy tắc:
+- Câu trả lời trống, lạc đề hoặc nhồi từ khóa: 1 điểm ở tiêu chí liên quan.
+- Không suy diễn điều ứng viên không nói; thiếu bằng chứng thì cho điểm thấp và ghi rõ.
+- Điểm tổng thang 10 = trung bình sáu tiêu chí / 4 * 10, làm tròn một chữ số.
+- Mức: từ 7 là "dat", 5 đến dưới 7 là "can-nhac", dưới 5 là "chua-dat".
+- Chỉ trả về JSON đúng schema, không thêm chữ ngoài JSON:
+{"tieuChi":[{"ten":"<tên tiêu chí>","diem":<1-4>,"trichDan":"<câu trong bài>"}],"diem":<thang 10>,"muc":"dat|can-nhac|chua-dat","cauTraLoiMau":["<2-3 câu trả lời mẫu ngắn>"],"chuongCanOn":[{"ten":"<khái niệm>","trang":"/ai-engineer/..."}]}`;
 
 const LOI_NHAC_CHAM = `Bạn là giám khảo chấm bài tự luận cho giáo trình AI. Chấm theo đúng rubric được đưa.
 Yêu cầu:
@@ -102,6 +120,17 @@ export function kiemTraDauVao(body: unknown): { ok: true; du: YeuCau } | { ok: f
 		if (!b.cham?.de || !b.cham?.baiLam) return { ok: false, loi: 'Thiếu đề hoặc bài làm' };
 		if (b.cham.de.length > TOI_DA_CAU * 2 || b.cham.baiLam.length > TOI_DA_CODE) return { ok: false, loi: 'Bài làm quá dài' };
 		if (!Array.isArray(b.cham.rubric) || b.cham.rubric.length === 0 || b.cham.rubric.length > 20) return { ok: false, loi: 'Rubric không hợp lệ' };
+		return { ok: true, du: b };
+	}
+	if (mode === 'phong-van') {
+		const ls = b.phongVan?.lichSu;
+		if (!Array.isArray(ls) || ls.length === 0 || ls.length > 20) return { ok: false, loi: 'Lịch sử phỏng vấn không hợp lệ' };
+		let tong = 0;
+		for (const x of ls) {
+			if (!x || typeof x.cauHoi !== 'string' || typeof x.traLoi !== 'string' || typeof x.vong !== 'string') return { ok: false, loi: 'Lịch sử phỏng vấn không hợp lệ' };
+			tong += x.cauHoi.length + x.traLoi.length + (x.code ?? '').length;
+		}
+		if (tong > 30000) return { ok: false, loi: 'Câu trả lời quá dài' };
 		return { ok: true, du: b };
 	}
 	const msgs = b.messages;
@@ -314,6 +343,13 @@ export default async function handler(req: Request): Promise<Response> {
 	}
 
 	if (process.env.AI_MOCK === '1') {
+		if (mode === 'phong-van') {
+			return json({
+				phongVan: { tieuChi: [], diem: 7, muc: 'dat', cauTraLoiMau: ['Câu trả lời mẫu ở chế độ thử.'], chuongCanOn: [] },
+				nhaCungCap: 'mock',
+				con: luot.con,
+			});
+		}
 		const text =
 			mode === 'cham'
 				? JSON.stringify({ diem: 7, y: [], nhanXet: 'Chế độ thử: chưa gọi nhà cung cấp thật.' })
@@ -321,8 +357,27 @@ export default async function handler(req: Request): Promise<Response> {
 		return json({ text, nhaCungCap: 'mock', con: luot.con });
 	}
 
-	const system = mode === 'cham' ? LOI_NHAC_CHAM : LOI_NHAC_GIA_SU;
-	const messages: TinNhan[] = mode === 'cham' ? tinNhanCham(du.cham!) : [...(du.messages ?? [])];
+	let system: string;
+	let messages: TinNhan[];
+	if (mode === 'cham') {
+		system = LOI_NHAC_CHAM;
+		messages = tinNhanCham(du.cham!);
+	} else if (mode === 'phong-van') {
+		system = LOI_NHAC_PHONG_VAN;
+		const pv = du.phongVan!;
+		const ls = (pv.lichSu ?? [])
+			.map((x, i) => `Vòng ${i + 1} (${x.vong})${x.goiY ? ' [có xin gợi ý]' : ''}\nCâu hỏi: ${x.cauHoi}\nTrả lời: ${x.traLoi}${x.code ? `\nCode:\n${x.code}` : ''}${x.ketQuaCode !== undefined ? `\nCode chạy test: ${x.ketQuaCode ? 'đạt' : 'chưa đạt'}` : ''}`)
+			.join('\n\n');
+		messages = [
+			{
+				role: 'user',
+				content: `Preset: ${pv.preset ?? 'tự do'}. Cấp: ${pv.cap ?? 'intern'}. Ngôn ngữ: ${pv.ngonNgu ?? 'vi'}.\n\nToàn bộ buổi phỏng vấn:\n${ls}\n\nHãy chấm theo đúng schema JSON đã nêu.`,
+			},
+		];
+	} else {
+		system = LOI_NHAC_GIA_SU;
+		messages = [...(du.messages ?? [])];
+	}
 	if (mode === 'tro-ly') {
 		const nc = dungNguCanh(du.context);
 		if (nc && messages.length) messages[messages.length - 1] = { ...messages[messages.length - 1], content: messages[messages.length - 1].content + nc };
@@ -330,10 +385,10 @@ export default async function handler(req: Request): Promise<Response> {
 
 	try {
 		const kq = await goiAI(system, messages);
-		if (mode === 'cham') {
+		if (mode === 'cham' || mode === 'phong-van') {
 			try {
 				const j = JSON.parse(kq.text.replace(/^```json\s*|```$/g, '').trim());
-				return json({ cham: j, nhaCungCap: kq.ten, con: luot.con });
+				return json({ [mode === 'cham' ? 'cham' : 'phongVan']: j, nhaCungCap: kq.ten, con: luot.con });
 			} catch {
 				return json({ text: kq.text, nhaCungCap: kq.ten, con: luot.con });
 			}

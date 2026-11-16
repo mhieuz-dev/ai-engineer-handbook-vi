@@ -1,0 +1,32 @@
+id: startup-genai
+ten: Startup GenAI
+moTa: Code thực hành, thiết kế RAG/LLM, evaluation, hành vi. Quan tâm tốc độ và chi phí.
+trongTam:
+- RAG
+- Evaluation
+- Chi phí
+- Agent
+vong:
+- ten: Sàng lọc
+  loai: hanh-vi
+- ten: Code thực hành
+  loai: code
+- ten: Thiết kế RAG/LLM
+  loai: system
+- ten: Evaluation
+  loai: ml
+- ten: Hành vi
+  loai: hanh-vi
+cau_hoi:
+  hanh-vi:
+  - Kể một lần bạn phải chọn giữa làm nhanh và làm đúng. Bạn quyết thế nào?
+  ml:
+  - Bạn xây dựng golden set để đánh giá chatbot nội bộ thế nào? Nêu quy trình và chỉ số.
+  - Làm sao biết một thay đổi prompt làm chatbot tốt hơn, không chỉ khác đi?
+  system:
+  - Thiết kế RAG cho kho tài liệu nội bộ 1 triệu trang. Nêu chunking, truy hồi, xếp hạng lại và cách giảm
+    bịa.
+  - Khi nào nên dùng agent thay vì một pipeline cố định? Nêu rủi ro và cách kiểm soát.
+  product: []
+nguon: Mô phỏng từ chia sẻ công khai của ứng viên trên Glassdoor, LeetCode Discuss và các trang luyện
+  phỏng vấn. Không dùng logo, không liên kết với công ty nào.

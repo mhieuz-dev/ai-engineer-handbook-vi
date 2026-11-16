@@ -1,0 +1,31 @@
+id: nvidia
+ten: Kiểu NVIDIA
+moTa: Viết conv2d, attention, forward/backward; GPU, huấn luyện song song, tối ưu suy luận.
+trongTam:
+- CUDA/GPU
+- conv2d
+- Attention
+- Tối ưu suy luận
+vong:
+- ten: Sàng lọc
+  loai: hanh-vi
+- ten: Kỹ thuật
+  loai: ml
+- ten: ML chuyên sâu
+  loai: ml
+- ten: Code
+  loai: code
+- ten: Hiring manager
+  loai: system
+cau_hoi:
+  hanh-vi:
+  - Kể một lần bạn tối ưu một đoạn code chậm. Bạn đo gì trước và sau?
+  ml:
+  - Viết conv2d bằng NumPy (hoặc mô tả từng bước) và nêu độ phức tạp.
+  - Giải thích forward và backward của một MLP hai lớp. Gradient của lớp đầu tính thế nào?
+  - Batch norm và dropout khác nhau ở lúc huấn luyện và lúc suy luận thế nào?
+  system:
+  - Bạn có mô hình 7B chạy trên một GPU. Nêu ba cách giảm độ trễ suy luận và đánh đổi của từng cách.
+  product: []
+nguon: Mô phỏng từ chia sẻ công khai của ứng viên trên Glassdoor, LeetCode Discuss và các trang luyện
+  phỏng vấn. Không dùng logo, không liên kết với công ty nào.

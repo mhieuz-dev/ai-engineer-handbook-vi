@@ -1,0 +1,36 @@
+id: amazon
+ten: Kiểu Amazon
+moTa: Hỏi rộng và sâu, câu hành vi STAR ở mọi vòng, gắn Leadership Principles.
+trongTam:
+- ML breadth
+- ML depth
+- STAR
+- Ảnh hưởng
+vong:
+- ten: Sàng lọc
+  loai: hanh-vi
+- ten: ML breadth
+  loai: ml
+- ten: ML depth
+  loai: ml
+- ten: Code
+  loai: code
+- ten: System design
+  loai: system
+- ten: Hành vi / LP
+  loai: hanh-vi
+cau_hoi:
+  hanh-vi:
+  - Kể lần bạn tạo ảnh hưởng khi không có quyền trực tiếp. Bạn làm gì và kết quả ra sao? (STAR)
+  - Kể lần bạn bất đồng với quản lý. Bạn xử lý thế nào? (STAR)
+  - Kể lần bạn phải ra quyết định với dữ liệu chưa đủ. (STAR)
+  ml:
+  - Overfitting là gì? Nêu ba cách xử lý và khi nào dùng cách nào.
+  - Giải thích sự khác nhau giữa batch norm và layer norm. Khi nào chọn cái nào?
+  - Bạn đánh giá một mô hình phân loại mất cân bằng thế nào? Vì sao accuracy dễ gây hiểu nhầm?
+  system:
+  - Thiết kế hệ thống phát hiện gian lận giao dịch với 1% dương tính. Nêu dữ liệu, mô hình, ngưỡng và
+    chi phí sai.
+  product: []
+nguon: Mô phỏng từ chia sẻ công khai của ứng viên trên Glassdoor, LeetCode Discuss và các trang luyện
+  phỏng vấn. Không dùng logo, không liên kết với công ty nào.

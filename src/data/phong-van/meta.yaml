@@ -1,0 +1,35 @@
+id: meta
+ten: Kiểu Meta
+moTa: System design gắn sản phẩm, product sense, code và hành vi. Quan tâm chỉ số và tác động người dùng.
+trongTam:
+- Sản phẩm
+- Kiểm duyệt nội dung
+- Xếp hạng
+- Chỉ số
+vong:
+- ten: Sàng lọc
+  loai: hanh-vi
+- ten: Code
+  loai: code
+- ten: ML system design
+  loai: system
+- ten: Product sense
+  loai: product
+- ten: Hành vi
+  loai: hanh-vi
+cau_hoi:
+  hanh-vi:
+  - Kể một lần bạn phải thuyết phục nhóm đổi hướng kỹ thuật. Bạn dùng dữ liệu gì?
+  - Kể một dự án thất bại. Bạn học được gì và áp dụng ở đâu?
+  ml:
+  - Bạn xây mô hình dự đoán tỷ lệ nhấp. AUC tăng nhưng doanh thu giảm. Bạn kiểm tra gì?
+  system:
+  - Thiết kế hệ thống kiểm duyệt nội dung đa phương tiện (văn bản, ảnh, video) cho hàng trăm triệu người
+    dùng. Nêu kiến trúc, ngưỡng và quy trình con người.
+  - Thiết kế hệ thống xếp hạng feed. Nêu tín hiệu đầu vào, cách huấn luyện và cách đo tác động.
+  product:
+  - Chỉ số tương tác giảm 8% sau một thay đổi mô hình. Bạn xem tín hiệu nào trước, và hỏi ai điều gì?
+  - 'Bạn có hai tính năng: tăng thời gian xem nhưng giảm số người quay lại. Bạn chọn tính năng nào và
+    vì sao?'
+nguon: Mô phỏng từ chia sẻ công khai của ứng viên trên Glassdoor, LeetCode Discuss và các trang luyện
+  phỏng vấn. Không dùng logo, không liên kết với công ty nào.

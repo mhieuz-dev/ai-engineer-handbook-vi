@@ -15,6 +15,15 @@ describe('kiểm tra đầu vào máy chủ AI', () => {
 		const dai = 'x'.repeat(9000);
 		expect(kiemTraDauVao({ mode: 'tro-ly', messages: [{ role: 'user', content: 'hỏi' }], context: { code: dai } }).ok).toBe(false);
 	});
+	it('phỏng vấn cần lịch sử hợp lệ', () => {
+		const ok = kiemTraDauVao({
+			mode: 'phong-van',
+			phongVan: { lichSu: [{ vong: 'Sàng lọc', cauHoi: 'Kể về dự án', traLoi: 'Em làm...' }] },
+		});
+		expect(ok.ok).toBe(true);
+		expect(kiemTraDauVao({ mode: 'phong-van', phongVan: { lichSu: [] } }).ok).toBe(false);
+		expect(kiemTraDauVao({ mode: 'phong-van', phongVan: { lichSu: [{ vong: 'x', cauHoi: 1, traLoi: 'y' }] } }).ok).toBe(false);
+	});
 	it('chấm tự luận cần đề, bài làm và rubric', () => {
 		expect(kiemTraDauVao({ mode: 'cham', cham: { de: 'đề', baiLam: 'bài' } }).ok).toBe(false);
 		const kq = kiemTraDauVao({ mode: 'cham', cham: { de: 'đề', baiLam: 'bài', rubric: [{ y: 'ý 1', diem: 10 }] } });

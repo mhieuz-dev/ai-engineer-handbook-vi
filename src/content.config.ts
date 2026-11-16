@@ -90,6 +90,24 @@ const DANG_THUAT_TOAN = [
 	'tham-lam',
 ] as const;
 
+const phongVan = defineCollection({
+	loader: glob({ pattern: '**/*.yaml', base: './src/data/phong-van' }),
+	schema: z.object({
+		id: z.string(),
+		ten: z.string(),
+		moTa: z.string(),
+		nguon: z.string(),
+		trongTam: z.array(z.string()),
+		vong: z.array(z.object({ ten: z.string(), loai: z.enum(['hanh-vi', 'ml', 'system', 'product', 'code']) })).min(1),
+		cau_hoi: z.object({
+			'hanh-vi': z.array(z.string()).default([]),
+			ml: z.array(z.string()).default([]),
+			system: z.array(z.string()).default([]),
+			product: z.array(z.string()).default([]),
+		}),
+	}),
+});
+
 const thuatToan = defineCollection({
 	loader: glob({ pattern: '**/*.yaml', base: './src/data/thuat-toan' }),
 	schema: z.object({
@@ -112,6 +130,7 @@ const thuatToan = defineCollection({
 
 export const collections = {
 	deThi: deThi,
+	phongVan: phongVan,
 	thuatToan: thuatToan,
 	docs: defineCollection({ loader: docsLoader(), schema: docsSchema() }),
 	thuatNgu: defineCollection({

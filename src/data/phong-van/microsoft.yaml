@@ -1,0 +1,34 @@
+id: microsoft
+ten: Kiểu Microsoft
+moTa: 'Bốn đến năm vòng: code, lý thuyết ML, DL/GenAI, thiết kế hệ thống, hành vi.'
+trongTam:
+- Code
+- Lý thuyết ML
+- GenAI
+- Thiết kế
+vong:
+- ten: Sàng lọc
+  loai: hanh-vi
+- ten: Kỹ thuật qua điện thoại
+  loai: ml
+- ten: Code
+  loai: code
+- ten: DL/GenAI
+  loai: ml
+- ten: System design
+  loai: system
+- ten: Hành vi
+  loai: hanh-vi
+cau_hoi:
+  hanh-vi:
+  - Kể một lần bạn học công nghệ mới trong thời gian ngắn để giải quyết việc thật.
+  - Kể một lần bạn nhận phản hồi khó nghe và thay đổi thế nào.
+  ml:
+  - Giải thích backpropagation cho một mạng hai lớp bằng lời, không viết công thức.
+  - RAG là gì? Nêu hai nguyên nhân khiến RAG trả lời sai và cách đo.
+  - Khi nào nên tinh chỉnh một LLM thay vì dùng prompt + RAG?
+  system:
+  - Thiết kế dịch vụ tóm tắt tài liệu nội bộ bằng LLM, có kiểm soát chi phí và chất lượng.
+  product: []
+nguon: Mô phỏng từ chia sẻ công khai của ứng viên trên Glassdoor, LeetCode Discuss và các trang luyện
+  phỏng vấn. Không dùng logo, không liên kết với công ty nào.

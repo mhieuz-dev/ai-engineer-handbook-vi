@@ -1,0 +1,32 @@
+id: viet-nam
+ten: Doanh nghiệp Việt Nam
+moTa: Vòng HR có tiếng Anh, hỏi theo CV và dự án, hệ thống AI chạy ổn định khi lỗi. Thông tin công khai
+  còn ít.
+trongTam:
+- CV
+- Tiếng Anh
+- Ổn định hệ thống
+- STAR
+vong:
+- ten: HR
+  loai: hanh-vi
+- ten: Kỹ thuật theo CV
+  loai: ml
+- ten: Thiết kế / xử lý vấn đề
+  loai: system
+- ten: Hành vi
+  loai: hanh-vi
+cau_hoi:
+  hanh-vi:
+  - Giới thiệu bản thân bằng tiếng Anh trong 90 giây, tập trung vào dự án AI bạn đã làm.
+  - Kể một lần hệ thống bạn phụ trách gặp sự cố. Bạn phát hiện và xử lý thế nào? (STAR)
+  - Kỳ vọng của bạn trong 1 năm tới là gì?
+  ml:
+  - Trong dự án gần nhất, bạn chọn mô hình dựa trên tiêu chí nào? Nêu số liệu.
+  - Bạn xử lý dữ liệu thiếu và nhãn nhiễu thế nào?
+  - Làm sao biết mô hình tụt chất lượng sau khi triển khai?
+  system:
+  - Thiết kế hệ thống AI chạy ổn định khi một thành phần lỗi. Nêu fallback, giám sát và cảnh báo.
+  product: []
+nguon: Mô phỏng từ chia sẻ công khai của ứng viên trên Glassdoor, LeetCode Discuss và các trang luyện
+  phỏng vấn. Không dùng logo, không liên kết với công ty nào.

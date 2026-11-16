@@ -1,0 +1,37 @@
+id: google
+ten: Kiểu Google
+moTa: Hai vòng code, ML system design, ML chuyên sâu, hành vi. Hỏi sâu vào dự án và nền tảng.
+trongTam:
+- Thuật toán
+- Pipeline ML đầu cuối
+- Attention
+- Sâu dự án
+vong:
+- ten: Sàng lọc
+  loai: hanh-vi
+- ten: Vòng code 1
+  loai: code
+- ten: Vòng code 2
+  loai: code
+- ten: ML system design
+  loai: system
+- ten: ML chuyên sâu
+  loai: ml
+- ten: Hành vi
+  loai: hanh-vi
+cau_hoi:
+  hanh-vi:
+  - Kể về một dự án ML bạn tự hào nhất. Vai trò của bạn, số liệu trước và sau, và điều gì bạn sẽ làm khác?
+  - Kể một lần bạn phát hiện kết quả mô hình sai. Bạn tìm ra nguyên nhân thế nào?
+  ml:
+  - Giải thích multi-head attention từ đầu. Vì sao cần nhiều đầu thay vì một đầu lớn?
+  - Vì sao Transformer dùng residual và layer norm? Nếu bỏ đi thì chuyện gì xảy ra?
+  - Bạn có một mô hình phân loại đạt F1 0,9 trên train nhưng 0,6 trên test. Nêu các giả thuyết và cách
+    kiểm.
+  system:
+  - Thiết kế hệ thống phát hiện vi phạm bản quyền video cho một nền tảng có 1 tỷ video. Nêu pipeline,
+    dữ liệu, cách đánh giá và cách xử lý khi mô hình sai.
+  - Thiết kế hệ thống gợi ý nội dung cho người dùng mới chưa có lịch sử. Xử lý cold start thế nào?
+  product: []
+nguon: Mô phỏng từ chia sẻ công khai của ứng viên trên Glassdoor, LeetCode Discuss và các trang luyện
+  phỏng vấn. Không dùng logo, không liên kết với công ty nào.

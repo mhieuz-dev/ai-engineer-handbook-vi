@@ -1,0 +1,25 @@
+id: tu-do
+ten: Tự do
+moTa: Tự chọn vòng và chủ đề để luyện một kỹ năng.
+trongTam:
+- Tự chọn
+vong:
+- ten: Khởi động
+  loai: hanh-vi
+- ten: ML
+  loai: ml
+- ten: Code
+  loai: code
+- ten: Hệ thống
+  loai: system
+cau_hoi:
+  hanh-vi:
+  - Kể về bản thân và mục tiêu học AI của bạn.
+  ml:
+  - Bias-variance là gì? Cho một ví dụ bạn từng gặp.
+  - Giải thích sự khác nhau giữa precision và recall bằng một tình huống thật.
+  system:
+  - Thiết kế một hệ thống ML nhỏ bạn có thể tự dựng trong một tuần.
+  product: []
+nguon: Mô phỏng từ chia sẻ công khai của ứng viên trên Glassdoor, LeetCode Discuss và các trang luyện
+  phỏng vấn. Không dùng logo, không liên kết với công ty nào.

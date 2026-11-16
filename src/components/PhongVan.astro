@@ -1,0 +1,894 @@
+---
+import { taiPreset } from '../lib/phong-van';
+import { taiBaiThuatToan } from '../lib/thuat-toan';
+
+const presets = await taiPreset();
+const de = (await taiBaiThuatToan())
+	.filter((b) => b.muc !== 'kho')
+	.map((b) => ({ so: b.so, ten: b.ten, de: b.de, khung: b.khung, test_vi_du: b.test_vi_du, phuc_tap: b.phuc_tap, goi_y: b.goi_y }));
+const jsonPreset = JSON.stringify(presets).replace(/</g, '\\u003c');
+const jsonDe = JSON.stringify(de).replace(/</g, '\\u003c');
+---
+
+<div class="pv" data-pv>
+	<script type="application/json" id="pv-preset" set:html={jsonPreset}></script>
+	<script type="application/json" id="pv-de" set:html={jsonDe}></script>
+
+	<section class="pv-setup" data-pv-setup>
+		<h2>Chọn buổi phỏng vấn</h2>
+		<div class="pv-preset" data-pv-preset></div>
+
+		<div class="pv-luoi">
+			<label class="pv-nhan">Cấp độ
+				<select data-pv-cap>
+					<option value="intern" selected>Intern</option>
+					<option value="fresher">Fresher</option>
+					<option value="junior">Junior</option>
+					<option value="mid">Mid</option>
+				</select>
+			</label>
+			<label class="pv-nhan">Ngôn ngữ
+				<select data-pv-ngon-ngu>
+					<option value="vi" selected>Tiếng Việt</option>
+					<option value="en">English</option>
+					<option value="tron">Trộn Việt + Anh</option>
+				</select>
+			</label>
+			<label class="pv-nhan">Bấm giờ mỗi câu
+				<select data-pv-phut>
+					<option value="0" selected>Tắt</option>
+					<option value="2">2 phút</option>
+					<option value="3">3 phút</option>
+					<option value="5">5 phút</option>
+				</select>
+			</label>
+		</div>
+
+		<fieldset class="pv-vong">
+			<legend>Vòng phỏng vấn</legend>
+			<div data-pv-vong></div>
+		</fieldset>
+
+		<p class="pv-mo-ta" data-pv-mota></p>
+		<button class="pv-bat-dau" type="button" data-pv-bat-dau>Bắt đầu phỏng vấn</button>
+		<p class="pv-loi" data-pv-loi aria-live="polite"></p>
+
+		<div class="pv-lich-su" data-pv-lich-su hidden>
+			<h3>Lần phỏng vấn gần đây</h3>
+			<div data-pv-lich-su-noi></div>
+		</div>
+	</section>
+
+	<section class="pv-thi" data-pv-thi hidden>
+		<header class="pv-dau">
+			<span class="pv-round" data-pv-round></span>
+			<span class="pv-gio" data-pv-gio>Không bấm giờ</span>
+			<button class="pv-ket-thuc" type="button" data-pv-ket-thuc>Kết thúc buổi</button>
+		</header>
+		<div class="pv-noi" data-pv-noi></div>
+	</section>
+
+	<section class="pv-kq" data-pv-kq hidden></section>
+</div>
+
+<script>
+	import { MayChay } from '../lib/khung-code/chay';
+	import { thanhHtml } from '../lib/khung-code/markdown';
+
+	const goc = document.querySelector<HTMLElement>('[data-pv]');
+	if (goc) {
+		const $ = <T extends HTMLElement>(s: string) => goc.querySelector<T>(s)!;
+		const PRESET = JSON.parse(document.getElementById('pv-preset')!.textContent ?? '[]');
+		const DE = JSON.parse(document.getElementById('pv-de')!.textContent ?? '[]');
+		const elSetup = $<HTMLElement>('[data-pv-setup]');
+		const elThi = $<HTMLElement>('[data-pv-thi]');
+		const elKq = $<HTMLElement>('[data-pv-kq]');
+		const elPreset = $<HTMLElement>('[data-pv-preset]');
+		const elVong = $<HTMLElement>('[data-pv-vong]');
+		const elMota = $<HTMLElement>('[data-pv-mota]');
+		const elLoi = $<HTMLElement>('[data-pv-loi]');
+		const elNoi = $<HTMLElement>('[data-pv-noi]');
+		const elRound = $<HTMLElement>('[data-pv-round]');
+		const elGio = $<HTMLElement>('[data-pv-gio]');
+		const elLichSu = $<HTMLElement>('[data-pv-lich-su]');
+		const KHOA = 'air-phong-van-v1';
+
+		interface Vong {
+			ten: string;
+			loai: 'hanh-vi' | 'ml' | 'system' | 'product' | 'code';
+		}
+		interface Preset {
+			id: string;
+			ten: string;
+			moTa: string;
+			nguon: string;
+			trongTam: string[];
+			vong: Vong[];
+			cau_hoi: { 'hanh-vi': string[]; ml: string[]; system: string[]; product: string[] };
+		}
+		interface MucLichSu {
+			vong: string;
+			loai?: string;
+			cauHoi: string;
+			traLoi: string;
+			goiY: boolean;
+			code?: string;
+			ketQuaCode?: boolean;
+			cauHoiPhu?: string;
+			traLoiPhu?: string;
+		}
+		interface De {
+			so: number;
+			ten: string;
+			de: string;
+			khung: string;
+			test_vi_du: string;
+			phuc_tap: string;
+			goi_y: string[];
+		}
+
+		const TIEU_CHI = [
+			'Kiến thức nền',
+			'Độ sâu kỹ thuật',
+			'Code',
+			'Thiết kế hệ thống',
+			'Giải thích và giao tiếp',
+			'Hành vi STAR',
+		];
+
+		let dangChon = PRESET[0]?.id ?? '';
+		let phien: {
+			preset: Preset;
+			cap: string;
+			ngonNgu: string;
+			phut: number;
+			cauHoi: (MucLichSu & { de?: De })[];
+			chiSo: number;
+			hetHan: number | null;
+			goiY: Set<number>;
+		} | null = null;
+		let dongHo: number | undefined;
+		let may: MayChay | null = null;
+
+		const esc = (s: unknown) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+		const nhan = (loai: string) => ({ 'hanh-vi': 'Hành vi', ml: 'ML', system: 'Hệ thống', product: 'Sản phẩm', code: 'Code' })[loai] ?? loai;
+
+		const vePreset = () => {
+			elPreset.innerHTML = PRESET.map(
+				(p: Preset) =>
+					`<button type="button" class="pv-the ${p.id === dangChon ? 'dang-chon' : ''}" data-pv-chon="${p.id}">
+						<strong>${esc(p.ten)}</strong>
+						<span>${esc(p.moTa)}</span>
+						<small>${p.trongTam.map((x) => esc(x)).join(' · ')}</small>
+					</button>`,
+			).join('');
+			const p = PRESET.find((x: Preset) => x.id === dangChon);
+			elMota.innerHTML = p ? `<strong>${esc(p.ten)}</strong>: ${esc(p.moTa)}<br /><small>${esc(p.nguon)}</small>` : '';
+			veVong();
+		};
+		const veVong = () => {
+			const p = PRESET.find((x: Preset) => x.id === dangChon);
+			if (!p) return;
+			elVong.innerHTML = p.vong
+				.map(
+					(v: Vong, i: number) =>
+						`<label class="pv-o-vong"><input type="checkbox" data-pv-vong-chon="${i}" checked /> ${esc(v.ten)} <span>(${nhan(v.loai)})</span></label>`,
+				)
+				.join('');
+		};
+		vePreset();
+		elPreset.addEventListener('click', (e) => {
+			const b = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-pv-chon]');
+			if (!b) return;
+			dangChon = b.dataset.pvChon!;
+			vePreset();
+		});
+
+		const ngauNhien = <T,>(ds: T[]): T => ds[Math.floor(Math.random() * ds.length)];
+
+		const batDau = () => {
+			const p = PRESET.find((x: Preset) => x.id === dangChon);
+			if (!p) return;
+			const chon = [...goc.querySelectorAll<HTMLInputElement>('[data-pv-vong-chon]')].filter((x) => x.checked).map((x) => Number(x.dataset.pvVongChon));
+			if (!chon.length) {
+				elLoi.textContent = 'Chọn ít nhất một vòng.';
+				return;
+			}
+			const cap = (goc.querySelector('[data-pv-cap]') as HTMLSelectElement).value;
+			const ngonNgu = (goc.querySelector('[data-pv-ngon-ngu]') as HTMLSelectElement).value;
+			const phut = Number((goc.querySelector('[data-pv-phut]') as HTMLSelectElement).value);
+			const cauHoi: (MucLichSu & { de?: De })[] = [];
+			for (const i of chon) {
+				const v = p.vong[i];
+				if (!v) continue;
+				if (v.loai === 'code') {
+					const kho = DE.filter((d: De) => cap === 'intern' || cap === 'fresher' || d.phuc_tap.includes('n log n') || d.phuc_tap.includes('O(n)'));
+					const d = ngauNhien(kho.length ? kho : DE);
+					cauHoi.push({ vong: v.ten, loai: v.loai, cauHoi: `Bài code: ${d.ten}\n\n${d.de}`, traLoi: '', goiY: false, de: d });
+				} else {
+					const ds = p.cau_hoi[v.loai] ?? [];
+					const cau = ds.length ? ngauNhien(ds) : 'Kể một ví dụ thật bạn đã làm trong phần này.';
+					cauHoi.push({ vong: v.ten, loai: v.loai, cauHoi: cau, traLoi: '', goiY: false });
+				}
+			}
+			phien = { preset: p, cap, ngonNgu, phut, cauHoi, chiSo: 0, hetHan: phut ? Date.now() + phut * 60000 : null, goiY: new Set() };
+			elSetup.hidden = true;
+			elKq.hidden = true;
+			elThi.hidden = false;
+			veCau();
+			chayDongHo();
+		};
+
+		const veCau = () => {
+			if (!phien) return;
+			const c = phien.cauHoi[phien.chiSo];
+			elRound.textContent = `Vòng ${phien.chiSo + 1}/${phien.cauHoi.length} · ${c.vong}`;
+			const de = c.de;
+			elNoi.innerHTML = `<div class="pv-cau">
+				<p class="pv-cau-nhan">${nhan(c.loai ?? (de ? 'code' : 'ml'))}</p>
+				<h3 class="pv-cau-hoi">${esc(c.cauHoi)}</h3>
+				${de ? `<pre class="pv-de-code">${esc(de.khung)}</pre><div class="pv-code-hang"><textarea class="pv-code" rows="10" spellcheck="false" placeholder="Viết code ở đây...">${esc(de.khung)}</textarea></div><button class="pv-chay" type="button" data-pv-chay>Chạy ví dụ</button><pre class="pv-kq-code" data-pv-kq-code></pre>` : ''}
+				<label class="pv-nhan-cau">Câu trả lời của bạn</label>
+				<textarea class="pv-tra-loi" rows="7" placeholder="Trả lời theo STAR nếu là câu hành vi; nêu số liệu và đánh đổi nếu là câu kỹ thuật."></textarea>
+				<div class="pv-nut">
+					<button class="pv-gui" type="button" data-pv-gui>Gửi câu trả lời</button>
+					<button class="pv-goi-y" type="button" data-pv-goi-y>Xin gợi ý (-0,5)</button>
+					<button class="pv-noi" type="button" data-pv-noi-btn hidden>Nói</button>
+				</div>
+				<div class="pv-goi-y-noi" data-pv-goi-y-noi></div>
+				<div class="pv-phan-hoi" data-pv-phan-hoi aria-live="polite"></div>
+			</div>`;
+			ganGiongNoi();
+		};
+
+		const ganGiongNoi = () => {
+			const SR = (window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown }).SpeechRecognition || (window as unknown as { webkitSpeechRecognition?: unknown }).webkitSpeechRecognition;
+			const nut = goc.querySelector<HTMLButtonElement>('[data-pv-noi-btn]');
+			if (!SR || !nut) return;
+			nut.hidden = false;
+			const ta = goc.querySelector<HTMLTextAreaElement>('.pv-tra-loi')!;
+			let nhanDang: { lang: string; onresult: (e: { results: { 0: { 0: { transcript: string } } } }) => void; start: () => void; stop: () => void } | null = null;
+			nut.addEventListener('click', () => {
+				if (nhanDang) {
+					nhanDang.stop();
+					nhanDang = null;
+					nut.textContent = 'Nói';
+					return;
+				}
+				const Ctor = SR as new () => typeof nhanDang;
+				const r = new Ctor();
+				if (!r) return;
+				r.lang = phien?.ngonNgu === 'en' ? 'en-US' : 'vi-VN';
+				r.onresult = (e) => {
+					ta.value += (ta.value ? ' ' : '') + e.results[0][0].transcript;
+				};
+				r.start();
+				nhanDang = r;
+				nut.textContent = 'Đang nghe... (bấm để dừng)';
+			});
+		};
+
+		const chayDongHo = () => {
+			window.clearInterval(dongHo);
+			if (!phien) return;
+			const cap = () => {
+				if (!phien || phien.hetHan === null) {
+					elGio.textContent = 'Không bấm giờ';
+					return;
+				}
+				const con = Math.max(0, phien.hetHan - Date.now());
+				elGio.textContent = `⏱ ${String(Math.floor(con / 60000)).padStart(2, '0')}:${String(Math.ceil((con % 60000) / 1000)).padStart(2, '0')}`;
+				elGio.classList.toggle('sap-het', con < 30000);
+				if (con === 0) {
+					window.clearInterval(dongHo);
+					elGio.textContent = 'Hết giờ câu này';
+				}
+			};
+			cap();
+			dongHo = window.setInterval(cap, 1000);
+		};
+
+		const chayCode = async (ma: string, test: string): Promise<boolean> => {
+			if (!may) may = new MayChay();
+			await may.nap();
+			let out = '';
+			let loi = '';
+			await may.chay([ma, test], (m) => {
+				if (m.loai === 'stdout' || m.loai === 'stderr') out += m.s ?? '';
+				else if (m.loai === 'loi') loi = m.message ?? '';
+			});
+			return !loi && out.includes('OK');
+		};
+
+		elNoi.addEventListener('click', async (e) => {
+			const t = e.target as HTMLElement;
+			if (!phien) return;
+			const c = phien.cauHoi[phien.chiSo];
+			if (t.closest('[data-pv-chay]')) {
+				if (!c.de) return;
+				const ma = goc.querySelector<HTMLTextAreaElement>('.pv-code')!.value;
+				const o = goc.querySelector<HTMLElement>('[data-pv-kq-code]')!;
+				o.textContent = 'Đang chạy...';
+				const dat = await chayCode(ma, c.de.test_vi_du);
+				o.textContent = dat ? '✔ Qua ví dụ' : '✘ Chưa qua ví dụ';
+				o.className = `pv-kq-code ${dat ? 'dat' : 'chua'}`;
+				c.ketQuaCode = dat;
+				c.code = ma;
+				return;
+			}
+			if (t.closest('[data-pv-goi-y]')) {
+				phien.goiY.add(phien.chiSo);
+				const o = goc.querySelector<HTMLElement>('[data-pv-goi-y-noi]')!;
+				const goiY =
+					c.loai === 'hanh-vi'
+						? 'Trả lời theo STAR: Tình huống, Nhiệm vụ, Hành động, Kết quả. Kết quả phải có số.'
+						: c.de
+							? c.de.goi_y[0]
+							: 'Nêu định nghĩa một câu, một ví dụ thật, và một đánh đổi.';
+				o.textContent = `Gợi ý: ${goiY} (đã trừ 0,5 điểm)`;
+				return;
+			}
+			if (!t.closest('[data-pv-gui]')) return;
+			const ta = goc.querySelector<HTMLTextAreaElement>('.pv-tra-loi')!;
+			const traLoi = ta.value.trim();
+			if (!traLoi) {
+				goc.querySelector<HTMLElement>('[data-pv-phan-hoi]')!.textContent = 'Hãy viết câu trả lời trước khi gửi.';
+				return;
+			}
+			c.traLoi = traLoi;
+			if (c.de) c.code = goc.querySelector<HTMLTextAreaElement>('.pv-code')?.value ?? '';
+			const ngan = traLoi.length < 60 && !c.cauHoiPhu && !c.de;
+			if (ngan) {
+				c.cauHoiPhu = 'Câu trả lời còn ngắn. Bạn thêm một ví dụ cụ thể, số liệu hoặc đánh đổi được không?';
+				goc.querySelector<HTMLElement>('[data-pv-phan-hoi]')!.innerHTML = `<p class="pv-hoi-phu"><strong>Hỏi đuổi:</strong> ${esc(c.cauHoiPhu)}</p><textarea class="pv-tra-loi-phu" rows="4" placeholder="Trả lời bổ sung..."></textarea><button class="pv-gui-phu" type="button" data-pv-gui-phu>Gửi bổ sung</button>`;
+				return;
+			}
+			xongCau();
+		});
+
+		elNoi.addEventListener('click', (e) => {
+			if (!phien || !(e.target as HTMLElement).closest('[data-pv-gui-phu]')) return;
+			const c = phien.cauHoi[phien.chiSo];
+			const ta = goc.querySelector<HTMLTextAreaElement>('.pv-tra-loi-phu')!;
+			c.traLoiPhu = ta.value.trim();
+			xongCau();
+		});
+
+		const xongCau = () => {
+			if (!phien) return;
+			const o = goc.querySelector<HTMLElement>('[data-pv-phan-hoi]')!;
+			const cuoi = phien.chiSo === phien.cauHoi.length - 1;
+			o.innerHTML = `<p>Đã ghi nhận câu trả lời.</p><button class="pv-tiep" type="button" data-pv-tiep>${cuoi ? 'Xem kết quả' : 'Câu tiếp theo →'}</button>`;
+			o.querySelector('[data-pv-tiep]')!.addEventListener('click', () => {
+				if (!phien) return;
+				if (cuoi) void ketThuc();
+				else {
+					phien.chiSo++;
+					phien.hetHan = phien.phut ? Date.now() + phien.phut * 60000 : null;
+					veCau();
+					chayDongHo();
+				}
+			});
+		};
+
+		const ketThuc = async () => {
+			if (!phien) return;
+			window.clearInterval(dongHo);
+			elThi.hidden = true;
+			elKq.hidden = false;
+			const daTraLoi = phien.cauHoi.filter((c) => c.traLoi.trim());
+			elKq.innerHTML = `<h2>Đang chấm buổi phỏng vấn...</h2><p>Máy chủ AI chấm một lần cho cả buổi (15 điểm lượt). Nếu chưa có AI, bạn tự đánh giá theo tiêu chí.</p>`;
+			const tokenKQ = await goiPhongVan(phien, daTraLoi);
+			if (tokenKQ) veKetQuaAI(tokenKQ);
+			else veTuDanhGia(phien, daTraLoi);
+		};
+
+		const goiPhongVan = async (p: NonNullable<typeof phien>, daTraLoi: MucLichSu[]): Promise<Record<string, unknown> | null> => {
+			try {
+				const r = await fetch('/api/ai', {
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({
+						mode: 'phong-van',
+						phongVan: {
+							preset: p.preset.id,
+							cap: p.cap,
+							ngonNgu: p.ngonNgu,
+							lichSu: daTraLoi.map((c) => ({ vong: c.vong, cauHoi: c.cauHoi, traLoi: c.traLoi + (c.traLoiPhu ? `\nBổ sung: ${c.traLoiPhu}` : ''), goiY: c.goiY, code: c.code, ketQuaCode: c.ketQuaCode })),
+						},
+					}),
+				});
+				if (!r.ok) return null;
+				const d = (await r.json()) as { phongVan?: Record<string, unknown> };
+				return d.phongVan ?? null;
+			} catch {
+				return null;
+			}
+		};
+
+		const diemTuTieuChi = (tieuChi: { diem?: number }[]): number => {
+			const hopLe = tieuChi.filter((x) => typeof x.diem === 'number');
+			if (!hopLe.length) return 0;
+			return Math.max(0, Math.round((hopLe.reduce((s, x) => s + (x.diem ?? 0), 0) / hopLe.length / 4) * 100) / 10);
+		};
+
+		const truGoiY = (diem: number, p: NonNullable<typeof phien>): number => Math.max(0, Math.round((diem - p.goiY.size * 0.5) * 10) / 10);
+
+		const mucTuDiem = (d: number) => (d >= 7 ? 'Đạt' : d >= 5 ? 'Cân nhắc' : 'Chưa đạt');
+
+		const luuLichSu = (diem: number, muc: string) => {
+			if (!phien) return;
+			try {
+				const cu = JSON.parse(localStorage.getItem(KHOA) ?? '[]');
+				const ds = Array.isArray(cu) ? cu : [];
+				ds.unshift({ ngay: new Date().toISOString(), preset: phien.preset.ten, cap: phien.cap, diem, muc, soCau: phien.cauHoi.filter((c) => c.traLoi.trim()).length });
+				localStorage.setItem(KHOA, JSON.stringify(ds.slice(0, 20)));
+			} catch {
+				/* bỏ qua */
+			}
+			window.dispatchEvent(new CustomEvent('du-lieu-doi'));
+		};
+
+		const veKetQuaAI = (kq: Record<string, unknown>) => {
+			if (!phien) return;
+			const tieuChi = Array.isArray(kq.tieuChi) ? (kq.tieuChi as { ten: string; diem: number; trichDan?: string }[]) : [];
+			const diem = truGoiY(typeof kq.diem === 'number' ? kq.diem : diemTuTieuChi(tieuChi), phien);
+			const muc = mucTuDiem(diem);
+			luuLichSu(diem, muc);
+			const chuong = Array.isArray(kq.chuongCanOn) ? (kq.chuongCanOn as { ten: string; trang: string }[]) : [];
+			elKq.innerHTML = `<div class="pv-tong">
+					<p class="pv-diem-nhan">Điểm buổi phỏng vấn</p>
+					<p class="pv-diem"><strong>${diem.toFixed(1)}</strong><span>/10</span></p>
+					<p class="pv-muc ${muc === 'Đạt' ? 'dat' : muc === 'Cân nhắc' ? 'can' : 'chua'}">${muc}</p>
+					${phien.goiY.size ? `<p class="pv-tru">Đã trừ ${(phien.goiY.size * 0.5).toFixed(1)} điểm vì xin gợi ý.</p>` : ''}
+				</div>
+				<h3>Chấm theo tiêu chí</h3>
+				<table class="pv-bang"><thead><tr><th>Tiêu chí</th><th>Điểm</th><th>Bằng chứng</th></tr></thead><tbody>
+					${tieuChi.map((x) => `<tr><td>${esc(x.ten)}</td><td>${x.diem}/4</td><td>${esc(x.trichDan ?? '')}</td></tr>`).join('')}
+				</tbody></table>
+				${Array.isArray(kq.cauTraLoiMau) ? `<h3>Câu trả lời mẫu</h3><ul>${(kq.cauTraLoiMau as string[]).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
+				${chuong.length ? `<h3>Chương cần ôn</h3><ul>${chuong.map((x) => `<li><a href="${esc(x.trang)}">${esc(x.ten)}</a></li>`).join('')}</ul>` : ''}
+				<details class="pv-xem"><summary>Xem lại toàn bộ buổi</summary>${phien.cauHoi
+					.map(
+						(c, i) =>
+							`<div class="pv-xem-cau"><p><strong>Câu ${i + 1} (${esc(c.vong)}):</strong> ${esc(c.cauHoi)}</p><p><strong>Trả lời:</strong> ${esc(c.traLoi)}</p>${c.traLoiPhu ? `<p><strong>Bổ sung:</strong> ${esc(c.traLoiPhu)}</p>` : ''}${c.goiY ? '<p class="pv-da-goi-y">Có xin gợi ý.</p>' : ''}</div>`,
+					)
+					.join('')}</details>
+				<div class="pv-kq-nut"><button type="button" data-pv-lam-lai>Làm buổi khác</button><a href="/">Về trang chủ</a></div>`;
+			elKq.querySelector('[data-pv-lam-lai]')?.addEventListener('click', () => {
+				elKq.hidden = true;
+				elSetup.hidden = false;
+				phien = null;
+				veLichSu();
+			});
+		};
+
+		const veTuDanhGia = (p: NonNullable<typeof phien>, daTraLoi: MucLichSu[]) => {
+			elKq.innerHTML = `<h2>Máy chủ AI chưa chấm được</h2>
+				<p>Bạn tự đánh giá theo sáu tiêu chí (1 yếu, 4 tốt). Điểm sẽ quy về thang 10 và trừ 0,5 mỗi lần xin gợi ý.</p>
+				<div class="pv-tu-danh-gia">${TIEU_CHI.map((t, i) => `<label>${esc(t)} <select data-pv-td="${i}">${[1, 2, 3, 4].map((n) => `<option value="${n}">${n}</option>`).join('')}</select></label>`).join('')}</div>
+				<button class="pv-tinh" type="button" data-pv-tinh>Tính điểm</button>
+				<div data-pv-td-kq class="pv-td-kq"></div>
+				<details class="pv-xem"><summary>Xem lại toàn bộ buổi</summary>${daTraLoi.map((c, i) => `<div class="pv-xem-cau"><p><strong>Câu ${i + 1} (${esc(c.vong)}):</strong> ${esc(c.cauHoi)}</p><p><strong>Trả lời:</strong> ${esc(c.traLoi)}</p>${c.traLoiPhu ? `<p><strong>Bổ sung:</strong> ${esc(c.traLoiPhu)}</p>` : ''}</div>`).join('')}</details>
+				<div class="pv-kq-nut"><button type="button" data-pv-lam-lai>Làm buổi khác</button><a href="/">Về trang chủ</a></div>`;
+			elKq.querySelector<HTMLButtonElement>('[data-pv-tinh]')!.addEventListener('click', () => {
+				const ds = [...elKq.querySelectorAll<HTMLSelectElement>('[data-pv-td]')].map((s) => Number(s.value));
+				const diem = truGoiY((ds.reduce((a, b) => a + b, 0) / ds.length / 4) * 10, p);
+				const muc = mucTuDiem(diem);
+				luuLichSu(diem, muc);
+				elKq.querySelector<HTMLElement>('[data-pv-td-kq]')!.innerHTML = `<p class="pv-diem"><strong>${diem.toFixed(1)}</strong><span>/10 · ${muc}</span></p>${p.goiY.size ? `<p>Đã trừ ${(p.goiY.size * 0.5).toFixed(1)} vì xin gợi ý.</p>` : ''}<p>Gợi ý ôn: <a href="/thuat-toan/">luyện thuật toán</a> · <a href="/phong-thi/">thi thử Ch0–Ch4</a> · <a href="/ai-engineer/ch62-ml-system-design/01-bai-toan-he-thong/">ML system design</a></p>`;
+			});
+			elKq.querySelector('[data-pv-lam-lai]')?.addEventListener('click', () => {
+				elKq.hidden = true;
+				elSetup.hidden = false;
+				phien = null;
+				veLichSu();
+			});
+		};
+
+		const veLichSu = () => {
+			try {
+				const ds = JSON.parse(localStorage.getItem(KHOA) ?? '[]');
+				if (!Array.isArray(ds) || !ds.length) return;
+				elLichSu.hidden = false;
+				(elLichSu.querySelector('[data-pv-lich-su-noi]') as HTMLElement).innerHTML = ds
+					.slice(0, 5)
+					.map((x: { ngay: string; preset: string; cap: string; diem: number; muc: string }) => `<p>${new Date(x.ngay).toLocaleDateString('vi-VN')} · ${esc(x.preset)} · ${esc(x.cap)} · <strong>${x.diem}/10</strong> · ${esc(x.muc)}</p>`)
+					.join('');
+			} catch {
+				/* bỏ qua */
+			}
+		};
+
+		$<HTMLButtonElement>('[data-pv-bat-dau]').addEventListener('click', batDau);
+		$<HTMLButtonElement>('[data-pv-ket-thuc]').addEventListener('click', () => {
+			if (!phien || !confirm('Kết thúc buổi và chấm những câu đã trả lời?')) return;
+			void ketThuc();
+		});
+		veLichSu();
+	}
+</script>
+
+<style is:global>
+	.pv {
+		font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+	}
+	.pv-setup[hidden],
+	.pv-thi[hidden],
+	.pv-kq[hidden],
+	.pv-lich-su[hidden] {
+		display: none;
+	}
+	.pv-preset {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+		gap: 0.5rem;
+		margin: 0.6rem 0 1rem;
+	}
+	.pv-the {
+		display: flex;
+		flex-direction: column;
+		gap: 0.2rem;
+		padding: 0.6rem 0.7rem;
+		border: 1px solid var(--line);
+		border-radius: 10px;
+		background: var(--bg);
+		color: var(--tx);
+		text-align: left;
+		font: 0.85rem 'Be Vietnam Pro', sans-serif;
+		cursor: pointer;
+	}
+	.pv-the:hover {
+		border-color: var(--pri);
+	}
+	.pv-the.dang-chon {
+		border-color: var(--pri);
+		background: var(--accbg);
+	}
+	.pv-the strong {
+		color: var(--pri);
+	}
+	.pv-the span {
+		color: var(--mut-chu);
+		font-size: 0.8rem;
+		line-height: 1.4;
+	}
+	.pv-the small {
+		color: var(--mut);
+		font-size: 0.7rem;
+	}
+	.pv-luoi {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+		gap: 0.7rem;
+	}
+	.pv-nhan {
+		display: grid;
+		gap: 0.2rem;
+		font-size: 0.8rem;
+		font-weight: 600;
+	}
+	.pv-nhan select {
+		padding: 0.4rem;
+		border: 1px solid var(--line);
+		border-radius: 7px;
+		background: var(--bg);
+		color: var(--tx);
+		font: 0.85rem 'Be Vietnam Pro', sans-serif;
+	}
+	.pv-vong {
+		margin: 0.8rem 0;
+		padding: 0.6rem 0.8rem;
+		border: 1px solid var(--line);
+		border-radius: 10px;
+	}
+	.pv-vong legend {
+		font-size: 0.8rem;
+		font-weight: 600;
+		padding: 0 0.3rem;
+	}
+	.pv-o-vong {
+		display: block;
+		font-size: 0.85rem;
+		margin: 0.2rem 0;
+	}
+	.pv-mo-ta {
+		font-size: 0.85rem;
+		color: var(--mut-chu);
+	}
+	.pv-bat-dau {
+		margin-top: 0.5rem;
+		padding: 0.6rem 1.1rem;
+		border: 0;
+		border-radius: 9px;
+		background: var(--pri);
+		color: var(--bg);
+		font: 700 0.95rem 'Be Vietnam Pro', sans-serif;
+		cursor: pointer;
+	}
+	.pv-loi {
+		color: var(--red-chu);
+		font-size: 0.85rem;
+	}
+	.pv-lich-su {
+		margin-top: 1.4rem;
+		padding-top: 0.6rem;
+		border-top: 1px solid var(--line);
+	}
+	.pv-lich-su h3 {
+		font-size: 0.9rem;
+	}
+	.pv-lich-su p {
+		font-size: 0.82rem;
+		margin: 0.2rem 0;
+	}
+	.pv-dau {
+		position: sticky;
+		top: var(--sl-nav-height, 4rem);
+		z-index: 5;
+		display: flex;
+		align-items: center;
+		gap: 0.7rem;
+		padding: 0.5rem 0.7rem;
+		border: 1px solid var(--line);
+		border-radius: 10px;
+		background: var(--panel);
+		margin: 0.5rem 0;
+	}
+	.pv-round {
+		font-size: 0.85rem;
+		font-weight: 600;
+	}
+	.pv-gio {
+		margin-left: auto;
+		font-family: 'JetBrains Mono', monospace;
+		font-size: 0.85rem;
+	}
+	.pv-gio.sap-het {
+		color: var(--red-chu);
+	}
+	.pv-ket-thuc {
+		padding: 0.35rem 0.7rem;
+		border: 1px solid var(--line);
+		border-radius: 8px;
+		background: var(--bg);
+		color: var(--red-chu);
+		font: 600 0.8rem 'Be Vietnam Pro', sans-serif;
+		cursor: pointer;
+	}
+	.pv-cau {
+		padding: 1rem 1.1rem;
+		border: 1px solid var(--line);
+		border-radius: 12px;
+		background: var(--panel);
+	}
+	.pv-cau-nhan {
+		margin: 0;
+		font-size: 0.7rem;
+		font-weight: 800;
+		letter-spacing: 0.06em;
+		color: var(--pri);
+	}
+	.pv-cau-hoi {
+		margin: 0.3rem 0 0.8rem;
+		font-size: 1.1rem;
+		line-height: 1.55;
+		white-space: pre-wrap;
+	}
+	.pv-de-code {
+		max-height: 16rem;
+		overflow: auto;
+		padding: 0.6rem;
+		border-radius: 8px;
+		background: var(--bg);
+		font: 0.8rem/1.5 'JetBrains Mono', monospace;
+	}
+	.pv-nhan-cau {
+		display: block;
+		margin: 0.8rem 0 0.25rem;
+		font-size: 0.8rem;
+		font-weight: 600;
+	}
+	.pv-tra-loi,
+	.pv-code,
+	.pv-tra-loi-phu {
+		width: 100%;
+		padding: 0.55rem 0.65rem;
+		border: 1px solid var(--line);
+		border-radius: 8px;
+		background: var(--bg);
+		color: var(--tx);
+		font: 0.88rem/1.5 'Be Vietnam Pro', sans-serif;
+		resize: vertical;
+	}
+	.pv-code {
+		font-family: 'JetBrains Mono', ui-monospace, monospace;
+		font-size: 0.8rem;
+	}
+	.pv-code-hang {
+		margin-top: 0.4rem;
+	}
+	.pv-chay {
+		margin-top: 0.3rem;
+		padding: 0.3rem 0.7rem;
+		border: 1px solid var(--pri);
+		border-radius: 8px;
+		background: var(--bg);
+		color: var(--pri);
+		font: 600 0.8rem 'Be Vietnam Pro', sans-serif;
+		cursor: pointer;
+	}
+	.pv-kq-code {
+		font-size: 0.8rem;
+		color: var(--mut-chu);
+	}
+	.pv-kq-code.dat {
+		color: var(--ok-chu);
+		font-weight: 700;
+	}
+	.pv-kq-code.chua {
+		color: var(--red-chu);
+	}
+	.pv-nut {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
+		margin-top: 0.5rem;
+	}
+	.pv-nut button,
+	.pv-tiep,
+	.pv-gui-phu,
+	.pv-tinh {
+		padding: 0.35rem 0.75rem;
+		border-radius: 8px;
+		font: 600 0.82rem 'Be Vietnam Pro', sans-serif;
+		cursor: pointer;
+	}
+	.pv-gui {
+		border: 0;
+		background: var(--ok);
+		color: #fff;
+	}
+	.pv-goi-y,
+	.pv-noi {
+		border: 1px solid var(--line);
+		background: var(--bg);
+		color: var(--tx);
+	}
+	.pv-goi-y-noi {
+		margin-top: 0.5rem;
+		font-size: 0.85rem;
+		color: var(--acc-chu);
+	}
+	.pv-phan-hoi {
+		margin-top: 0.6rem;
+		font-size: 0.88rem;
+	}
+	.pv-tiep,
+	.pv-gui-phu,
+	.pv-tinh {
+		border: 0;
+		background: var(--pri);
+		color: var(--bg);
+		margin-top: 0.4rem;
+	}
+	.pv-hoi-phu {
+		margin: 0.3rem 0;
+	}
+	.pv-tong {
+		padding: 1rem 1.2rem;
+		border: 1px solid var(--line);
+		border-radius: 14px;
+		background: var(--panel);
+	}
+	.pv-diem-nhan {
+		margin: 0;
+		font-size: 0.8rem;
+		color: var(--mut-chu);
+	}
+	.pv-diem strong {
+		font-size: 2.8rem;
+		color: var(--pri);
+	}
+	.pv-diem span {
+		color: var(--mut-chu);
+	}
+	.pv-muc {
+		display: inline-block;
+		padding: 0.1rem 0.5rem;
+		border-radius: 999px;
+		font-size: 0.75rem;
+		font-weight: 700;
+	}
+	.pv-muc.dat {
+		background: color-mix(in srgb, var(--ok) 16%, transparent);
+		color: var(--ok-chu);
+	}
+	.pv-muc.can {
+		background: var(--accbg);
+		color: var(--acc-chu);
+	}
+	.pv-muc.chua {
+		background: color-mix(in srgb, var(--red) 14%, transparent);
+		color: var(--red-chu);
+	}
+	.pv-tru {
+		font-size: 0.8rem;
+		color: var(--acc-chu);
+	}
+	.pv-bang {
+		width: 100%;
+		border-collapse: collapse;
+		font-size: 0.85rem;
+	}
+	.pv-bang th,
+	.pv-bang td {
+		padding: 0.4rem 0.5rem;
+		border-bottom: 1px solid var(--line);
+		text-align: left;
+	}
+	.pv-xem {
+		margin-top: 1rem;
+		border: 1px solid var(--line);
+		border-radius: 10px;
+		background: var(--bg);
+	}
+	.pv-xem summary {
+		padding: 0.5rem 0.7rem;
+		cursor: pointer;
+		font-weight: 600;
+	}
+	.pv-xem-cau {
+		padding: 0.4rem 0.7rem;
+		border-top: 1px dashed var(--line);
+		font-size: 0.86rem;
+	}
+	.pv-da-goi-y {
+		color: var(--acc-chu);
+		font-size: 0.8rem;
+	}
+	.pv-tu-danh-gia {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+		gap: 0.4rem;
+		margin: 0.6rem 0;
+	}
+	.pv-tu-danh-gia label {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.5rem;
+		font-size: 0.85rem;
+	}
+	.pv-tu-danh-gia select {
+		padding: 0.25rem 0.4rem;
+		border: 1px solid var(--line);
+		border-radius: 6px;
+		background: var(--bg);
+		color: var(--tx);
+	}
+	.pv-td-kq {
+		margin-top: 0.6rem;
+	}
+	.pv-kq-nut {
+		display: flex;
+		gap: 0.5rem;
+		margin-top: 1rem;
+	}
+	.pv-kq-nut button,
+	.pv-kq-nut a {
+		padding: 0.4rem 0.8rem;
+		border: 1px solid var(--line);
+		border-radius: 8px;
+		background: var(--bg);
+		color: var(--tx);
+		font: 600 0.85rem 'Be Vietnam Pro', sans-serif;
+		cursor: pointer;
+		text-decoration: none;
+	}
+	@media (max-width: 640px) {
+		.pv-preset {
+			grid-template-columns: 1fr;
+		}
+	}
+</style>
