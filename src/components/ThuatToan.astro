@@ -19,7 +19,7 @@ const jsonDang = JSON.stringify(DANG).replace(/</g, '\\u003c');
 </div>
 
 <script>
-	import { DANG, THU_TU_DANG, type BaiThuatToan } from '../lib/thuat-toan-dang';
+	import { DANG, LO_TRINH, THU_TU_DANG, type BaiThuatToan } from '../lib/thuat-toan-dang';
 	import { MayChay } from '../lib/khung-code/chay';
 	import { thanhHtml } from '../lib/khung-code/markdown';
 	import { hoiTroLy } from '../lib/khung-code/tro-ly';
@@ -82,29 +82,41 @@ const jsonDang = JSON.stringify(DANG).replace(/</g, '\\u003c');
 		const esc = (s: unknown) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 		const nhanMuc = (m: string) => (m === 'de' ? 'Dễ' : m === 'kho' ? 'Khó' : 'Vừa');
 
+		let cheDo: 'dang' | 'lo-trinh' = 'dang';
+		const thuTuMuc: Record<string, number> = { de: 0, vua: 1, kho: 2 };
+		const theBai = (b: BaiThuatToan, tt: TienDoTT, buoc?: number) =>
+			`<button class="tt-the ${tt.daGiai[b.so] ? 'da-giai' : ''}" type="button" data-tt-mo="${b.so}">
+				${buoc ? `<span class="tt-buoc">Bước ${buoc}</span>` : ''}
+				<span class="tt-so">${String(b.so).padStart(2, '0')}</span>
+				<span class="tt-ten">${esc(b.ten)}</span>
+				<span class="tt-muc tt-m-${b.muc}">${nhanMuc(b.muc)}</span>
+				${tt.daGiai[b.so] ? '<span class="tt-xong" aria-label="đã giải">✓</span>' : ''}
+			</button>`;
 		const veDanhSach = () => {
 			const tt = docTT();
 			const homNay = ngayDiaPhuong(new Date());
 			const chuoi = chuoiNgay({ daDoc: {}, ngayHoc: tt.ngay }, homNay);
 			elTong.innerHTML = `<p class="tt-tong-chu"><strong>${Object.keys(tt.daGiai).length}/${BAI.length}</strong> bài đã giải<span> · ${chuoi} ngày liên tiếp</span></p>
-				<p class="tt-tong-mo">Làm theo từng dạng. Chạy ví dụ để thử, Nộp để chấm test ẩn (có bài lớn bắt lời giải chậm).</p>`;
-			elNhom.innerHTML = THU_TU_DANG.map((dang) => {
-				const ds = BAI.filter((b) => b.dang === dang);
-				if (!ds.length) return '';
+				<p class="tt-tong-mo">Lộ trình từ dễ đến khó, kết thúc bằng đồ án tổng hợp. Chạy ví dụ để thử, Nộp để chấm test ẩn (có bài lớn bắt lời giải chậm).</p>
+				<div class="tt-che-do" role="tablist" aria-label="Cách xem danh sách">
+					<button type="button" role="tab" data-tt-cd="dang" aria-selected="${cheDo === 'dang'}" class="${cheDo === 'dang' ? 'dang-chon' : ''}">Theo dạng</button>
+					<button type="button" role="tab" data-tt-cd="lo-trinh" aria-selected="${cheDo === 'lo-trinh'}" class="${cheDo === 'lo-trinh' ? 'dang-chon' : ''}">Từ dễ đến khó</button>
+				</div>`;
+			if (cheDo === 'dang') {
+				elNhom.innerHTML = THU_TU_DANG.map((dang) => {
+					const ds = BAI.filter((b) => b.dang === dang).sort((a, b) => (thuTuMuc[a.muc] - thuTuMuc[b.muc]) || (a.so - b.so));
+					if (!ds.length) return '';
+					const da = ds.filter((b) => tt.daGiai[b.so]).length;
+					return `<section class="tt-nhom"><h3>${esc(DANG[dang])} <span>${da}/${ds.length}</span></h3>
+						<div class="tt-luoi">${ds.map((b) => theBai(b, tt)).join('')}</div></section>`;
+				}).join('');
+			} else {
+				const ds = LO_TRINH.map((so) => BAI.find((b) => b.so === so)).filter((b): b is BaiThuatToan => !!b);
 				const da = ds.filter((b) => tt.daGiai[b.so]).length;
-				return `<section class="tt-nhom"><h3>${esc(DANG[dang])} <span>${da}/${ds.length}</span></h3>
-					<div class="tt-luoi">${ds
-						.map(
-							(b) =>
-								`<button class="tt-the ${tt.daGiai[b.so] ? 'da-giai' : ''}" type="button" data-tt-mo="${b.so}">
-									<span class="tt-so">${String(b.so).padStart(2, '0')}</span>
-									<span class="tt-ten">${esc(b.ten)}</span>
-									<span class="tt-muc tt-m-${b.muc}">${nhanMuc(b.muc)}</span>
-									${tt.daGiai[b.so] ? '<span class="tt-xong" aria-label="đã giải">✓</span>' : ''}
-								</button>`,
-						)
-						.join('')}</div></section>`;
-			}).join('');
+				elNhom.innerHTML = `<section class="tt-nhom"><h3>Lộ trình từ dễ đến khó <span>${da}/${ds.length}</span></h3>
+					<p class="tt-lo-trinh-mo">Đi theo thứ tự; bài sau dùng lại kỹ năng của bài trước. Bài 41 là đồ án tốt nghiệp tổng hợp 8 dạng.</p>
+					<div class="tt-luoi">${ds.map((b, i) => theBai(b, tt, i + 1)).join('')}</div></section>`;
+			}
 		};
 
 		let may: MayChay | null = null;
@@ -274,6 +286,12 @@ const jsonDang = JSON.stringify(DANG).replace(/</g, '\\u003c');
 		});
 
 		// Code người học được esc trước khi đưa vào textarea nên không phá được trang.
+		elTong.addEventListener('click', (e) => {
+			const b = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-tt-cd]');
+			if (!b) return;
+			cheDo = b.dataset.ttCd === 'lo-trinh' ? 'lo-trinh' : 'dang';
+			veDanhSach();
+		});
 		veDanhSach();
 	}
 </script>
@@ -308,6 +326,37 @@ const jsonDang = JSON.stringify(DANG).replace(/</g, '\\u003c');
 	}
 	.tt-tong-mo {
 		margin: 0.2rem 0 0;
+		font-size: 0.82rem;
+		color: var(--mut-chu);
+	}
+	.tt-che-do {
+		display: flex;
+		gap: 0.3rem;
+		margin-top: 0.55rem;
+	}
+	.tt-che-do button {
+		padding: 0.25rem 0.65rem;
+		border: 1px solid var(--line);
+		border-radius: 999px;
+		background: var(--bg);
+		color: var(--mut-chu);
+		font: 600 0.78rem 'Be Vietnam Pro', sans-serif;
+		cursor: pointer;
+	}
+	.tt-che-do button.dang-chon {
+		border-color: var(--pri);
+		color: var(--pri);
+		background: var(--accbg);
+	}
+	.tt-buoc {
+		flex: none;
+		font-size: 0.66rem;
+		font-weight: 700;
+		color: var(--mut-chu);
+		letter-spacing: 0.02em;
+	}
+	.tt-lo-trinh-mo {
+		margin: 0 0 0.5rem;
 		font-size: 0.82rem;
 		color: var(--mut-chu);
 	}

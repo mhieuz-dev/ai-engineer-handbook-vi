@@ -88,6 +88,7 @@ const DANG_THUAT_TOAN = [
 	'quy-hoach-dong',
 	'quay-lui',
 	'tham-lam',
+	'do-an',
 ] as const;
 
 const phongVan = defineCollection({

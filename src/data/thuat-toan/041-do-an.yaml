@@ -1,0 +1,99 @@
+so: 41
+ten: 'Đồ án tốt nghiệp: hệ thống điều phối kho robot'
+dang: do-an
+muc: kho
+de: 'Bạn nhận bàn giao một hệ thống điều phối cho kho robot. Dữ liệu gồm danh sách đơn hàng, lưới kho
+  (`0` đi được, `1` kệ hàng) và một gói truy vấn. Viết `dieu_phoi(don_hang, kho, truy_van)` trả về một
+  dict tổng hợp 8 phần, mỗi phần dùng một dạng thuật toán đã học:
+
+
+  1. `cap_giam_gia`: chỉ số `[i, j]` của hai đơn có `gia` cộng lại đúng `truy_van["tong_gia"]` (i < j);
+  không có thì `[]`. Dùng bảng băm.
+
+  2. `cua_so_tot_nhat`: tổng `gia` lớn nhất của đúng `truy_van["cua_so"]` đơn liên tiếp; nếu `cua_so`
+  lớn hơn số đơn hoặc ≤ 0 thì `0`. Dùng cửa sổ trượt.
+
+  3. `duong_di`: số bước ít nhất từ `(0,0)` tới `(n-1,m-1)` trên lưới, đi 4 hướng; không tới được thì
+  `-1`. Dùng BFS.
+
+  4. `top_san_pham`: tối đa `truy_van["top_k"]` tên sản phẩm bán chạy nhất theo tổng `so_luong`, hòa thì
+  theo thứ tự từ điển tăng. Dùng heap hoặc đếm.
+
+  5. `ca_gop`: gộp các khoảng giao hàng trong `truy_van["ca"]` chồng nhau hoặc chạm nhau. Dùng tham lam
+  sau khi sắp xếp.
+
+  6. `so_cach`: số tập con của `truy_van["trong_luong"]` có tổng không vượt `truy_van["suc_chua"]`, tính
+  cả tập rỗng. Dùng quy hoạch động.
+
+  7. `vi_tri_chen`: vị trí chèn `truy_van["gia_tri_chen"]` vào danh sách `gia` đã sắp tăng (vị trí đầu
+  tiên có giá ≥ giá trị chèn). Dùng tìm kiếm nhị phân.
+
+  8. `ngoac_hop_le`: kiểm tra `truy_van["mau_ngoac"]` có đóng mở ngoặc đúng loại và đúng thứ tự không.
+  Dùng ngăn xếp.'
+vi_du:
+- vao: 5 đơn, lưới 3×3, truy vấn đủ 8 phần (gia 120,180,200,80,150)
+  ra: '{cap_giam_gia: [0,1], cua_so_tot_nhat: 380, duong_di: 4, top_san_pham: [C,B], ca_gop: [[0,50],[60,90]],
+    so_cach: 6, vi_tri_chen: 2, ngoac_hop_le: True}'
+rang_buoc:
+- 1 ≤ số đơn ≤ 100 000; lưới ≤ 200×200; sức chứa ≤ 10 000.
+- Dữ liệu đúng kiểu; lưới có thể bị chặn hoàn toàn; truy vấn có thể rỗng.
+khung: "from collections import deque, Counter\nimport heapq\nimport bisect\n\ndef dieu_phoi(don_hang,\
+  \ kho, truy_van):\n    # 1. cap_giam_gia\n    # 2. cua_so_tot_nhat\n    # 3. duong_di\n    # 4. top_san_pham\n\
+  \    # 5. ca_gop\n    # 6. so_cach\n    # 7. vi_tri_chen\n    # 8. ngoac_hop_le\n    return {}"
+test_vi_du: "don_hang = [\n    {\"ma\": \"DH1\", \"gia\": 120, \"san_pham\": \"A\", \"so_luong\": 2},\n\
+  \    {\"ma\": \"DH2\", \"gia\": 180, \"san_pham\": \"B\", \"so_luong\": 5},\n    {\"ma\": \"DH3\", \"\
+  gia\": 200, \"san_pham\": \"A\", \"so_luong\": 3},\n    {\"ma\": \"DH4\", \"gia\": 80, \"san_pham\"\
+  : \"C\", \"so_luong\": 7},\n    {\"ma\": \"DH5\", \"gia\": 150, \"san_pham\": \"B\", \"so_luong\": 1},\n\
+  ]\nkho = [[0, 0, 0], [1, 1, 0], [0, 0, 0]]\ntruy_van = {\"tong_gia\": 300, \"cua_so\": 2, \"top_k\"\
+  : 2, \"ca\": [[0, 30], [20, 50], [60, 90]], \"suc_chua\": 10, \"trong_luong\": [4, 5, 6], \"gia_tri_chen\"\
+  : 150, \"mau_ngoac\": \"([{}])\"}\nkq = dieu_phoi(don_hang, kho, truy_van)\nassert kq[\"cap_giam_gia\"\
+  ] == [0, 1]\nassert kq[\"cua_so_tot_nhat\"] == 380\nassert kq[\"duong_di\"] == 4\nassert kq[\"top_san_pham\"\
+  ] == [\"C\", \"B\"]\nassert kq[\"ca_gop\"] == [[0, 50], [60, 90]]\nassert kq[\"so_cach\"] == 6\nassert\
+  \ kq[\"vi_tri_chen\"] == 2\nassert kq[\"ngoac_hop_le\"] is True\nprint(\"OK\")"
+test_an: "don2 = [\n    {\"ma\": \"X\", \"gia\": 10, \"san_pham\": \"A\", \"so_luong\": 1},\n    {\"ma\"\
+  : \"Y\", \"gia\": 20, \"san_pham\": \"A\", \"so_luong\": 2},\n    {\"ma\": \"Z\", \"gia\": 30, \"san_pham\"\
+  : \"B\", \"so_luong\": 2},\n]\nkho2 = [[0, 1], [0, 0]]\ntv2 = {\"tong_gia\": 100, \"cua_so\": 5, \"\
+  top_k\": 5, \"ca\": [[0, 5], [5, 10]], \"suc_chua\": 0, \"trong_luong\": [1, 2], \"gia_tri_chen\": 5,\
+  \ \"mau_ngoac\": \"(]\"}\nkq2 = dieu_phoi(don2, kho2, tv2)\nassert kq2[\"cap_giam_gia\"] == []\nassert\
+  \ kq2[\"cua_so_tot_nhat\"] == 0\nassert kq2[\"duong_di\"] == 2\nassert kq2[\"top_san_pham\"] == [\"\
+  A\", \"B\"]\nassert kq2[\"ca_gop\"] == [[0, 10]]\nassert kq2[\"so_cach\"] == 1\nassert kq2[\"vi_tri_chen\"\
+  ] == 0\nassert kq2[\"ngoac_hop_le\"] is False\nrong = {\"tong_gia\": 0, \"cua_so\": 0, \"top_k\": 0,\
+  \ \"ca\": [], \"suc_chua\": 0, \"trong_luong\": [], \"gia_tri_chen\": 0, \"mau_ngoac\": \"\"}\nkq3 =\
+  \ dieu_phoi([], [[1]], rong)\nassert kq3[\"duong_di\"] == -1 and kq3[\"so_cach\"] == 1 and kq3[\"top_san_pham\"\
+  ] == []\nprint(\"OK\")"
+loi_giai: "from collections import deque, Counter\nimport heapq\nimport bisect\n\ndef dieu_phoi(don_hang,\
+  \ kho, truy_van):\n    gia = [d[\"gia\"] for d in don_hang]\n    # 1. cặp giá bằng bảng băm\n    thay\
+  \ = {}\n    cap = []\n    for i, x in enumerate(gia):\n        if truy_van[\"tong_gia\"] - x in thay:\n\
+  \            cap = [thay[truy_van[\"tong_gia\"] - x], i]\n            break\n        thay[x] = i\n \
+  \   # 2. cửa sổ trượt\n    k = truy_van[\"cua_so\"]\n    if k <= 0 or k > len(gia):\n        cua = 0\n\
+  \    else:\n        tong = sum(gia[:k])\n        cua = tong\n        for i in range(k, len(gia)):\n\
+  \            tong += gia[i] - gia[i - k]\n            cua = max(cua, tong)\n    # 3. BFS trên lưới\n\
+  \    n, m = len(kho), len(kho[0]) if kho else 0\n    duong = -1\n    if n and m and not kho[0][0] and\
+  \ not kho[-1][-1]:\n        hang = deque([(0, 0, 0)])\n        thay_o = {(0, 0)}\n        while hang:\n\
+  \            x, y, dd = hang.popleft()\n            if (x, y) == (n - 1, m - 1):\n                duong\
+  \ = dd\n                break\n            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):\n     \
+  \           a, b = x + dx, y + dy\n                if 0 <= a < n and 0 <= b < m and kho[a][b] == 0 and\
+  \ (a, b) not in thay_o:\n                    thay_o.add((a, b))\n                    hang.append((a,\
+  \ b, dd + 1))\n    # 4. top-k bằng đếm + heap\n    dem = Counter()\n    for d in don_hang:\n       \
+  \ dem[d[\"san_pham\"]] += d[\"so_luong\"]\n    top = heapq.nsmallest(truy_van[\"top_k\"], dem, key=lambda\
+  \ x: (-dem[x], x)) if truy_van[\"top_k\"] > 0 else []\n    # 5. gộp khoảng\n    ca = sorted(truy_van[\"\
+  ca\"])\n    gop = []\n    for a, b in ca:\n        if gop and a <= gop[-1][1]:\n            gop[-1][1]\
+  \ = max(gop[-1][1], b)\n        else:\n            gop.append([a, b])\n    # 6. DP đếm tập con không\
+  \ vượt sức chứa\n    C = truy_van[\"suc_chua\"]\n    dp = [0] * (C + 1)\n    if C >= 0:\n        dp[0]\
+  \ = 1\n    for x in truy_van[\"trong_luong\"]:\n        for s in range(C, x - 1, -1):\n            dp[s]\
+  \ += dp[s - x]\n    so_cach = sum(dp) if C >= 0 else 0\n    # 7. tìm kiếm nhị phân\n    vi_tri = bisect.bisect_left(sorted(gia),\
+  \ truy_van[\"gia_tri_chen\"])\n    # 8. ngăn xếp kiểm tra ngoặc\n    cap_ngoac = {\")\": \"(\", \"]\"\
+  : \"[\", \"}\": \"{\"}\n    ngan = []\n    hop = True\n    for c in truy_van[\"mau_ngoac\"]:\n     \
+  \   if c in \"([{\":\n            ngan.append(c)\n        elif c in cap_ngoac:\n            if not ngan\
+  \ or ngan.pop() != cap_ngoac[c]:\n                hop = False\n                break\n    if ngan:\n\
+  \        hop = False\n    return {\n        \"cap_giam_gia\": cap,\n        \"cua_so_tot_nhat\": cua,\n\
+  \        \"duong_di\": duong,\n        \"top_san_pham\": top,\n        \"ca_gop\": gop,\n        \"\
+  so_cach\": so_cach,\n        \"vi_tri_chen\": vi_tri,\n        \"ngoac_hop_le\": hop,\n    }"
+phuc_tap: O(n log n + n·m + C·|w|) thời gian, O(n + n·m + C) bộ nhớ; n là số đơn, lưới n×m, C sức chứa.
+goi_y:
+- Chia bài toán lớn thành 8 bài con; mỗi bài con là một dạng đã học ở 40 bài trước.
+- Bảng băm cho cặp giá; cửa sổ trượt; BFS; đếm + heap; sắp xếp khoảng; DP tập con; bisect; ngăn xếp.
+- Viết hàm phụ cho từng phần, kiểm tra biên (mảng rỗng, lưới bị chặn, sức chứa 0), rồi ghép thành dict.
+tuong_tu:
+  ten: Merge Intervals (một phần của đồ án)
+  link: https://leetcode.com/problems/merge-intervals/

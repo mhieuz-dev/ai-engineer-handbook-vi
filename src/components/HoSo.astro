@@ -62,6 +62,7 @@ const jsonDang = JSON.stringify(demDang).replace(/</g, '\\u003c');
 		const $ = <T extends HTMLElement>(s: string) => goc.querySelector<T>(s)!;
 		const CH = JSON.parse(document.getElementById('hs-chuong')!.textContent ?? '[]') as { so: number; ten: string; slug: string; href: string }[];
 		const DANG = JSON.parse(document.getElementById('hs-dang')!.textContent ?? '[]') as { id: string; ten: string; tong: number; so: number[] }[];
+		const TONG_BAI = DANG.reduce((s, d) => s + d.tong, 0);
 		const elTong = $<HTMLElement>('[data-hs-tong]');
 		const elChart = $<HTMLElement>('[data-hs-chart]');
 		const elTT = $<HTMLElement>('[data-hs-tt]');
@@ -118,7 +119,7 @@ const jsonDang = JSON.stringify(demDang).replace(/</g, '\\u003c');
 			elTong.innerHTML = `<div class="hs-o"><strong>${docChuong.length}/${CH.length}</strong><span>chương đã đọc</span></div>
 				<div class="hs-o"><strong>${chuoi}</strong><span>ngày liên tiếp</span></div>
 				<div class="hs-o"><strong>${baiThi.length}</strong><span>bài thi đã làm</span></div>
-				<div class="hs-o"><strong>${Object.keys(thuatToan.daGiai).length}/40</strong><span>bài thuật toán</span></div>
+				<div class="hs-o"><strong>${Object.keys(thuatToan.daGiai).length}/${TONG_BAI}</strong><span>bài thuật toán</span></div>
 				<div class="hs-o"><strong>${phongVan.length}</strong><span>buổi phỏng vấn</span></div>`;
 
 			// Điểm theo thời gian
@@ -146,7 +147,7 @@ const jsonDang = JSON.stringify(demDang).replace(/</g, '\\u003c');
 
 			// Thuật toán theo dạng
 			const daGiai = Object.keys(thuatToan.daGiai).map(Number);
-			elTT.innerHTML = `<p class="hs-tt-chu">Đã giải <strong>${daGiai.length}/40</strong> bài, chuỗi <strong>${chuoiNgay({ daDoc: {}, ngayHoc: thuatToan.ngay }, homNay)}</strong> ngày luyện.</p>
+			elTT.innerHTML = `<p class="hs-tt-chu">Đã giải <strong>${daGiai.length}/${TONG_BAI}</strong> bài, chuỗi <strong>${chuoiNgay({ daDoc: {}, ngayHoc: thuatToan.ngay }, homNay)}</strong> ngày luyện.</p>
 				<div class="hs-dang-ds">${DANG.map((d) => {
 					const xong = d.so.filter((n) => daGiai.includes(n)).length;
 					const pt = d.tong ? Math.round((xong / d.tong) * 100) : 0;

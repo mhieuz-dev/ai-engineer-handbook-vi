@@ -46,7 +46,7 @@ test('hồ sơ: tổng quan, biểu đồ, bản đồ kiến thức và học g
 	await expect(page.locator('.hs-svg')).toHaveCount(1);
 	await expect(page.locator('.hs-bang tbody tr')).toHaveCount(2);
 	await expect(page.locator('.hs-bang')).toContainText('Chọn chỉ số');
-	await expect(page.locator('.hs-dang')).toHaveCount(12);
+	await expect(page.locator('.hs-dang')).toHaveCount(13);
 	await expect(page.locator('.hs-dang').first()).toContainText('2/5');
 	await expect(page.locator('[data-hs-tiep]')).toContainText('Chương 2. Python cho dữ liệu');
 	await expect(page.locator('[data-hs-tiep] a[href="/ai-engineer/ch02-python-cho-du-lieu/01-chuoi-tuple-set/"]')).toBeVisible();

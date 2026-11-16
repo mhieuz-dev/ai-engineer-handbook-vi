@@ -9,11 +9,11 @@ const GIAI = `def hai_don(gia, tong):
     return []
 `;
 
-test('danh sách 40 bài, 12 dạng, có link LeetCode', async ({ page }) => {
+test('danh sách 41 bài, 13 dạng, có link LeetCode', async ({ page }) => {
 	await page.goto('/thuat-toan/');
-	await expect(page.locator('.tt-the')).toHaveCount(40);
-	await expect(page.locator('.tt-nhom')).toHaveCount(12);
-	await expect(page.locator('[data-tt-tong]')).toContainText('0/40');
+	await expect(page.locator('.tt-the')).toHaveCount(41);
+	await expect(page.locator('.tt-nhom')).toHaveCount(13);
+	await expect(page.locator('[data-tt-tong]')).toContainText('0/41');
 	await page.locator('.tt-the[data-tt-mo="1"]').click();
 	await expect(page.locator('.tt-mota')).toContainText('sàn thương mại điện tử');
 	await expect(page.locator('.tt-link a')).toHaveAttribute('href', 'https://leetcode.com/problems/two-sum/');
@@ -35,8 +35,18 @@ test('nộp bài: sai thì chưa đạt, đúng thì đạt và mở lời giả
 	await expect(page.locator('[data-tt-loi-giai]')).toContainText('Độ phức tạp');
 
 	await page.locator('[data-tt-quay]').click();
-	await expect(page.locator('[data-tt-tong]')).toContainText('1/40');
+	await expect(page.locator('[data-tt-tong]')).toContainText('1/41');
 	await expect(page.locator('.tt-the.da-giai')).toHaveCount(1);
+});
+
+test('lộ trình từ dễ đến khó: 41 bước, đồ án cuối', async ({ page }) => {
+	await page.goto('/thuat-toan/');
+	await page.getByRole('tab', { name: 'Từ dễ đến khó' }).click();
+	await expect(page.locator('.tt-nhom')).toHaveCount(1);
+	await expect(page.locator('.tt-buoc')).toHaveCount(41);
+	await expect(page.locator('.tt-buoc').first()).toHaveText('Bước 1');
+	await expect(page.locator('.tt-the[data-tt-mo="41"]')).toContainText('Đồ án tốt nghiệp');
+	await expect(page.locator('.tt-the[data-tt-mo="41"] .tt-buoc')).toHaveText('Bước 41');
 });
 
 test('gợi ý ba nấc và chịu thua mở lời giải', async ({ page }) => {
