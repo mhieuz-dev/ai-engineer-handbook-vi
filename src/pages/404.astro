@@ -12,6 +12,7 @@ const goiY = chuong ? await trangDauCuaChuong(chuong) : undefined;
 	frontmatter={{
 		title: 'Không tìm thấy trang',
 		description: 'Đường dẫn không tồn tại. Quay lại trang chủ, lộ trình hoặc luyện tập.',
+		tableOfContents: false,
 	}}
 	hasSidebar={false}
 >
@@ -42,8 +43,11 @@ const goiY = chuong ? await trangDauCuaChuong(chuong) : undefined;
 		)
 	}
 	<p class="p404-tt">
-		Đường dẫn: <code>{duongDan}</code>
+		Đường dẫn: <code data-p404-duong-dan>{duongDan}</code>
 	</p>
+	<script is:inline>
+		document.querySelector('[data-p404-duong-dan]').textContent = location.pathname;
+	</script>
 </StarlightPage>
 
 <style>
