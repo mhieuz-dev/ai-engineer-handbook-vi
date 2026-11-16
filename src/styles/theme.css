@@ -19,7 +19,29 @@
 	--mut-chu: #6b6354;
 	--ok-chu: #1f6b43;
 	--red-chu: #a32d21;
+	/* Khu nội dung: Học (xanh), Luyện tập (cam), Tra cứu (tím), Hồ sơ (xanh lá). */
+	--khu-hoc: var(--pri);
+	--khu-luyen: var(--acc);
+	--khu-tra: var(--purple);
+	--khu-hoso: var(--ok);
+	--khu: var(--khu-hoc);
+	--kc-1: 4px;
+	--kc-2: 8px;
+	--kc-3: 12px;
+	--kc-4: 16px;
+	--kc-5: 24px;
+	--kc-6: 32px;
+	--kc-7: 48px;
+	--bo-1: 8px;
+	--bo-2: 12px;
+	--bo-3: 16px;
+	--bong-1: 0 1px 2px rgb(80 60 30 / 0.06);
+	--bong-2: 0 10px 30px rgb(20 20 20 / 0.12);
 }
+html[data-khu='hoc'] { --khu: var(--khu-hoc); }
+html[data-khu='luyen'] { --khu: var(--khu-luyen); }
+html[data-khu='tra'] { --khu: var(--khu-tra); }
+html[data-khu='hoso'] { --khu: var(--khu-hoso); }
 :root[data-theme='dark'] {
 	--bg: #14171c;
 	--panel: #1a1e24;

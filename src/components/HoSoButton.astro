@@ -1,0 +1,76 @@
+---
+import Icon from './icon/Icon.astro';
+import { slugTrangDaXuatBan } from '../lib/slug-xuat-ban';
+
+const soTrang = (await slugTrangDaXuatBan()).length;
+---
+
+<a class="nut-hoso" href="/ho-so/" title="Hồ sơ học tập: tiến độ và kết quả của bạn">
+	<Icon ten="hoso" />
+	<span class="hoso-chu">Hồ sơ</span>
+	<span class="hoso-pt" data-hoso-pt data-tong={soTrang}>0%</span>
+</a>
+
+<script>
+	import { KHOA_STORAGE, docTuStorage } from '../lib/tien-do';
+
+	const nut = document.querySelector<HTMLElement>('[data-hoso-pt]');
+	if (nut) {
+		const tong = Number(nut.dataset.tong ?? 0);
+		const capNhat = () => {
+			try {
+				const td = docTuStorage(localStorage);
+				const doc = Object.keys(td.daDoc).length;
+				if (!tong || doc === 0) {
+					nut.textContent = '0%';
+					return;
+				}
+				let pt = Math.floor((doc * 100) / tong);
+				if (pt === 0) pt = 1;
+				if (doc < tong && pt === 100) pt = 99;
+				nut.textContent = `${pt}%`;
+			} catch {
+				nut.textContent = '';
+			}
+		};
+		capNhat();
+		window.addEventListener('tien-do-doi', capNhat);
+		window.addEventListener('storage', (e) => {
+			if (e.key === null || e.key === KHOA_STORAGE) capNhat();
+		});
+	}
+</script>
+
+<style>
+	.nut-hoso {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+		padding: 0.3rem 0.55rem;
+		border: 1px solid var(--line);
+		border-radius: 999px;
+		color: var(--tx);
+		text-decoration: none;
+		font: 600 0.78rem 'Be Vietnam Pro', system-ui, sans-serif;
+		white-space: nowrap;
+	}
+	.nut-hoso:hover,
+	.nut-hoso:focus-visible {
+		border-color: var(--khu-hoso);
+		color: var(--ok-chu);
+	}
+	.nut-hoso :global(svg) {
+		color: var(--ok-chu);
+	}
+	.hoso-pt {
+		font-family: 'JetBrains Mono', monospace;
+		font-size: 0.68rem;
+		color: var(--ok-chu);
+		font-variant-numeric: tabular-nums;
+	}
+	@media (max-width: 62rem) {
+		.hoso-chu {
+			display: none;
+		}
+	}
+</style>

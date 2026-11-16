@@ -1,0 +1,278 @@
+---
+import { getCollection } from 'astro:content';
+import { CHUONG, chuongDaXuatBan } from '../data/chuong';
+import { khuCuaDuongDan, type Khu } from '../data/khu';
+import { taiBaiThuatToan } from '../lib/thuat-toan';
+import { taiBaiToan } from '../lib/toan';
+import { taiPreset } from '../lib/phong-van';
+import Icon from './icon/Icon.astro';
+
+const daXong = chuongDaXuatBan().length;
+const soThuatToan = (await taiBaiThuatToan()).length;
+const soToan = (await taiBaiToan()).length;
+const soPhongVan = (await taiPreset()).length;
+const soThuatNgu = (await getCollection('thuatNgu')).length;
+const soNotebook = chuongDaXuatBan().filter((c) => c.notebook).length;
+const khu = khuCuaDuongDan(Astro.url.pathname);
+
+type IconTen = 'hoc' | 'luyen' | 'tra' | 'hoso' | 'route' | 'thi' | 'code' | 'math' | 'interview' | 'glossary' | 'notebook' | 'info' | 'home' | 'shield' | 'play';
+interface Muc {
+	ten: string;
+	href: string;
+	mo: string;
+	icon: IconTen;
+}
+const nhom: { id: Khu; ten: string; mo: string; items: Muc[] }[] = [
+	{
+		id: 'hoc',
+		ten: 'Học',
+		mo: 'Giáo trình từ Python đến mô hình ngôn ngữ lớn',
+		items: [
+			{ ten: 'Giáo trình AI Engineer', href: '/lo-trinh/', mo: `${daXong}/${CHUONG.length} chương`, icon: 'hoc' },
+			{ ten: 'Bắt đầu từ Chương 0', href: '/ai-engineer/ch00-lo-trinh-va-colab/01-lo-trinh/', mo: 'Lộ trình và Colab', icon: 'play' },
+			{ ten: 'Trang chủ', href: '/', mo: 'Chọn sách, xem học tiếp', icon: 'home' },
+			{ ten: 'Robotics', href: '/lo-trinh/', mo: 'Sắp có', icon: 'route' },
+		],
+	},
+	{
+		id: 'luyen',
+		ten: 'Luyện tập',
+		mo: 'Thi thử, thuật toán, toán nền và phỏng vấn',
+		items: [
+			{ ten: 'Tất cả cách luyện', href: '/luyen-tap/', mo: 'Hub luyện tập', icon: 'luyen' },
+			{ ten: 'Phòng thi thử', href: '/phong-thi/', mo: 'Theo chương hoặc chủ đề', icon: 'thi' },
+			{ ten: 'Luyện thuật toán', href: '/thuat-toan/', mo: `${soThuatToan} bài + đồ án`, icon: 'code' },
+			{ ten: 'Toán cho thuật toán', href: '/toan-thuat-toan/', mo: `${soToan} bài nền`, icon: 'math' },
+			{ ten: 'Phỏng vấn thử', href: '/phong-van/', mo: `${soPhongVan} phong cách`, icon: 'interview' },
+		],
+	},
+	{
+		id: 'tra',
+		ten: 'Tra cứu',
+		mo: 'Từ điển, notebook và thông tin site',
+		items: [
+			{ ten: 'Thuật ngữ', href: '/thuat-ngu/', mo: `${soThuatNgu} khái niệm`, icon: 'glossary' },
+			{ ten: 'Notebook', href: '/notebook/', mo: `${soNotebook} notebook Colab`, icon: 'notebook' },
+			{ ten: 'Giới thiệu', href: '/gioi-thieu/', mo: 'Về site, tác giả, báo lỗi', icon: 'info' },
+			{ ten: 'Quyền riêng tư', href: '/quyen-rieng-tu/', mo: 'Dữ liệu của bạn', icon: 'shield' },
+		],
+	},
+];
+---
+
+<nav class="mn" aria-label="Điều hướng chính">
+	{
+		nhom.map((g) => (
+			<div class="mn-nhom" data-mn-nhom style={`--khu-nhom: var(--khu-${g.id})`}>
+				<button
+					class:list={['mn-nut', { 'dang-o': khu === g.id }]}
+					type="button"
+					aria-expanded="false"
+					aria-controls={`mn-${g.id}`}
+					data-mn-nut
+				>
+					<Icon ten={g.id} class="mn-i" />
+					{g.ten}
+					<Icon ten="chevron" class="mn-chev" />
+				</button>
+				<div class="mn-bang" id={`mn-${g.id}`} hidden>
+					<p class="mn-mo">{g.mo}</p>
+					{g.items.map((it) => (
+						<a class="mn-muc" href={it.href}>
+							<span class="mn-i">
+								<Icon ten={it.icon} />
+							</span>
+							<span class="mn-chu">
+								<strong>{it.ten}</strong>
+								<small>{it.mo}</small>
+							</span>
+						</a>
+					))}
+				</div>
+			</div>
+		))
+	}
+</nav>
+
+<script is:inline>
+	(() => {
+		const p = location.pathname;
+		const k =
+			p === '/' || p.startsWith('/ai-engineer') || p.startsWith('/lo-trinh')
+				? 'hoc'
+				: p.startsWith('/ho-so')
+					? 'hoso'
+					: p.startsWith('/thuat-ngu') || p.startsWith('/notebook') || p.startsWith('/gioi-thieu') || p.startsWith('/quyen-rieng-tu')
+						? 'tra'
+						: p.startsWith('/luyen-tap') ||
+							  p.startsWith('/phong-thi') ||
+							  p.startsWith('/thuat-toan') ||
+							  p.startsWith('/toan-thuat-toan') ||
+							  p.startsWith('/phong-van')
+							? 'luyen'
+							: 'hoc';
+		document.documentElement.dataset.khu = k;
+	})();
+</script>
+
+<script>
+	const goc = document.querySelector<HTMLElement>('.mn');
+	if (goc) {
+		const nhom = [...goc.querySelectorAll<HTMLElement>('[data-mn-nhom]')];
+		const dong = (trừ?: HTMLElement) => {
+			for (const n of nhom) {
+				if (n === trừ) continue;
+				n.querySelector<HTMLElement>('.mn-bang')!.hidden = true;
+				n.querySelector<HTMLElement>('[data-mn-nut]')!.setAttribute('aria-expanded', 'false');
+			}
+		};
+		const mo = (n: HTMLElement) => {
+			dong(n);
+			n.querySelector<HTMLElement>('.mn-bang')!.hidden = false;
+			n.querySelector<HTMLElement>('[data-mn-nut]')!.setAttribute('aria-expanded', 'true');
+		};
+		for (const n of nhom) {
+			const nut = n.querySelector<HTMLElement>('[data-mn-nut]')!;
+			const bang = n.querySelector<HTMLElement>('.mn-bang')!;
+			nut.addEventListener('click', () => {
+				if (bang.hidden) mo(n);
+				else dong();
+			});
+			n.addEventListener('keydown', (e) => {
+				if (e.key === 'Escape') {
+					dong();
+					nut.focus();
+				}
+				if (e.key === 'ArrowDown') {
+					e.preventDefault();
+					mo(n);
+					n.querySelector<HTMLAnchorElement>('.mn-muc')?.focus();
+				}
+			});
+		}
+		document.addEventListener('click', (e) => {
+			if (!goc.contains(e.target as Node)) dong();
+		});
+	}
+</script>
+
+<style>
+	.mn {
+		display: flex;
+		gap: 0.1rem;
+		align-items: center;
+		margin-inline-end: 0.35rem;
+		font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+	}
+	.mn-nhom {
+		position: relative;
+	}
+	.mn-nut {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.28rem;
+		padding: 0.35rem 0.45rem;
+		border: 0;
+		border-bottom: 2px solid transparent;
+		background: transparent;
+		color: var(--tx);
+		font: 600 0.82rem/1.4 'Be Vietnam Pro', sans-serif;
+		cursor: pointer;
+		white-space: nowrap;
+	}
+	.mn-nut:hover,
+	.mn-nut[aria-expanded='true'] {
+		color: var(--khu-nhom);
+	}
+	.mn-nut.dang-o {
+		color: var(--khu-nhom);
+		border-bottom-color: var(--khu-nhom);
+	}
+	.mn-i {
+		opacity: 0.9;
+	}
+	.mn-chev {
+		width: 12px;
+		height: 12px;
+		transition: transform 0.15s ease;
+	}
+	.mn-nut[aria-expanded='true'] .mn-chev {
+		transform: rotate(180deg);
+	}
+	.mn-bang {
+		position: absolute;
+		top: calc(100% + 8px);
+		left: 0;
+		z-index: 50;
+		width: 21rem;
+		max-width: calc(100vw - 2rem);
+		padding: 0.4rem;
+		border: 1px solid var(--line);
+		border-radius: 12px;
+		background: var(--bg);
+		box-shadow: 0 14px 40px rgb(20 20 20 / 0.18);
+	}
+	.mn-nhom:last-child .mn-bang {
+		right: 0;
+		left: auto;
+	}
+	.mn-bang[hidden] {
+		display: none;
+	}
+	.mn-mo {
+		margin: 0.1rem 0.35rem 0.35rem;
+		font-size: 0.7rem;
+		color: var(--mut-chu);
+	}
+	.mn-muc {
+		display: flex;
+		gap: 0.55rem;
+		align-items: flex-start;
+		padding: 0.42rem 0.5rem;
+		border-radius: 8px;
+		color: var(--tx);
+		text-decoration: none;
+	}
+	.mn-muc:hover,
+	.mn-muc:focus-visible {
+		background: var(--panel);
+	}
+	.mn-muc > .mn-i {
+		flex: none;
+		margin-top: 0.1rem;
+		color: var(--khu-nhom);
+	}
+	.mn-chu {
+		display: flex;
+		flex-direction: column;
+		gap: 0.05rem;
+		min-width: 0;
+	}
+	.mn-chu strong {
+		font-size: 0.84rem;
+		font-weight: 600;
+	}
+	.mn-chu small {
+		font-size: 0.72rem;
+		line-height: 1.35;
+		color: var(--mut-chu);
+	}
+	@media (max-width: 50rem) {
+		.mn {
+			display: none;
+		}
+	}
+	@media (min-width: 50rem) and (max-width: 62rem) {
+		.mn {
+			margin-inline-end: 0;
+		}
+		.mn-nut {
+			padding: 0.3rem 0.3rem;
+			font-size: 0.72rem;
+		}
+		.mn-nut .mn-i,
+		.mn-chev {
+			display: none;
+		}
+	}
+</style>

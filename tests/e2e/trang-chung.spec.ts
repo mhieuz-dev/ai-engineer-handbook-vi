@@ -58,9 +58,61 @@ test('giới thiệu: Mhz, MIT, GitHub, báo lỗi', async ({ page }) => {
 	await expect(noiDung.getByRole('link', { name: 'GitHub Issues' })).toHaveAttribute('href', /github\.com\/mhieuz-dev\/ai-engineer-handbook-vi\/issues/);
 });
 
-test('menu trên cùng có Lộ trình, Thuật ngữ, Notebook', async ({ page, isMobile }) => {
+test('menu trên cùng có ba nhóm Học / Luyện tập / Tra cứu, thả xuống có mô tả và số liệu', async ({ page, isMobile }) => {
+	test.skip(!!isMobile);
 	await page.goto('/');
-	const nav = page.locator(isMobile ? '.nav-chung-mobile' : 'header .nav-chung');
+	const mn = page.locator('header .mn');
+	await expect(mn).toBeVisible();
+	await expect(mn.locator('.mn-nut')).toHaveCount(3);
+	await expect(mn.locator('.mn-nut').nth(0)).toContainText('Học');
+	await expect(mn.locator('.mn-nut').nth(1)).toContainText('Luyện tập');
+	await expect(mn.locator('.mn-nut').nth(2)).toContainText('Tra cứu');
+	await expect(mn.locator('.mn-nut.dang-o')).toContainText('Học');
+
+	await mn.getByRole('button', { name: /Luyện tập/ }).click();
+	const bang = page.locator('#mn-luyen');
+	await expect(bang).toBeVisible();
+	await expect(bang.locator('.mn-muc')).toHaveCount(5);
+	await expect(bang.getByRole('link', { name: /Luyện thuật toán/ })).toHaveAttribute('href', '/thuat-toan/');
+	await expect(bang.getByRole('link', { name: /Toán cho thuật toán/ })).toHaveAttribute('href', '/toan-thuat-toan/');
+	await expect(bang).toContainText(/\d+ bài \+ đồ án/);
+	await expect(bang).toContainText(/\d+ bài nền/);
+
+	await page.keyboard.press('Escape');
+	await expect(bang).toBeHidden();
+});
+
+test('khu đang đứng được đánh dấu trong menu và trên html[data-khu]', async ({ page, isMobile }) => {
+	test.skip(!!isMobile);
+	const cap = [
+		['/thuat-ngu/', 'tra', 'Tra cứu'],
+		['/phong-thi/', 'luyen', 'Luyện tập'],
+		['/ho-so/', 'hoso', 'Hồ sơ'],
+		['/ai-engineer/ch10-hoi-quy-tuyen-tinh/02-toan/', 'hoc', 'Học'],
+	];
+	for (const [url, khu, ten] of cap) {
+		await page.goto(url);
+		await expect(page.locator('html')).toHaveAttribute('data-khu', khu);
+		if (khu === 'hoso') {
+			await expect(page.locator('header .nut-hoso')).toBeVisible();
+		} else {
+			await expect(page.locator('header .mn-nut.dang-o')).toContainText(ten);
+		}
+	}
+});
+
+test('nút Hồ sơ trên menu hiện phần trăm và trỏ về /ho-so/', async ({ page, isMobile }) => {
+	test.skip(!!isMobile);
+	await page.goto('/');
+	const nut = page.locator('header .nut-hoso');
+	await expect(nut).toHaveAttribute('href', '/ho-so/');
+	await expect(nut.locator('[data-hoso-pt]')).toHaveText('0%');
+});
+
+test('mobile: trang chủ vẫn có liên kết nhanh thay cho menu thả xuống', async ({ page, isMobile }) => {
+	test.skip(!isMobile);
+	await page.goto('/');
+	const nav = page.locator('.nav-chung-mobile');
 	for (const [ten, href] of [['Lộ trình', '/lo-trinh/'], ['Luyện tập', '/luyen-tap/'], ['Thuật ngữ', '/thuat-ngu/'], ['Notebook', '/notebook/']]) {
 		await expect(nav.getByRole('link', { name: ten })).toHaveAttribute('href', href);
 	}
@@ -89,11 +141,12 @@ for (const [rong, cao] of [[820, 1180], [900, 1200]]) {
 		test.skip(!!isMobile);
 		await page.setViewportSize({ width: rong, height: cao });
 		await page.goto('/ai-engineer/ch10-hoi-quy-tuyen-tinh/02-toan/');
-		const nhan = page.locator('header .nav-chung a, header button[data-open-modal] > span');
-		await expect(nhan).toHaveCount(6);
+		const nhan = page.locator('header .mn-nut, header button[data-open-modal] > span');
+		await expect(nhan).toHaveCount(4);
 		for (const el of await nhan.all()) {
 			const { cao: h, dong } = await el.evaluate((e) => ({ cao: e.getBoundingClientRect().height, dong: parseFloat(getComputedStyle(e).lineHeight) }));
-			expect(h, (await el.textContent()) ?? '').toBeLessThan(1.6 * dong);
+			// nút có padding và viền dưới 2px; chỉ cần chữ không xuống dòng
+			expect(h, (await el.textContent()) ?? '').toBeLessThan(1.6 * dong + 8);
 		}
 		expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(rong);
 		const phai = await page.locator('header .right-group').evaluate((e) => e.getBoundingClientRect().right);
@@ -105,15 +158,14 @@ test('desktop: menu phụ của sidebar ẩn, chỉ còn menu đầu trang', asy
 	test.skip(!!isMobile);
 	await page.goto('/ai-engineer/ch10-hoi-quy-tuyen-tinh/02-toan/');
 	await expect(page.locator('.nav-sidebar')).toBeHidden();
-	await expect(page.locator('header .nav-chung')).toBeVisible();
+	await expect(page.locator('header .mn')).toBeVisible();
 });
 
-test('desktop: link đầu trang cách nhau bằng chấm nhỏ, nút Tải về là nút viền cuối hàng breadcrumb', async ({ page, isMobile }) => {
+test('desktop: ba nhóm menu không chen chấm trang trí, nút Tải về là nút viền cuối hàng breadcrumb', async ({ page, isMobile }) => {
 	test.skip(!!isMobile);
 	await page.goto('/ai-engineer/ch10-hoi-quy-tuyen-tinh/02-toan/');
-	const links = page.locator('header .nav-chung a');
-	const cham = await links.evaluateAll((as) => as.map((a) => getComputedStyle(a, '::before').width));
-	expect(cham).toEqual(['auto', '3px', '3px', '3px', '3px']);
+	const cham = await page.locator('header .mn-nut').evaluateAll((as) => as.map((a) => getComputedStyle(a, '::before').content));
+	expect(cham).toEqual(['none', 'none', 'none']);
 	const nut = page.getByRole('button', { name: 'Tải về' });
 	await expect(nut).toHaveText('Tải về');
 	expect(await nut.evaluate((e) => getComputedStyle(e).borderTopWidth)).toBe('1px');
