@@ -1,0 +1,441 @@
+---
+import { chuongDaXuatBan } from '../data/chuong';
+import { trangDauCuaChuong } from '../lib/trang-dau';
+import { taiBaiThuatToan } from '../lib/thuat-toan';
+import { DANG, THU_TU_DANG } from '../lib/thuat-toan-dang';
+
+const chuong = await Promise.all(
+	chuongDaXuatBan().map(async (c) => ({
+		so: c.so,
+		ten: c.ten,
+		slug: c.slug,
+		href: (await trangDauCuaChuong(c)) ?? '',
+	})),
+);
+const bai = await taiBaiThuatToan();
+const demDang = THU_TU_DANG.map((d) => ({ id: d, ten: DANG[d], tong: bai.filter((b) => b.dang === d).length, so: bai.filter((b) => b.dang === d).map((b) => b.so) }));
+const jsonChuong = JSON.stringify(chuong).replace(/</g, '\\u003c');
+const jsonDang = JSON.stringify(demDang).replace(/</g, '\\u003c');
+---
+
+<div class="hs" data-hs>
+	<script type="application/json" id="hs-chuong" set:html={jsonChuong}></script>
+	<script type="application/json" id="hs-dang" set:html={jsonDang}></script>
+
+	<section class="hs-tong" data-hs-tong></section>
+
+	<section>
+		<h2>Điểm theo thời gian</h2>
+		<div class="hs-chart" data-hs-chart></div>
+	</section>
+
+	<section>
+		<h2>Luyện thuật toán theo dạng</h2>
+		<div class="hs-tt" data-hs-tt></div>
+	</section>
+
+	<section>
+		<h2>Bản đồ kiến thức</h2>
+		<div class="hs-bando" data-hs-bando></div>
+	</section>
+
+	<section class="hs-tiep" data-hs-tiep></section>
+
+	<section class="hs-dl">
+		<h2>Dữ liệu của bạn</h2>
+		<p class="hs-dongbo" data-hs-dongbo></p>
+		<div class="hs-nut">
+			<button type="button" data-hs-xuat>Xuất dữ liệu JSON</button>
+			<label class="hs-nhap">Nhập từ tệp<input type="file" accept="application/json,.json" data-hs-nhap hidden /></label>
+			<button type="button" class="hs-xoa" data-hs-xoa>Xoá toàn bộ dữ liệu</button>
+		</div>
+		<p class="hs-tt-dl" data-hs-tt-dl aria-live="polite"></p>
+	</section>
+</div>
+
+<script>
+	import { KHOA_LUU, docTatCa, ghiTatCa, xoaTatCaCucBo } from '../lib/luu-tru';
+	import { KHOA_STORAGE, chuoiNgay, ngayDiaPhuong } from '../lib/tien-do';
+
+	const goc = document.querySelector<HTMLElement>('[data-hs]');
+	if (goc) {
+		const $ = <T extends HTMLElement>(s: string) => goc.querySelector<T>(s)!;
+		const CH = JSON.parse(document.getElementById('hs-chuong')!.textContent ?? '[]') as { so: number; ten: string; slug: string; href: string }[];
+		const DANG = JSON.parse(document.getElementById('hs-dang')!.textContent ?? '[]') as { id: string; ten: string; tong: number; so: number[] }[];
+		const elTong = $<HTMLElement>('[data-hs-tong]');
+		const elChart = $<HTMLElement>('[data-hs-chart]');
+		const elTT = $<HTMLElement>('[data-hs-tt]');
+		const elBanDo = $<HTMLElement>('[data-hs-bando]');
+		const elTiep = $<HTMLElement>('[data-hs-tiep]');
+		const elDongBo = $<HTMLElement>('[data-hs-dongbo]');
+		const elTtDl = $<HTMLElement>('[data-hs-tt-dl]');
+
+		const doc = <T,>(k: string, macDinh: T): T => {
+			try {
+				const raw = localStorage.getItem(k);
+				return raw ? (JSON.parse(raw) as T) : macDinh;
+			} catch {
+				return macDinh;
+			}
+		};
+		const esc = (s: unknown) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+		interface BaiThi {
+			id: string;
+			ngay: string;
+			kieu: string;
+			diem: number;
+			banDo: { id: string; ten: string; trang: string; phanTram: number; muc: string }[];
+		}
+		interface PhongVan {
+			ngay: string;
+			preset: string;
+			cap: string;
+			diem: number;
+			muc: string;
+		}
+		interface TienDo {
+			daDoc: Record<string, string>;
+			ngayHoc: string[];
+		}
+		interface TienDoTT {
+			daGiai: Record<string, string>;
+			daThu: Record<string, number>;
+			ngay: string[];
+		}
+
+		const homNay = ngayDiaPhuong(new Date());
+
+		const ve = () => {
+			const td = doc<TienDo>(KHOA_STORAGE, { daDoc: {}, ngayHoc: [] });
+			const baiThi = doc<BaiThi[]>('air-bai-thi-v1', []);
+			const thuatToan = doc<TienDoTT>('air-thuat-toan-v1', { daGiai: {}, daThu: {}, ngay: [] });
+			const phongVan = doc<PhongVan[]>('air-phong-van-v1', []);
+			const docChuong = CH.filter((c) => Object.keys(td.daDoc).some((k) => k.startsWith(`${c.slug}/`)));
+			const chuoi = chuoiNgay({ daDoc: {}, ngayHoc: td.ngayHoc }, homNay);
+
+			// Tổng quan
+			elTong.innerHTML = `<div class="hs-o"><strong>${docChuong.length}/${CH.length}</strong><span>chương đã đọc</span></div>
+				<div class="hs-o"><strong>${chuoi}</strong><span>ngày liên tiếp</span></div>
+				<div class="hs-o"><strong>${baiThi.length}</strong><span>bài thi đã làm</span></div>
+				<div class="hs-o"><strong>${Object.keys(thuatToan.daGiai).length}/40</strong><span>bài thuật toán</span></div>
+				<div class="hs-o"><strong>${phongVan.length}</strong><span>buổi phỏng vấn</span></div>`;
+
+			// Điểm theo thời gian
+			const diem = [
+				...baiThi.map((b) => ({ ngay: b.ngay, diem: b.diem, loai: 'Thi', ten: b.kieu })),
+				...phongVan.map((p) => ({ ngay: p.ngay, diem: p.diem, loai: 'PV', ten: p.preset })),
+			]
+				.filter((x) => typeof x.diem === 'number' && x.ngay)
+				.sort((a, b) => a.ngay.localeCompare(b.ngay))
+				.slice(-12);
+			if (!diem.length) {
+				elChart.innerHTML = '<p class="hs-trong">Chưa có điểm. Làm một bài <a href="/phong-thi/">thi thử</a> hoặc một buổi <a href="/phong-van/">phỏng vấn</a> để thấy tiến bộ.</p>';
+			} else {
+				const w = 640;
+				const h = 190;
+				const x = (i: number) => 30 + (diem.length === 1 ? (w - 60) / 2 : (i / (diem.length - 1)) * (w - 60));
+				const y = (d: number) => 165 - (Math.max(0, Math.min(10, d)) / 10) * 135;
+				const duong = diem.map((d, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(d.diem).toFixed(1)}`).join(' ');
+				elChart.innerHTML = `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Biểu đồ điểm thi và phỏng vấn theo thời gian" class="hs-svg">
+					${[0, 5, 10].map((v) => `<line x1="30" x2="${w - 30}" y1="${y(v)}" y2="${y(v)}" class="hs-luoi" /><text x="4" y="${y(v) + 4}" class="hs-nhan-truc">${v}</text>`).join('')}
+					<path d="${duong}" class="hs-duong" />
+					${diem.map((d, i) => `<circle cx="${x(i)}" cy="${y(d.diem)}" r="4" class="hs-diem" data-loai="${d.loai}"><title>${esc(d.loai)} ${esc(d.ten)}: ${d.diem}/10 (${esc(d.ngay.slice(0, 10))})</title></circle>`).join('')}
+				</svg><p class="hs-chu-thich">Vòng tròn xanh: bài thi · cam: phỏng vấn. Điểm gần nhất: <strong>${diem[diem.length - 1].diem}/10</strong>.</p>`;
+			}
+
+			// Thuật toán theo dạng
+			const daGiai = Object.keys(thuatToan.daGiai).map(Number);
+			elTT.innerHTML = `<p class="hs-tt-chu">Đã giải <strong>${daGiai.length}/40</strong> bài, chuỗi <strong>${chuoiNgay({ daDoc: {}, ngayHoc: thuatToan.ngay }, homNay)}</strong> ngày luyện.</p>
+				<div class="hs-dang-ds">${DANG.map((d) => {
+					const xong = d.so.filter((n) => daGiai.includes(n)).length;
+					const pt = d.tong ? Math.round((xong / d.tong) * 100) : 0;
+					return `<div class="hs-dang"><span class="hs-dang-ten">${esc(d.ten)}</span><span class="hs-dang-so">${xong}/${d.tong}</span><span class="hs-thanh"><span style="width:${pt}%"></span></span></div>`;
+				}).join('')}</div>
+				<p class="hs-tt-mo"><a href="/thuat-toan/">Mở luyện thuật toán →</a></p>`;
+
+			// Bản đồ kiến thức: lấy lần thi gần nhất cho mỗi khái niệm
+			const kn = new Map<string, { ten: string; trang: string; phanTram: number }>();
+			for (const b of baiThi) {
+				for (const x of b.banDo ?? []) if (!kn.has(x.id)) kn.set(x.id, { ten: x.ten, trang: x.trang, phanTram: x.phanTram });
+			}
+			const dsKn = [...kn.values()].sort((a, b) => a.phanTram - b.phanTram);
+			if (!dsKn.length) {
+				elBanDo.innerHTML = '<p class="hs-trong">Chưa có dữ liệu. Làm <a href="/phong-thi/">một đề thi thử</a> để xây bản đồ kiến thức.</p>';
+			} else {
+				elBanDo.innerHTML = `<table class="hs-bang"><thead><tr><th>Khái niệm</th><th>Đạt</th><th>Mức</th><th></th></tr></thead><tbody>${dsKn
+					.slice(0, 18)
+					.map((x) => `<tr><td>${esc(x.ten)}</td><td>${x.phanTram}%</td><td><span class="hs-muc hs-${x.phanTram >= 80 ? 'vung' : x.phanTram >= 50 ? 'can' : 'chua'}">${x.phanTram >= 80 ? 'Vững' : x.phanTram >= 50 ? 'Cần củng cố' : 'Chưa nắm'}</span></td><td>${x.trang ? `<a href="${esc(x.trang)}">Mở trang</a>` : ''}</td></tr>`)
+					.join('')}</tbody></table>`;
+			}
+
+			// Học gì tiếp
+			const daDocSlug = Object.keys(td.daDoc);
+			const chuongKe = CH.find((c) => !daDocSlug.some((k) => k.startsWith(`${c.slug}/`)));
+			const yeu = dsKn.filter((x) => x.phanTram < 80).slice(0, 3);
+			elTiep.innerHTML = `<h2>Học gì tiếp</h2>
+				<div class="hs-goiy">
+					${chuongKe ? `<div><p class="hs-goiy-nhan">Chương tiếp theo</p><p><a href="${esc(chuongKe.href)}">Chương ${chuongKe.so}. ${esc(chuongKe.ten)} →</a></p></div>` : '<div><p class="hs-goiy-nhan">Chương tiếp theo</p><p>Bạn đã đọc hết các chương đã xuất bản. Chương mới đang được viết.</p></div>'}
+					<div><p class="hs-goiy-nhan">3 khái niệm cần ôn</p>${yeu.length ? `<ul>${yeu.map((x) => `<li><a href="${esc(x.trang)}">${esc(x.ten)}</a> (${x.phanTram}%)</li>`).join('')}</ul>` : '<p>Chưa có khái niệm yếu nào dưới 80%.</p>'}</div>
+					<div><p class="hs-goiy-nhan">Đề gợi ý</p><p><a href="/phong-thi/">Thi thử ${yeu.length ? 'lại khái niệm yếu' : 'một chương'} →</a> · <a href="/phong-van/">Phỏng vấn thử →</a></p></div>
+				</div>`;
+
+			// Đồng bộ
+			let coPhien = false;
+			try {
+				coPhien = localStorage.getItem('air-da-dang-nhap') === '1';
+			} catch {
+				coPhien = false;
+			}
+			elDongBo.textContent = coPhien
+				? 'Đã đăng nhập: tiến độ tự đồng bộ giữa các máy.'
+				: 'Chưa đăng nhập: dữ liệu chỉ nằm trong trình duyệt này. Đăng nhập Google ở góc trên để đồng bộ nhiều máy.';
+		};
+
+		const xuat = () => {
+			const blob = new Blob([JSON.stringify({ phienBan: 1, xuatLuc: new Date().toISOString(), duLieu: docTatCa() }, null, 2)], { type: 'application/json' });
+			const a = document.createElement('a');
+			a.href = URL.createObjectURL(blob);
+			a.download = 'ai-robotics-ho-so.json';
+			a.click();
+			URL.revokeObjectURL(a.href);
+			elTtDl.textContent = 'Đã xuất dữ liệu.';
+		};
+
+		$<HTMLButtonElement>('[data-hs-xuat]').addEventListener('click', xuat);
+		$<HTMLButtonElement>('[data-hs-xoa]').addEventListener('click', () => {
+			if (!confirm('Xoá toàn bộ tiến độ, điểm thi, luyện thuật toán, phỏng vấn và bản nháp trên máy này?')) return;
+			xoaTatCaCucBo();
+			for (const k of ['air-khung-code-v1', 'air-tt-nhap-v1', 'air-ai-key-v1', 'air-da-gap-v1', 'air-da-dang-nhap']) {
+				try {
+					localStorage.removeItem(k);
+				} catch {
+					/* bỏ qua */
+				}
+			}
+			elTtDl.textContent = 'Đã xoá toàn bộ dữ liệu trên máy này.';
+			ve();
+		});
+		$<HTMLInputElement>('[data-hs-nhap]').addEventListener('change', async (e) => {
+			const f = (e.target as HTMLInputElement).files?.[0];
+			if (!f) return;
+			try {
+				const o = JSON.parse(await f.text()) as { duLieu?: Record<string, unknown> };
+				const du = o.duLieu ?? (o as Record<string, unknown>);
+				const hop = KHOA_LUU.filter((k) => k in du);
+				if (!hop.length) throw new Error('không có dữ liệu học tập');
+				if (!confirm(`Nhập ${hop.length} nhóm dữ liệu từ tệp và ghi đè dữ liệu hiện có?`)) return;
+				ghiTatCa(du);
+				window.dispatchEvent(new CustomEvent('tien-do-doi'));
+				window.dispatchEvent(new CustomEvent('du-lieu-doi'));
+				elTtDl.textContent = 'Đã nhập dữ liệu.';
+				ve();
+			} catch {
+				elTtDl.textContent = 'Tệp không hợp lệ hoặc không phải tệp hồ sơ của site.';
+			}
+		});
+
+		ve();
+		window.addEventListener('tien-do-doi', ve);
+		window.addEventListener('du-lieu-doi', ve);
+		window.addEventListener('storage', ve);
+	}
+</script>
+
+<style is:global>
+	.hs {
+		font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+	}
+	.hs h2 {
+		margin-top: 1.8rem;
+		font-size: 1.25rem;
+	}
+	.hs-tong {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+		gap: 0.6rem;
+		margin: 0.6rem 0 1rem;
+	}
+	.hs-o {
+		padding: 0.7rem 0.8rem;
+		border: 1px solid var(--line);
+		border-radius: 10px;
+		background: var(--panel);
+	}
+	.hs-o strong {
+		display: block;
+		font-size: 1.7rem;
+		color: var(--pri);
+		line-height: 1.1;
+	}
+	.hs-o span {
+		font-size: 0.78rem;
+		color: var(--mut-chu);
+	}
+	.hs-chart {
+		padding: 0.5rem;
+		border: 1px solid var(--line);
+		border-radius: 10px;
+		background: var(--panel);
+	}
+	.hs-svg {
+		width: 100%;
+		height: auto;
+	}
+	.hs-luoi {
+		stroke: var(--line);
+		stroke-width: 1;
+		stroke-dasharray: 3 4;
+	}
+	.hs-nhan-truc {
+		fill: var(--mut-chu);
+		font-size: 10px;
+	}
+	.hs-duong {
+		fill: none;
+		stroke: var(--pri);
+		stroke-width: 2.5;
+	}
+	.hs-diem {
+		fill: var(--pri);
+	}
+	.hs-diem[data-loai='PV'] {
+		fill: var(--acc);
+	}
+	.hs-chu-thich {
+		margin: 0.2rem 0 0;
+		font-size: 0.8rem;
+		color: var(--mut-chu);
+	}
+	.hs-tt-chu {
+		font-size: 0.9rem;
+	}
+	.hs-tt-mo a,
+	.hs-trong a {
+		color: var(--pri);
+	}
+	.hs-dang-ds {
+		display: grid;
+		gap: 0.35rem;
+		margin: 0.5rem 0;
+	}
+	.hs-dang {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		gap: 0.1rem 0.5rem;
+		align-items: baseline;
+		font-size: 0.82rem;
+	}
+	.hs-dang-ten {
+		min-width: 0;
+	}
+	.hs-dang-so {
+		color: var(--mut-chu);
+		font-variant-numeric: tabular-nums;
+	}
+	.hs-thanh {
+		grid-column: 1 / -1;
+		height: 5px;
+		border-radius: 3px;
+		background: color-mix(in srgb, var(--mut) 22%, transparent);
+		overflow: hidden;
+	}
+	.hs-thanh > span {
+		display: block;
+		height: 100%;
+		background: var(--ok);
+	}
+	.hs-trong {
+		color: var(--mut-chu);
+		font-size: 0.9rem;
+	}
+	.hs-bang {
+		width: 100%;
+		border-collapse: collapse;
+		font-size: 0.86rem;
+	}
+	.hs-bang th,
+	.hs-bang td {
+		padding: 0.4rem 0.5rem;
+		border-bottom: 1px solid var(--line);
+		text-align: left;
+	}
+	.hs-bang tr:hover {
+		background: var(--panel);
+	}
+	.hs-muc {
+		padding: 0.05rem 0.45rem;
+		border-radius: 999px;
+		font-size: 0.7rem;
+		font-weight: 700;
+		white-space: nowrap;
+	}
+	.hs-vung {
+		background: color-mix(in srgb, var(--ok) 16%, transparent);
+		color: var(--ok-chu);
+	}
+	.hs-can {
+		background: var(--accbg);
+		color: var(--acc-chu);
+	}
+	.hs-chua {
+		background: color-mix(in srgb, var(--red) 14%, transparent);
+		color: var(--red-chu);
+	}
+	.hs-goiy {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+		gap: 0.8rem;
+	}
+	.hs-goiy > div {
+		padding: 0.7rem 0.85rem;
+		border-left: 3px solid var(--pri);
+		background: var(--panel);
+		font-size: 0.88rem;
+	}
+	.hs-goiy-nhan {
+		margin: 0 0 0.2rem;
+		font-weight: 700;
+		font-size: 0.78rem;
+		color: var(--pri);
+	}
+	.hs-goiy ul {
+		margin: 0;
+		padding-left: 1.1rem;
+	}
+	.hs-goiy a {
+		color: var(--pri);
+	}
+	.hs-dongbo {
+		font-size: 0.85rem;
+		color: var(--mut-chu);
+	}
+	.hs-nut {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		margin: 0.6rem 0;
+	}
+	.hs-nut button,
+	.hs-nhap {
+		padding: 0.45rem 0.85rem;
+		border: 1px solid var(--line);
+		border-radius: 8px;
+		background: var(--panel);
+		color: var(--tx);
+		font: 600 0.85rem 'Be Vietnam Pro', sans-serif;
+		cursor: pointer;
+	}
+	.hs-nut button:hover,
+	.hs-nhap:hover {
+		border-color: var(--pri);
+	}
+	.hs-xoa {
+		border-color: var(--red) !important;
+		color: var(--red-chu) !important;
+	}
+	.hs-tt-dl {
+		font-size: 0.85rem;
+		color: var(--ok-chu);
+	}
+</style>

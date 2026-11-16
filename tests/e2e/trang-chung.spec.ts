@@ -181,12 +181,11 @@ test('quyền riêng tư: giải thích nơi lưu, có nút xuất và xoá; ch�
 
 test('trang chủ: thẻ Phòng thi thử và thẻ Ôn lại từ kết quả thi', async ({ page }) => {
 	await page.goto('/');
-	const theThi = page.locator('.luyen-tap .lt-the', { hasText: 'Phòng thi thử' });
-	await expect(theThi).toHaveAttribute('href', '/phong-thi/');
-	const theThuatToan = page.locator('.luyen-tap .lt-the', { hasText: 'Luyện thuật toán' });
-	await expect(theThuatToan).toHaveAttribute('href', '/thuat-toan/');
-	const thePhongVan = page.locator('.luyen-tap .lt-the', { hasText: 'Phỏng vấn thử' });
-	await expect(thePhongVan).toHaveAttribute('href', '/phong-van/');
+	const theLuyenTap = (ten: string) => page.locator('.luyen-tap .lt-the').filter({ has: page.locator('strong', { hasText: ten }) });
+	await expect(theLuyenTap('Phòng thi thử')).toHaveAttribute('href', '/phong-thi/');
+	await expect(theLuyenTap('Luyện thuật toán')).toHaveAttribute('href', '/thuat-toan/');
+	await expect(theLuyenTap('Phỏng vấn thử')).toHaveAttribute('href', '/phong-van/');
+	await expect(theLuyenTap('Hồ sơ học tập')).toHaveAttribute('href', '/ho-so/');
 	await expect(page.locator('.on-lai')).toBeHidden();
 
 	await page.addInitScript(() => {
