@@ -10,41 +10,48 @@ const khoangChuong = de.length ? `Ch${de[0].chuong}-Ch${de[de.length - 1].chuong
 	<script type="application/json" id="pt-de" set:html={deJson}></script>
 
 	<section class="pt-setup" data-pt-setup>
-		<h2>Chọn đề</h2>
-		<section class="pt-chude" aria-labelledby="pt-chude-ten">
-			<h3 id="pt-chude-ten">Thi nhanh theo chủ đề</h3>
-			<p class="pt-chude-mo">Chọn một khái niệm; đề chỉ gồm các câu về khái niệm đó, 15 phút.</p>
-			<div class="pt-chude-luoi" data-pt-chude></div>
-		</section>
-		<div class="pt-luoi">
-			<label class="pt-nhan">Kiểu đề
-				<select data-pt-kieu>
-					<option value="nhanh">Kiểm tra nhanh · 15 phút</option>
-					<option value="chuong" selected>Thi chương · 40 phút</option>
-					<option value="lon">Case lớn · 75 phút</option>
-				</select>
-			</label>
-			<label class="pt-nhan">Mức độ
-				<select data-pt-muc>
-					<option value="tron" selected>Trộn</option>
-					<option value="de">Dễ</option>
-					<option value="vua">Vừa</option>
-					<option value="kho">Khó</option>
-				</select>
-			</label>
+		<div class="pt-tab" role="tablist" aria-label="Cách chọn đề">
+			<button type="button" role="tab" id="pt-tab-chude" aria-selected="true" aria-controls="pt-panel-chude" data-pt-tab="chude">Theo chủ đề</button>
+			<button type="button" role="tab" id="pt-tab-chuong" aria-selected="false" aria-controls="pt-panel-chuong" tabindex="-1" data-pt-tab="chuong">Theo chương</button>
 		</div>
 
-		<fieldset class="pt-pham-vi">
-			<legend>Phạm vi</legend>
-			<label class="pt-tatca"><input type="checkbox" data-pt-tatca checked /> Tất cả {khoangChuong}</label>
-			<div class="pt-chuong" data-pt-chuong></div>
-		</fieldset>
+		<div id="pt-panel-chude" role="tabpanel" aria-labelledby="pt-tab-chude" data-pt-panel="chude">
+			<p class="pt-chude-mo">Chọn một khái niệm; đề chỉ gồm các câu về khái niệm đó, 15 phút. Bấm là thi ngay.</p>
+			<div class="pt-chude-luoi" data-pt-chude></div>
+		</div>
 
-		<label class="pt-check"><input type="checkbox" data-pt-gio checked /> Bấm giờ, hết giờ tự nộp</label>
-		<label class="pt-check"><input type="checkbox" data-pt-luyen /> Chế độ luyện: xem được đáp án từng câu</label>
-		<p class="pt-mo-ta" data-pt-mo-ta></p>
+		<div id="pt-panel-chuong" role="tabpanel" aria-labelledby="pt-tab-chuong" data-pt-panel="chuong" hidden>
+			<div class="pt-luoi">
+				<label class="pt-nhan">Kiểu đề
+					<select data-pt-kieu>
+						<option value="nhanh">Kiểm tra nhanh · 15 phút</option>
+						<option value="chuong" selected>Thi chương · 40 phút</option>
+						<option value="lon">Case lớn · 75 phút</option>
+					</select>
+				</label>
+				<label class="pt-nhan">Mức độ
+					<select data-pt-muc>
+						<option value="tron" selected>Trộn</option>
+						<option value="de">Dễ</option>
+						<option value="vua">Vừa</option>
+						<option value="kho">Khó</option>
+					</select>
+				</label>
+			</div>
 
-		<button class="pt-bat-dau" type="button" data-pt-bat-dau>Bắt đầu thi</button>
+			<fieldset class="pt-pham-vi">
+				<legend>Phạm vi</legend>
+				<label class="pt-tatca"><input type="checkbox" data-pt-tatca checked /> Tất cả {khoangChuong}</label>
+				<div class="pt-chuong" data-pt-chuong></div>
+			</fieldset>
+
+			<label class="pt-check"><input type="checkbox" data-pt-gio checked /> Bấm giờ, hết giờ tự nộp</label>
+			<label class="pt-check"><input type="checkbox" data-pt-luyen /> Chế độ luyện: xem được đáp án từng câu</label>
+			<p class="pt-mo-ta" data-pt-mo-ta></p>
+
+			<button class="pt-bat-dau" type="button" data-pt-bat-dau>Bắt đầu thi</button>
+		</div>
+
 		<p class="pt-loi" data-pt-loi aria-live="polite"></p>
 
 		<div class="pt-tiep" data-pt-tiep hidden>
@@ -172,6 +179,29 @@ const khoangChuong = de.length ? `Ch${de[0].chuong}-Ch${de[de.length - 1].chuong
 			.sort((a, b) => a[1].ten.localeCompare(b[1].ten, 'vi'))
 			.map(([id, c]) => `<button type="button" class="pt-chude-the" data-pt-chude-id="${id}"><strong>${esc(c.ten)}</strong><span>${c.so} câu · Ch${[...c.chuong].join(', Ch')}</span></button>`)
 			.join('');
+
+		// Hai tab chọn đề: theo chủ đề (bấm là thi) và theo chương (chọn kiểu, phạm vi).
+		const tabs = [...goc.querySelectorAll<HTMLButtonElement>('[data-pt-tab]')];
+		const panels = [...goc.querySelectorAll<HTMLElement>('[data-pt-panel]')];
+		const chonTab = (ten: string) => {
+			tabs.forEach((t) => {
+				const bat = t.dataset.ptTab === ten;
+				t.setAttribute('aria-selected', String(bat));
+				t.tabIndex = bat ? 0 : -1;
+			});
+			panels.forEach((p) => (p.hidden = p.dataset.ptPanel !== ten));
+		};
+		tabs.forEach((t, i) => {
+			t.addEventListener('click', () => chonTab(t.dataset.ptTab!));
+			t.addEventListener('keydown', (e) => {
+				if (!['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(e.key)) return;
+				e.preventDefault();
+				const j =
+					e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : (i + (e.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+				tabs[j].focus();
+				chonTab(tabs[j].dataset.ptTab!);
+			});
+		});
 		const capNhatMoTa = () => {
 			const kieu = selKieu.value as KieuDe;
 			elMoTa.textContent = `${SO_CAU[kieu]}, ${PHUT[kieu]} phút. ${cbGio.checked ? 'Hết giờ tự nộp.' : 'Không bấm giờ.'}`;
@@ -677,6 +707,11 @@ const khoangChuong = de.length ? `Ch${de[0].chuong}-Ch${de[de.length - 1].chuong
 	.pt-kq {
 		max-width: 56rem;
 	}
+	.pt-tab { display: flex; gap: 0.2rem; margin: 0 0 0.9rem; border-bottom: 1px solid var(--line); }
+	.pt-tab button { margin: 0; padding: 0.45rem 0.8rem; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--mut-chu); font: inherit; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
+	.pt-tab button:hover { color: var(--tx); }
+	.pt-tab button[aria-selected='true'] { color: var(--khu-luyen); border-bottom-color: var(--khu-luyen); }
+	.pt-tab button:focus-visible { outline: 2px solid var(--khu-luyen); outline-offset: 2px; }
 	.pt-chude { margin: 0.4rem 0 1rem; }
 	.pt-chude h3 { margin: 0 0 0.2rem; font-size: 1rem; }
 	.pt-chude-mo { margin: 0 0 0.5rem; font-size: 0.82rem; color: var(--mut-chu); }

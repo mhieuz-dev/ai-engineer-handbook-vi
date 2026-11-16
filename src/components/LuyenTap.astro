@@ -1,5 +1,9 @@
 ---
 import { taiDeThi } from '../lib/de-thi';
+import { taiBaiThuatToan } from '../lib/thuat-toan';
+import { taiBaiToan } from '../lib/toan';
+import { slugTrangDaXuatBan } from '../lib/slug-xuat-ban';
+import Icon from './icon/Icon.astro';
 
 const de = await taiDeThi();
 const nhom = de.map((d) => ({
@@ -9,23 +13,44 @@ const nhom = de.map((d) => ({
 		.map((k) => ({ ...k, so: d.cau_hoi.filter((q) => q.khai_niem?.includes(k.id)).length }))
 		.filter((k) => k.so > 0),
 }));
+const soThuatToan = (await taiBaiThuatToan()).length;
+const soToan = (await taiBaiToan()).length;
+const slugs = await slugTrangDaXuatBan();
+
 const cheDo = [
-	{ href: '/phong-thi/', ten: 'Phòng thi thử', mo: 'Theo chương, theo chủ đề, kiểm tra nhanh hay case lớn; chấm ngay, có bản đồ kiến thức.' },
-	{ href: '/thuat-toan/', ten: 'Luyện thuật toán', mo: '41 bài tự soạn theo 12 dạng, lộ trình dễ đến khó và đồ án tốt nghiệp.' },
-	{ href: '/toan-thuat-toan/', ten: 'Toán cho thuật toán', mo: '31 bài nền: độ phức tạp, chứng minh, xác suất, đại số, tối ưu và đồ án toán.' },
-	{ href: '/phong-van/', ten: 'Phỏng vấn thử', mo: '8 phong cách, vòng code thật, bấm giờ và phiếu đánh giá cuối buổi.' },
-	{ href: '/ho-so/', ten: 'Hồ sơ học tập', mo: 'Tiến độ, điểm theo thời gian, bản đồ kiến thức và gợi ý học gì tiếp.' },
+	{ href: '/phong-thi/', ten: 'Phòng thi thử', mo: 'Theo chương, theo chủ đề, kiểm tra nhanh hay case lớn; chấm ngay, có bản đồ kiến thức.', icon: 'thi' as const, khoa: 'thi' },
+	{ href: '/thuat-toan/', ten: 'Luyện thuật toán', mo: '41 bài tự soạn theo 12 dạng, lộ trình dễ đến khó và đồ án tốt nghiệp.', icon: 'code' as const, khoa: 'thuat-toan' },
+	{ href: '/toan-thuat-toan/', ten: 'Toán cho thuật toán', mo: '31 bài nền: độ phức tạp, chứng minh, xác suất, đại số, tối ưu và đồ án toán.', icon: 'math' as const, khoa: 'toan' },
+	{ href: '/phong-van/', ten: 'Phỏng vấn thử', mo: '8 phong cách, vòng code thật, bấm giờ và phiếu đánh giá cuối buổi.', icon: 'interview' as const, khoa: 'phong-van' },
+	{ href: '/ho-so/', ten: 'Hồ sơ học tập', mo: 'Tiến độ, điểm theo thời gian, bản đồ kiến thức và gợi ý học gì tiếp.', icon: 'hoso' as const, khoa: 'ho-so' },
 ];
 ---
 
-<div class="lt">
+<div class="lt" data-tong-tt={soThuatToan} data-tong-toan={soToan} data-slugs={JSON.stringify(slugs)}>
+	<div class="lt-dau">
+		<p class="lt-khu"><Icon ten="luyen" /> Luyện tập</p>
+		<p class="lt-mo-dau">
+			Chọn cách luyện: thi thử, thuật toán, toán nền, phỏng vấn. Tiến độ lưu trên máy, không cần đăng nhập.
+		</p>
+	</div>
+
 	<div class="lt-mode">
-		{cheDo.map((m) => (
-			<a class="lt-the" href={m.href}>
-				<strong>{m.ten}</strong>
-				<span>{m.mo}</span>
-			</a>
-		))}
+		{
+			cheDo.map((m) => (
+				<a class="lt-the" href={m.href} data-lt-the={m.khoa}>
+					<span class="lt-ico">
+						<Icon ten={m.icon} />
+					</span>
+					<span class="lt-chu">
+						<strong>{m.ten}</strong>
+						<span>{m.mo}</span>
+					</span>
+					<span class="lt-so" data-lt-so={m.khoa}>
+						—
+					</span>
+				</a>
+			))
+		}
 	</div>
 
 	<h2>Thi nhanh theo chủ đề</h2>
@@ -51,41 +76,138 @@ const cheDo = [
 	<p class="lt-ghi">Chủ đề lấy từ ngân hàng đề Ch0–Ch7. Các chương sau sẽ tự hiện khi có đề.</p>
 </div>
 
+<script>
+	const goc = document.querySelector<HTMLElement>('.lt');
+	if (goc) {
+		const doc = <T,>(khoa: string, mac: T): T => {
+			try {
+				const raw = localStorage.getItem(khoa);
+				return raw ? (JSON.parse(raw) as T) : mac;
+			} catch {
+				return mac;
+			}
+		};
+		const dat = (khoa: string, chu: string) => {
+			const el = goc.querySelector<HTMLElement>(`[data-lt-so="${khoa}"]`);
+			if (el) el.textContent = chu;
+		};
+
+		const baiThi = doc<{ diem?: number }[]>('air-bai-thi-v1', []);
+		const diem = baiThi.map((b) => Number(b.diem)).filter((x) => Number.isFinite(x));
+		dat(
+			'thi',
+			baiThi.length
+				? `${baiThi.length} lần thi${diem.length ? ` · TB ${(diem.reduce((a, b) => a + b, 0) / diem.length).toFixed(1)}/10` : ''}`
+				: 'Chưa thi lần nào',
+		);
+
+		const tt = doc<{ daGiai?: Record<string, string> }>('air-thuat-toan-v1', {});
+		dat('thuat-toan', `${Object.keys(tt.daGiai ?? {}).length}/${goc.dataset.tongTt ?? '?'} bài đã giải`);
+
+		const toan = doc<{ daGiai?: Record<string, string> }>('air-toan-v1', {});
+		dat('toan', `${Object.keys(toan.daGiai ?? {}).length}/${goc.dataset.tongToan ?? '?'} bài đã giải`);
+
+		const phongVan = doc<unknown[]>('air-phong-van-v1', []);
+		dat('phong-van', phongVan.length ? `${phongVan.length} buổi đã luyện` : 'Chưa luyện buổi nào');
+
+		const td = doc<{ daDoc?: Record<string, string> }>('air-tien-do-v1', {});
+		const slugs: string[] = JSON.parse(goc.dataset.slugs ?? '[]');
+		const daDoc = slugs.filter((s) => s in (td.daDoc ?? {})).length;
+		const pt = slugs.length ? Math.min(100, Math.round((daDoc / slugs.length) * 100)) : 0;
+		dat('ho-so', `${pt}% giáo trình`);
+	}
+</script>
+
 <style>
 	.lt {
 		font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+	}
+	.lt-dau {
+		margin: 0 0 1rem;
+	}
+	.lt-khu {
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+		margin: 0;
+		font-size: 0.7rem;
+		font-weight: 700;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--khu-luyen);
+	}
+	.lt-mo-dau {
+		margin: 0.2rem 0 0;
+		font-size: 0.9rem;
+		line-height: 1.55;
+		color: var(--mut-chu);
 	}
 	.lt-mo {
 		line-height: 1.65;
 	}
 	.lt-mode {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
-		gap: 0.6rem;
+		grid-template-columns: 1fr;
+		gap: 0.55rem;
 		margin: 1rem 0 1.6rem;
 	}
+	@media (min-width: 50rem) {
+		.lt-mode {
+			grid-template-columns: repeat(2, 1fr);
+		}
+		.lt-mode .lt-the:last-child {
+			grid-column: 1 / -1;
+		}
+	}
 	.lt-the {
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
+		display: grid;
+		grid-template-columns: auto 1fr auto;
+		align-items: start;
+		gap: 0.6rem;
 		padding: 0.8rem 0.95rem;
 		border: 1px solid var(--line);
+		border-left: 3px solid var(--khu-luyen);
 		border-radius: 12px;
 		background: var(--panel);
 		color: var(--tx);
 		text-decoration: none;
 	}
 	.lt-the:hover {
-		border-color: var(--pri);
+		border-color: var(--khu-luyen);
+	}
+	.lt-ico {
+		display: grid;
+		place-items: center;
+		width: 2rem;
+		height: 2rem;
+		border-radius: 8px;
+		background: var(--accbg);
+		color: var(--khu-luyen);
+	}
+	.lt-chu {
+		display: flex;
+		flex-direction: column;
+		gap: 0.2rem;
+		min-width: 0;
 	}
 	.lt-the strong {
-		color: var(--pri);
-		font-size: 1rem;
+		color: var(--tx);
+		font-size: 0.98rem;
 	}
-	.lt-the span {
-		font-size: 0.84rem;
-		line-height: 1.5;
+	.lt-the .lt-chu span {
+		font-size: 0.82rem;
+		line-height: 1.45;
 		color: var(--mut-chu);
+	}
+	.lt-so {
+		flex: none;
+		padding: 0.12rem 0.5rem;
+		border-radius: 999px;
+		background: var(--accbg);
+		color: var(--acc-chu);
+		font-size: 0.7rem;
+		font-weight: 700;
+		white-space: nowrap;
 	}
 	.lt h2 {
 		margin-top: 1.8rem;
@@ -116,8 +238,8 @@ const cheDo = [
 		text-decoration: none;
 	}
 	.lt-chude a:hover {
-		border-color: var(--pri);
-		color: var(--pri);
+		border-color: var(--khu-luyen);
+		color: var(--khu-luyen);
 	}
 	.lt-chude a span {
 		font-size: 0.7rem;

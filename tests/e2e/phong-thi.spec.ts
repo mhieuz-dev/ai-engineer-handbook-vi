@@ -26,6 +26,7 @@ test('thi nhanh: 12 câu, nộp bài, ra điểm và bản đồ kiến thức',
 	test.setTimeout(120_000);
 	page.on('dialog', (d) => d.accept());
 	await page.goto('/phong-thi/');
+	await page.click('[data-pt-tab="chuong"]');
 	expect(await page.locator('[data-pt-chuong-so]').count()).toBeGreaterThanOrEqual(5);
 	await page.selectOption('[data-pt-kieu]', 'nhanh');
 	await page.uncheck('[data-pt-gio]');
@@ -51,6 +52,7 @@ test('thi nhanh: 12 câu, nộp bài, ra điểm và bản đồ kiến thức',
 test('câu code chấm bằng test ẩn: Ch0 chao(ten)', async ({ page }) => {
 	test.setTimeout(180_000);
 	await page.goto('/phong-thi/');
+	await page.click('[data-pt-tab="chuong"]');
 	await page.selectOption('[data-pt-kieu]', 'chuong');
 	await page.uncheck('[data-pt-gio]');
 	await chiChuong(page, 0);
@@ -65,6 +67,7 @@ test('câu code chấm bằng test ẩn: Ch0 chao(ten)', async ({ page }) => {
 test('case Ch4: nạp CSV có bẫy vào Pyodide rồi chấm test ẩn', async ({ page }) => {
 	test.setTimeout(180_000);
 	await page.goto('/phong-thi/');
+	await page.click('[data-pt-tab="chuong"]');
 	await page.selectOption('[data-pt-kieu]', 'chuong');
 	await page.uncheck('[data-pt-gio]');
 	await chiChuong(page, 4);

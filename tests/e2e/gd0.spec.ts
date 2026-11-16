@@ -7,7 +7,7 @@ async function moSidebar(page: Page) {
 
 test('lưới không còn lệch 16px: con thứ hai của lưới có margin-top 0', async ({ page }) => {
 	const cap = [
-		['/phong-thi/', '.pt-luoi'],
+		['/phong-thi/', '.pt-chude-luoi'],
 		['/ho-so/', '.hs-tong'],
 		['/phong-van/', '.pv-preset'],
 		['/toan-thuat-toan/', '.tn-luoi'],
