@@ -11,6 +11,9 @@ khai_niem:
   - id: nam-buoc-hoc
     ten: Năm bước học một chương
     trang: /ai-engineer/ch00-lo-trinh-va-colab/01-lo-trinh/
+  - id: lo-trinh
+    ten: Lộ trình AI Engineer
+    trang: /ai-engineer/ch00-lo-trinh-va-colab/01-lo-trinh/
 
 cau_hoi:
   - loai: trac-nghiem
@@ -185,7 +188,7 @@ cau_hoi:
 
   - loai: code
     id: ch00-code-01
-    khai_niem: [ham]
+    khai_niem: [nam-buoc-hoc]
     muc: de
     diem: 3
     de: "Viết hàm `chao(ten)` trả về chuỗi `Xin chào, <ten>!` (không in). Đây là bài làm quen cell code trên web."
