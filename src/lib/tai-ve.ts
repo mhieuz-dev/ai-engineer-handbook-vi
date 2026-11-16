@@ -15,17 +15,18 @@ export interface LuaChonTaiVe {
 	href: string;
 	/** 'in' = gọi window.print() trên trang đang đọc; 'lien-ket' = đi tới href */
 	loai: 'in' | 'lien-ket';
+	icon: 'pdf' | 'book' | 'notebook';
 	target?: '_blank';
 }
 
 /** Danh sách lựa chọn tải về của một chương, dùng chung cho menu và cột phải. */
 export function luaChonTaiVe(chuong: Chuong): LuaChonTaiVe[] {
 	const ds: LuaChonTaiVe[] = [
-		{ nhan: '📄 Trang này (PDF)', nhanNgan: '📄 PDF trang này', href: '#', loai: 'in' },
-		{ nhan: '📚 Cả chương (PDF)', nhanNgan: '📚 PDF cả chương', href: `/in/${chuong.slug}/?in=1`, loai: 'lien-ket' },
+		{ nhan: 'Trang này (PDF)', nhanNgan: 'PDF trang này', href: '#', loai: 'in', icon: 'pdf' },
+		{ nhan: 'Cả chương (PDF)', nhanNgan: 'PDF cả chương', href: `/in/${chuong.slug}/?in=1`, loai: 'lien-ket', icon: 'book' },
 	];
 	if (chuong.notebook) {
-		ds.push({ nhan: '📓 Notebook', nhanNgan: '📓 Notebook', href: githubNotebookUrl(chuong.notebook), loai: 'lien-ket', target: '_blank' });
+		ds.push({ nhan: 'Notebook', nhanNgan: 'Notebook', href: githubNotebookUrl(chuong.notebook), loai: 'lien-ket', target: '_blank', icon: 'notebook' });
 	}
 	return ds;
 }

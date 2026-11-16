@@ -41,6 +41,7 @@ test('nút Đã đọc: bấm, tải lại, bấm lại, cập nhật sidebar ng
 	await expect(link).toContainText('✓');
 	const pt = parseInt((await page.locator('.td-pt').textContent()) ?? '0', 10);
 	expect(pt).toBeGreaterThan(0);
+	await expect(page.locator('.td-chuoi')).toContainText('1 ngày liên tiếp');
 	expect(await page.evaluate(() => (window as any).__chuaTai)).toBe(true);
 
 	await page.reload();
@@ -53,19 +54,21 @@ test('nút Đã đọc: bấm, tải lại, bấm lại, cập nhật sidebar ng
 	await moSidebar(page);
 	await expect(link).not.toContainText('✓');
 	await expect(page.locator('.td-pt')).toHaveText('0%');
+	await expect(page.locator('.td-chuoi')).toBeHidden();
 });
 
-test('trang ngoài chương không có nút nhưng vẫn ghi ngày học', async ({ page }) => {
+test('trang ngoài chương không có nút và chưa đọc thì không ghi ngày', async ({ page }) => {
 	await page.goto('/thuat-ngu/');
 	await expect(page.locator('h1')).toBeVisible();
 	await expect(page.locator('.nut-da-doc')).toHaveCount(0);
 	await moSidebar(page);
-	await expect(page.locator('.td-chuoi')).toContainText('· 1 ngày liên tiếp');
+	await expect(page.locator('.td-chuoi')).toBeHidden();
 });
 
-test('mở trang chương không tự đánh dấu đã đọc, chuỗi ngày là 1', async ({ page }) => {
+test('mở trang chương không tự đánh dấu và chưa có chuỗi ngày', async ({ page }) => {
 	await page.goto(`${C10}/01-truc-giac/`);
+	await expect(page.locator('.nut-da-doc')).toContainText('Chưa đọc');
 	await moSidebar(page);
-	await expect(page.locator('.td-chuoi')).toContainText('· 1 ngày liên tiếp');
 	await expect(page.locator('.td-pt')).toHaveText('0%');
+	await expect(page.locator('.td-chuoi')).toBeHidden();
 });

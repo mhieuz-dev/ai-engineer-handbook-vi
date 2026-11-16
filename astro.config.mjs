@@ -5,10 +5,23 @@ import sitemap from '@astrojs/sitemap';
 import { unified } from '@astrojs/markdown-remark';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import { cauHinhSidebar } from './src/data/chuong.ts';
+import { cauHinhSidebar, chuongDaXuatBan } from './src/data/chuong.ts';
+import fs from 'node:fs';
+import path from 'node:path';
+
+// Chương đã viết: /ai-engineer/chXX-slug/ chuyển về trang 01 của chương.
+const redirects = Object.fromEntries(
+	chuongDaXuatBan().flatMap((c) => {
+		const dir = path.join(process.cwd(), 'src/content/docs', c.slug);
+		if (!fs.existsSync(dir)) return [];
+		const files = fs.readdirSync(dir).filter((f) => f.endsWith('.mdx')).sort();
+		return files.length ? [[`/${c.slug}/`, `/${c.slug}/${files[0].replace(/\.mdx$/, '')}/`]] : [];
+	}),
+);
 
 // https://astro.build/config
 export default defineConfig({
+	redirects,
 	site: 'https://ai-and-robotics-handbook.vercel.app',
 	markdown: {
 		processor: unified({ remarkPlugins: [remarkMath], rehypePlugins: [rehypeKatex] }),

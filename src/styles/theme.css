@@ -425,8 +425,18 @@ html .katex-display > .katex > .katex-html > .tag {
 .expressive-code .frame.has-title:has(pre[data-language='text']) pre { border-left: 3px solid var(--mut); }
 :root:not([data-theme='dark']) .expressive-code .frame:has(pre[data-language='text']) .ec-line .code span { color: var(--tx); }
 
-/* Mục lục bên phải: nhãn in hoa như bản mẫu. */
-#starlight__on-this-page { text-transform: uppercase; letter-spacing: 0.04em; }
+/* Mục lục bên phải: nhãn in hoa như bản mẫu, cùng cỡ với nhãn TẢI VỀ. */
+#starlight__on-this-page { text-transform: uppercase; letter-spacing: 0.04em; font-size: var(--sl-text-xs); color: var(--mut); font-weight: 600; }
+
+/* Starlight thêm margin-top cho mọi sibling trong .sl-markdown-content. Các lưới/flex của site dùng gap,
+   nên bỏ margin-top của con trực tiếp để thẻ đầu không cao hơn thẻ sau 16px. */
+.sl-markdown-content :is(
+  .can-biet-truoc,
+  .pt-luoi, .pt-chude-luoi, .pt-than, .pt-nhan-xet, .pt-ds,
+  .hs-tong, .hs-goiy, .hs-dang-ds, .hs-nhan-xet,
+  .pv-preset, .pv-luoi, .pv-nhom, .pv-tu-danh-gia,
+  .tn-luoi, .tn-nhom
+) > * { margin-top: 0 !important; }
 
 /* Tên tiếng Anh cạnh thuật ngữ (<Term> tự hiện, <En> ghi tay): chữ nghiêng màu nhấn đậm, ngoặc đứng màu nhạt. */
 .tieng-anh { font-size: 0.88em; color: var(--acc-chu); }

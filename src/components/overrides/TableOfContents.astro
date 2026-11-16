@@ -1,6 +1,7 @@
 ---
 import Default from '@astrojs/starlight/components/TableOfContents.astro';
 import { luaChonTaiVe } from '../../lib/tai-ve';
+import IconTaiVe from '../icon/IconTaiVe.astro';
 import { timChuongTheoSlugTrang } from '../../data/chuong';
 
 const chuong = timChuongTheoSlugTrang(Astro.locals.starlightRoute.id);
@@ -14,7 +15,7 @@ const coKhung = chuong?.trangThai === 'xong';
 			<h2 id="tai-ve-nhan">TẢI VỀ</h2>
 			<ul>
 				{luaChonTaiVe(chuong!).map((m) => (
-					<li><a href={m.href} target={m.target} rel={m.target ? 'noopener' : undefined} data-in-trang={m.loai === 'in' ? '' : undefined}>{m.nhanNgan}</a></li>
+					<li><a href={m.href} target={m.target} rel={m.target ? 'noopener' : undefined} data-in-trang={m.loai === 'in' ? '' : undefined}><IconTaiVe loai={m.icon} />{m.nhanNgan}</a></li>
 				))}
 			</ul>
 		</nav>
@@ -37,7 +38,7 @@ const coKhung = chuong?.trangThai === 'xong';
 		padding: 0;
 		margin: 0;
 	}
-	.tai-ve a {
+	.tai-ve a { display: flex; align-items: center; gap: 0.4rem;
 		display: block;
 		padding: 0.2rem 0;
 		font-size: var(--sl-text-sm);

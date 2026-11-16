@@ -38,19 +38,31 @@ const slugs = await slugTrangDaXuatBan();
 		const slugs: string[] = JSON.parse(khoi.dataset.slugs ?? '[]');
 		const homNay = ngayDiaPhuong(new Date());
 		let td = docTuStorage(kho);
-		td = ghiNgayHoc(td, homNay);
-		luuVaoStorage(kho, td);
+		const coTrangDaDoc = () => Object.keys(td.daDoc).length > 0;
+		if (coTrangDaDoc()) {
+			td = ghiNgayHoc(td, homNay);
+			luuVaoStorage(kho, td);
+		}
 
 		function ve() {
 			td = docTuStorage(kho);
+			if (coTrangDaDoc()) {
+				const moi = ghiNgayHoc(td, homNay);
+				if (moi.ngayHoc.length !== td.ngayHoc.length) {
+					td = moi;
+					luuVaoStorage(kho, td);
+				}
+			}
 			const pt = phanTram(td, slugs);
 			khoi.querySelector('.td-pt')!.textContent = `${pt}%`;
 			(khoi.querySelector('.td-day') as HTMLElement).style.width = `${pt}%`;
 			khoi.querySelector('.td-thanh')!.setAttribute('aria-valuenow', String(pt));
-			const chuoi = chuoiNgay(td, homNay);
+			const chuoi = coTrangDaDoc() ? chuoiNgay(td, homNay) : 0;
 			if (chuoi > 0) {
 				khoi.querySelector('.td-n')!.textContent = String(chuoi);
 				khoi.querySelector<HTMLElement>('.td-chuoi')!.hidden = false;
+			} else {
+				khoi.querySelector<HTMLElement>('.td-chuoi')!.hidden = true;
 			}
 			khoi.hidden = false;
 

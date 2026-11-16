@@ -1,6 +1,7 @@
 ---
 import type { Chuong } from '../data/chuong';
 import { luaChonTaiVe } from '../lib/tai-ve';
+import IconTaiVe from './icon/IconTaiVe.astro';
 
 const { chuong } = Astro.props as { chuong: Chuong };
 const ds = luaChonTaiVe(chuong);
@@ -10,7 +11,7 @@ const ds = luaChonTaiVe(chuong);
 	<button type="button" class="ntv-nut" aria-haspopup="menu" aria-expanded="false" aria-controls="ntv-menu">Tải về</button>
 	<div class="ntv-menu" id="ntv-menu" role="menu" hidden>
 		{ds.map((m) => (
-			<a role="menuitem" href={m.href} target={m.target} rel={m.target ? 'noopener' : undefined} data-in-trang={m.loai === 'in' ? '' : undefined}>{m.nhan}</a>
+			<a role="menuitem" href={m.href} target={m.target} rel={m.target ? 'noopener' : undefined} data-in-trang={m.loai === 'in' ? '' : undefined}><IconTaiVe loai={m.icon} />{m.nhan}</a>
 		))}
 	</div>
 </div>
@@ -85,7 +86,7 @@ const ds = luaChonTaiVe(chuong);
 		.nut-tai-ve { display: flex; flex-direction: column; align-items: flex-start; }
 		.ntv-menu { position: static; margin-top: 4px; box-shadow: none; }
 	}
-	.ntv-menu a {
+	.ntv-menu a { display: flex; align-items: center; gap: 0.4rem;
 		display: block;
 		padding: 0.45rem 0.7rem;
 		border-radius: 6px;

@@ -36,7 +36,6 @@ const dsChuong = chuongDaXuatBan().map((c) => ({ slug: c.slug, so: c.so, ten: c.
 
 <div class="trang-chu">
 	<section class="hero">
-		<p class="gioi-thieu">Giáo trình tiếng Việt miễn phí: hiểu tận gốc AI, từ Python cơ bản đến mô hình ngôn ngữ lớn.</p>
 		<p><a class="nut-chinh" href="#ke-sach" id="nut-chon-sach">Chọn sách để học ↓</a></p>
 
 		<div class="tien-do-tong">
@@ -240,7 +239,7 @@ const dsChuong = chuongDaXuatBan().map((c) => ({ slug: c.slug, so: c.so, ten: c.
 	.trang-chu { max-width: 56rem; margin: 0 auto; font-family: 'Be Vietnam Pro', system-ui, sans-serif; }
 	.hero { text-align: center; padding: 0.5rem 0 1rem; }
 	/* h1 do Starlight sinh ra từ title của trang; chỉ tạo kiểu cho nó ở trang chủ. */
-	:global(main h1#_top) { font-size: clamp(2.2rem, 8vw, 3.5rem); font-weight: 800; color: var(--pri); text-align: center; line-height: 1.1; margin-top: 1.5rem; }
+	:global(main h1#_top) { font-size: clamp(1.7rem, 4.6vw, 2.7rem); font-weight: 800; color: var(--pri); text-align: center; line-height: 1.15; margin: 1.5rem auto 0; max-width: 36rem; }
 	.gioi-thieu { font-size: 1.15rem; max-width: 36rem; margin: 1rem auto; color: var(--tx); }
 	.nut-chinh { display: inline-block; background: var(--acc); color: #1a1208; font-weight: 600; padding: 0.7rem 1.6rem; border-radius: 6px; text-decoration: none; }
 	@media (prefers-reduced-motion: no-preference) { :global(html) { scroll-behavior: smooth; } }
@@ -266,7 +265,7 @@ const dsChuong = chuongDaXuatBan().map((c) => ({ slug: c.slug, so: c.so, ten: c.
 	.ht-nut:hover { text-decoration: underline; }
 
 	.cac-phan h2 { border: 0; margin-top: 2.4rem; }
-	.luoi-phan { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 0.9rem; align-items: start; }
+	.luoi-phan { display: grid; grid-template-columns: 1fr; gap: 0.9rem; align-items: start; }
 	.the-phan { border: 1px solid var(--line); border-radius: 14px; background: var(--panel); overflow: hidden; }
 	.dau-phan { cursor: pointer; padding: 0.75rem 0.9rem; }
 	.dau-phan:focus-visible { outline: 2px solid var(--pri); outline-offset: -2px; }

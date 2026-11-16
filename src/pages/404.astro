@@ -1,0 +1,89 @@
+---
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import { CHUONG } from '../data/chuong';
+import { trangDauCuaChuong } from '../lib/trang-dau';
+
+const duongDan = Astro.url.pathname;
+const chuong = CHUONG.find((c) => duongDan.includes(c.slug));
+const goiY = chuong ? await trangDauCuaChuong(chuong) : undefined;
+---
+
+<StarlightPage
+	frontmatter={{
+		title: 'Không tìm thấy trang',
+		description: 'Đường dẫn không tồn tại. Quay lại trang chủ, lộ trình hoặc luyện tập.',
+	}}
+	hasSidebar={false}
+>
+	<p>Đường dẫn này không tồn tại, có thể do gõ sai hoặc trang đã đổi tên. Chọn một lối đi tiếp:</p>
+	<div class="p404-luoi">
+		<a class="p404-the" href="/">
+			<strong>Trang chủ</strong>
+			<span>Về trang bắt đầu và chọn sách.</span>
+		</a>
+		<a class="p404-the" href="/lo-trinh/">
+			<strong>Lộ trình</strong>
+			<span>Xem 65 chương theo thứ tự học.</span>
+		</a>
+		<a class="p404-the" href="/luyen-tap/">
+			<strong>Luyện tập</strong>
+			<span>Phòng thi, thuật toán, toán, phỏng vấn.</span>
+		</a>
+		<a class="p404-the" href="/thuat-ngu/">
+			<strong>Thuật ngữ</strong>
+			<span>Tra nhanh khái niệm trong giáo trình.</span>
+		</a>
+	</div>
+	{
+		goiY && chuong && (
+			<p class="p404-goi-y">
+				Có phải bạn muốn vào <a href={goiY}>Chương {chuong.so}: {chuong.ten}</a>?
+			</p>
+		)
+	}
+	<p class="p404-tt">
+		Đường dẫn: <code>{duongDan}</code>
+	</p>
+</StarlightPage>
+
+<style>
+	.p404-luoi {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+		gap: 0.6rem;
+		margin: 1.2rem 0;
+	}
+	.p404-the {
+		display: flex;
+		flex-direction: column;
+		gap: 0.2rem;
+		padding: 0.8rem 0.9rem;
+		border: 1px solid var(--line);
+		border-radius: 10px;
+		background: var(--panel);
+		color: var(--tx);
+		text-decoration: none;
+	}
+	.p404-the:hover {
+		border-color: var(--pri);
+	}
+	.p404-the strong {
+		color: var(--pri);
+	}
+	.p404-the span {
+		font-size: 0.85rem;
+		color: var(--mut-chu);
+		line-height: 1.5;
+	}
+	.p404-goi-y {
+		margin-top: 0.8rem;
+	}
+	.p404-tt {
+		margin-top: 1rem;
+		font-size: 0.82rem;
+		color: var(--mut-chu);
+	}
+	.p404-tt code {
+		overflow-wrap: anywhere;
+	}
+</style>

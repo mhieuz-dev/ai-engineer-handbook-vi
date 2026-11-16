@@ -5,8 +5,7 @@ const TRANG_DAU = '/ai-engineer/ch10-hoi-quy-tuyen-tinh/01-truc-giac/';
 
 test('trang chủ: tiêu đề, hai thẻ nhánh, nút Chọn sách để học', async ({ page }) => {
 	await page.goto('/');
-	await expect(page.locator('h1')).toHaveText('AI & Robotics');
-	await expect(page.getByText('Giáo trình tiếng Việt miễn phí: hiểu tận gốc AI, từ Python cơ bản đến mô hình ngôn ngữ lớn.')).toBeVisible();
+	await expect(page.locator('h1')).toHaveText('Hiểu tận gốc AI, từ Python đến mô hình ngôn ngữ lớn');
 	const ai = page.locator('#ke-sach .the-chon', { hasText: 'AI Engineer' });
 	const robot = page.locator('#ke-sach .the-chon', { hasText: 'Robotics' });
 	await expect(ai).toBeVisible();

@@ -93,12 +93,12 @@ test('desktop: three chỉ tải khi tới gần kệ, đứng yên không vẽ 
 	test.skip(!!isMobile);
 	// Ở 1280x800 kệ nằm ngay màn đầu (y ≈ 470px) nên tải luôn là đúng. Thu thấp màn để kệ nằm hẳn
 	// dưới mép cộng 200px rootMargin, kiểm được "chưa tới thì chưa tải".
-	await page.setViewportSize({ width: 1280, height: 240 });
+	await page.setViewportSize({ width: 1280, height: 180 });
 	const req = ghiRequest(page);
 	await page.goto('/');
 	const ke = page.locator('#ke-sach');
 	const yKe = (await ke.boundingBox())!.y;
-	expect(yKe).toBeGreaterThan(240 + 200);
+	expect(yKe).toBeGreaterThan(180 + 200);
 	await page.waitForTimeout(1000);
 	expect(req.filter((u) => LA_CHUNK_3D.test(u))).toEqual([]);
 
@@ -156,7 +156,7 @@ test('desktop: Robotics mở bảng không có nút Bắt đầu học, Escape �
 
 test('desktop: mở bảng trước khi cảnh 3D sẵn sàng thì sách vẫn được rút ra khi cảnh dựng xong', async ({ page, isMobile }) => {
 	test.skip(!!isMobile);
-	await page.setViewportSize({ width: 1280, height: 240 });
+	await page.setViewportSize({ width: 1280, height: 180 });
 	await page.goto('/');
 	const sanKhau = page.locator('#ke-sach [data-frames]');
 	await expect(sanKhau).toHaveAttribute('data-trang-thai', 'phang');
